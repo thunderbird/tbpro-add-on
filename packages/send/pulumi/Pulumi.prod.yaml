@@ -1,0 +1,26 @@
+encryptionsalt: v1:seY7tKNLBmE=:v1:wJ9SGUeu2BoLr/8c:880dpePAXi9dU6BCbiq3xNc//gUswA==
+config:
+  send-suite:b2-application-key-id:
+    secure: v1:9gM4PEbC9731FkzH:V7EoXSmq00rCOnJOOP/uwsscEnI/Hx/6n4qDz0cjPePugDHOKbo94ts=
+  send-suite:b2-application-key:
+    secure: v1:bPY/WJIq+i7y3GKI:Kq+NjJVfTkPOH7QqAz80kaMuHqts+ZxkGxh6jJ5JkMnsSpzVk5IW0WPAMmR5eik=
+  send-suite:database-url:
+    secure: v1:JEyZ/HkE+ybWFbF7:UmSS1QPoHTSJODyxQ0F+1y2/At0b8vOwWvSn9Zhwy+JhMBb/d5788pY4ia4mEShHl7EixwgMkWxbDrEMgknUYhyTfj50yH9FZv8Y5lk3OLH31DgIYpRr3Dz70krbpio8QwKPoQG+1+qyKxihsof30JrcfVB1Lai7tgLKntRxKM0=
+  send-suite:fxa-allow-list:
+    secure: v1:zh2awlDg3/zntRBc:JUHPT5lNHVceLQxl3ocjTuFT/g==
+  send-suite:fxa-client-id:
+    secure: v1:OZJ9F52rHuUAZSeL:jskOc93zyI8uZJfYn+BBmfsXjiXI4lxzan137X2eKwE=
+  send-suite:fxa-client-secret:
+    secure: v1:TijixNPiB+hjrLzG:mmdCrw1DY1JIEuri6z+PUAujUhEjIJzubPlsdnIapqDxvpSbmbrkBibso5Dbr5Sz0vpHgm3D5/oho33ScZ4zEroqpaGMDiLTneN2HwCPhv0=
+  send-suite:jwt-access-token-secret:
+    secure: v1:gy+Gx1fxTMaEkSmP:vKhg//vdL5i+qvmEvUtgLyZXhECKz3bM4J9MnChSVsKc/w47fMGZOQL+W7xmZXyrfEFMMiMpaFP955COef9yvu6QSoTsvMWHA41Gzp3MvxOCUE6F4s3UbBLsDIB9CaY7DvzSHFk=
+  send-suite:jwt-refresh-token-secret:
+    secure: v1:QNdm0sUMIAe1NeCx:11WAzcNmVF/gvc9AQBHAXd9t8PBti6KtCSoLU0d9O6RfFZcd9Lfv11O6eWOY/ZTfZFkVLcaYmWq8pEEwzHogNGBV4/BlgSVshAiNCfLJg2RHcKZ2kmGG7lQid9gWB7grLEX5
+  send-suite:posthog-api-key:
+    secure: v1:DffkeIw+6ISV8lmR:pHtpRFJyWJbye+XsDuIbbKfhng==
+  send-suite:sentry-auth-token:
+    secure: v1:0PLzOnxApK9BJORt:LJzdVHrSaZT35bc+Dg4R3NrSi0t4xDyjsVYTlOlVotyO2E3YBjIOyicv5ZRsDMNvnBqHkcdEy2JtZkAWVJRqLbCjl8CHbJrXtW0FrvA1hWW2bCClB6twQSwc114gkrNEhl2gMu08bF9045Dc+jo5b3vvsNzyndfdPmwcO7eu6D/eyOu4gwgmhyfiOhCllBHMEw2C4domvilrEe3QhCQJ4J4J6Gfgdy/EVIsvoBfqrsNEplFSKQLXqPZv4q74gcQnyhx0fgZPPgQqNl011NyE9nYAFw==
+  send-suite:cloudflare_zone_id:
+    secure: v1:ILxVN9y3R+krEhiH:Oc2h1mkyaBIUWwZC+2vGSh9wzBWZ8Pv4vMBOi5A8KmHLfWuELCDp51wcDhy4yT21
+  cloudflare:apiToken:
+    secure: v1:/i/PRTJT4/TjZaLr:WYSaS07MmlpcIOFD+x757p+PPewWoBDdpYp1hrFHq+J5GQAdsIx+EmGi2b+TCzbCrl3kx0JZMng=

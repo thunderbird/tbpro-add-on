@@ -1,0 +1,14 @@
+
+# Sentry Config File
+.sentryclirc
+
+# Sentry Config File
+.sentryclirc
+
+# Filesystem files
+/data
+
+/send-fs-local
+
+/build
+/builds
