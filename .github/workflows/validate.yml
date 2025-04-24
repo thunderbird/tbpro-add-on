@@ -43,7 +43,7 @@ jobs:
             frontend-changed:
               - 'packages/send/frontend/**'
             shared-changed:
-              - 'packages/tbpro-shared/**'
+              - 'packages/shared/**'
 
   # When the backend code changes, run these steps
   backend-tests:
