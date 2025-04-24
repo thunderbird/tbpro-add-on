@@ -12,6 +12,9 @@ importers:
       '@types/node':
         specifier: ^22.14.0
         version: 22.14.0
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.4.7
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -24,6 +27,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1)
 
   packages/send:
     devDependencies:
@@ -227,7 +233,7 @@ importers:
         specifier: ^8.29.1
         version: 8.29.1(eslint@9.24.0(jiti@1.21.7))(typescript@5.8.3)
       vitest:
-        specifier: ^3.1.1
+        specifier: '*'
         version: 3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1)
 
   packages/send/frontend:
@@ -405,7 +411,7 @@ importers:
         specifier: '>=6.2.6'
         version: 6.3.1(@types/node@22.14.0)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.1)
       vitest:
-        specifier: ^3.1.1
+        specifier: '*'
         version: 3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1)
       vitest-localstorage-mock:
         specifier: ^0.0.1
@@ -416,6 +422,21 @@ importers:
       vue-eslint-parser:
         specifier: ^8.3.0
         version: 8.3.0(eslint@9.24.0(jiti@1.21.7))
+
+  packages/shared:
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^5.2.3
+        version: 5.2.3(vite@6.3.1(@types/node@22.14.0)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.8.3))
+      dotenv:
+        specifier: '*'
+        version: 16.4.7
+      typescript:
+        specifier: '*'
+        version: 5.8.3
+      vitest:
+        specifier: '*'
+        version: 3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1)
 
 packages:
 
