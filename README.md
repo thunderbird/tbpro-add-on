@@ -367,6 +367,36 @@ Note: All named volumes are persisted. You can see these expressed as `volumes` 
 
 ## Monorepo
 
+### Packages
+
+#### tbpro-shared
+
+The `tbpro-shared` package contains shared code and utilities used across the Thunderbird Send add-on. This package is designed to be used as a dependency by other packages in the monorepo.
+
+**Key Features:**
+
+- Shared TypeScript types and interfaces
+- Common utilities and helper functions
+- Shared configuration and constants
+
+**Main Commands:**
+
+- `pnpm build` - Builds the package and generates TypeScript definitions
+- `pnpm test` - Runs the test suite
+- `pnpm test:watch` - Runs tests in watch mode for development
+- `pnpm test-debug` - Runs tests in debug mode
+
+**Usage:**
+To use this package in other packages within the monorepo, add it as a dependency in your package.json:
+
+```json
+{
+  "dependencies": {
+    "tbpro-shared": "workspace:*"
+  }
+}
+```
+
 ## Project management
 
 Each project inside the `packages` folder, contains a `package.json` where the `name` is used as the reference for command execution (we'll call this the package name). Each package is declared inside the `pnpm-workspace.yaml` and `lerna.json` files.

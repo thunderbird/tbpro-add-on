@@ -9,7 +9,8 @@
     "build": "tsc",
     "test": "VITE_TESTING=true vitest run --silent",
     "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
-    "test:watch": "VITE_TESTING=true vitest --watch"
+    "test:watch": "VITE_TESTING=true vitest --watch",
+    "postinstall": "pnpm build"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.3",
