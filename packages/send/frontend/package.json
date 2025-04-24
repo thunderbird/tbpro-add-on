@@ -91,7 +91,7 @@
     "typescript-eslint": "^8.29.1",
     "typescript-language-server": "^3.3.2",
     "vite": ">=6.2.6",
-    "vitest": "^3.1.1",
+    "vitest": "*",
     "vitest-localstorage-mock": "^0.0.1",
     "vitest-websocket-mock": "^0.4.0",
     "vue-eslint-parser": "^8.3.0"

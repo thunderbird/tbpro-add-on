@@ -24,6 +24,7 @@ jobs:
       backend-changed: ${{ steps.check.outputs.backend-changed }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
+      shared-changed: ${{ steps.check.outputs.shared-changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,6 +42,8 @@ jobs:
               - '.github/workflows/validate.yml'
             frontend-changed:
               - 'packages/send/frontend/**'
+            shared-changed:
+              - 'packages/tbpro-shared/**'
 
   # When the backend code changes, run these steps
   backend-tests:
@@ -163,3 +166,32 @@ jobs:
         run: |
           cd packages/send/frontend
           pnpm ci:validate
+
+  # When the shared package code changes, run these steps
+  shared-tests:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    strategy:
+      matrix:
+        node-version: ["22"]
+    if: needs.detect-changes.outputs.shared-changed == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        id: install-dependencies
+        shell: bash
+        run: |
+          npm install -g pnpm
+          pnpm install --filter tbpro-shared
+
+      - name: Shared package tests and lint
+        id: shared-tests
+        shell: bash
+        run: |
+          lerna run test --scope=tbpro-shared
