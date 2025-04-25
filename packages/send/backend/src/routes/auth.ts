@@ -7,13 +7,14 @@ import {
 } from '../errors/routes';
 
 import {
+  getDataFromAuthenticatedRequest,
   getJWTfromToken,
   getUserFromJWT,
   registerAuthToken,
   registerTokens,
 } from '@/auth/client';
 import { getLoginSession } from '@/models';
-import { getUserByEmail } from '@/models/users';
+import { getUserByEmail, getUserById } from '@/models/users';
 import { getCookie } from '@/utils';
 import { User, UserTier } from '@prisma/client';
 import { requireJWT, requirePublicLogin } from '../middleware';
@@ -31,8 +32,19 @@ router.get(
   '/me',
   requireJWT,
   addErrorHandling(AUTH_ERRORS.AUTH_FAILED),
-  wrapAsyncHandler(async (_, res) => {
-    return res.json({ message: 'success' });
+  wrapAsyncHandler(async (req, res) => {
+    const { id } = getDataFromAuthenticatedRequest(req);
+
+    const user = await getUserById(id);
+
+    if (!user) {
+      return res.status(401).json({
+        message: 'Authorization failed.',
+      });
+    }
+    return res.status(200).json({
+      message: 'success',
+    });
   })
 );
 

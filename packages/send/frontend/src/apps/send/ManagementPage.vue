@@ -5,7 +5,7 @@ import init from '@/lib/init';
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import BackupAndRestore from '@/apps/common/BackupAndRestore.vue';
 import FeedbackBox from '@/apps/common/FeedbackBox.vue';
@@ -44,6 +44,10 @@ const userId = ref(null);
 const { isLoading } = useQuery({
   queryKey: ['getLoginStatus'],
   queryFn: async () => await loadLogin(),
+});
+
+onMounted(async () => {
+  await validators();
 });
 
 const loadLogin = async () => {
@@ -155,6 +159,7 @@ async function finishLogin() {
           <UserDashboard :log-out="logOut" />
           <BackupAndRestore />
         </div>
+
         <div v-else>
           <Btn
             primary
