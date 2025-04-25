@@ -10,8 +10,8 @@ export default defineConfig({
     },
     test: {
         // this is a temporary config to use vite on routes tests
-        include: ['**/**/*.test.{js,ts}'],
-        exclude: ['**/build/**', '**/node_modules/**'],
+        include: ['**/tests/*.test.ts'],
+        exclude: ['**/node_modules/**'],
         environment: 'node',
         setupFiles: ['dotenv/config'],
         env: {

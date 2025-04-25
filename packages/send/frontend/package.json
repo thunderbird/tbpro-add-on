@@ -1,7 +1,7 @@
 {
   "name": "send-frontend",
   "version": "2.0.2",
-  "private": true,
+  "private": false,
   "type": "module",
   "scripts": {
     "build": "NODE_ENV=production ./scripts/build.sh",
@@ -64,7 +64,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/parser": "^8.29.1",
     "@vitejs/plugin-vue": "^5.2.3",
-    "@vitest/coverage-v8": "^3.1.1",
+    "@vitest/coverage-v8": "*",
     "@vue/test-utils": "^2.4.6",
     "@vueuse/core": "^10.11.1",
     "autoprefixer": "^10.4.21",
@@ -90,7 +90,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.29.1",
     "typescript-language-server": "^3.3.2",
-    "vite": ">=6.2.6",
+    "vite": "*",
     "vitest": "*",
     "vitest-localstorage-mock": "^0.0.1",
     "vitest-websocket-mock": "^0.4.0",

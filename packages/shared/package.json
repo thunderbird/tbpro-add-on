@@ -1,7 +1,7 @@
 {
   "name": "tbpro-shared",
   "version": "0.0.1",
-  "private": true,
+  "private": false,
   "description": "Shared code for tbpro add-on",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,9 @@
     "@vitejs/plugin-vue": "^5.2.3",
     "dotenv": "*",
     "typescript": "*",
-    "vitest": "*"
+    "vitest": "*",
+    "@vitest/coverage-v8": "*",
+    "vite": "*"
   },
   "keywords": [],
   "author": "",

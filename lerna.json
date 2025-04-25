@@ -5,7 +5,6 @@
     "packages/send",
     "packages/send/backend",
     "packages/send/frontend",
-    "packages/tbpro",
     "packages/shared"
   ],
   "npmClient": "pnpm"
