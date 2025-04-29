@@ -40,9 +40,7 @@
       "dependsOn": []
     },
     "dev": {
-      "dependsOn": [
-        "^dev"
-      ]
+      "dependsOn": []
     },
     "dev:detach": {
       "dependsOn": []

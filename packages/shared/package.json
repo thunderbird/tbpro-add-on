@@ -16,7 +16,9 @@
     "@vitejs/plugin-vue": "^5.2.3",
     "dotenv": "*",
     "typescript": "*",
-    "vitest": "*"
+    "vitest": "*",
+    "@vitest/coverage-v8": "*",
+    "vite": "*"
   },
   "keywords": [],
   "author": "",
