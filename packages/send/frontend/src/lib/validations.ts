@@ -70,9 +70,6 @@ export const validator = async ({
 
   if (userIDFromStore && userIDFromBackend !== userIDFromStore) {
     await userStore.logOut();
-    validations.hasLocalStorageSession = false;
-    validations.isTokenValid = false;
-    validations.hasBackedUpKeys = false;
     validations.hasForcedLogin = true;
     logger.error('User ID mismatch. Removing local storage data.');
     try {
@@ -80,15 +77,14 @@ export const validator = async ({
     } catch {
       console.warn('Failed to reload page');
     }
-    return validations;
+  } else {
+    validations.hasLocalStorageSession = validateLocalStorageSession(userStore);
+    validations.isTokenValid = await validateToken(api);
+    validations.hasBackedUpKeys = await validateBackedUpKeys(
+      userStore.getBackup,
+      keychain
+    );
   }
-
-  validations.hasLocalStorageSession = validateLocalStorageSession(userStore);
-  validations.isTokenValid = await validateToken(api);
-  validations.hasBackedUpKeys = await validateBackedUpKeys(
-    userStore.getBackup,
-    keychain
-  );
 
   return validations;
 };
