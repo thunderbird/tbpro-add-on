@@ -5,7 +5,7 @@ import init from '@/lib/init';
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
-import { onMounted, ref } from 'vue';
+import { ref } from 'vue';
 
 import BackupAndRestore from '@/apps/common/BackupAndRestore.vue';
 import FeedbackBox from '@/apps/common/FeedbackBox.vue';
@@ -44,13 +44,20 @@ const userId = ref(null);
 const { isLoading } = useQuery({
   queryKey: ['getLoginStatus'],
   queryFn: async () => await loadLogin(),
-});
-
-onMounted(async () => {
-  await validators();
+  refetchOnWindowFocus: 'always',
+  refetchOnMount: true,
+  refetchOnReconnect: true,
 });
 
 const loadLogin = async () => {
+  // Check for data inconsistencies between local storage and api
+  const { hasForcedLogin } = await validators();
+  if (hasForcedLogin) {
+    // If we don't have a session, show the login button.
+    isLoggedIn.value = false;
+    return;
+  }
+
   // check local storage first
   await userStore.loadFromLocalStorage();
 
