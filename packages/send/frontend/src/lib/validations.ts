@@ -1,4 +1,5 @@
 import { UserStore } from '@/stores/user-store';
+import { UserType } from '@/types';
 import { ApiConnection } from './api';
 import { MAX_ACCESS_LINK_RETRIES } from './const';
 import { Keychain } from './keychain';
@@ -66,6 +67,27 @@ export const validator = async ({
     userStore.getBackup,
     keychain
   );
+  // This check prevents data corruption if the user has local storage from a different user
+  const userResponse = await api.call<{ user: UserType }>(`users/me`);
+
+  const userIDFromBackend = userResponse?.user?.id;
+  const userIDFromStore = userStore?.user?.id;
+  if (
+    userIDFromBackend &&
+    userIDFromStore &&
+    userIDFromBackend !== userIDFromStore
+  ) {
+    await userStore.logOut();
+    validations.hasLocalStorageSession = false;
+    validations.isTokenValid = false;
+    validations.hasBackedUpKeys = false;
+    try {
+      location.reload();
+    } catch {
+      console.warn('Failed to reload page');
+    }
+  }
+
   return validations;
 };
 
