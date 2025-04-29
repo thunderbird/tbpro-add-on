@@ -48,6 +48,8 @@ async function uploadAndShare() {
   try {
     isUploading.value = true;
     const itemObj = await folderStore.uploadItem(
+      // TO-DO: We should fix this type
+      // @ts-ignore
       fileBlob.value,
       folderStore.defaultFolder.id,
       api
@@ -132,14 +134,14 @@ onMounted(async () => {
     );
   }
   // At the very end we have to validate that everything is in order for the upload to happen
-  const { hasBackedUpKeys, isTokenValid } = await validators();
+  const { hasBackedUpKeys, isTokenValid, hasForcedLogin } = await validators();
 
   if (!hasBackedUpKeys) {
     isAllowed.value = false;
     message.value = `Please make sure you have backed up or restored your keys. Go back to the compositon panel and follow the instructions`;
     return;
   }
-  if (!isTokenValid) {
+  if (!isTokenValid || hasForcedLogin) {
     isAllowed.value = false;
     message.value = `You're not logged in properly. Please go back to the compositon panel to log back in`;
     return;
