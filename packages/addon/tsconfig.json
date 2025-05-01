@@ -21,7 +21,7 @@
     "esModuleInterop": true,
     "allowJs": true,
     "paths": {
-      "@/*": ["./src/*"],
+      "@addon/*": ["./src/*"],
       "server/*": ["../backend/src/*"],
       "prisma/*": ["../backend/node_modules/@prisma/*"]
     },

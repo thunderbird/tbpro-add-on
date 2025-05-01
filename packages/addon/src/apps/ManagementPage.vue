@@ -1,6 +1,7 @@
-<!-- eslint-disable no-undef -->
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import AdminPage from './AdminPage.vue';
+</script>
 
 <template>
-  <div>This is tbpro</div>
+  <AdminPage />
 </template>
