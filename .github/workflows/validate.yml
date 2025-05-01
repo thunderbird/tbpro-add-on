@@ -215,6 +215,20 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Create .env file so tests will work
+        shell: bash
+        run: |
+          cd packages/send/frontend
+          cat << EOF > .env
+          VUE_BASE_URL=https://send-stage.tb.pro
+          VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
+          VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
+          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN }}
+          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN }}
+          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY }}
+          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST }}
+          EOF
+
       - name: Install dependencies
         id: install-dependencies
         shell: bash

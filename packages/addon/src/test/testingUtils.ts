@@ -4,12 +4,11 @@ import {
   VueQueryPluginOptions,
 } from '@tanstack/vue-query';
 import { mount } from '@vue/test-utils';
-import AdminPage from '../apps/AdminPage.vue';
 
-export function mountWithPlugins() {
+export function mountWithPlugins(component) {
   const queryClient = new QueryClient();
   const vueQueryOptions: VueQueryPluginOptions = { queryClient };
-  return mount(AdminPage, {
+  return mount(component, {
     global: {
       plugins: [[VueQueryPlugin, vueQueryOptions]],
     },
