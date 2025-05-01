@@ -44,6 +44,8 @@ jobs:
               - 'packages/send/frontend/**'
             shared-changed:
               - 'packages/shared/**'
+            addon-changed:
+              - 'packages/addon/**'
 
   # When the backend code changes, run these steps
   backend-tests:
@@ -195,3 +197,35 @@ jobs:
         shell: bash
         run: |
           lerna run test --scope=tbpro-shared
+
+  # When the addon package code changes, run these steps
+  addon-changes:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    strategy:
+      matrix:
+        node-version: ["22"]
+    if: needs.detect-changes.outputs.addon-changes == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        id: install-dependencies
+        shell: bash
+        run: |
+          npm install -g pnpm
+          # install packages that addon depends on
+          pnpm install --filter addon
+          pnpm install --filter send-frontend
+          pnpm install --filter tbpro-shared
+
+      - name: Shared package tests and lint
+        id: shared-tests
+        shell: bash
+        run: |
+          lerna run test --scope=addon

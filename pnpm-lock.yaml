@@ -600,9 +600,6 @@ importers:
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))
-      tbpro-shared:
-        specifier: workspace:*
-        version: link:../../shared
       tsx:
         specifier: ^4.19.3
         version: 4.19.3
