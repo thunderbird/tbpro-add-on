@@ -232,6 +232,9 @@ importers:
       vue-eslint-parser:
         specifier: ^8.3.0
         version: 8.3.0(eslint@9.24.0(jiti@1.21.7))
+      webextension-polyfill:
+        specifier: ^0.12.0
+        version: 0.12.0
 
   packages/send:
     devDependencies:
@@ -6145,6 +6148,9 @@ packages:
 
   web-vitals@4.2.4:
     resolution: {integrity: sha512-r4DIlprAGwJ7YM11VZp4R884m0Vmgr6EAKe3P+kO0PPj3Unqyvv59rczf6UiGcb9Z8QxZVcqKNwv/g0WNdWwsw==}
+
+  webextension-polyfill@0.12.0:
+    resolution: {integrity: sha512-97TBmpoWJEE+3nFBQ4VocyCdLKfw54rFaJ6EVQYLBCXqCIpLSZkwGgASpv4oPt9gdKCJ80RJlcmNzNn008Ag6Q==}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -12670,6 +12676,8 @@ snapshots:
       defaults: 1.0.4
 
   web-vitals@4.2.4: {}
+
+  webextension-polyfill@0.12.0: {}
 
   webidl-conversions@3.0.1: {}
 

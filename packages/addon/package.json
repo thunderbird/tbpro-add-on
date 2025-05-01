@@ -92,7 +92,8 @@
     "vitest": "*",
     "vitest-localstorage-mock": "^0.0.1",
     "vitest-websocket-mock": "^0.4.0",
-    "vue-eslint-parser": "^8.3.0"
+    "vue-eslint-parser": "^8.3.0",
+    "webextension-polyfill": "^0.12.0"
   },
   "packageManager": "pnpm@10.7.1"
 }

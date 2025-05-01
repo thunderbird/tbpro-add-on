@@ -36,6 +36,15 @@ cp -R public/* dist/
 vite build --config vite.config.management.js
 cp -R dist/pages/assets/* dist/assets/
 cp -R dist/pages/*.* dist/
+
+# build the background script
+vite build --config vite.config.background.js
+cp -R dist/background/*.mjs dist/
+cp -R dist/background/*.mjs.map dist/
+# cp -R dist/background/*.map dist/f
+# cp -R dist/background/manifest.json dist/
+rm -rf dist/background
+
 rm -rf dist/pages
 
 cd dist
