@@ -208,7 +208,7 @@ jobs:
     strategy:
       matrix:
         node-version: ["22"]
-    if: needs.detect-changes.outputs.addon-changes == 'true'
+    if: needs.detect-changes.outputs.addon-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
