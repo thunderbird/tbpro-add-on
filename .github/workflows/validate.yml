@@ -218,7 +218,7 @@ jobs:
       - name: Create .env file so tests will work
         shell: bash
         run: |
-          cd packages/send/frontend
+          cd packages/shared
           cat << EOF > .env
           VUE_BASE_URL=https://send-stage.tb.pro
           VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
