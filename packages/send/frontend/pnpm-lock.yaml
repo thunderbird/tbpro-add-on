@@ -100,7 +100,7 @@ importers:
         specifier: ^5.2.3
         version: 5.2.3(vite@6.3.1(@types/node@22.13.11)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0))(vue@3.5.13(typescript@5.8.3))
       '@vitest/coverage-v8':
-        specifier: ^3.1.1
+        specifier: '*'
         version: 3.1.1(vitest@3.1.1(@types/node@22.13.11)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.13.11)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.0))
       '@vue/test-utils':
         specifier: ^2.4.6
@@ -178,7 +178,7 @@ importers:
         specifier: ^3.3.2
         version: 3.3.2
       vite:
-        specifier: '>=6.2.6'
+        specifier: '*'
         version: 6.3.1(@types/node@22.13.11)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.0)
       vitest:
         specifier: '*'

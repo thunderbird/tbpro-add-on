@@ -3,8 +3,8 @@
   "version": "0.0.3-alpha.0",
   "private": false,
   "description": "Shared code for tbpro add-on",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "VITE_TESTING=true vitest run --silent",
@@ -25,6 +25,10 @@
   "license": "ISC",
   "packageManager": "pnpm@10.7.1",
   "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "require": "./dist/src/index.js"
+    },
     "./tsconfig.client.base.json": "./tsconfig.client.base.json"
   }
 }

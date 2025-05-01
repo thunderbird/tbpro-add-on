@@ -12,10 +12,10 @@ fi
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
 
 # Copy css to backend
-cp src/apps/send/style.css ../send/backend/public/style.css
-sed -i.bak '1s/^/\/* WARNING THIS IS A SELF GENERATED FILE. ALL CHANGES WILL BE OVERWRITTEN ON BUILD. IF YOU WANT TO MODIFY THE ORIGINAL FILE, PLEASE MODIFY frontend\/public\/style.css *\/\n/' ../send/backend/public/style.css && rm ../send/backend/public/style.css.bak
+# cp src/apps/send/style.css ../send/backend/public/style.css
+# sed -i.bak '1s/^/\/* WARNING THIS IS A SELF GENERATED FILE. ALL CHANGES WILL BE OVERWRITTEN ON BUILD. IF YOU WANT TO MODIFY THE ORIGINAL FILE, PLEASE MODIFY frontend\/public\/style.css *\/\n/' ../send/backend/public/style.css && rm ../send/backend/public/style.css.bak
 # Copy public folder to backend
-cp -R public/icons ../send/backend/public
+# cp -R public/icons ../send/backend/public
 
 # Remove old builds
 rm -rf dist && rm -rf dist-web
