@@ -11,9 +11,8 @@ export default defineConfig({
         lib: {
             entry: fileURLToPath(new URL('src/background.ts', import.meta.url)),
             name: 'ExtensionBackground',
-            // the proper extensions will be added
-            fileName: 'background',
-            formats: ['es'],
+            fileName: () => 'background.js', // Ensure output is background.js
+            formats: ['cjs'], // Output CommonJS for .js extension
         },
         minify: true,
         sourcemap: true,

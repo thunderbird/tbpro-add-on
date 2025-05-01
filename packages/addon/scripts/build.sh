@@ -39,8 +39,8 @@ cp -R dist/pages/*.* dist/
 
 # build the background script
 vite build --config vite.config.background.js
-cp -R dist/background/*.mjs dist/
-cp -R dist/background/*.mjs.map dist/
+cp -R dist/background/*.js dist/
+cp -R dist/background/*.js.map dist/
 # cp -R dist/background/*.map dist/f
 # cp -R dist/background/manifest.json dist/
 rm -rf dist/background
@@ -53,8 +53,3 @@ cd dist
 zip -r -FS ../tbpro-addon-${VERSION}.xpi *
 
 echo 'Add-on build complete 🎉'
-
-# echo 'Building web app 🏭'
-# pnpm exec vite build
-
-# echo 'Web app build complete 🎉'
