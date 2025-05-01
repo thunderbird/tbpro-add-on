@@ -1,0 +1,6 @@
+# Formatting package.json files
+# lerna run sort-package-json
+
+echo "🐺 Running pre commit hooks for backend..."
+
+# pnpx lint-staged
