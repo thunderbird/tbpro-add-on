@@ -37,6 +37,205 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1)
 
+  packages/addon:
+    dependencies:
+      '@scure/bip39':
+        specifier: ^1.5.4
+        version: 1.5.4
+      '@sentry/vite-plugin':
+        specifier: ^2.23.0
+        version: 2.23.0(encoding@0.1.13)
+      '@sentry/vue':
+        specifier: ^8.55.0
+        version: 8.55.0(pinia@2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
+      '@tabler/icons-vue':
+        specifier: ^2.47.0
+        version: 2.47.0(vue@3.5.13(typescript@5.8.3))
+      '@tanstack/vue-query':
+        specifier: ^5.72.1
+        version: 5.72.1(vue@3.5.13(typescript@5.8.3))
+      '@thunderbirdops/services-ui':
+        specifier: ^0.6.5
+        version: 0.6.5(typescript@5.8.3)
+      '@trpc/client':
+        specifier: 11.0.1
+        version: 11.0.1(@trpc/server@11.0.1(typescript@5.8.3))(typescript@5.8.3)
+      '@types/ua-parser-js':
+        specifier: ^0.7.39
+        version: 0.7.39
+      dayjs:
+        specifier: ^1.11.13
+        version: 1.11.13
+      floating-vue:
+        specifier: ^5.2.2
+        version: 5.2.2(vue@3.5.13(typescript@5.8.3))
+      get-random-values:
+        specifier: ^3.0.0
+        version: 3.0.0
+      install:
+        specifier: ^0.13.0
+        version: 0.13.0
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.1
+      pinia:
+        specifier: ^2.3.1
+        version: 2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
+      posthog-js:
+        specifier: ^1.235.0
+        version: 1.235.0
+      pretty-bytes:
+        specifier: ^6.1.1
+        version: 6.1.1
+      send-frontend:
+        specifier: workspace:*
+        version: link:../send/frontend
+      tbpro-shared:
+        specifier: workspace:*
+        version: link:../shared
+      ua-parser-js:
+        specifier: ^1.0.40
+        version: 1.0.40
+      vue:
+        specifier: ^3.5.13
+        version: 3.5.13(typescript@5.8.3)
+      vue-final-modal:
+        specifier: ^4.5.5
+        version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.8.4)(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3))
+      vue-router:
+        specifier: ^4.5.0
+        version: 4.5.0(vue@3.5.13(typescript@5.8.3))
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.24.0
+        version: 9.24.0
+      '@tailwindcss/forms':
+        specifier: ^0.5.10
+        version: 0.5.10(tailwindcss@3.4.17(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3)))
+      '@trpc/server':
+        specifier: 11.0.1
+        version: 11.0.1(typescript@5.8.3)
+      '@types/eslint-config-prettier':
+        specifier: ^6.11.3
+        version: 6.11.3
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.4
+        version: 120.0.4
+      '@types/node':
+        specifier: '*'
+        version: 22.14.0
+      '@types/thunderbird-webext-browser':
+        specifier: ^127.0.0
+        version: 127.0.0
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      '@typescript-eslint/parser':
+        specifier: ^8.29.1
+        version: 8.29.1(eslint@9.24.0(jiti@1.21.7))(typescript@5.8.3)
+      '@vitejs/plugin-vue':
+        specifier: ^5.2.3
+        version: 5.2.3(vite@6.3.3(@types/node@22.14.0)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.8.3))
+      '@vitest/coverage-v8':
+        specifier: '*'
+        version: 3.1.1(vitest@3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1))
+      '@vue/test-utils':
+        specifier: ^2.4.6
+        version: 2.4.6
+      '@vueuse/core':
+        specifier: ^10.11.1
+        version: 10.11.1(vue@3.5.13(typescript@5.8.3))
+      autoprefixer:
+        specifier: ^10.4.21
+        version: 10.4.21(postcss@8.5.3)
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.4.7
+      eslint:
+        specifier: ^9.24.0
+        version: 9.24.0(jiti@1.21.7)
+      eslint-config-prettier:
+        specifier: ^9.1.0
+        version: 9.1.0(eslint@9.24.0(jiti@1.21.7))
+      eslint-plugin-vue:
+        specifier: ^9.33.0
+        version: 9.33.0(eslint@9.24.0(jiti@1.21.7))
+      form-data:
+        specifier: ^4.0.2
+        version: 4.0.2
+      globals:
+        specifier: ^15.15.0
+        version: 15.15.0
+      happy-dom:
+        specifier: ^15.11.7
+        version: 15.11.7
+      jsonwebtoken:
+        specifier: 9.0.2
+        version: 9.0.2
+      lint-staged:
+        specifier: ^15.5.0
+        version: 15.5.0
+      mock-socket:
+        specifier: ^9.3.1
+        version: 9.3.1
+      msw:
+        specifier: ^2.7.3
+        version: 2.7.3(@types/node@22.14.0)(typescript@5.8.3)
+      nodemon:
+        specifier: ^3.1.9
+        version: 3.1.9
+      postcss:
+        specifier: ^8.5.3
+        version: 8.5.3
+      postcss-import:
+        specifier: ^15.1.0
+        version: 15.1.0(postcss@8.5.3)
+      prettier:
+        specifier: ^3.5.3
+        version: 3.5.3
+      rollup-plugin-visualizer:
+        specifier: ^5.14.0
+        version: 5.14.0(rollup@4.39.0)
+      sort-package-json:
+        specifier: '*'
+        version: 2.15.1
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))
+      tsx:
+        specifier: ^4.19.3
+        version: 4.19.3
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      typescript-eslint:
+        specifier: ^8.29.1
+        version: 8.29.1(eslint@9.24.0(jiti@1.21.7))(typescript@5.8.3)
+      typescript-language-server:
+        specifier: ^3.3.2
+        version: 3.3.2
+      vite:
+        specifier: '*'
+        version: 6.3.3(@types/node@22.14.0)(jiti@1.21.7)(tsx@4.19.3)(yaml@2.7.1)
+      vitest:
+        specifier: '*'
+        version: 3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1)
+      vitest-localstorage-mock:
+        specifier: ^0.0.1
+        version: 0.0.1(vitest@3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1))
+      vitest-websocket-mock:
+        specifier: ^0.4.0
+        version: 0.4.0(vitest@3.1.1(@types/node@22.14.0)(happy-dom@15.11.7)(jiti@1.21.7)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(tsx@4.19.3)(yaml@2.7.1))
+      vue-eslint-parser:
+        specifier: ^8.3.0
+        version: 8.3.0(eslint@9.24.0(jiti@1.21.7))
+      webextension-polyfill:
+        specifier: ^0.12.0
+        version: 0.12.0
+
   packages/send:
     devDependencies:
       '@playwright/test':
@@ -5137,6 +5336,19 @@ packages:
     resolution: {integrity: sha512-l0OE8wL34P4nJH/H2ffoaniAokM2qSmrtXHmlpvYr5AVVX8msAyW0l8NVJFDxlSK4u3Uh/f41cQheDVdnYijwQ==}
     hasBin: true
 
+  rollup-plugin-visualizer@5.14.0:
+    resolution: {integrity: sha512-VlDXneTDaKsHIw8yzJAFWtrzguoJ/LnQ+lMpoVfYJ3jJF4Ihe5oYLAqLklIK/35lgUY+1yEzCkHyZ1j4A5w5fA==}
+    engines: {node: '>=18'}
+    hasBin: true
+    peerDependencies:
+      rolldown: 1.x
+      rollup: 2.x || 3.x || 4.x
+    peerDependenciesMeta:
+      rolldown:
+        optional: true
+      rollup:
+        optional: true
+
   rollup@4.39.0:
     resolution: {integrity: sha512-thI8kNc02yNvnmJp8dr3fNWJ9tCONDhp6TV35X6HkKGGs9E6q7YWCHbe5vKiTa7TAiNcFEmXKj3X/pG2b3ci0g==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
@@ -5282,6 +5494,10 @@ packages:
   source-map@0.6.1:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
+
+  source-map@0.7.4:
+    resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}
+    engines: {node: '>= 8'}
 
   spdx-correct@3.2.0:
     resolution: {integrity: sha512-kN9dJbvnySHULIluDHy32WHRUu3Og7B9sbY7tsFLctQkIqnMh3hErYgdMjTYuqmcXX+lK5T1lnUt3G7zNswmZA==}
@@ -5932,6 +6148,9 @@ packages:
 
   web-vitals@4.2.4:
     resolution: {integrity: sha512-r4DIlprAGwJ7YM11VZp4R884m0Vmgr6EAKe3P+kO0PPj3Unqyvv59rczf6UiGcb9Z8QxZVcqKNwv/g0WNdWwsw==}
+
+  webextension-polyfill@0.12.0:
+    resolution: {integrity: sha512-97TBmpoWJEE+3nFBQ4VocyCdLKfw54rFaJ6EVQYLBCXqCIpLSZkwGgASpv4oPt9gdKCJ80RJlcmNzNn008Ag6Q==}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -11619,6 +11838,15 @@ snapshots:
     dependencies:
       glob: 10.4.5
 
+  rollup-plugin-visualizer@5.14.0(rollup@4.39.0):
+    dependencies:
+      open: 8.4.2
+      picomatch: 4.0.2
+      source-map: 0.7.4
+      yargs: 17.7.2
+    optionalDependencies:
+      rollup: 4.39.0
+
   rollup@4.39.0:
     dependencies:
       '@types/estree': 1.0.7
@@ -11808,6 +12036,8 @@ snapshots:
   source-map-js@1.2.1: {}
 
   source-map@0.6.1: {}
+
+  source-map@0.7.4: {}
 
   spdx-correct@3.2.0:
     dependencies:
@@ -12446,6 +12676,8 @@ snapshots:
       defaults: 1.0.4
 
   web-vitals@4.2.4: {}
+
+  webextension-polyfill@0.12.0: {}
 
   webidl-conversions@3.0.1: {}
 

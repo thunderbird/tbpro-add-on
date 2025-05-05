@@ -1,8 +1,12 @@
 {
-  "name": "send-frontend",
-  "version": "2.1.4",
+  "name": "addon",
+  "version": "0.0.1",
   "private": false,
-  "type": "module",
+  "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "main": "index.js",
   "scripts": {
     "build": "NODE_ENV=production ./scripts/build.sh",
     "build-and-submit": "NODE_ENV=production ./scripts/build.sh && ./scripts/submit.sh",
@@ -22,15 +26,6 @@
     "typecheck": "tsc --noEmit",
     "postversion": "bun run ./scripts/bump.ts"
   },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx,vue}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.json": [
-      "prettier --write"
-    ]
-  },
   "dependencies": {
     "@scure/bip39": "^1.5.4",
     "@sentry/vite-plugin": "^2.23.0",
@@ -48,6 +43,8 @@
     "pinia": "^2.3.1",
     "posthog-js": "^1.235.0",
     "pretty-bytes": "^6.1.1",
+    "send-frontend": "workspace:*",
+    "tbpro-shared": "workspace:*",
     "ua-parser-js": "^1.0.40",
     "vue": "^3.5.13",
     "vue-final-modal": "^4.5.5",
@@ -84,6 +81,7 @@
     "postcss": "^8.5.3",
     "postcss-import": "^15.1.0",
     "prettier": "^3.5.3",
+    "rollup-plugin-visualizer": "^5.14.0",
     "sort-package-json": "*",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.3",
@@ -94,9 +92,8 @@
     "vitest": "*",
     "vitest-localstorage-mock": "^0.0.1",
     "vitest-websocket-mock": "^0.4.0",
-    "vue-eslint-parser": "^8.3.0"
+    "vue-eslint-parser": "^8.3.0",
+    "webextension-polyfill": "^0.12.0"
   },
-  "engines": {
-    "node": ">=22.11.0"
-  }
+  "packageManager": "pnpm@10.7.1"
 }

@@ -25,6 +25,7 @@ jobs:
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
+      addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,6 +45,8 @@ jobs:
               - 'packages/send/frontend/**'
             shared-changed:
               - 'packages/shared/**'
+            addon-changed:
+              - 'packages/addon/**'
 
   # When the backend code changes, run these steps
   backend-tests:
@@ -195,3 +198,49 @@ jobs:
         shell: bash
         run: |
           lerna run test --scope=tbpro-shared
+
+  # When the addon package code changes, run these steps
+  addon-changes:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    strategy:
+      matrix:
+        node-version: ["22"]
+    if: needs.detect-changes.outputs.addon-changed == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Create .env file so tests will work
+        shell: bash
+        run: |
+          cd packages/addon
+          cat << EOF > .env
+          VUE_BASE_URL=https://send-stage.tb.pro
+          VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
+          VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
+          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN }}
+          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN }}
+          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY }}
+          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST }}
+          EOF
+
+      - name: Install dependencies
+        id: install-dependencies
+        shell: bash
+        run: |
+          npm install -g pnpm
+          # install packages that addon depends on
+          pnpm install --filter addon
+          pnpm install --filter send-frontend
+          pnpm install --filter tbpro-shared
+
+      - name: Shared package tests and lint
+        id: shared-tests
+        shell: bash
+        run: |
+          lerna run test --scope=addon

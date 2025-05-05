@@ -1,1 +1,3 @@
-export { default as logger } from "./utils/logger";
+// This file makes it easier to import shared modules
+import logger from "./logger";
+export { logger };

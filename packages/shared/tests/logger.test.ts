@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import logger, { loggerPrefix } from "../src/utils/logger";
+import logger, { loggerPrefix } from "../src/logger";
 
 describe("Logger module", () => {
   it("should log info successfully", async () => {
