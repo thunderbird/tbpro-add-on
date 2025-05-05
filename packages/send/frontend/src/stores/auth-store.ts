@@ -1,19 +1,31 @@
 // stores/counter.js
 
+import { formatLoginURL } from '@/lib/helpers';
 import { openPopup } from '@/lib/login';
-import { useApiStore } from '@/stores';
+import { useApiStore, useConfigStore } from '@/stores';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
+  const { isExtension } = useConfigStore();
   // We check auth for each app individually
 
-  // ------- Common ------- //
+  // ------- Common for Addons ------- //
   async function loginToMozAccount(finishLogin: () => void) {
     const resp = await api.call(`lockbox/fxa/login`);
-    if (resp.url) {
-      await openPopup(resp.url, finishLogin);
+    const formattedUrl = formatLoginURL(resp.url);
+
+    if (!resp.url) {
+      console.error('No URL returned from login endpoint');
+      return;
+    }
+
+    if (!isExtension && window) {
+      window.open(formattedUrl);
+      finishLogin();
+    } else {
+      await openPopup(formattedUrl, finishLogin);
     }
   }
 

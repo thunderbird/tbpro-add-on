@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import ManagementPage from 'send-frontend/src/apps/send/ManagementPage.vue';
+import SendManagement from 'send-frontend/src/apps/send/ManagementPage.vue';
 import logger from 'send-frontend/src/logger';
 import { logger as sharedLogger } from 'tbpro-shared';
-import { onMounted, ref } from 'vue';
-
-const showManagement = ref(false);
+import { onMounted } from 'vue';
 
 onMounted(() => {
   // check that imports from send-frontend work
@@ -17,10 +15,5 @@ onMounted(() => {
 <template>
   <h1>TB Pro</h1>
   <h2>Send</h2>
-  <button @click="showManagement = !showManagement">
-    {{ showManagement ? 'Hide' : 'Show' }} Management Page
-  </button>
-  <div v-if="showManagement">
-    <ManagementPage />
-  </div>
+  <SendManagement />
 </template>

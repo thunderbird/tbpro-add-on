@@ -15,14 +15,4 @@ describe('AdminPage', () => {
     expect(wrapper.text()).toContain('TB Pro');
     expect(wrapper.text()).toContain('Send');
   });
-
-  it('toggles ManagementPage visibility', async () => {
-    const wrapper = mountWithPlugins(AdminPage);
-    const button = wrapper.find('button');
-    expect(wrapper.text()).not.toContain('Hide Management Page');
-    await button.trigger('click');
-    expect(wrapper.text()).toContain('Hide Management Page');
-    await button.trigger('click');
-    expect(wrapper.text()).toContain('Show Management Page');
-  });
 });

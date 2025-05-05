@@ -114,6 +114,10 @@ async function finishLogin() {
   isLoggedIn.value = isTokenValid;
   isLoggedIn.value = true;
 }
+
+async function _loginToMozAccount() {
+  loginToMozAccount(finishLogin);
+}
 </script>
 
 <template>
@@ -135,7 +139,7 @@ async function finishLogin() {
           <Btn
             primary
             data-testid="login-button"
-            @click.prevent="loginToMozAccount"
+            @click.prevent="_loginToMozAccount"
             >Log into Mozilla Account</Btn
           >
         </div>
