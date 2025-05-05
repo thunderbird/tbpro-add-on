@@ -4,11 +4,19 @@ import { formatLoginURL } from '@/lib/helpers';
 import { openPopup } from '@/lib/login';
 import { useApiStore, useConfigStore } from '@/stores';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { ref, watch } from 'vue';
 
 export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
   const { isExtension } = useConfigStore();
+
+  const sessionInfo = ref(null);
+  const isLoggedIn = ref(false);
+
+  watch(isLoggedIn, (newValue) => {
+    console.log('isLoggedIn changed', newValue);
+  });
+
   // We check auth for each app individually
 
   // ------- Common for Addons ------- //
@@ -29,25 +37,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ------- Send ------- //
-  const isLoggedIn = ref(false);
-
-  // setters
-  function setLoggedIn(value: boolean) {
-    isLoggedIn.value = value;
-  }
-
-  // getters
-  const _isLoggedIn = computed(() => isLoggedIn.value);
+  // This object must be flat so that we can use storeToRefs when we consume it
   return {
     loginToMozAccount,
-    send: {
-      status: {
-        isLoggedIn: _isLoggedIn.value,
-      },
-      actions: {
-        setLoggedIn,
-      },
-    },
+    sessionInfo,
+    isLoggedIn,
   };
 });

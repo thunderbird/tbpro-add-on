@@ -5,7 +5,6 @@ import init from '@/lib/init';
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
-import { ref } from 'vue';
 
 import BackupAndRestore from '@/apps/common/BackupAndRestore.vue';
 import FeedbackBox from '@/apps/common/FeedbackBox.vue';
@@ -18,6 +17,7 @@ import { validateToken } from '@/lib/validations';
 import { useAuthStore } from '@/stores/auth-store';
 import useMetricsStore from '@/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
+import { storeToRefs } from 'pinia';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
@@ -35,10 +35,10 @@ const { validators } = useStatusStore();
 const { configureExtension } = useExtensionStore();
 const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
-const { loginToMozAccount } = useAuthStore();
+const authStore = useAuthStore();
+const { loginToMozAccount } = authStore;
 
-const sessionInfo = ref(null);
-const isLoggedIn = ref(false);
+const { isLoggedIn, sessionInfo } = storeToRefs(authStore);
 
 const { isLoading } = useQuery({
   queryKey: ['getLoginStatus'],
@@ -54,6 +54,7 @@ const loadLogin = async () => {
   if (hasForcedLogin) {
     // If we don't have a session, show the login button.
     isLoggedIn.value = false;
+
     return;
   }
 
@@ -111,7 +112,8 @@ async function finishLogin() {
     }
   }
 
-  isLoggedIn.value = isTokenValid;
+  // setIsLoggedIn(isTokenValid);
+  console.log('isTokenValid', isTokenValid);
   isLoggedIn.value = true;
 }
 
@@ -125,6 +127,9 @@ async function _loginToMozAccount() {
     <CompatibilityBoundary>
       <CompatibilityBanner />
       <TBBanner />
+
+      <div>isLoggedIn: {{ isLoggedIn }}</div>
+
       <div v-if="isLoading">
         <LoadingComponent />
       </div>
