@@ -9,5 +9,6 @@ export const packageJson = JSON.parse(
 export const sharedViteConfig: UserConfig = {
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
+    __APP_NAME__: JSON.stringify(packageJson.name),
   },
 };

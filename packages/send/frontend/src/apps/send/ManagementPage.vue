@@ -13,9 +13,9 @@ import { useMetricsUpdate } from '@/apps/common/mixins/metrics';
 import UserDashboard from '@/apps/common/UserDashboard.vue';
 import Btn from '@/apps/send/elements/BtnComponent.vue';
 import useFolderStore from '@/apps/send/stores/folder-store';
-import { formatLoginURL } from '@/lib/helpers';
 import { CLIENT_MESSAGES } from '@/lib/messages';
 import { validateToken } from '@/lib/validations';
+import { useAuthStore } from '@/stores/auth-store';
 import useMetricsStore from '@/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
 import { ModalsContainer } from 'vue-final-modal';
@@ -35,11 +35,10 @@ const { validators } = useStatusStore();
 const { configureExtension } = useExtensionStore();
 const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
+const { loginToMozAccount } = useAuthStore();
 
 const sessionInfo = ref(null);
 const isLoggedIn = ref(false);
-const email = ref(null);
-const userId = ref(null);
 
 const { isLoading } = useQuery({
   queryKey: ['getLoginStatus'],
@@ -70,10 +69,6 @@ const loadLogin = async () => {
     }
     // app-sepcific initialization
     await init(userStore, keychain, folderStore);
-    // If init found anything in storage, populate our
-    // debug ref vars with those values.
-    email.value = userStore.user.email;
-    userId.value = userStore.user.id;
     await finishLogin();
   } catch (e) {
     console.log(e);
@@ -87,33 +82,6 @@ const loadLogin = async () => {
 
 updateMetricsIdentity();
 
-async function openPopup(authUrl: string) {
-  try {
-    const popup = await browser.windows.create({
-      url: formatLoginURL(authUrl),
-      type: 'popup',
-      allowScriptsToClose: true,
-    });
-
-    const checkPopupClosed = (windowId: number) => {
-      if (windowId === popup.id) {
-        browser.windows.onRemoved.removeListener(checkPopupClosed);
-        finishLogin();
-      }
-    };
-    browser.windows.onRemoved.addListener(checkPopupClosed);
-  } catch (e) {
-    console.log(`popup failed`);
-    console.log(e);
-  }
-}
-
-async function loginToMozAccount() {
-  const resp = await api.call(`lockbox/fxa/login`);
-  if (resp.url) {
-    await openPopup(resp.url);
-  }
-}
 async function showCurrentServerSession() {
   sessionInfo.value =
     (await api.call(`users/me`)) ?? CLIENT_MESSAGES.SHOULD_LOG_IN;
@@ -133,10 +101,6 @@ async function finishLogin() {
 
   await showCurrentServerSession();
   await dbUserSetup(userStore, keychain, folderStore);
-  // Save values to the ref variables.
-  // Really only for debugging purposes.
-  userId.value = userStore.user.id;
-  email.value = userStore.user.email;
   const { isTokenValid, hasBackedUpKeys } = await validators();
 
   if (isTokenValid && hasBackedUpKeys) {

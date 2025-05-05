@@ -10,7 +10,11 @@ const { isExtension } = useConfigStore();
 
 const { data, isLoading, error } = useQuery({
   queryKey: ['settingsQuery'],
-  queryFn: async () => await trpc.settings.query({ version: __APP_VERSION__ }),
+  queryFn: async () =>
+    await trpc.settings.query({
+      version: __APP_VERSION__,
+      appName: __APP_NAME__,
+    }),
 });
 
 const compatibility = computed(() => {
