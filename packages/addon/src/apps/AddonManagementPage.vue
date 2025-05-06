@@ -1,14 +1,24 @@
 <script setup lang="ts">
-// import { useAuthStore } from 'send-frontend/src/stores';
 import { useQuery } from '@tanstack/vue-query';
 import { storeToRefs } from 'pinia';
-import { useApiStore, useAuthStore } from 'send-frontend/src/stores';
+import ButtonComponent from 'send-frontend/src/apps/send/elements/BtnComponent.vue';
+import LogOutButton from 'send-frontend/src/apps/send/elements/LogOutButton.vue';
+import {
+  useApiStore,
+  useAuthStore,
+  useConfigStore,
+  useStatusStore,
+  useUserStore,
+} from 'send-frontend/src/stores';
 import AdminPage from './AdminPage.vue';
-import LoginPage from './pages/LoginPage.vue';
 
 const authStore = useAuthStore();
 const { api } = useApiStore();
 const { isLoggedIn } = storeToRefs(authStore);
+const { loginToMozAccount } = authStore;
+const { logOut } = useUserStore();
+const { validators } = useStatusStore();
+const { isExtension } = useConfigStore();
 
 const { data: sessionData } = useQuery({
   queryKey: ['session'],
@@ -23,10 +33,56 @@ const { data: sessionData } = useQuery({
   },
 });
 
+const handleLogout = async () => {
+  logOut();
+  await validators();
+  if (!isExtension) {
+    location.reload();
+  }
+  window.location.reload();
+};
+
+async function finishLogin() {
+  isLoggedIn.value = true;
+
+  console.warn('Refreshing page after login');
+}
+
+async function _loginToMozAccount() {
+  loginToMozAccount({ onSuccess: finishLogin });
+}
+
 console.log('sessionData', sessionData.value);
 </script>
 
 <template>
-  <LoginPage v-if="!isLoggedIn" />
-  <AdminPage v-else />
+  <ButtonComponent
+    v-if="!isLoggedIn"
+    primary
+    data-testid="login-button"
+    @click.prevent="_loginToMozAccount"
+    >Login</ButtonComponent
+  >
+
+  <log-out-button :log-out="handleLogout" />
+
+  <AdminPage v-if="isLoggedIn" />
 </template>
+
+<style scoped>
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: center;
+  gap: 1rem 0;
+  margin-top: 2rem;
+}
+p {
+  color: #000;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+</style>

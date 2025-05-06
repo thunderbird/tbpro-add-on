@@ -123,8 +123,6 @@ async function _loginToMozAccount() {
       <CompatibilityBanner />
       <TBBanner />
 
-      <div>isLoggedIn: {{ isLoggedIn }}</div>
-
       <div v-if="isLoading">
         <LoadingComponent />
       </div>
