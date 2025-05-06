@@ -6,19 +6,15 @@ import LogOutButton from 'send-frontend/src/apps/send/elements/LogOutButton.vue'
 import {
   useApiStore,
   useAuthStore,
-  useConfigStore,
-  useStatusStore,
   useUserStore,
 } from 'send-frontend/src/stores';
 import AdminPage from './AdminPage.vue';
 
-const authStore = useAuthStore();
 const { api } = useApiStore();
+const authStore = useAuthStore();
 const { isLoggedIn } = storeToRefs(authStore);
 const { loginToMozAccount } = authStore;
 const { logOut } = useUserStore();
-const { validators } = useStatusStore();
-const { isExtension } = useConfigStore();
 
 const { data: sessionData, refetch } = useQuery({
   queryKey: ['session'],
@@ -35,11 +31,7 @@ const { data: sessionData, refetch } = useQuery({
 
 const handleLogout = async () => {
   logOut();
-  await validators();
-  if (!isExtension) {
-    location.reload();
-  }
-  window.location.reload();
+  isLoggedIn.value = false;
 };
 
 async function finishLogin() {
