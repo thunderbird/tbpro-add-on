@@ -23,7 +23,7 @@ const { isExtension } = useConfigStore();
 const { data: sessionData, refetch } = useQuery({
   queryKey: ['session'],
   queryFn: async () => {
-    const resp = await api.call('users/me');
+    const resp = await api.call('auth/me');
     if (resp.error) {
       isLoggedIn.value = false;
       return resp;
