@@ -20,7 +20,7 @@ const { logOut } = useUserStore();
 const { validators } = useStatusStore();
 const { isExtension } = useConfigStore();
 
-const { data: sessionData } = useQuery({
+const { data: sessionData, refetch } = useQuery({
   queryKey: ['session'],
   queryFn: async () => {
     const resp = await api.call('users/me');
@@ -43,9 +43,7 @@ const handleLogout = async () => {
 };
 
 async function finishLogin() {
-  isLoggedIn.value = true;
-
-  console.warn('Refreshing page after login');
+  await refetch();
 }
 
 async function _loginToMozAccount() {
