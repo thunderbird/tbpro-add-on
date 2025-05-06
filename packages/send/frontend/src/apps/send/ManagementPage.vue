@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import useMetricsStore from '@/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
 import { storeToRefs } from 'pinia';
+import { ref } from 'vue';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
@@ -38,7 +39,8 @@ const { updateMetricsIdentity } = useMetricsUpdate();
 const authStore = useAuthStore();
 const { loginToMozAccount } = authStore;
 
-const { isLoggedIn, sessionInfo } = storeToRefs(authStore);
+const { isLoggedIn } = storeToRefs(authStore);
+const loginFailureMessage = ref(null);
 
 const { isLoading } = useQuery({
   queryKey: ['getLoginStatus'],
@@ -54,7 +56,6 @@ const loadLogin = async () => {
   if (hasForcedLogin) {
     // If we don't have a session, show the login button.
     isLoggedIn.value = false;
-
     return;
   }
 
@@ -83,11 +84,6 @@ const loadLogin = async () => {
 
 updateMetricsIdentity();
 
-async function showCurrentServerSession() {
-  sessionInfo.value =
-    (await api.call(`users/me`)) ?? CLIENT_MESSAGES.SHOULD_LOG_IN;
-}
-
 async function logOut() {
   await userStore.logOut();
   await validators();
@@ -97,10 +93,10 @@ async function logOut() {
 async function finishLogin() {
   const isSessionValid = await validateToken(api);
   if (!isSessionValid) {
+    loginFailureMessage.value = CLIENT_MESSAGES.SHOULD_LOG_IN;
     return;
   }
 
-  await showCurrentServerSession();
   await dbUserSetup(userStore, keychain, folderStore);
   const { isTokenValid, hasBackedUpKeys } = await validators();
 
@@ -112,13 +108,12 @@ async function finishLogin() {
     }
   }
 
-  // setIsLoggedIn(isTokenValid);
   console.log('isTokenValid', isTokenValid);
   isLoggedIn.value = true;
 }
 
 async function _loginToMozAccount() {
-  loginToMozAccount(finishLogin);
+  loginToMozAccount({ onSuccess: finishLogin });
 }
 </script>
 

@@ -67,7 +67,6 @@ export const trpc = createTRPCClient<AppRouter>({
         httpBatchLink({
           url: trpcUrl,
           fetch(url, options) {
-            console.log('Fetching from splitLink, false (not a subscription)');
             return fetch(url, {
               ...options,
               // Include credentials for cookies

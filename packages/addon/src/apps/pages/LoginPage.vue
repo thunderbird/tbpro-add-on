@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia';
 import ButtonComponent from 'send-frontend/src/apps/send/elements/BtnComponent.vue';
 import LogOutButton from 'send-frontend/src/apps/send/elements/LogOutButton.vue';
 import {
@@ -8,7 +9,9 @@ import {
   useUserStore,
 } from 'send-frontend/src/stores';
 
-const { loginToMozAccount } = useAuthStore();
+const authStore = useAuthStore();
+const { isLoggedIn } = storeToRefs(authStore);
+const { loginToMozAccount } = authStore;
 const { logOut } = useUserStore();
 const { validators } = useStatusStore();
 const { isExtension } = useConfigStore();
@@ -23,13 +26,13 @@ const handleLogout = async () => {
 };
 
 async function finishLogin() {
-  window.location.reload();
+  isLoggedIn.value = true;
 
   console.warn('Refreshing page after login');
 }
 
 async function _loginToMozAccount() {
-  loginToMozAccount(finishLogin);
+  loginToMozAccount({ onSuccess: finishLogin });
 }
 </script>
 <template>

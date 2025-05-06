@@ -10,7 +10,6 @@ export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
   const { isExtension } = useConfigStore();
 
-  const sessionInfo = ref(null);
   const isLoggedIn = ref(false);
 
   watch(isLoggedIn, (newValue) => {
@@ -20,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
   // We check auth for each app individually
 
   // ------- Common for Addons ------- //
-  async function loginToMozAccount(finishLogin: () => void) {
+  async function loginToMozAccount({ onSuccess }: { onSuccess?: () => void }) {
     const resp = await api.call(`lockbox/fxa/login`);
     const formattedUrl = formatLoginURL(resp.url);
 
@@ -31,16 +30,15 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (!isExtension && window) {
       window.open(formattedUrl);
-      finishLogin();
+      onSuccess();
     } else {
-      await openPopup(formattedUrl, finishLogin);
+      await openPopup(formattedUrl, onSuccess);
     }
   }
 
   // This object must be flat so that we can use storeToRefs when we consume it
   return {
     loginToMozAccount,
-    sessionInfo,
     isLoggedIn,
   };
 });

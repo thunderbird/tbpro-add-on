@@ -6,9 +6,7 @@
 <script setup lang="ts">
 import useApiStore from '@/stores/api-store';
 import { onMounted, ref } from 'vue';
-import { useStatusStore } from '../send/stores/status-store';
 const { api } = useApiStore();
-const { validators } = useStatusStore();
 
 const APIstatus = ref('...');
 const showDebugger = ref(false);
@@ -33,9 +31,6 @@ async function healthCheck() {
   if (!healthcheck) {
     isOffline.value = true;
   }
-
-  const validationResult = await validators();
-  validationData.value = JSON.stringify(validationResult);
 }
 async function initialize() {
   showDebugger.value = true;
