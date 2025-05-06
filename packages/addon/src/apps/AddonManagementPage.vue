@@ -64,7 +64,7 @@ console.log('sessionData', sessionData.value);
     >Login</ButtonComponent
   >
 
-  <log-out-button :log-out="handleLogout" />
+  <log-out-button v-if="isLoggedIn" :log-out="handleLogout" />
 
   <AdminPage v-if="isLoggedIn" />
 </template>
