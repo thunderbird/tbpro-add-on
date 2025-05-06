@@ -16,25 +16,35 @@ onMounted(() => {
 </script>
 
 <template>
-  <h1>TB Pro Services</h1>
+  <h1 data-testid="tbpro-heading">TB Pro Services</h1>
   <div class="toggle-group">
     <label class="toggle">
-      <input v-model="showSend" type="checkbox" class="toggle-input" />
+      <input
+        v-model="showSend"
+        type="checkbox"
+        class="toggle-input"
+        data-testid="toggle-send"
+      />
       <span class="toggle-slider"></span>
-      <span class="toggle-label">Send</span>
+      <span class="toggle-label" data-testid="label-send">Send</span>
     </label>
     <label class="toggle" style="margin-left: 1.5em">
-      <input v-model="showAssist" type="checkbox" class="toggle-input" />
+      <input
+        v-model="showAssist"
+        type="checkbox"
+        class="toggle-input"
+        data-testid="toggle-assist"
+      />
       <span class="toggle-slider"></span>
-      <span class="toggle-label">Assist</span>
+      <span class="toggle-label" data-testid="label-assist">Assist</span>
     </label>
   </div>
 
-  <div v-if="showSend">
+  <div v-if="showSend" data-testid="send-section">
     <SendManagement />
   </div>
 
-  <div v-if="showAssist">
+  <div v-if="showAssist" data-testid="assist-section">
     <h2>Assist</h2>
     <p>Assist service coming soon...</p>
   </div>
