@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "0.0.1",
+  "version": "0.0.2-alpha.0",
   "author": "Thunderbird Team",
   "name": "Tbpro Addon",
   "description": "Thunderbird and friends",
