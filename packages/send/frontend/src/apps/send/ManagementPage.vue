@@ -5,7 +5,6 @@ import init from '@/lib/init';
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
-import { ref } from 'vue';
 
 import BackupAndRestore from '@/apps/common/BackupAndRestore.vue';
 import FeedbackBox from '@/apps/common/FeedbackBox.vue';
@@ -13,11 +12,13 @@ import { useMetricsUpdate } from '@/apps/common/mixins/metrics';
 import UserDashboard from '@/apps/common/UserDashboard.vue';
 import Btn from '@/apps/send/elements/BtnComponent.vue';
 import useFolderStore from '@/apps/send/stores/folder-store';
-import { formatLoginURL } from '@/lib/helpers';
 import { CLIENT_MESSAGES } from '@/lib/messages';
 import { validateToken } from '@/lib/validations';
+import { useAuthStore } from '@/stores/auth-store';
 import useMetricsStore from '@/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
+import { storeToRefs } from 'pinia';
+import { ref } from 'vue';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
@@ -35,11 +36,11 @@ const { validators } = useStatusStore();
 const { configureExtension } = useExtensionStore();
 const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
+const authStore = useAuthStore();
+const { loginToMozAccount } = authStore;
 
-const sessionInfo = ref(null);
-const isLoggedIn = ref(false);
-const email = ref(null);
-const userId = ref(null);
+const { isLoggedIn } = storeToRefs(authStore);
+const loginFailureMessage = ref(null);
 
 const { isLoading } = useQuery({
   queryKey: ['getLoginStatus'],
@@ -70,10 +71,6 @@ const loadLogin = async () => {
     }
     // app-sepcific initialization
     await init(userStore, keychain, folderStore);
-    // If init found anything in storage, populate our
-    // debug ref vars with those values.
-    email.value = userStore.user.email;
-    userId.value = userStore.user.id;
     await finishLogin();
   } catch (e) {
     console.log(e);
@@ -87,38 +84,6 @@ const loadLogin = async () => {
 
 updateMetricsIdentity();
 
-async function openPopup(authUrl: string) {
-  try {
-    const popup = await browser.windows.create({
-      url: formatLoginURL(authUrl),
-      type: 'popup',
-      allowScriptsToClose: true,
-    });
-
-    const checkPopupClosed = (windowId: number) => {
-      if (windowId === popup.id) {
-        browser.windows.onRemoved.removeListener(checkPopupClosed);
-        finishLogin();
-      }
-    };
-    browser.windows.onRemoved.addListener(checkPopupClosed);
-  } catch (e) {
-    console.log(`popup failed`);
-    console.log(e);
-  }
-}
-
-async function loginToMozAccount() {
-  const resp = await api.call(`lockbox/fxa/login`);
-  if (resp.url) {
-    await openPopup(resp.url);
-  }
-}
-async function showCurrentServerSession() {
-  sessionInfo.value =
-    (await api.call(`users/me`)) ?? CLIENT_MESSAGES.SHOULD_LOG_IN;
-}
-
 async function logOut() {
   await userStore.logOut();
   await validators();
@@ -128,15 +93,11 @@ async function logOut() {
 async function finishLogin() {
   const isSessionValid = await validateToken(api);
   if (!isSessionValid) {
+    loginFailureMessage.value = CLIENT_MESSAGES.SHOULD_LOG_IN;
     return;
   }
 
-  await showCurrentServerSession();
   await dbUserSetup(userStore, keychain, folderStore);
-  // Save values to the ref variables.
-  // Really only for debugging purposes.
-  userId.value = userStore.user.id;
-  email.value = userStore.user.email;
   const { isTokenValid, hasBackedUpKeys } = await validators();
 
   if (isTokenValid && hasBackedUpKeys) {
@@ -147,8 +108,12 @@ async function finishLogin() {
     }
   }
 
-  isLoggedIn.value = isTokenValid;
+  console.log('isTokenValid', isTokenValid);
   isLoggedIn.value = true;
+}
+
+async function _loginToMozAccount() {
+  loginToMozAccount({ onSuccess: finishLogin });
 }
 </script>
 
@@ -157,6 +122,7 @@ async function finishLogin() {
     <CompatibilityBoundary>
       <CompatibilityBanner />
       <TBBanner />
+
       <div v-if="isLoading">
         <LoadingComponent />
       </div>
@@ -171,7 +137,7 @@ async function finishLogin() {
           <Btn
             primary
             data-testid="login-button"
-            @click.prevent="loginToMozAccount"
+            @click.prevent="_loginToMozAccount"
             >Log into Mozilla Account</Btn
           >
         </div>

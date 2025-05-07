@@ -10,19 +10,28 @@ describe('AdminPage', () => {
     setActivePinia(createPinia());
   });
 
-  it('renders TB Pro and Send headings', () => {
+  it('renders TB Pro heading and Send toggle', () => {
     const wrapper = mountWithPlugins(AdminPage);
-    expect(wrapper.text()).toContain('TB Pro');
-    expect(wrapper.text()).toContain('Send');
+    expect(wrapper.get('[data-testid="tbpro-heading"]').text()).toContain(
+      'TB Pro Services'
+    );
+    expect(wrapper.get('[data-testid="label-send"]').text()).toBe('Send');
+    expect(wrapper.find('[data-testid="toggle-send"]').exists()).toBe(true);
   });
 
-  it('toggles ManagementPage visibility', async () => {
+  it('shows Send section by default', () => {
     const wrapper = mountWithPlugins(AdminPage);
-    const button = wrapper.find('button');
-    expect(wrapper.text()).not.toContain('Hide Management Page');
-    await button.trigger('click');
-    expect(wrapper.text()).toContain('Hide Management Page');
-    await button.trigger('click');
-    expect(wrapper.text()).toContain('Show Management Page');
+    expect(wrapper.find('[data-testid="send-section"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="assist-section"]').exists()).toBe(false);
+  });
+
+  it('shows Assist section when toggled', async () => {
+    const wrapper = mountWithPlugins(AdminPage);
+    const assistToggle = wrapper.get('[data-testid="toggle-assist"]');
+    await assistToggle.setValue(true);
+    expect(wrapper.find('[data-testid="assist-section"]').exists()).toBe(true);
+    expect(wrapper.get('[data-testid="assist-section"]').text()).toContain(
+      'Assist service coming soon'
+    );
   });
 });

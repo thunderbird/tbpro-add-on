@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import Btn from '@/apps/send/elements/BtnComponent.vue';
-import { mozAcctLogin } from '@/lib/fxa';
 import { dbUserSetup } from '@/lib/helpers';
 import { CLIENT_MESSAGES } from '@/lib/messages';
 import { trpc } from '@/lib/trpc';
+import logger from '@/logger';
+import { useAuthStore } from '@/stores';
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
@@ -24,6 +25,7 @@ const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
 const { isPublicLogin } = useConfigStore();
+const { loginToMozAccount } = useAuthStore();
 
 const router = useRouter();
 
@@ -37,6 +39,14 @@ async function pingSession() {
   if (sessionInfo.value) {
     router.push('/send/profile');
   }
+}
+
+async function mozAcctLogin() {
+  loginToMozAccount({
+    onSuccess: () => {
+      logger.info('Login successful');
+    },
+  });
 }
 
 async function onSuccess() {

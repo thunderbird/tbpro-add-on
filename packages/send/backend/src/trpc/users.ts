@@ -124,9 +124,10 @@ export const usersRouter = router({
     .input(
       z.object({
         version: z.string(),
+        appName: z.string().nullable(),
       })
     )
-    .query(async ({ input: { version: clientVersion } }) => {
+    .query(async ({ input: { version: clientVersion, appName } }) => {
       const compatibility = {
         resolvedCompatibility: false,
         result: 'UNRESOLVED',
@@ -136,6 +137,13 @@ export const usersRouter = router({
 
       compatibility.result = compatibilityResult;
       compatibility.resolvedCompatibility = true;
+
+      // When users use the tbpro addon, we don't want to check compatibility
+      if (appName && appName.includes('addon')) {
+        // If the client name includes 'addon', we don't want to check compatibility
+        compatibility.result = 'COMPATIBLE';
+        compatibility.resolvedCompatibility = true;
+      }
 
       const apiVersion = VERSION;
       return { apiVersion, compatibility, clientVersion };

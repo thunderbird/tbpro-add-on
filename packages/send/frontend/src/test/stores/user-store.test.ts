@@ -321,20 +321,6 @@ describe('User Store', () => {
     });
   });
 
-  describe('getMozAccountAuthUrl', () => {
-    it('should retrieve the authentication URL for Mozilla account', async () => {
-      const authUrl = 'api/login';
-      const apiCallMock = vi
-        .spyOn(useApiStore().api, 'call')
-        .mockResolvedValueOnce({ url: authUrl });
-
-      const result = await userStore.getMozAccountAuthUrl();
-
-      expect(apiCallMock).toHaveBeenCalledWith('lockbox/fxa/login');
-      expect(result).toBe(authUrl);
-    });
-  });
-
   describe('createBackup', () => {
     it('should create a backup for the user and handle the data correctly', async () => {
       const userId = '1';

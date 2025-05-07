@@ -24,6 +24,9 @@ importers:
       lerna:
         specifier: ^8.2.1
         version: 8.2.1(encoding@0.1.13)
+      nodemon:
+        specifier: ^3.1.9
+        version: 3.1.9
       sort-package-json:
         specifier: ^2.15.1
         version: 2.15.1
@@ -185,7 +188,7 @@ importers:
         specifier: ^2.7.3
         version: 2.7.3(@types/node@22.14.0)(typescript@5.8.3)
       nodemon:
-        specifier: ^3.1.9
+        specifier: '*'
         version: 3.1.9
       postcss:
         specifier: ^8.5.3
@@ -405,7 +408,7 @@ importers:
         specifier: ^15.5.0
         version: 15.5.0
       nodemon:
-        specifier: ^3.1.9
+        specifier: '*'
         version: 3.1.9
       prettier:
         specifier: ^3.5.3
@@ -583,7 +586,7 @@ importers:
         specifier: ^2.7.3
         version: 2.7.3(@types/node@22.14.0)(typescript@5.8.3)
       nodemon:
-        specifier: ^3.1.9
+        specifier: '*'
         version: 3.1.9
       postcss:
         specifier: ^8.5.3

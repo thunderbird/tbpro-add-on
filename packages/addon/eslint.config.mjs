@@ -18,6 +18,7 @@ export default [
         process: 'readonly', // Another common Node.js global
         require: 'readonly', // If using CommonJS modules
         __APP_VERSION__: 'readonly', // Project version
+        __APP_NAME__: 'readonly', // Project name
       },
     },
   },

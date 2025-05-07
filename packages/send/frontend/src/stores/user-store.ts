@@ -22,7 +22,6 @@ export interface UserStore {
   populateFromBackend: () => Promise<boolean>;
   getPublicKey: () => Promise<string>;
   updatePublicKey: (jwk: string) => Promise<string>;
-  getMozAccountAuthUrl: () => Promise<string>;
   createBackup: (
     userId: string,
     keys: string,
@@ -176,10 +175,6 @@ const useUserStore: () => UserStore = defineStore('user', () => {
     return resp.update?.publicKey;
   }
 
-  async function getMozAccountAuthUrl(): Promise<string> {
-    const resp = await api.call<{ url: string }>(`lockbox/fxa/login`);
-    return resp.url;
-  }
   // TODO: shift the userId from frontend argument to backend session
   async function createBackup(userId, keys, keypair, keystring, salt) {
     return await api.call(
@@ -220,7 +215,6 @@ const useUserStore: () => UserStore = defineStore('user', () => {
     populateFromBackend,
     getPublicKey,
     updatePublicKey,
-    getMozAccountAuthUrl,
     createBackup,
     getBackup,
     logOut,
