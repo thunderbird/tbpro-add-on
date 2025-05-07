@@ -80,7 +80,7 @@
     "lint-staged": "^15.5.0",
     "mock-socket": "^9.3.1",
     "msw": "^2.7.3",
-    "nodemon": "^3.1.9",
+    "nodemon": "*",
     "postcss": "^8.5.3",
     "postcss-import": "^15.1.0",
     "prettier": "^3.5.3",
