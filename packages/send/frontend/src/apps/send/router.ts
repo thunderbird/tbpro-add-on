@@ -19,6 +19,7 @@ import useMetricsStore from '@/stores/metrics';
 import NotFoundPage from '../common/NotFoundPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
+import ManagementPage from './ManagementPage.vue';
 import LockedPage from './pages/LockedPage.vue';
 import { useStatusStore } from './stores/status-store';
 
@@ -106,8 +107,17 @@ export const routes: RouteRecordRaw[] = [
    */
   {
     path: '/extension',
-    children: IS_DEV ? [{ path: 'popup', component: ExtensionPage }] : [],
+    children: IS_DEV
+      ? [
+          { path: 'popup', component: ExtensionPage },
+          {
+            path: 'management',
+            component: ManagementPage,
+          },
+        ]
+      : [],
   },
+
   // Catch all non defined routes
   {
     path: '/:pathMatch(.*)*',

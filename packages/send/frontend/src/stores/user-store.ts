@@ -1,37 +1,8 @@
-import { AsyncJsonResponse } from '@/lib/api';
 import { Storage } from '@/lib/storage';
 import useApiStore from '@/stores/api-store';
 import { Backup } from '@/stores/user-store.types';
 import { UserTier, UserType } from '@/types';
 import { defineStore } from 'pinia';
-
-export interface UserStore {
-  user: UserType;
-  createUser: (
-    email: string,
-    jwkPublicKey: string,
-    isEphemeral?: boolean
-  ) => Promise<UserType>;
-  login: (loginEmail?: string) => Promise<UserType>;
-  loadFromLocalStorage: () => Promise<boolean>;
-  store: (
-    newId?: string,
-    newTier?: UserTier,
-    newEmail?: string
-  ) => Promise<void>;
-  populateFromBackend: () => Promise<boolean>;
-  getPublicKey: () => Promise<string>;
-  updatePublicKey: (jwk: string) => Promise<string>;
-  createBackup: (
-    userId: string,
-    keys: string,
-    keypair: string,
-    keystring: string,
-    salt: string
-  ) => AsyncJsonResponse;
-  getBackup: () => Promise<Backup>;
-  logOut: () => Promise<void>;
-}
 
 export const EMPTY_USER: UserType = {
   id: undefined,
@@ -39,7 +10,7 @@ export const EMPTY_USER: UserType = {
   email: '',
 };
 
-const useUserStore: () => UserStore = defineStore('user', () => {
+const useUserStore = defineStore('user', () => {
   const { api } = useApiStore();
   const storage = new Storage();
 
@@ -200,8 +171,7 @@ const useUserStore: () => UserStore = defineStore('user', () => {
     });
   }
 
-  async function logOut() {
-    await api.removeAuthToken();
+  async function clearUserFromStorage() {
     storage.clear();
     setUserToDefault();
   }
@@ -217,7 +187,7 @@ const useUserStore: () => UserStore = defineStore('user', () => {
     updatePublicKey,
     createBackup,
     getBackup,
-    logOut,
+    clearUserFromStorage,
   };
 });
 

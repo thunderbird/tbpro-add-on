@@ -15,8 +15,14 @@ export function useAuth() {
     },
   });
 
+  const logOutAuth = async () => {
+    await api.removeAuthToken();
+    isLoggedIn.value = false;
+  };
+
   return {
     isLoggedIn,
     refetchAuth: refetch,
+    logOutAuth,
   };
 }

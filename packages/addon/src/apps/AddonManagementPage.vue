@@ -2,17 +2,20 @@
 import ButtonComponent from 'send-frontend/src/apps/send/elements/BtnComponent.vue';
 import LogOutButton from 'send-frontend/src/apps/send/elements/LogOutButton.vue';
 import { useAuth } from 'send-frontend/src/lib/auth';
-import { useAuthStore, useUserStore } from 'send-frontend/src/stores';
+import {
+  useAuthStore,
+  useUserStore as useUserStoreSend,
+} from 'send-frontend/src/stores';
 import AdminPage from './AdminPage.vue';
 
 const authStore = useAuthStore();
+const { clearUserFromStorage: clearUser_send } = useUserStoreSend();
+const { isLoggedIn, refetchAuth, logOutAuth } = useAuth();
 const { loginToMozAccount } = authStore;
-const { logOut } = useUserStore();
-const { isLoggedIn, refetchAuth } = useAuth();
 
 const handleLogout = async () => {
-  logOut();
-  isLoggedIn.value = false;
+  await logOutAuth();
+  await clearUser_send();
 };
 
 async function finishLogin() {
