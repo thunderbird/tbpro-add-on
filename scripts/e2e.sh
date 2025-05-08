@@ -47,7 +47,9 @@ while true; do
 done
 echo "Vite dev server is ready"
 
+
 # Run tests in parallel with docker logs
+cd packages/send
 pnpm exec playwright test &
 PLAYWRIGHT_PID=$!
 

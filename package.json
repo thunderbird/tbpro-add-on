@@ -8,7 +8,11 @@
   "main": "index.js",
   "scripts": {
     "prepare": "husky",
-    "sort-package-json": "sort-package-json"
+    "sort-package-json": "sort-package-json",
+    "dev:send": "docker compose up --build --force-recreate -d && docker compose logs -f",
+    "teardown": "docker compose down",
+    "dev:detach": "docker compose up -d --build",
+    "test:e2e:ci": "./scripts/e2e.sh"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

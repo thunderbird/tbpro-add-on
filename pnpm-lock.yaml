@@ -494,6 +494,9 @@ importers:
       pretty-bytes:
         specifier: ^6.1.1
         version: 6.1.1
+      tbpro-shared:
+        specifier: workspace:*
+        version: link:../../shared
       ua-parser-js:
         specifier: ^1.0.40
         version: 1.0.40

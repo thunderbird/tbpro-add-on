@@ -7,6 +7,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useExtensionStore } from '../send/stores/extension-store';
 import { useStatusStore } from '../send/stores/status-store';
+import { logger } from 'tbpro-shared';
 
 const { onSuccess } = defineProps<{
   onSuccess: () => Promise<void>;
@@ -47,6 +48,8 @@ const {
     router.push('/send/profile');
   },
 });
+
+logger.info('using shared package');
 
 const validateEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
