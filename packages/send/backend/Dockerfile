@@ -1,5 +1,4 @@
 FROM node:22.14.0
-USER non-root
 
 RUN apt update -y && apt upgrade -y
 
