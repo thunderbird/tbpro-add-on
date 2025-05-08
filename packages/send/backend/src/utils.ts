@@ -43,11 +43,9 @@ type RoundNumber = number;
 function isRoundNumber(num: number): num is RoundNumber {
   return Number.isInteger(num);
 }
-export const getTokenExpiration = (days: number) => {
+export const convertDaysToMilliseconds = (days: number) => {
   if (!isRoundNumber(days)) {
-    throw new Error(
-      'Token expiration should be a round number specifying days'
-    );
+    throw new Error('The input should be a round number specifying days');
   }
 
   const milliseconds =
@@ -56,9 +54,23 @@ export const getTokenExpiration = (days: number) => {
     TIME_CONSTANTS.HOURS_PER_DAY *
     days;
 
-  const stringified = `${days}d`;
+  const daysFromMilliseconds =
+    convertMillisecondsToMinutes(milliseconds).minutes /
+    TIME_CONSTANTS.MINUTES_PER_HOUR /
+    TIME_CONSTANTS.HOURS_PER_DAY;
+
+  const stringified = `${daysFromMilliseconds}d`;
 
   return { milliseconds, stringified };
+};
+
+export const convertMillisecondsToMinutes = (milliseconds: number) => {
+  if (milliseconds < 0) {
+    throw new Error('The input should be a positive number');
+  }
+  const minutes = milliseconds / TIME_CONSTANTS.MILLISECONDS_PER_MINUTE;
+  const stringified = `${Math.floor(minutes)}m`;
+  return { minutes, stringified };
 };
 
 export const formatDaysToExpiry = (days: number): number => {

@@ -1,17 +1,13 @@
-import { DAYS_TO_EXPIRY } from '@/config';
+import { DAYS_TO_EXPIRY, JWT_EXPIRY_IN_MILLISECONDS } from '@/config';
 import {
   addExpiryToContainer,
+  convertDaysToMilliseconds,
+  convertMillisecondsToMinutes,
   formatDaysToExpiry,
   getCookie,
-  getTokenExpiration,
 } from '@/utils';
 import { Upload } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-// Mock DAYS_TO_EXPIRY
-vi.mock('@/config', () => ({
-  DAYS_TO_EXPIRY: 15,
-}));
 
 describe('getCookie', () => {
   it('should return the correct cookie value when present', () => {
@@ -45,10 +41,37 @@ describe('getCookie', () => {
   });
 });
 
-describe('getTokenExpiration', () => {
+describe('convertMillisecondsToMinutes', () => {
+  it('should convert milliseconds to minutes and stringify', () => {
+    // 1 minute in ms = 60_000
+    const ms = 60_000;
+    const result = convertMillisecondsToMinutes(ms);
+    expect(result).toEqual({ minutes: 1, stringified: '1m' });
+  });
+
+  it('should convert milliseconds to minutes and stringify', () => {
+    // 1 minute in ms = 60_000
+    const ms = JWT_EXPIRY_IN_MILLISECONDS;
+    const result = convertMillisecondsToMinutes(ms);
+    expect(result).toEqual({ minutes: 15, stringified: '15m' });
+  });
+
+  it('should handle zero milliseconds', () => {
+    const result = convertMillisecondsToMinutes(0);
+    expect(result).toEqual({ minutes: 0, stringified: '0m' });
+  });
+
+  it('should throw for negative milliseconds', () => {
+    expect(() => convertMillisecondsToMinutes(-1)).toThrow(
+      'The input should be a positive number'
+    );
+  });
+});
+
+describe('convertDaysToMilliseconds', () => {
   it('should return correct expiration details for valid days', () => {
     const days = 1;
-    const result = getTokenExpiration(days);
+    const result = convertDaysToMilliseconds(days);
     expect(result).toEqual({
       milliseconds: 86_400_000, // 5 days in milliseconds
       stringified: '1d',
@@ -57,9 +80,9 @@ describe('getTokenExpiration', () => {
 
   it('should throw an error if days is not a round number', () => {
     const days = 5.5;
-    const testFunc = () => getTokenExpiration(days);
+    const testFunc = () => convertDaysToMilliseconds(days);
     expect(testFunc).toThrow(
-      'Token expiration should be a round number specifying days'
+      'The input should be a round number specifying days'
     );
   });
 });

@@ -40,8 +40,8 @@ const ONE_TB_IN_BYTES = 1 * 1_000 * 1_000 * 1_000 * 1_000; // 1 TB (roughly)
 export const TOTAL_STORAGE_LIMIT = ONE_TB_IN_BYTES;
 
 // JWT expiry
-export const JWT_EXPIRY = FIFTEEN_MINUTES;
-export const JWT_REFRESH_TOKEN_EXPIRY = ONE_WEEK;
+export const JWT_EXPIRY_IN_MILLISECONDS = FIFTEEN_MINUTES;
+export const JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS = ONE_WEEK;
 
 // Determines how many times a file can be attempted to be downloaded with the wrong password before it gets locked
 export const MAX_ACCESS_LINK_RETRIES = 5;
