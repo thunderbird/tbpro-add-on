@@ -3,7 +3,6 @@ import Btn from '@/apps/send/elements/BtnComponent.vue';
 import { dbUserSetup } from '@/lib/helpers';
 import { CLIENT_MESSAGES } from '@/lib/messages';
 import { trpc } from '@/lib/trpc';
-import logger from '@/logger';
 import { useAuthStore } from '@/stores';
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
@@ -18,6 +17,7 @@ import StatusBar from '../common/StatusBar.vue';
 import TBBanner from '../common/TBBanner.vue';
 import { useConfigStore } from './stores/config-store';
 import useFolderStore from './stores/folder-store';
+import { logger } from 'tbpro-shared'
 
 const { api } = useApiStore();
 const { user } = useUserStore();
