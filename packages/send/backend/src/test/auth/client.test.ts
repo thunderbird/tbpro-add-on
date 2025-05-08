@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { DAYS_TO_EXPIRY, JWT_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '@/config';
+import {
+  DAYS_TO_EXPIRY,
+  JWT_EXPIRY_IN_MILLISECONDS,
+  JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS,
+} from '@/config';
+import {
+  convertDaysToMilliseconds,
+  convertMillisecondsToMinutes,
+} from '@/utils';
 import { after, before, beforeEach } from 'node:test';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
@@ -361,6 +369,14 @@ describe('registerTokens', () => {
     //@ts-ignore
     registerTokens(mockSignedData as any, mockRes);
 
+    // Check that JWT expirations are set correctly
+    expect(
+      convertDaysToMilliseconds(JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS).stringified
+    ).toBe('7d');
+    expect(
+      convertMillisecondsToMinutes(JWT_EXPIRY_IN_MILLISECONDS).stringified
+    ).toBe('15m');
+
     expect(mockRes.cookie).toHaveBeenCalledTimes(2);
     expect(mockRes.cookie).toHaveBeenNthCalledWith(
       1,
@@ -370,7 +386,8 @@ describe('registerTokens', () => {
         httpOnly: true,
         sameSite: 'none',
         secure: true,
-        maxAge: JWT_REFRESH_TOKEN_EXPIRY * 24 * 60 * 60 * 1000,
+        maxAge: convertDaysToMilliseconds(JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS)
+          .milliseconds,
       })
     );
     expect(mockRes.cookie).toHaveBeenNthCalledWith(
@@ -381,22 +398,27 @@ describe('registerTokens', () => {
         httpOnly: true,
         sameSite: 'none',
         secure: true,
-        maxAge: JWT_EXPIRY,
+        maxAge: JWT_EXPIRY_IN_MILLISECONDS,
       })
     );
     expect(mockedSign).toHaveBeenCalledTimes(2);
+
     expect(mockedSign).toHaveBeenNthCalledWith(
       1,
       mockSignedData,
       'refresh_secret',
       expect.objectContaining({
-        expiresIn: `${JWT_REFRESH_TOKEN_EXPIRY}d`,
+        expiresIn: convertDaysToMilliseconds(JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS)
+          .milliseconds,
       })
     );
     expect(mockedSign).toHaveBeenNthCalledWith(
       2,
       mockSignedData,
-      'test_secret'
+      'test_secret',
+      expect.objectContaining({
+        expiresIn: JWT_EXPIRY_IN_MILLISECONDS,
+      })
     );
   });
 });

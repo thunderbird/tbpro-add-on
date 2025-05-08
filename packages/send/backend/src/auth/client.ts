@@ -1,12 +1,18 @@
-import { DAYS_TO_EXPIRY, JWT_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '@/config';
+import {
+  DAYS_TO_EXPIRY,
+  JWT_EXPIRY_IN_MILLISECONDS,
+  JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS,
+} from '@/config';
 import { AuthResponse } from '@/routes/auth';
-import { getCookie, getTokenExpiration } from '@/utils';
+import { convertDaysToMilliseconds, getCookie } from '@/utils';
 import bcrypt from 'bcryptjs';
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { Issuer, generators } from 'openid-client';
 
-const refreshTokenExpiration = getTokenExpiration(JWT_REFRESH_TOKEN_EXPIRY);
+const refreshTokenExpiration = convertDaysToMilliseconds(
+  JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS
+);
 
 export function generateState() {
   // State is the random value that we pass to the auth server.
@@ -99,13 +105,16 @@ export function getDataFromAuthenticatedRequest(req: Request) {
 
 export const registerAuthToken = (signedData: AuthResponse, res: Response) => {
   // Sign the jwt and pass it as a cookie
-  const jwtToken = jwt.sign(signedData, process.env.ACCESS_TOKEN_SECRET!);
+  const jwtToken = jwt.sign(signedData, process.env.ACCESS_TOKEN_SECRET!, {
+    expiresIn: JWT_EXPIRY_IN_MILLISECONDS,
+  });
 
   res.cookie('authorization', `Bearer ${jwtToken}`, {
-    maxAge: JWT_EXPIRY,
+    maxAge: JWT_EXPIRY_IN_MILLISECONDS,
     httpOnly: true,
     sameSite: 'none',
     secure: true,
+    expires: new Date(Date.now() + JWT_EXPIRY_IN_MILLISECONDS),
   });
 };
 
@@ -125,13 +134,11 @@ export const getStorageLimit = (req: Request) => {
 };
 
 export function registerTokens(signedData: AuthResponse, res: Response) {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  //@ts-ignore
   const refreshTokenToken = jwt.sign(
     signedData,
     process.env.REFRESH_TOKEN_SECRET!,
     {
-      expiresIn: refreshTokenExpiration.stringified,
+      expiresIn: refreshTokenExpiration.milliseconds,
     }
   );
 
@@ -140,6 +147,7 @@ export function registerTokens(signedData: AuthResponse, res: Response) {
     httpOnly: true,
     sameSite: 'none',
     secure: true,
+    expires: new Date(Date.now() + refreshTokenExpiration.milliseconds),
   });
 
   registerAuthToken(signedData, res);

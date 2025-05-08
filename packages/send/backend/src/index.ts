@@ -24,6 +24,8 @@ import users from './routes/users';
 import * as Sentry from '@sentry/node';
 
 import events from 'events';
+import helmet from 'helmet';
+import { TRPC_WS_PATH } from './config';
 import { errorHandler } from './errors/routes';
 import { addVersionHeader } from './middleware';
 import { originsHandler } from './origins';
@@ -34,7 +36,6 @@ import { createContext } from './trpc/context';
 import { sharingRouter } from './trpc/sharing';
 import { usersRouter } from './trpc/users';
 import { wsHandler } from './ws/setup';
-import { TRPC_WS_PATH } from './config';
 
 const PORT = 8080;
 const HOST = '0.0.0.0';
@@ -56,6 +57,43 @@ app.use(originsHandler);
 app.set('trust proxy', 1); // trust first proxy
 app.use(cookieParser());
 app.use(addVersionHeader);
+
+// This Content Security Policy (CSP) restricts which sources the browser can load content from, helping prevent XSS, data injection, and clickjacking attacks.
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ['https:', 'data:'],
+      fontSrc: ["'self'", 'data:'],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  })
+);
+
+// Security headers
+app.use(
+  helmet({
+    frameguard: { action: 'sameorigin' }, // X-Frame-Options
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        frameAncestors: ["'none'"], // CSP alternative to X-Frame-Options
+      },
+    },
+    referrerPolicy: { policy: 'no-referrer' }, // Optional, good practice
+    // X-Content-Type-Options and others are enabled by default
+  })
+);
+
+// HSTS is a separate middleware because it requires HTTPS
+app.use(
+  helmet.hsts({
+    maxAge: 31536000, // 1 year in seconds
+    includeSubDomains: true,
+  })
+);
 
 export const router = t.router;
 export const publicProcedure = t.publicProcedure;
