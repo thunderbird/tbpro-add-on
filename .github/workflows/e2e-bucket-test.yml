@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           lerna run build-image:backend --scope=send-suite
-          lerna run test:e2e:ci --scope=send-suite
+          pnpm run test:e2e:ci
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
