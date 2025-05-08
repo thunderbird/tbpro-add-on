@@ -50,7 +50,6 @@ describe('convertMillisecondsToMinutes', () => {
   });
 
   it('should convert milliseconds to minutes and stringify', () => {
-    // 1 minute in ms = 60_000
     const ms = JWT_EXPIRY_IN_MILLISECONDS;
     const result = convertMillisecondsToMinutes(ms);
     expect(result).toEqual({ minutes: 15, stringified: '15m' });
