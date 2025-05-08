@@ -200,6 +200,8 @@ const useUserStore = defineStore('user', () => {
     });
   }
 
+  // This function clears local storage and resets the user state to default.
+  // Note: API token removal is not handled here. It is delegated to logOutAuth in the auth composable.
   async function clearUserFromStorage() {
     storage.clear();
     setUserToDefault();
