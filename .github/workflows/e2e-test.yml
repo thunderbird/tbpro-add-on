@@ -65,6 +65,7 @@ jobs:
           npm install -g pnpm
           npm install -g bun
           pnpm i --filter "send-*"
+          pnpm install --filter tbpro-shared
 
           cd packages/send
           # Setup local environment (use public login)
