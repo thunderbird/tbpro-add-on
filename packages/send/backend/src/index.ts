@@ -57,6 +57,22 @@ app.use(originsHandler);
 app.set('trust proxy', 1); // trust first proxy
 app.use(cookieParser());
 app.use(addVersionHeader);
+
+// This Content Security Policy (CSP) restricts which sources the browser can load content from, helping prevent XSS, data injection, and clickjacking attacks.
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ['https:', 'data:'],
+      fontSrc: ["'self'", 'data:'],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  })
+);
+
+// Security headers
 app.use(
   helmet({
     frameguard: { action: 'sameorigin' }, // X-Frame-Options
