@@ -148,7 +148,7 @@ importers:
         specifier: ^2.7.3
         version: 2.7.3(@types/node@22.13.11)(typescript@5.8.3)
       nodemon:
-        specifier: ^3.1.9
+        specifier: '*'
         version: 3.1.9
       postcss:
         specifier: ^8.5.3

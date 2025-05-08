@@ -1,13 +1,12 @@
 #!/bin/bash
 
 # Create zip for submission
-if [ "$IS_CI_AUTOMATION" == "yes" ]; then
-    echo "Installing browser dependencies..."
-    pnpm exec playwright install
-else
-    echo "Skipping browser dependencies installation..."
-fi
+echo "Installing browser dependencies..."
+cd packages/send
+pnpm exec playwright install
+cd ../../
 
+pwd
 
 # Start dev server in background
 pnpm dev:detach 
@@ -47,7 +46,9 @@ while true; do
 done
 echo "Vite dev server is ready"
 
+
 # Run tests in parallel with docker logs
+cd packages/send
 pnpm exec playwright test &
 PLAYWRIGHT_PID=$!
 

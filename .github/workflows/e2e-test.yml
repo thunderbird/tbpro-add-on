@@ -23,6 +23,7 @@ jobs:
       backend-changed: ${{ steps.check.outputs.backend-changed }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
+      shared-changed: ${{ steps.check.outputs.shared-changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,6 +41,8 @@ jobs:
               - '.github/workflows/validate.yml'
             frontend-changed:
               - 'packages/send/frontend/**'
+            shared-changed:
+              - 'packages/shared/**'
   end-to-end-tests:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
@@ -62,6 +65,7 @@ jobs:
           npm install -g pnpm
           npm install -g bun
           pnpm i --filter "send-*"
+          pnpm install --filter tbpro-shared
 
           cd packages/send
           # Setup local environment (use public login)
@@ -73,7 +77,7 @@ jobs:
         shell: bash
         run: |
           lerna run build-image:backend --scope=send-suite
-          lerna run test:e2e:ci --scope=send-suite
+          pnpm run test:e2e:ci
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

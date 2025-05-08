@@ -17,23 +17,23 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./packages/send/backend
       dockerfile: Dockerfile-dev
     ports:
       - "8080:8080"
       - "5555:5555" # for browsing db with prisma studio
       - "9229:9229" # Debugger port
     volumes:
-      - ./backend:/app
+      - ./packages/send/backend:/app
       - backend-node-modules:/app/node_modules
-      - ./backend/.env:/app/.env
+      - ./packages/send/backend/.env:/app/.env
     depends_on:
       db:
         condition: service_healthy
 
   reverse-proxy:
     build:
-      context: ./backend/tls-dev-proxy/
+      context: ./packages/send/backend/tls-dev-proxy/
     ports:
       - "8088:12345"
     depends_on:
@@ -41,11 +41,12 @@ services:
 
   frontend:
     build:
-      context: ./frontend/
+      context: ./
+      dockerfile: ./dockerfiles/Dockerfile-frontend
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend:/app
+      - ./:/app
       - frontend-node-modules:/app/node_modules
     depends_on:
       - backend
