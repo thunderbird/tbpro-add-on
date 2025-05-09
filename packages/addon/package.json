@@ -19,6 +19,7 @@
     "prettier:all": "prettier --write .",
     "preview": "vite preview",
     "release": "./scripts/release.sh",
+    "setup": "./scripts/setup.sh",
     "sort-package-json": "sort-package-json",
     "test": "VITE_TESTING=true vitest run --silent",
     "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
