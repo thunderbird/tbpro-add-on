@@ -157,7 +157,7 @@ This will only install the dependencies where the package name starts with `send
 
 _Note: Make sure you install the dependencies you need before running your commands._
 
-You can run any package's commands by calling.
+You can run any package's commands by running the following:
 
 `lerna run <your-command> --scope=<package-name>`
 
