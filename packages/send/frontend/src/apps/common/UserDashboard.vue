@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import LogOutButton from '@/apps/send/elements/LogOutButton.vue';
+import { useAuth } from '@/lib/auth';
 import { DAYS_TO_EXPIRY } from '@/lib/const';
 import { trpc } from '@/lib/trpc';
 import useUserStore from '@/stores/user-store';
@@ -11,14 +12,15 @@ import { useConfigStore } from '../send/stores/config-store';
 import { useStatusStore } from '../send/stores/status-store';
 import LoadingComponent from './LoadingComponent.vue';
 
-const { logOut } = defineProps<{ logOut: () => void }>();
-
 const { user } = useUserStore();
 const { isExtension } = useConfigStore();
 const { validators } = useStatusStore();
+const { clearUserFromStorage } = useUserStore();
+const { logOutAuth } = useAuth();
 
 const handleLogout = async () => {
-  logOut();
+  await clearUserFromStorage();
+  await logOutAuth();
   await validators();
   if (!isExtension) {
     location.reload();

@@ -39,7 +39,7 @@ export const EMPTY_USER: UserType = {
   email: '',
 };
 
-const useUserStore: () => UserStore = defineStore('user', () => {
+const useUserStore = defineStore('user', () => {
   const { api } = useApiStore();
   const storage = new Storage();
 
@@ -200,8 +200,9 @@ const useUserStore: () => UserStore = defineStore('user', () => {
     });
   }
 
-  async function logOut() {
-    await api.removeAuthToken();
+  // This function clears local storage and resets the user state to default.
+  // Note: API token removal is not handled here. It is delegated to logOutAuth in the auth composable.
+  async function clearUserFromStorage() {
     storage.clear();
     setUserToDefault();
   }
@@ -217,7 +218,7 @@ const useUserStore: () => UserStore = defineStore('user', () => {
     updatePublicKey,
     createBackup,
     getBackup,
-    logOut,
+    clearUserFromStorage,
   };
 });
 

@@ -1,48 +1,30 @@
 <script setup lang="ts">
-import { useQuery } from '@tanstack/vue-query';
-import { storeToRefs } from 'pinia';
 import ButtonComponent from 'send-frontend/src/apps/send/elements/BtnComponent.vue';
 import LogOutButton from 'send-frontend/src/apps/send/elements/LogOutButton.vue';
+import { useAuth } from 'send-frontend/src/lib/auth';
 import {
-  useApiStore,
   useAuthStore,
-  useUserStore,
+  useUserStore as useUserStoreSend,
 } from 'send-frontend/src/stores';
 import AdminPage from './AdminPage.vue';
 
-const { api } = useApiStore();
 const authStore = useAuthStore();
-const { isLoggedIn } = storeToRefs(authStore);
+const { clearUserFromStorage: clearUser_send } = useUserStoreSend();
+const { isLoggedIn, refetchAuth, logOutAuth } = useAuth();
 const { loginToMozAccount } = authStore;
-const { logOut } = useUserStore();
-
-const { data: sessionData, refetch } = useQuery({
-  queryKey: ['session'],
-  queryFn: async () => {
-    const resp = await api.call('auth/me');
-    if (resp.error) {
-      isLoggedIn.value = false;
-      return resp;
-    }
-    isLoggedIn.value = true;
-    return resp;
-  },
-});
 
 const handleLogout = async () => {
-  logOut();
-  isLoggedIn.value = false;
+  await logOutAuth();
+  await clearUser_send();
 };
 
 async function finishLogin() {
-  await refetch();
+  await refetchAuth();
 }
 
 async function _loginToMozAccount() {
   loginToMozAccount({ onSuccess: finishLogin });
 }
-
-console.log('sessionData', sessionData.value);
 </script>
 
 <template>

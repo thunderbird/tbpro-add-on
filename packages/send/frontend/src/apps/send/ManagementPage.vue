@@ -12,12 +12,12 @@ import { useMetricsUpdate } from '@/apps/common/mixins/metrics';
 import UserDashboard from '@/apps/common/UserDashboard.vue';
 import Btn from '@/apps/send/elements/BtnComponent.vue';
 import useFolderStore from '@/apps/send/stores/folder-store';
+import { useAuth } from '@/lib/auth';
 import { CLIENT_MESSAGES } from '@/lib/messages';
 import { validateToken } from '@/lib/validations';
 import { useAuthStore } from '@/stores/auth-store';
 import useMetricsStore from '@/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
-import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
@@ -36,10 +36,10 @@ const { validators } = useStatusStore();
 const { configureExtension } = useExtensionStore();
 const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
+const { isLoggedIn } = useAuth();
 const authStore = useAuthStore();
 const { loginToMozAccount } = authStore;
 
-const { isLoggedIn } = storeToRefs(authStore);
 const loginFailureMessage = ref(null);
 
 const { isLoading } = useQuery({
@@ -84,12 +84,6 @@ const loadLogin = async () => {
 
 updateMetricsIdentity();
 
-async function logOut() {
-  await userStore.logOut();
-  await validators();
-  isLoggedIn.value = false;
-}
-
 async function finishLogin() {
   const isSessionValid = await validateToken(api);
   if (!isSessionValid) {
@@ -129,7 +123,7 @@ async function _loginToMozAccount() {
 
       <div v-else>
         <div v-if="isLoggedIn">
-          <UserDashboard :log-out="logOut" />
+          <UserDashboard />
           <BackupAndRestore />
         </div>
 
