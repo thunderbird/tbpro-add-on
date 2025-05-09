@@ -62,10 +62,6 @@ In order to login, you must create a new account. Click the "Or register" link a
 
 This will install all the dependencies for all the packages in the monorepo.
 
-```sh
-pnpm run dev:send
-```
-
 ## Addon
 
 ### Building locally
