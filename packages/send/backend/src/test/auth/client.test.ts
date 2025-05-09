@@ -405,21 +405,42 @@ describe('registerTokens', () => {
 
     expect(mockedSign).toHaveBeenNthCalledWith(
       1,
-      mockSignedData,
-      'refresh_secret',
       expect.objectContaining({
-        expiresIn: convertDaysToMilliseconds(JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS)
-          .milliseconds,
-      })
+        ...mockSignedData,
+        // we validate the expected value below
+        exp: expect.any(Number),
+      }),
+      'refresh_secret'
     );
     expect(mockedSign).toHaveBeenNthCalledWith(
       2,
-      mockSignedData,
-      'test_secret',
       expect.objectContaining({
-        expiresIn: JWT_EXPIRY_IN_MILLISECONDS,
-      })
+        ...mockSignedData,
+        // we validate the expected value below
+        exp: expect.any(Number),
+      }),
+      'test_secret'
     );
+
+    // Check that the token expiration is withing 1 second of the expected value
+    // This compensates for computing time and leaves a wide margin of error
+
+    // Get the expiration time
+    const firstExp = mockedSign.mock.calls[0][0].exp;
+    const expectedFirstExp =
+      // Compute the expected expiration time by adding date.now and the expiration
+      Date.now() +
+      convertDaysToMilliseconds(JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS).milliseconds;
+    // Compare the difference and check if it's within 1 second
+    expect(Math.abs(firstExp - expectedFirstExp)).toBeLessThanOrEqual(1000);
+
+    // Repeat for the second call
+    // Get the expiration time
+    const secondExp = mockedSign.mock.calls[1][0].exp;
+    // Compute the expected expiration time by adding date.now and the expiration
+    const expectedSecondExp = Date.now() + JWT_EXPIRY_IN_MILLISECONDS;
+    // Compare the difference and check if it's within 1 second
+    expect(Math.abs(secondExp - expectedSecondExp)).toBeLessThanOrEqual(1000);
   });
 });
 

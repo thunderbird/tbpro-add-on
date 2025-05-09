@@ -104,16 +104,24 @@ export function getDataFromAuthenticatedRequest(req: Request) {
 }
 
 export const registerAuthToken = (signedData: AuthResponse, res: Response) => {
+  const expiration = Date.now() + JWT_EXPIRY_IN_MILLISECONDS;
   // Sign the jwt and pass it as a cookie
-  const jwtToken = jwt.sign(signedData, process.env.ACCESS_TOKEN_SECRET!, {
-    expiresIn: JWT_EXPIRY_IN_MILLISECONDS,
-  });
+  const jwtToken = jwt.sign(
+    {
+      ...signedData,
+      // The library expects this value in milliseconds
+      // If we don't express it as part of the object, it causes issues
+      exp: expiration,
+    },
+    process.env.ACCESS_TOKEN_SECRET!
+  );
 
   res.cookie('authorization', `Bearer ${jwtToken}`, {
     maxAge: JWT_EXPIRY_IN_MILLISECONDS,
     httpOnly: true,
     sameSite: 'none',
     secure: true,
+    // Set the expiration on date format
     expires: new Date(Date.now() + JWT_EXPIRY_IN_MILLISECONDS),
   });
 };
@@ -134,12 +142,15 @@ export const getStorageLimit = (req: Request) => {
 };
 
 export function registerTokens(signedData: AuthResponse, res: Response) {
+  const expiration = Date.now() + refreshTokenExpiration.milliseconds;
   const refreshTokenToken = jwt.sign(
-    signedData,
-    process.env.REFRESH_TOKEN_SECRET!,
     {
-      expiresIn: refreshTokenExpiration.milliseconds,
-    }
+      ...signedData,
+      // The library expects this value in milliseconds
+      // If we don't express it as part of the object, it causes issues
+      exp: expiration,
+    },
+    process.env.REFRESH_TOKEN_SECRET!
   );
 
   res.cookie('refresh_token', `Bearer ${refreshTokenToken}`, {
@@ -147,7 +158,8 @@ export function registerTokens(signedData: AuthResponse, res: Response) {
     httpOnly: true,
     sameSite: 'none',
     secure: true,
-    expires: new Date(Date.now() + refreshTokenExpiration.milliseconds),
+    // Set the expiration on date format
+    expires: new Date(expiration),
   });
 
   registerAuthToken(signedData, res);

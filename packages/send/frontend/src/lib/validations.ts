@@ -23,6 +23,20 @@ export const validateToken = async (api: ApiConnection): Promise<boolean> => {
   }
 };
 
+export const validateUser = async (
+  api: ApiConnection
+): Promise<{ user: UserType } | null> => {
+  try {
+    const userResponse = await api.call<{ user: UserType }>(`users/me`);
+    if (userResponse?.user) {
+      return userResponse;
+    }
+  } catch (error) {
+    logger.error('Error validating user', error);
+    return null;
+  }
+};
+
 export const validateBackedUpKeys = async (
   getBackup: UserStore['getBackup'],
   keychain: Keychain
@@ -62,13 +76,15 @@ export const validator = async ({
     hasForcedLogin: false,
   };
 
-  // This check prevents data corruption if the user has local storage from a different user
-  const userResponse = await api.call<{ user: UserType }>(`users/me`);
-
+  const userResponse = await validateUser(api);
   const userIDFromBackend = userResponse?.user?.id;
   const userIDFromStore = userStore?.user?.id;
 
-  if (userIDFromStore && userIDFromBackend !== userIDFromStore) {
+  if (
+    userIDFromStore &&
+    userIDFromBackend &&
+    userIDFromBackend !== userIDFromStore
+  ) {
     await userStore.clearUserFromStorage();
     validations.hasForcedLogin = true;
     logger.error('User ID mismatch. Removing local storage data.');
@@ -87,6 +103,7 @@ export const validator = async ({
   }
 
   return validations;
+  // This check prevents data corruption if the user has local storage from a different user
 };
 
 export const getCanRetry = async (linkId: string) => {
