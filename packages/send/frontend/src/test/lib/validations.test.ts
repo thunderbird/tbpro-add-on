@@ -240,7 +240,7 @@ describe('validator', () => {
     mockUserStore = {
       user: { id: '123', email: 'test@example.com', tier: UserTier.FREE },
       getBackup: vi.fn().mockResolvedValue('backup'),
-      logOut: vi.fn().mockResolvedValue(undefined),
+      clearUserFromStorage: vi.fn().mockResolvedValue(undefined),
     };
     mockKeychain = {
       getPassphraseValue: vi.fn().mockReturnValue('passphrase'),
