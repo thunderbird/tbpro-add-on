@@ -12,7 +12,7 @@ import {
   validateLocalStorageSession,
   validatePassword,
 } from '@/lib/validations';
-import { UserStore } from '@/stores/user-store';
+import type { UserStoreType as UserStore } from '@/stores/user-store';
 import { Backup, UserTier, UserType } from '@/types'; // Import Backup and User types
 import { MockedFunction, beforeEach, describe, expect, it, vi } from 'vitest'; // Import SpyInstance
 
@@ -303,7 +303,9 @@ describe('validator', () => {
     reloadSpy.mockRestore();
   });
 
-  it('handles error fetching user ID', async () => {
+  // This tests the case where the user ID is not found in the backend.
+  // This should not trigger a forced login and it should continue with the validations.
+  it('handles error fetching user ID. Finishes validation', async () => {
     mockApi.call = vi.fn().mockRejectedValueOnce(new Error('fail'));
     await expect(
       (await import('@/lib/validations')).validator({
@@ -311,6 +313,11 @@ describe('validator', () => {
         userStore: mockUserStore as UserStore,
         keychain: mockKeychain as Keychain,
       })
-    ).rejects.toThrow('fail');
+    ).resolves.toStrictEqual({
+      hasBackedUpKeys: true,
+      hasLocalStorageSession: true,
+      isTokenValid: false,
+      hasForcedLogin: false,
+    });
   });
 });

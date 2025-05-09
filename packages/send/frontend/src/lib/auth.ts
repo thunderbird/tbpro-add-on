@@ -22,6 +22,7 @@ export function useAuth() {
     queryFn: async () => {
       // Validate the token and update the logged in state
       isLoggedIn.value = await validateToken(api);
+      return isLoggedIn.value;
     },
   });
 

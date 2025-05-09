@@ -18,7 +18,6 @@ import { getUserByEmail, getUserById } from '@/models/users';
 import { getCookie } from '@/utils';
 import { User, UserTier } from '@prisma/client';
 import { requireJWT, requirePublicLogin } from '../middleware';
-import { logger } from '@/utils/logger';
 
 export type AuthResponse = {
   id: User['id'];
@@ -39,7 +38,7 @@ router.get(
     const user = await getUserById(id);
 
     if (!user) {
-      logger.error(`JWT user id doesn't match any users in the database`)
+      console.error(`JWT user id doesn't match any users in the database`);
       return res.status(401).json({
         message: 'Authorization failed.',
       });
@@ -68,9 +67,8 @@ router.get(
       return res.status(200).json({
         message: `Token refreshed successfully`,
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.log('error refreshing token');
+      console.log('error refreshing token', error);
       return res
         .status(500)
         .json({ message: `Not authorized: Unable to refresh token` });
