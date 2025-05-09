@@ -1,5 +1,5 @@
 import logger from '@/logger';
-import { UserStore } from '@/stores/user-store';
+import type { UserStoreType as UserStore } from '@/stores/user-store';
 import { UserType } from '@/types';
 import { ApiConnection } from './api';
 import { MAX_ACCESS_LINK_RETRIES } from './const';
@@ -69,7 +69,7 @@ export const validator = async ({
   const userIDFromStore = userStore?.user?.id;
 
   if (userIDFromStore && userIDFromBackend !== userIDFromStore) {
-    await userStore.logOut();
+    await userStore.clearUserFromStorage();
     validations.hasForcedLogin = true;
     logger.error('User ID mismatch. Removing local storage data.');
     try {
