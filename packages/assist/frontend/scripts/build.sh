@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+cd "$(dirname "$0")/.."
+
 # Clean and set up
 rm -rf dist/*
 mkdir -p dist/assets
