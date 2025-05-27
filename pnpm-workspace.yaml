@@ -1,4 +1,6 @@
 packages:
+  - "packages/assist"
+  - "packages/assist/frontend"
   - "packages/send"
   - "packages/send/backend"
   - "packages/send/frontend"

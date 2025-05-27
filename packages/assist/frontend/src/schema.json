@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Daily Brief",
+  "type": "object",
+  "description": "A schema for structuring the daily brief, including action items, highlights, and additional information.",
+  "properties": {
+    "actionItems": {
+      "type": "array",
+      "description": "A list of actionable items that need attention.",
+      "items": {
+        "type": "object",
+        "description": "An individual action item with a title and description.",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The title of the action item."
+          },
+          "description": {
+            "type": "string",
+            "description": "A detailed description of the action item."
+          }
+        },
+        "required": ["title", "description"]
+      }
+    },
+    "highlights": {
+      "type": "array",
+      "description": "A list of important information that is not included in the action items or the additional information.",
+      "items": {
+        "type": "object",
+        "description": "An important piece of information from the emails, including who it's from, a detailed summary of the contents of the email, and its importance level.",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "The sender or source of the highlight."
+          },
+          "summary": {
+            "type": "string",
+            "description": "A brief, but detailed summary of the highlighted email."
+          },
+          "importance_level": {
+            "type": "integer",
+            "description": "The importance level of the highlight, on a scale from 1 to 5, with 1 being the most important."
+          }
+        },
+        "required": ["from", "summary", "importance_level"]
+      }
+    },
+    "additional_information": {
+      "type": "array",
+      "description": "Information from notable emails not mentioned in action items or highlights",
+      "items": {
+        "type": "object",
+        "description": "Information from emails that are less important. Do not repeat any information already mentioned in the action items or highlights. Each item should nclude who it's from, a summary of the contents of the email, and its importance level.",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "The sender or source of the information."
+          },
+          "summary": {
+            "type": "string",
+            "description": "A brief summary of the information."
+          },
+          "importance_level": {
+            "type": "integer",
+            "description": "The importance level, on a scale from 1 to 5, with 1 being the most important."
+          }
+        },
+        "required": ["from", "summary", "importance_level"]
+      }
+    }
+  },
+  "required": ["actionItems", "highlights", "additional_information"]
+}

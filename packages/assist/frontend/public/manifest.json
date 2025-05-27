@@ -1,0 +1,64 @@
+{
+  "manifest_version": 2,
+  "name": "Assist",
+  "version": "0.1.31",
+  "description": "Provides a daily digest summarizing your inbox.",
+  "applications": {
+    "gecko": {
+      "id": "assist@thunderbird.net",
+      "strict_min_version": "128.0"
+    }
+  },
+  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; object-src 'self'",
+  "permissions": [
+    "*://api.flower.ai/*",
+    "accountsRead",
+    "activeTab",
+    "addressBooks",
+    "alarms",
+    "messagesRead",
+    "messagesModify",
+    "storage",
+    "tabs",
+    "messagesTags",
+    "messagesTagsList",
+    "sensitiveDataUpload"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "banner.js"
+      ],
+      "css": [
+        "banner.css"
+      ]
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false,
+    "browser_style": true
+  },
+  "icons": {
+    "64": "./crystal-ball.svg",
+    "32": "./crystal-ball.svg",
+    "16": "./crystal-ball.svg"
+  },
+  "browser_action": {
+    "default_title": "Open Assist",
+    "default_icon": {
+      "64": "./crystal-ball.svg",
+      "32": "./crystal-ball.svg",
+      "16": "./crystal-ball.svg"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Email Importance",
+  "type": "object",
+  "description": "A schema for structuring information about how important an email is.",
+  "properties": {
+    "author": {
+      "type": "string",
+      "description": "The sender of the email."
+    },
+    "id": {
+      "type": "integer",
+      "description": "The unique identifier for the email."
+    },
+    "subject": {
+      "type": "string",
+      "description": "The subject line from the email."
+    },
+    "importance_level": {
+      "type": "integer",
+      "description": "The importance level of the email, on a scale from 1 to 10, with 1 being the most important."
+    }
+  },
+  "required": ["subject", "importance_level"]
+}

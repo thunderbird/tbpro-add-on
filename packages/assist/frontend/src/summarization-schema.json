@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Daily Brief",
+  "type": "object",
+  "description": "A schema for structuring the daily brief, including action items, important highlights, and additional information.",
+  "properties": {
+    "actionItems": {
+      "type": "array",
+      "description": "A list of emails that need attention or require action.",
+      "items": {
+        "type": "object",
+        "description": "An individual action item based on an email.",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "A brief, clear sentence about what action needs to be performed. If applicable, include any due dates."
+          },
+          "description": {
+            "type": "string",
+            "description": "A detailed description of the action item and any relevant context."
+          },
+          "headerMessageId": {
+            "type": "string",
+            "description": "The same headerMessageId as the email for the action item."
+          }
+        },
+        "required": ["title", "description", "headerMessageId"]
+      }
+    },
+    "highlights": {
+      "type": "array",
+      "description": "Using only emails that were not included as action items or additional information, list any other emails with important information.",
+      "items": {
+        "type": "object",
+        "description": "An important piece of information from the emails, including who it's from and a detailed summary of the contents of the email.",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "The sender or source of the highlight."
+          },
+          "summary": {
+            "type": "string",
+            "description": "A brief, but detailed summary of the highlighted email."
+          },
+          "headerMessageId": {
+            "type": "string",
+            "description": "The same headerMessageId as the highlighted email."
+          }
+        },
+        "required": ["from", "summary", "headerMessageId"]
+      }
+    },
+    "additional_information": {
+      "type": "array",
+      "description": "Using only emails not included in action items or highlights, provide any other noteworthy information",
+      "items": {
+        "type": "object",
+        "description": "Information from emails that are less important. Do not repeat any information already mentioned in the action items or highlights. Each item should include who it's from and a summary of the contents of the email.",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "The author or source of the information."
+          },
+          "summary": {
+            "type": "string",
+            "description": "A brief summary of the information."
+          },
+          "headerMessageId": {
+            "type": "string",
+            "description": "The same headerMessageId as the email."
+          }
+        },
+        "required": ["from", "summary", "headerMessageId"]
+      }
+    }
+  },
+  "required": ["actionItems", "highlights", "additional_information"]
+}
