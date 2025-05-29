@@ -34,6 +34,7 @@
   --color-text: var(--vt-c-text-light-1);
 
   --section-gap: 160px;
+  --link: #1565c0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -47,6 +48,7 @@
 
     --color-heading: var(--vt-c-text-dark-1);
     --color-text: var(--vt-c-text-dark-2);
+    --link: #90caf9;
   }
 }
 
@@ -81,4 +83,8 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--link);
 }
