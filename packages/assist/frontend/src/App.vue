@@ -437,6 +437,7 @@ textarea.api-key {
   background: none;
   padding-left: 0;
   margin-left: 0;
+  color: var(--color-text);
 
   &:hover {
     cursor: pointer;

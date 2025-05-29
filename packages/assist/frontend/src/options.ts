@@ -1,3 +1,5 @@
+import './assets/main.css';
+
 import { createApp, watch } from 'vue';
 import { createPinia } from 'pinia';
 
