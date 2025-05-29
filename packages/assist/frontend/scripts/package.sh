@@ -1,8 +1,12 @@
-  # Get version from package.json and replace dots with hyphens
-  VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
+#!/usr/bin/env bash
 
-  # Build the xpi
-  cd dist
+cd "$(dirname "$0")/.."
 
-  # Create xpi with version number
-  zip -r -FS ../../assist-alpha-${VERSION}.xpi *
+# Get version from package.json and replace dots with hyphens
+VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
+
+# Build the xpi
+cd dist
+
+# Create xpi with version number
+zip -r -FS ../../assist-alpha-${VERSION}.xpi *

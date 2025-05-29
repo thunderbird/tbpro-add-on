@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 cd "$(dirname "$0")/.."
+pnpm run type-check
+pnpm run update-manifest
 
 # Clean and set up
 rm -rf dist/*
