@@ -10,6 +10,11 @@
     "prepare": "husky",
     "sort-package-json": "sort-package-json",
     "dev:send": "docker compose up --build --force-recreate -d && docker compose logs -f",
+    "build:assist:dev": "NODE_ENV=development sh packages/assist/frontend/scripts/build.sh",
+    "build:assist:prod": "NODE_ENV=production sh packages/assist/frontend/scripts/build.sh",
+    "build:assist:staging": "NODE_ENV=staging sh packages/assist/frontend/scripts/build.sh",
+    "build:assist:xpi": "NODE_ENV=production sh packages/assist/frontend/scripts/build.sh && sh packages/assist/frontend/scripts/package.sh && sh packages/assist/frontend/scripts/submit.sh",
+    "watch:assist": "nodemon --verbose  --watch packages/assist/frontend/ --ext html,css,vue,json,ts --ignore packages/assist/frontend/dist --ignore packages/assist/frontend/public --exec 'pnpm run build:assist:dev'",
     "teardown": "docker compose down",
     "dev:detach": "docker compose up -d --build",
     "test:e2e:ci": "./scripts/e2e.sh"
