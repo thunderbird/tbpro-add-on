@@ -1,0 +1,144 @@
+---
+resources:
+
+  tb:network:MultiCidrVpc:
+    vpc:
+      cidr_block: 10.0.0.0/16
+      egress_via_internet_gateway: True
+      enable_dns_hostnames: True
+      enable_internet_gateway: True
+      endpoint_interfaces:
+        - ecr.api
+        - ecr.dkr
+        - logs
+        - secretsmanager
+      subnets:
+        us-east-2a:
+          - 10.0.101.0/24
+        us-east-2b:
+          - 10.0.102.0/24
+        us-east-2c:
+          - 10.0.103.0/24
+
+  tb:network:SecurityGroupWithRules:
+    backend-lb:
+      rules:
+        ingress:
+          - cidr_blocks: ["0.0.0.0/0"]
+            description: TLS port for the load balancer
+            protocol: tcp
+            from_port: 443
+            to_port: 443
+        egress:
+          - cidr_blocks: ["0.0.0.0/0"]
+            description: Outbound traffic
+            protocol: tcp
+            from_port: 0
+            to_port: 65535
+    backend-container:
+      rules:
+        ingress:
+          - description: Private backend port
+            protocol: tcp
+            from_port: 8000
+            to_port: 8000
+        egress:
+          - cidr_blocks: ["0.0.0.0/0"]
+            description: Outbound traffic
+            protocol: tcp
+            from_port: 0
+            to_port: 65535
+
+  tb:secrets:PulumiSecretsManager:
+    pulumi:
+      secret_names:
+        - fxa-client-id
+        - fxa-secret
+        - fxa-allow-list
+        - sentry-dsn
+        - flwr-mgmt-key
+        - flwr-proj-id
+
+  tb:fargate:FargateClusterWithLogging:
+    backend:
+      assign_public_ip: True
+      ecr_resources:
+        - arn:aws:ecr:us-east-2:768512802988:repository/assist*
+      health_check_grace_period_seconds: 60
+      internal: False
+      services:
+        assist:
+          listener_port: 443
+          listener_proto: HTTPS
+          listener_cert_arn: arn:aws:acm:us-east-2:768512802988:certificate/5ef57a38-08c9-4a6b-9499-5e4f98469db9
+          container_port: 8000
+          container_name: backend
+          # "name" field is arbitrary, but must be unique and no longer than 32 chars
+          name: assist-staging-api
+          health_check:
+            healthy_threshold: 2
+            unhealthy_threshold: 5
+            interval: 15
+            path: /health
+      task_definition:
+        network_mode: awsvpc
+        cpu: 1024
+        memory: 2048
+        requires_compatibilities:
+          - FARGATE
+        container_definitions:
+          backend:
+            image: 768512802988.dkr.ecr.us-east-2.amazonaws.com/assist:0.1.25
+            portMappings:
+              - name: assist
+                containerPort: 8000
+                hostPort: 8000
+                protocol: tcp
+                appProtocol: http
+              - name: prisma
+                containerPort: 5555
+                hostPort: 5555
+                protocol: tcp
+                appProtocol: http
+            linuxParameters:
+              initProcessEnabled: True
+            secrets:
+              - name: FXA_CLIENT_ID
+                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/fxa-client-id-QtXUSW
+              - name: FXA_CLIENT_SECRET
+                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/fxa-secret-mwGzLh
+              - name: FXA_ALLOW_LIST
+                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/fxa-allow-list-WT7ijR
+              - name: SENTRY_DSN
+                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/sentry-dsn-K2YGIr
+              - name: FLWR_MGMT_KEY
+                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/flwr-mgmt-key-WP5yDj
+              - name: FLWR_PROJ_ID
+                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/flwr-proj-id-1uetES
+            environment:
+              - name: CLASSIFICATION_MODEL_URL
+                value: https://api.fireworks.ai/inference/v1/chat/completions
+              - name: SUMMARIZATION_MODEL_URL
+                value: https://api.fireworks.ai/inference/v1/chat/completions
+              - name: CLASSIFICATION_MODEL_PATH
+                value: accounts/fireworks/models/firefunction-v2
+              - name: SUMMARIZATION_MODEL_PATH
+                value: accounts/fireworks/models/mixtral-8x22b-instruct
+              - name: SESSION_SECRET
+                value: 798c923fa053c6a05acb12b1d0351b755e7960080a6d16ee01b535c5fce95593
+              - name: SESSION_MGMT_KEY
+                value: 50233b77dd78fd37510f88d62653820a060bd7f58ea00d4dd0f82a31d85636db
+              - name: COOKIE_MAX_AGE
+                value: "604800"
+              - name: FXA_CALLBACK
+                value: https://assist-backend-stage.tb.pro/api/v1/auth/fxa
+              - name: FXA_OPEN_ID_CONFIG
+                value: https://accounts.stage.mozaws.net/.well-known/openid-configuration
+              - name: APP_ENV
+                value: staging
+
+  # tb:ec2:SshableInstance:
+  #   jumphost:
+  #     public_key: your pubkey goes here
+  #     source_cidrs:
+  #       - your IPv4 goes here (curl -4 https://curlmyip.net)

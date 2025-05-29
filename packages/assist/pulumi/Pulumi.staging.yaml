@@ -1,0 +1,15 @@
+encryptionsalt: v1:0vsTek+Oncs=:v1:gn+0iJfZnEGSTOAF:t9Ayxv/RN3bcD8Gh+ooyKWBd/wlPow==
+config:
+  assist:fxa-allow-list:
+    secure: v1:iGBjAXFgPGZonbNZ:AOkz0LANW1BMhjeSbLTRHmOTTrR2ZRygUHFZgNCSqGrjYOX0ZhCML5bnut01Vdb+teOfe+e3xJAyiM+nDa9rcqHRQpKiIKUPIq37zoFlyFwytQtoT45pAvEWoJs4xMCpodXHlFfxUCeHGfKddIdr/DgNvGXYvDaDbM9Lk1RqW82F9p4z4WpsBe6vo8/W8hGZb+zRf27TQ1JvBzb4RnFWLthUubenkEsUAbxV01NGa9HOfHBq0ogujnmJj7AvhEXCBnl1l6Vobq7OqFeO+XobU+vhIdDBgvVlNbSMTWEXgQScf1QdZz+GYojq054O
+  assist:fxa-client-id:
+    secure: v1:4Y+SQrfVrFF9Kvt0:RB8JP24NHSg/lLxm9TyJzIJnDw6LuT/Pi8md91O+EqU=
+  assist:fxa-secret:
+    secure: v1:5JIfKD7lPjoDwG7a:Xn1H/7dPdsk9OfiulkEg5XCH15vZgdzm3dc3RXJ9k1d1Qs+6ODjY3GTrbm9xWZ0URWiqxZ4MFa3VC64uUTZJEcUxc+WfQqWMtLSnH0mAZ/8=
+  assist:sentry-dsn:
+    secure: v1:i4rihsV/tdxAV2KU:1b6ybJIhxxf7rosxC2q3lIbLW1h+k9IguCTVoAXMjsoahcNytbEQgLarbk+7eKi5thxfIcBkZhLbMxw3bCyOUBJfVzyYO03322/vdHD3daXbX60HenmVi/xMLWVTswrtwMZTHvZa1mxQpg2hOTLR
+  aws:region: us-east-2
+  assist:flwr-mgmt-key:
+    secure: v1:1rcKsCBob8N9G9r0:hXGIYmUxpDTrzN6+zDy2rp966YdPHAbJB3TyWoxfcFCV3ZClIu6fO2oexoqSptvZhmXns/odNcYEyQDWMdKu0Q==
+  assist:flwr-proj-id:
+    secure: v1:s3UVckqyAr/lSEwT:FAH0kOFlE+eRZPaIcAakBco=

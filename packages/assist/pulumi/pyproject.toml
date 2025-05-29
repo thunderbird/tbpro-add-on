@@ -1,0 +1,18 @@
+[project]
+name = "assist-pulumi"
+version = "0.0.1"
+description = "Pulumi-built infrastructure for Assist"
+requires-python = ">=3.12"
+dynamic = ["dependencies"]
+
+[project.urls]
+repository = "https://github.com/thunderbird/assist.git"
+issues = "https://github.com/thunderbird/assist/issues?q=is%3Aopen%20is%3Aissue%20label%3Ainfra"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[project.optional-dependencies]
+dev = [
+    "ruff"
+]

@@ -1,0 +1,11 @@
+name: assist
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+description: email summarizer
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-python
