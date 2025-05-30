@@ -140,8 +140,25 @@ cf_func = aws.cloudfront.Function(
 )
 project.resources['cf_rewrite_function'] = cf_func
 
+# Use appropriate cross-origin headers
+response_headers_policy = aws.cloudfront.ResponseHeadersPolicy(
+    f'{project.name_prefix}-frontend-rhp',
+    comment=f'Response headers policy for {project.name_prefix}',
+    custom_headers_config={
+        'items': [
+            {'header': 'Cross-Origin-Embedder-Policy', 'override': True, 'value': 'require-corp'},
+            {'header': 'Cross-Origin-Opener-Policy', 'override': True, 'value': 'same-origin'},
+            {'header': 'Cross-Origin-Resource-Policy', 'override': True, 'value': 'same-origin'},
+        ]
+    },
+)
 # Deliver frontend content via CloudFront
 frontend_opts = resources['tb:cloudfront:CloudFrontS3Service']['frontend']
+if 'distribution' not in frontend_opts:
+    frontend_opts['distribution'] = {}
+if 'default_cache_behavior' not in frontend_opts['distribution']:
+    frontend_opts['distribution']['default_cache_behavior'] = {}
+frontend_opts['distribution']['default_cache_behavior']['response_headers_policy_id'] = response_headers_policy.id
 frontend = tb_pulumi.cloudfront.CloudFrontS3Service(
     name=f'{project.name_prefix}-frontend',
     project=project,
