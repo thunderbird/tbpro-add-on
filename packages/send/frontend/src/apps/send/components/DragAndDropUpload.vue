@@ -3,6 +3,7 @@ import ErrorUploading from '@/apps/send/components/ErrorUploading.vue';
 import UploadingProgress from '@/apps/send/components/UploadingProgress.vue';
 import useFolderStore from '@/apps/send/stores/folder-store';
 import { MAX_FILE_SIZE } from '@/lib/const';
+import { ERROR_MESSAGES } from '@/lib/errorMessages';
 import { NamedBlob } from '@/lib/filesync';
 import { formatBytes } from '@/lib/utils';
 import { useStatusStore } from '@/stores';
@@ -32,15 +33,7 @@ function onDrop(files: File[] | null) {
   });
 
   if (oversizedFiles.length > 0) {
-    console.warn(
-      'Oversized files detected:',
-      oversizedFiles.map((f) => ({
-        name: f.name,
-        size: f.size,
-        sizeFormatted: formatBytes(f.size),
-      }))
-    );
-    progress.error = `Your upload exceeds the maximum upload size (${formatBytes(MAX_FILE_SIZE)}). Please remove the oversized files and try again.`;
+    progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
     isError.value = true;
   }
 
