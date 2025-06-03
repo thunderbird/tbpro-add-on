@@ -220,14 +220,20 @@ const useFolderStore = defineStore('folderManager', () => {
     progress.error = '';
 
     const canUpload = await checkBlobSize(fileBlob);
+    console.log('File size check result:', canUpload);
 
     if (!canUpload) {
+      console.warn(
+        'File size check failed for:',
+        fileBlob.name,
+        'Size:',
+        fileBlob.size
+      );
       progress.error = CLIENT_MESSAGES.FILE_TOO_BIG;
       throw new Error('Too big');
     }
 
     const formattedBlob = await formatBlob(fileBlob);
-
     setUploadSize(formattedBlob.size);
 
     try {
@@ -242,8 +248,9 @@ const useFolderStore = defineStore('folderManager', () => {
       }
       return newItem;
     } catch (error) {
+      console.error('Upload failed in uploadItem:', error);
       progress.error = error.message;
-      throw new Error('Upload failed');
+      throw new Error(`Upload failed: ${error.message}`);
     }
   }
 
