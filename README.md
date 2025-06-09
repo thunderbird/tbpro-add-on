@@ -41,6 +41,12 @@ To get started, you need to install the dependencies for the monorepo. You can d
 pnpm install
 ```
 
+You may need to append the pnpm environment's bin path to your shell's `$PATH` for these commands to work:
+
+```sh
+export PATH="$PATH:./node_modules/.bin"
+```
+
 You can run the setup automatically with
 
 ```sh

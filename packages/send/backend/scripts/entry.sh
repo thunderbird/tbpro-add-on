@@ -6,13 +6,15 @@ if [ "$IS_CI_AUTOMATION" != "yes" ]; then
 else
     # *IS* CI automation
     echo 'installing backend deps 🤖'
-    pnpm install --no-frozen-lockfile
+    pnpm install --no-frozen-lockfile --no-lockfile
 fi
 
 # Check if environment NODE_ENV has been set to production
 if [ "$NODE_ENV" = "production" ]; then
     echo 'Starting with NODE_ENV on production 🐧'
 fi
+
+ls -lah /app
 
 echo 'Applying prisma migrations...'
 pnpm db:update

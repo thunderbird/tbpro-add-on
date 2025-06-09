@@ -1,11 +1,14 @@
 FROM node:22.14.0
 
-RUN apt update -y && apt upgrade -y
+# Update and install system packages
+RUN apt update && \
+    apt upgrade -y && \
+    npm install -g pnpm
 
 WORKDIR /app
 ADD package.json \
-# We don't copy the lockfile during development 
-# because we resolve our dependencies at the root
+# We don't copy the lockfile during development because we resolve our deps at the root. We ignore
+# this file with the --no-lockfile option later since we volume-mount it back in during "compose up"
     # pnpm-lock.yaml \
     tsconfig.json \
     ./
@@ -14,8 +17,9 @@ ADD public ./public
 ADD scripts ./scripts
 ADD src ./src
 
-RUN npm install -g pnpm && \
-    pnpm install --no-frozen-lockfile && \
-    chown -R node:node /app
-
+# Install and run the application as a user with limited scope
+RUN useradd -s /bin/bash -d /app send && chown -R send:send /app
+USER send
+WORKDIR /app
+RUN pnpm install --no-frozen-lockfile --no-lockfile
 CMD ["/bin/sh", "/app/scripts/entry.sh"]
