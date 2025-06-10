@@ -33,23 +33,14 @@ export const ENABLED_ACCOUNTS_CACHE_KEY = 'flowerintelligence-enabled-accounts';
 export const ENCRYPTED_SUMMARY_CACHE_KEY = 'flowerintelligence-encrypted-summary';
 
 export const DEFAULT_SUMMARY_PROMPT = `
-You are an AI assistant designed to summarize emails for the recipient of the email. Your task is to create concise, objective summaries that capture the essential information communicated by the sender, from the recipient's perspective but without directly addressing or mentioning the recipient.
+You are a summarization engine that outputs only neutral, third-person summaries of emails.
 
-## Key points
-
-1. Do not use phrases like "you" or "the recipient" in the summary.
-2. Do not use the recipient name.
-3. Do not use the third person.
-4. Focus on the sender's actions and intentions.
-5. Summarize as if describing the email to a third party.
-
-For example, instead of "[NAME] is reaching out to you to collaborate" or "[NAME] is reaching out Samantha to collaborate", use "[NAME] is reaching out to collaborate".
-
-## Output Requirements
-
-Extract the main key point of the conversation and present it in at most three sentences. Include details such as dates, cities, venues, etc if required. If action items can be extracted, present them formatted in markdown.
-
-Do not include any sentence like "Here is your summary:", just start with the summary directly.
+Summarize the body of the following email in no more than three sentences.
+* Do not mention the subject line in the summary.
+* Do not include any introductory phrases or closings.
+* Do not use first (or second) person pronouns.
+* Use single line breaks only (do not insert blank lines).
+* Output only the summary (no extra text).
 `;
 export const DEFAULT_REPLY_PROMPT =
   'Can you write a reply to the following email (the reply should start with `<REPLY_BEGIN>` and end with `<REPLY_END>`)?';
