@@ -30,8 +30,6 @@ onMounted(async () => {
 
 const { formData, loading, error, saveForm } = configureFormStorage<GeneralSettingsForm>({
   load: async (): Promise<GeneralSettingsForm> => {
-    debugger;
-    console.log(settingsStore[ENABLED_ACCOUNTS_CACHE_KEY]);
     return {
       [REMOTE_HANDOFF_CACHE_KEY]: settingsStore[REMOTE_HANDOFF_CACHE_KEY],
       [ENCRYPTED_SUMMARY_CACHE_KEY]: settingsStore[ENCRYPTED_SUMMARY_CACHE_KEY],
