@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Assist",
-  "version": "0.1.31",
+  "version": "0.2.0",
   "description": "Provides a daily digest summarizing your inbox.",
   "applications": {
     "gecko": {

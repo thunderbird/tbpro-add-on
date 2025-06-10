@@ -2,7 +2,6 @@
   <h1>Thunderbird Assist</h1>
   <nav>
     <router-link to="/general">General</router-link>
-    <router-link to="/banner">Prompts</router-link>
   </nav>
   <main>
     <router-view />

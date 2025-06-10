@@ -295,20 +295,12 @@ onMounted(async () => {
         <h2>v{{ appVersion }}</h2>
         <p><b>Improved default prompt</b></p>
         <ul>
-          <li>We have created a more robust prompt for summarizing emails.</li>
-          <li>
-            The new prompt will be used automatically, if you have not customized your prompt.
-          </li>
-          <li>
-            If you have customized your prompt and you'd like to use the improved prompt, follow
-            these steps:
-            <ul>
-              <li>Under Settings, go to "Add-ons and Themes"</li>
-              <li>Click the wrench icon for the Assist add-on</li>
-              <li>Go to Preferences &gt; Advanced Settings</li>
-              <li>Under "Thread Summarizer", click the "Reset to default" button</li>
-            </ul>
-          </li>
+          <li>Assist now uses an optimized prompt for summarizing emails.</li>
+	  <li>For now, we have removed the ability to customize summary and reply prompts</li>
+        </ul>
+        <p><b>Encrypted emails are excluded by default.</b></p>
+        <ul>
+          <li>They can be enabled in the Assist add-on preferences.</li>
         </ul>
       </div>
       <br />
