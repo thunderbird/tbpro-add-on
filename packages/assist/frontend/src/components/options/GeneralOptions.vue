@@ -30,17 +30,12 @@ onMounted(async () => {
 
 const { formData, loading, error, saveForm } = configureFormStorage<GeneralSettingsForm>({
   load: async (): Promise<GeneralSettingsForm> => {
-    const stored = settingsStore[ENABLED_ACCOUNTS_CACHE_KEY];
-    let initial = stored.length > 0 ? stored : [];
-    // if no stored accounts, pick the default account
-    if (initial.length === 0) {
-      const def = await messenger.accounts.getDefault();
-      if (def) initial = [def.id];
-    }
+    debugger;
+    console.log(settingsStore[ENABLED_ACCOUNTS_CACHE_KEY]);
     return {
       [REMOTE_HANDOFF_CACHE_KEY]: settingsStore[REMOTE_HANDOFF_CACHE_KEY],
       [ENCRYPTED_SUMMARY_CACHE_KEY]: settingsStore[ENCRYPTED_SUMMARY_CACHE_KEY],
-      [ENABLED_ACCOUNTS_CACHE_KEY]: initial,
+      [ENABLED_ACCOUNTS_CACHE_KEY]: settingsStore[ENABLED_ACCOUNTS_CACHE_KEY],
     };
   },
   save: async (data: GeneralSettingsForm) => {
@@ -74,20 +69,6 @@ const { formData, loading, error, saveForm } = configureFormStorage<GeneralSetti
         :noLegend="true"
       />
 
-      <!-- checkbox list for selecting accounts -->
-      <fieldset class="mt-4">
-        <legend class="font-medium mb-2">Select Accounts</legend>
-        <div v-for="acc in accounts" :key="acc.id" class="flex items-center mb-1">
-          <input
-            type="checkbox"
-            :id="`acc-${acc.id}`"
-            :value="acc.id"
-            v-model="formData[ENABLED_ACCOUNTS_CACHE_KEY]"
-            class="mr-2"
-          />
-          <label :for="`acc-${acc.id}`">{{ acc.name }}</label>
-        </div>
-      </fieldset>
     </template>
   </SettingsForm>
 </template>

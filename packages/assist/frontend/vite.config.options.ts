@@ -13,8 +13,8 @@ export default defineConfig({
     },
   },
   build: {
-    minify: true,
-    sourcemap: true,
+    minify: false,
+    sourcemap: 'inline',
     outDir: 'dist/options',
     rollupOptions: {
       input: {

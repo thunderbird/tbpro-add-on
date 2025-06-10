@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import GeneralOptions from '@/components/options/GeneralOptions.vue';
-import BannerOptions from '@/components/options/BannerOptions.vue';
+// import BannerOptions from '@/components/options/BannerOptions.vue';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -11,10 +11,10 @@ const routes: RouteRecordRaw[] = [
     path: '/general',
     component: GeneralOptions,
   },
-  {
-    path: '/banner',
-    component: BannerOptions,
-  },
+  // {
+  //   path: '/banner',
+  //   component: BannerOptions,
+  // },
 ];
 
 const router = createRouter({

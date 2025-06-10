@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-cd "$(dirname "$0")/.."
-
-cd ..
+# move up two levels to the assist directory
+cd "$(dirname "$0")/../.."
 
 mkdir frontend-source
 
@@ -16,8 +15,8 @@ cp frontend/tsconfig.app.json frontend-source/tsconfig.app.json
 cp frontend/tsconfig.vitest.json frontend-source/tsconfig.vitest.json
 #cp frontend/.env.production frontend-source/.env.production
 cp frontend/index.html frontend-source/index.html
-cp frontend/vite.config.background.js frontend-source/vite.config.background.js
-cp frontend/vite.config.js frontend-source/vite.config.js
+cp frontend/vite.config.background.ts frontend-source/vite.config.background.ts
+cp frontend/vite.config.ts frontend-source/vite.config.ts
 cp frontend/vitest.config.ts frontend-source/vitest.config.ts
 cp frontend/pnpm-lock.yaml frontend-source/pnpm-lock.yaml
 cp frontend/README.md frontend-source/README.md

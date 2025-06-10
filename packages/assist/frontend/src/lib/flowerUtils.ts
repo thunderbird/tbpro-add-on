@@ -56,7 +56,8 @@ export async function fetchEmailBodyAndHash(id: number) {
 
 async function getPrompt(cacheKey: string, defaultPrompt: string) {
   const settings = await settingsStorage.get();
-  const cachedPrompt = settings[cacheKey];
+  // temporarily using defaultPrompt exclusively
+  const cachedPrompt = settings[defaultPrompt];
   return (cachedPrompt as string | undefined) ?? defaultPrompt;
 }
 

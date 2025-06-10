@@ -439,9 +439,11 @@ Setting last run time to ${lastRun}
 
         const enabledAccountIds = settings[ENABLED_ACCOUNTS_CACHE_KEY];
 
-        if (enabledAccountIds.includes(accountId)) {
-          return true;
-        }
+	// Disabling ability to turn off accounts
+	return true;
+        // if (enabledAccountIds.includes(accountId)) {
+        //   return true;
+        // }
       }
       return false;
     }
