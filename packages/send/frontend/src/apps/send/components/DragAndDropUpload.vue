@@ -2,7 +2,11 @@
 import ErrorUploading from '@/apps/send/components/ErrorUploading.vue';
 import UploadingProgress from '@/apps/send/components/UploadingProgress.vue';
 import useFolderStore from '@/apps/send/stores/folder-store';
+import { MAX_FILE_SIZE } from '@/lib/const';
+import { ERROR_MESSAGES } from '@/lib/errorMessages';
 import { NamedBlob } from '@/lib/filesync';
+import { formatBytes } from '@/lib/utils';
+import { useStatusStore } from '@/stores';
 import useApiStore from '@/stores/api-store';
 import { useDropZone } from '@vueuse/core';
 import { ref } from 'vue';
@@ -11,26 +15,40 @@ import ProgressBar from './ProgressBar.vue';
 const folderStore = useFolderStore();
 const { api } = useApiStore();
 const dropZoneRef = ref();
+const { progress } = useStatusStore();
 
 const filesMetadata = ref(null);
 const fileBlobs = ref<NamedBlob[]>([]);
 const isUploading = ref(false);
 const isError = ref(false);
 
-function onDrop(files) {
+function onDrop(files: File[] | null) {
   filesMetadata.value = [];
   fileBlobs.value = [];
+  isError.value = false; // Reset error state
+  // Check for oversized files before processing
+  const oversizedFiles = Array.from(files).filter((file) => {
+    const isOversized = file.size > MAX_FILE_SIZE;
+    return isOversized;
+  });
 
-  if (files) {
-    filesMetadata.value = files.map((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const buffer = reader.result;
-        const blob = new Blob([buffer], { type: file.type }) as NamedBlob;
-        blob.name = file.name;
-        fileBlobs.value.push(blob);
-      };
-      reader.readAsArrayBuffer(file);
+  if (oversizedFiles.length > 0) {
+    progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
+    isError.value = true;
+  }
+
+  try {
+    filesMetadata.value = Array.from(files).map((file, index) => {
+      console.log(`Processing file ${index + 1}:`, file.name);
+
+      // File objects already implement the NamedBlob interface
+      // (File extends Blob and has a name property)
+      // No need to create a new Blob or modify the name property
+      fileBlobs.value.push(file as NamedBlob);
+
+      console.log(
+        `Added to fileBlobs: ${file.name} (${formatBytes(file.size)})`
+      );
 
       return {
         name: file.name,
@@ -39,14 +57,21 @@ function onDrop(files) {
         lastModified: file.lastModified,
       };
     });
+  } catch (error) {
+    console.error('Error in onDrop processing:', error);
+    progress.error = `Error processing files: ${error.message}`;
+    isError.value = true;
   }
 }
 
 useDropZone(dropZoneRef, onDrop);
 
 async function doUpload() {
+  progress.error = '';
+  isError.value = false;
+
   const result = await Promise.all(
-    fileBlobs.value.map(async (blob) => {
+    fileBlobs.value.map(async (blob, index) => {
       isUploading.value = true;
       try {
         const uploadResult = await folderStore.uploadItem(
@@ -55,17 +80,20 @@ async function doUpload() {
           api
         );
         isUploading.value = false;
-        console.log(uploadResult);
         return uploadResult;
-      } catch {
+      } catch (error) {
+        console.error(`Upload error for file ${index + 1}:`, error);
         isError.value = true;
         isUploading.value = false;
-        return;
+        progress.error = `Upload failed for ${blob.name}: ${error.message || 'Unknown error'}`;
+        return null;
       }
     })
   );
 
-  if (result?.length === fileBlobs.value.length) {
+  // Only clear the file list if all uploads were successful
+  const successfulUploads = result.filter((r) => r !== null);
+  if (successfulUploads.length >= fileBlobs.value.length) {
     filesMetadata.value = null;
   }
 }
@@ -92,7 +120,7 @@ async function doUpload() {
     </div>
 
     <button
-      v-if="folderStore.rootFolder && filesMetadata"
+      v-if="folderStore.rootFolder && filesMetadata && !isError"
       data-testid="upload-button"
       type="submit"
       class="inline-flex items-center justify-center rounded-lg px-4 py-3 transition duration-500 ease-in-out text-white bg-blue-500 hover:bg-blue-400 focus:outline-none"

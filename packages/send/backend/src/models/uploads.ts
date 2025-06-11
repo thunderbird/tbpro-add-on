@@ -14,7 +14,8 @@ export async function createUpload(
   id: string,
   size: number,
   ownerId: string,
-  type: string
+  type: string,
+  part?: number
 ) {
   // Confirm that file `id` exists and what's on disk
   // is at least as large as the stated size.
@@ -40,6 +41,7 @@ export async function createUpload(
         ownerId,
         createdAt: new Date(),
         type,
+        part,
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

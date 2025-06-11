@@ -356,13 +356,15 @@ router.post(
   addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
-    const { name, uploadId, type, wrappedKey } = req.body;
+    const { name, uploadId, type, wrappedKey, multipart, totalSize } = req.body;
     const item = await createItem(
       name,
       containerId,
       uploadId,
       type,
-      wrappedKey
+      wrappedKey,
+      multipart ? true : false, // Convert to boolean
+      totalSize
     );
     res.status(200).json(item);
   })

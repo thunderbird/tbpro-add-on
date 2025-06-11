@@ -78,6 +78,10 @@ jobs:
           sed -i "s/^B2_BUCKET_NAME=$/B2_BUCKET_NAME=${{ vars.TEST_B2_BUCKET_NAME }}/" .env
           sed -i "s/^B2_APPLICATION_KEY_ID=$/B2_APPLICATION_KEY_ID=${{ secrets.TEST_B2_APPLICATION_KEY_ID }}/" .env
           sed -i "s/^STORAGE_BACKEND=b2=$/STORAGE_BACKEND=b2=b2/" .env
+          cd ../frontend
+          sed -i "s/^VITE_IS_BUCKET_STORAGE=false$/VITE_IS_BUCKET_STORAGE=true/" .env
+          # We set the split size to 1MB to make sure the uploads are split
+          sed -i "s/^VITE_SPLIT_SIZE_IN_MB=100$/VITE_SPLIT_SIZE_IN_MB=1/" .env
 
       - name: Run stack and test
         id: run-stack-and-test

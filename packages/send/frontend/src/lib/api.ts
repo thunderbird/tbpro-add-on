@@ -75,11 +75,13 @@ export class ApiConnection {
 
     // 403 means the user is not authenticated or has an expired session
     // we retry the request once if that is the case
+    // save opts
+    const originalOpts = { ...opts };
     if (resp.status === 401) {
       try {
         // Refresh token
-        await fetch(refreshTokenUrl, opts);
-        resp = await fetch(url, opts);
+        await fetch(refreshTokenUrl);
+        resp = await fetch(url, originalOpts);
       } catch (error) {
         console.log(error);
         return null;

@@ -2,29 +2,54 @@
 import DownloadModal from '@/apps/common/modals/DownloadModal.vue';
 import ReportContent from '@/apps/send/components/ReportContent.vue';
 import useFolderStore from '@/apps/send/stores/folder-store';
-import { ref } from 'vue';
+import {
+  computeMultipartFile,
+  handleMultipartDownload,
+} from '@/lib/folderView';
+import { useApiStore, useKeychainStore } from '@/stores';
+import prettyBytes from 'pretty-bytes';
+import { computed, ref } from 'vue';
 import { useModal, useModalSlot } from 'vue-final-modal';
-import { FolderResponse } from '../stores/folder-store.types';
+import { FolderResponse, Item } from '../stores/folder-store.types';
 import DownloadConfirmation from './DownloadConfirmation.vue';
 const folderStore = useFolderStore();
+const { api } = useApiStore();
+const { keychain } = useKeychainStore();
 
 type ReportProps = {
   folder: FolderResponse;
   containerId: FolderResponse['id'];
 };
 
-const isDownloading = ref<Props[]>([]);
-const isError = ref(false);
+const selectedFile = ref<Item>();
+const multipartFile = computed(() => {
+  return computeMultipartFile(selectedFile.value.wrappedKey, folder.items);
+});
+// const isError = ref(false);
 
-type Props = {
-  uploadId: string;
-  containerId: number;
-  wrappedKey: string;
-  name: string;
-};
+const { containerId, folder } = defineProps<ReportProps>();
 
-const onDownloadConfirm = async () => {
-  await downloadConfirmed();
+const filesInFolder = computed(() => {
+  // return organizeFiles(folder?.items || []);
+  return folder.items;
+});
+
+const onDownloadConfirm = () => {
+  const item = selectedFile.value;
+  const { id, uploadId, wrappedKey, name, containerId, multipart } = item;
+
+  if (multipart) {
+    folderStore.setSelectedFile(id);
+    return handleMultipartDownload(
+      multipartFile.value,
+      item,
+      folderStore.downloadMultipart,
+      api,
+      keychain
+    );
+  }
+
+  return folderStore.downloadContent(uploadId, containerId, wrappedKey, name);
 };
 
 const { open, close: closefn } = useModal({
@@ -37,7 +62,7 @@ const { open, close: closefn } = useModal({
       component: DownloadConfirmation,
       attrs: {
         closefn: () => {
-          isDownloading.value.pop();
+          selectedFile.value = null;
           return closefn();
         },
         confirm: onDownloadConfirm,
@@ -47,49 +72,22 @@ const { open, close: closefn } = useModal({
   },
 });
 
-async function setDownload({ uploadId, containerId, wrappedKey, name }: Props) {
-  isDownloading.value.push({
-    uploadId,
-    containerId,
-    wrappedKey,
-    name,
-  });
+async function setDownload(item: Item) {
+  selectedFile.value = item;
 }
-
-async function downloadConfirmed() {
-  const item = isDownloading.value.pop();
-  try {
-    await folderStore.downloadContent(
-      item.uploadId,
-      item.containerId,
-      item.wrappedKey,
-      item.name
-    );
-  } catch (error) {
-    isError.value = error;
-    console.error(error);
-  }
-}
-
-defineProps<ReportProps>();
 </script>
 <template>
   <ul v-if="folder">
     <div v-if="!folder?.items?.length">
       <p>This folder is empty or the files uploaded to it have expired</p>
     </div>
-    <li
-      v-for="(
-        { uploadId, name, wrappedKey, upload: { size, type } }, i
-      ) of folder.items"
-      :key="uploadId"
-    >
+    <li v-for="(item, i) of filesInFolder" :key="item.uploadId">
       <div class="flex justify-between">
         <div>
-          id: {{ uploadId }}<br />
-          file name: {{ name }}<br />
-          size: {{ size }} bytes<br />
-          mime type: {{ type }}<br />
+          id: {{ item.uploadId }}<br />
+          file name: {{ item.name }}<br />
+          size: {{ prettyBytes(item.upload.size) }}<br />
+          mime type: {{ item.upload.type }}<br />
         </div>
         <button
           type="submit"
@@ -97,12 +95,7 @@ defineProps<ReportProps>();
           @click.prevent="
             () => {
               open();
-              setDownload({
-                uploadId,
-                containerId,
-                wrappedKey,
-                name,
-              });
+              setDownload(item);
             }
           "
         >
@@ -112,7 +105,7 @@ defineProps<ReportProps>();
         </button>
       </div>
       <div>
-        <ReportContent :upload-id="uploadId" :container-id="containerId" />
+        <ReportContent :upload-id="item.uploadId" :container-id="containerId" />
       </div>
     </li>
   </ul>

@@ -1,15 +1,20 @@
 <!-- eslint-disable vue/no-use-v-if-with-v-for -->
 <script setup lang="ts">
-import { DayJsKey } from '@/types';
-import { inject, onMounted, ref, watch } from 'vue';
+import { DayJsKey, Item } from '@/types';
+import { computed, inject, onMounted, ref, watch } from 'vue';
 
 import useFolderStore from '@/apps/send/stores/folder-store';
 import '@thunderbirdops/services-ui/style.css';
 
 import DownloadModal from '@/apps/common/modals/DownloadModal.vue';
 import BreadCrumb from '@/apps/send/components/BreadCrumb.vue';
-import Btn from '@/apps/send/elements/BtnComponent.vue';
+import { default as Btn } from '@/apps/send/elements/BtnComponent.vue';
 import FolderTableRowCell from '@/apps/send/elements/FolderTableRowCell.vue';
+import {
+  computeMultipartFile,
+  handleMultipartDownload,
+} from '@/lib/folderView';
+import { useApiStore, useKeychainStore } from '@/stores';
 import { IconDotsVertical, IconDownload, IconTrash } from '@tabler/icons-vue';
 import { ExpiryBadge, ExpiryUnitTypes } from '@thunderbirdops/services-ui';
 import { useDebounceFn } from '@vueuse/core';
@@ -19,21 +24,33 @@ import { ItemResponse } from '../stores/folder-store.types';
 import DownloadConfirmation from './DownloadConfirmation.vue';
 
 const folderStore = useFolderStore();
+const { api } = useApiStore();
+const { keychain } = useKeychainStore();
 
 const dayjs = inject(DayJsKey);
 const selectedFolder = ref<string | null>(null);
 
 const route = useRoute();
 const router = useRouter();
-const itemRef = ref<ItemResponse>();
+const selectedFile = ref<Item>();
 
-const onDownloadConfirm = () =>
-  folderStore.downloadContent(
-    itemRef.value.uploadId,
-    itemRef.value.containerId,
-    itemRef.value.wrappedKey,
-    itemRef.value.name
-  );
+const onDownloadConfirm = () => {
+  const { id, uploadId, wrappedKey, name, containerId, multipart } =
+    selectedFile.value;
+
+  if (multipart) {
+    folderStore.setSelectedFile(id);
+    return handleMultipartDownload(
+      multipartFile.value,
+      selectedFile.value,
+      folderStore.downloadMultipart,
+      api,
+      keychain
+    );
+  }
+
+  return folderStore.downloadContent(uploadId, containerId, wrappedKey, name);
+};
 
 const { open, close: closefn } = useModal({
   component: DownloadModal,
@@ -52,7 +69,7 @@ const { open, close: closefn } = useModal({
 });
 
 const openModal = (item: ItemResponse) => {
-  itemRef.value = item;
+  selectedFile.value = item;
   open();
 };
 
@@ -78,6 +95,18 @@ watch(
   }
 );
 
+const filesInFolder = computed(() => {
+  // return organizeFiles(folderStore.rootFolder?.items || []);
+  return folderStore.rootFolder?.items;
+});
+
+const multipartFile = computed(() => {
+  return computeMultipartFile(
+    folderStore.selectedFile.wrappedKey,
+    folderStore.rootFolder.items
+  );
+});
+
 function handleClick(id: string) {
   if (selectedFolder.value === id) {
     router.push({ name: 'folder', params: { id } });
@@ -87,6 +116,14 @@ function handleClick(id: string) {
   folderStore.setSelectedFolder(id);
   selectedFolder.value = id;
 }
+
+// To make sure multi part files are loded in memory correctly we refetch after
+// the number of files in the folder changes.
+watch(filesInFolder, ({ length: newCount }, { length: previousCount }) => {
+  if (newCount !== previousCount) {
+    gotoRoute();
+  }
+});
 </script>
 <script lang="ts">
 export default { props: { id: { type: String, default: 'null' } } };
@@ -111,6 +148,7 @@ export default { props: { id: { type: String, default: 'null' } } };
         </tr>
       </thead>
       <tbody>
+        <!-- FOLDERS (Doesn't show files) -->
         <tr
           v-for="folder in folderStore.visibleFolders"
           :key="folder.id"
@@ -152,9 +190,10 @@ export default { props: { id: { type: String, default: 'null' } } };
             </div>
           </FolderTableRowCell>
         </tr>
+        <!-- FILES -->
         <tr
-          v-for="item in folderStore.rootFolder.items"
-          v-if="folderStore.rootFolder"
+          v-for="item in filesInFolder"
+          v-if="filesInFolder"
           :key="item.id"
           class="group cursor-pointer"
           @click="folderStore.setSelectedFile(item.id)"

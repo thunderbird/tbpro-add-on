@@ -182,6 +182,7 @@ jobs:
           VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_STAGE }}
           VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_STAGE }}
           VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_STAGE }}
+          VITE_IS_BUCKET_STORAGE=true
           EOF
 
       - name: Build the stage frontend's static assets
@@ -232,6 +233,7 @@ jobs:
           VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
           VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
           VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
+          VITE_IS_BUCKET_STORAGE=true
           EOF
 
       - name: Setup Bun

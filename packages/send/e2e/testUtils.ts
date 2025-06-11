@@ -23,7 +23,7 @@ export async function downloadFirstFile(page: Page) {
   await confirmDownload.click();
   await page.waitForEvent("download");
   page.on("download", async (download) => {
-    expect(download.suggestedFilename()).toBe("test.txt");
+    expect(download.suggestedFilename()).toBe("test.png");
   });
 }
 

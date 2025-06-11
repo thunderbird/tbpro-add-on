@@ -8,8 +8,8 @@ import { ApiConnection } from '@/lib/api';
 import { NamedBlob, sendBlob } from '@/lib/filesync';
 import { Keychain } from '@/lib/keychain';
 import { UserType } from '@/types';
-import { trpc } from './trpc';
-import { retryUntilSuccessOrTimeout } from './utils';
+import { SPLIT_SIZE } from './const';
+import { retryUntilSuccessOrTimeout, splitIntoMultipleZips } from './utils';
 
 export default class Uploader {
   user: UserType;
@@ -29,7 +29,7 @@ export default class Uploader {
     containerId: string,
     api: ApiConnection,
     progressTracker: ProgressTracker
-  ): Promise<Item> {
+  ): Promise<Item[]> {
     if (!containerId) {
       return null;
     }
@@ -53,63 +53,88 @@ export default class Uploader {
       wrappingKey
     );
 
-    const blob = fileBlob as NamedBlob;
-    const filename = blob.name;
+    let blobs: NamedBlob[] = [];
 
-    const { isBucketStorage } = await trpc.getStorageType.query();
-
-    // Blob is encrypted as it is uploaded through a websocket connection
-    const id = await sendBlob(blob, key, api, progressTracker, isBucketStorage);
-    if (!id) {
-      return null;
+    const shouldSplit = fileBlob.size > SPLIT_SIZE;
+    if (shouldSplit) {
+      const zips = await splitIntoMultipleZips(fileBlob, SPLIT_SIZE);
+      blobs = zips;
+    } else {
+      blobs = [fileBlob];
     }
 
-    if (!isBucketStorage) {
-      // Poll the api to check if the file is in storage
-      await retryUntilSuccessOrTimeout(async () => {
-        const { size } = await this.api.call<{ size: null | number }>(
-          `uploads/${id}/stat`
+    const uploadResponses = await Promise.all(
+      blobs.map(async (blob: NamedBlob, index) => {
+        const filename = blob.name;
+        const isBucketStorage = !!import.meta.env.VITE_IS_BUCKET_STORAGE;
+        // Blob is encrypted as it is uploaded through a websocket connection
+        const id = await sendBlob(
+          blob,
+          key,
+          api,
+          progressTracker,
+          isBucketStorage
         );
-        // Return a boolean, telling us if the size is null or not
-        return !!size;
-      });
-    }
+        if (!id) {
+          return null;
+        }
 
-    // Create a Content entry in the database
-    const result = await this.api.call<{
-      upload: UploadResponse;
-    }>(
-      'uploads',
-      {
-        id: id,
-        size: blob.size,
-        ownerId: this.user.id,
-        type: blob.type,
-        containerId,
-      },
-      'POST'
+        if (!isBucketStorage) {
+          // Poll the api to check if the file is in storage
+          await retryUntilSuccessOrTimeout(async () => {
+            const { size } = await this.api.call<{ size: null | number }>(
+              `uploads/${id}/stat`
+            );
+            // Return a boolean, telling us if the size is null or not
+            return !!size;
+          });
+        }
+
+        // We set the part number starting from 1 to avoid problems with part 0 evaluating to false
+        const part = shouldSplit ? index + 1 : undefined;
+
+        // Create a Content entry in the database
+        const result = await this.api.call<{
+          upload: UploadResponse;
+        }>(
+          'uploads',
+          {
+            id: id,
+            size: blob.size,
+            ownerId: this.user.id,
+            type: blob.type,
+            containerId,
+            part, // if the file was split into multiple zips, we add the part
+          },
+          'POST'
+        );
+        if (!result) {
+          return null;
+        }
+        const upload = result.upload;
+        // For the Content entry, create the corresponding Item in the Container
+        const itemObj = await this.api.call<ItemResponse>(
+          `containers/${containerId}/item`,
+          {
+            uploadId: upload.id,
+            name: filename,
+            type: 'MESSAGE',
+            wrappedKey: wrappedKeyStr,
+            multipart: shouldSplit ? true : false,
+            totalSize: fileBlob.size,
+          },
+          'POST'
+        );
+        return {
+          ...itemObj,
+          upload: {
+            size: blob.size,
+            type: blob.type,
+            part,
+          },
+        };
+      })
     );
-    if (!result) {
-      return null;
-    }
-    const upload = result.upload;
-    // For the Content entry, create the corresponding Item in the Container
-    const itemObj = await this.api.call<ItemResponse>(
-      `containers/${containerId}/item`,
-      {
-        uploadId: upload.id,
-        name: filename,
-        type: 'MESSAGE',
-        wrappedKey: wrappedKeyStr,
-      },
-      'POST'
-    );
-    return {
-      ...itemObj,
-      upload: {
-        size: blob.size,
-        type: blob.type,
-      },
-    };
+    return uploadResponses;
   }
 }

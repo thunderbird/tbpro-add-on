@@ -3,7 +3,6 @@ import { ApiConnection } from '@/lib/api';
 import { getBlob } from '@/lib/filesync';
 import { Keychain } from '@/lib/keychain';
 import useMetricsStore from '@/stores/metrics';
-import { trpc } from './trpc';
 
 export default class Downloader {
   keychain: Keychain;
@@ -49,7 +48,7 @@ export default class Downloader {
         wrappingKey
       );
 
-    const { isBucketStorage } = await trpc.getStorageType.query();
+    const isBucketStorage = !!import.meta.env.VITE_IS_BUCKET_STORAGE;
 
     try {
       await getBlob(

@@ -64,7 +64,7 @@ router.post(
   requireWritePermission,
   addErrorHandling(UPLOAD_ERRORS.NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
-    const { id, size, ownerId, type } = req.body;
+    const { id, size, ownerId, type, part } = req.body;
     const Metrics = useMetrics();
 
     const { uniqueHash } = getDataFromAuthenticatedRequest(req);
@@ -72,7 +72,8 @@ router.post(
     const distinctId = uniqueHash;
 
     try {
-      const upload = await createUpload(id, size, ownerId, type);
+      const upload = await createUpload(id, size, ownerId, type, part);
+      // Capture metrics
       Metrics.capture({
         event: 'upload.size',
         properties: { size, type },

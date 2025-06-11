@@ -56,7 +56,7 @@ const loadLogin = async () => {
   if (hasForcedLogin) {
     // If we don't have a session, show the login button.
     isLoggedIn.value = false;
-    return;
+    return false;
   }
 
   // check local storage first
@@ -67,7 +67,7 @@ const loadLogin = async () => {
     // If so, hydrate our user using session data.
     const didPopulate = await userStore.populateFromBackend();
     if (!didPopulate) {
-      return;
+      return true;
     }
     // app-sepcific initialization
     await init(userStore, keychain, folderStore);
@@ -80,6 +80,7 @@ const loadLogin = async () => {
   const uid = userStore?.user?.uniqueHash;
   initializeClientMetrics(uid);
   await sendMetricsToBackend(api);
+  return true;
 };
 
 updateMetricsIdentity();
