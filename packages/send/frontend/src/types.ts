@@ -117,6 +117,8 @@ export interface Item {
   createdAt?: Date;
   updatedAt?: Date;
   upload?: Upload;
+  multipart?: boolean;
+  totalSize?: number; // total size of the file if multipart
 }
 
 export interface Upload {
@@ -131,6 +133,7 @@ export interface Upload {
   // deprecated
   expired?: boolean;
   daysToExpiry?: number;
+  part?: number; // true if the file was split into multiple zips
 }
 
 export interface Backup {

@@ -105,6 +105,7 @@ describe('addExpiryToContainer', () => {
       reportedAt: null,
       size: 100,
       type: 'image/jpeg',
+      part: null,
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -121,6 +122,7 @@ describe('addExpiryToContainer', () => {
       reportedAt: null,
       size: 100,
       type: 'image/jpeg',
+      part: null,
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -137,6 +139,7 @@ describe('addExpiryToContainer', () => {
       reportedAt: null,
       size: 100,
       type: 'image/jpeg',
+      part: null,
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -175,6 +178,7 @@ describe('addExpiryToContainer', () => {
       reportedAt: null,
       size: 100,
       type: 'image/jpeg',
+      part: null,
     };
 
     const result = addExpiryToContainer(mockUpload);
