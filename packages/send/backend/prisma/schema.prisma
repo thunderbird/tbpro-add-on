@@ -206,6 +206,8 @@ model Item {
   // different Items
   upload        Upload        @relation(fields: [uploadId], references: [id] )
   type          ItemType
+  multipart     Boolean      @default(false) // Whether the file is split into multiple uploads
+  totalSize     Int? // Total size of all multi-part items
   createdAt     DateTime?
   updatedAt     DateTime? 
 
@@ -222,6 +224,8 @@ model Upload {
   createdAt DateTime?
   reported  Boolean       @default(false)
   reportedAt DateTime?
+  // This helps us it helps us put together multi-part uploads
+  part          Int?
 }
 
 // A tag can be associated with items and containers
@@ -238,4 +242,5 @@ model Tag {
 // This table stores login attempts to compare agains fxa logins
 model Login {
   fxasession String @id
+  createdAt DateTime?
 }
