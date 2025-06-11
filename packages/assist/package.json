@@ -1,0 +1,16 @@
+{
+    "name": "assist",
+    "version": "0.0.0",
+    "description": "",
+    "keywords": [],
+    "license": "ISC",
+    "author": "",
+    "main": "index.js",
+    "scripts": {
+        "dev": "NODE_ENV=development sh ./frontend/scripts/build.sh",
+        "prod": "NODE_ENV=production sh ./frontend/scripts/build.sh",
+        "staging": "NODE_ENV=staging sh ./frontend/scripts/build.sh",
+        "xpi": "NODE_ENV=production sh ./frontend/scripts/build.sh && sh ./frontend/scripts/package.sh && sh ./frontend/scripts/submit.sh",
+        "watch": "nodemon --verbose  --watch packages/assist/frontend/ --ext html,css,vue,json,ts --ignore packages/assist/frontend/dist --ignore packages/assist/frontend/public --exec 'pnpm run dev'"
+    }
+}
