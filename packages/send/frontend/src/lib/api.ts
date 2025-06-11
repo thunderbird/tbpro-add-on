@@ -1,3 +1,5 @@
+import { trpc } from './trpc';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type JsonResponse<T = { [key: string]: any }> = T | T[];
 
@@ -7,6 +9,7 @@ export type AsyncJsonResponse<T = { [key: string]: any }> = Promise<
 
 export class ApiConnection {
   serverUrl: string;
+  isBucketStorage: boolean;
 
   constructor(serverUrl: string) {
     if (!serverUrl) {
@@ -15,6 +18,18 @@ export class ApiConnection {
     // using new URL() trims off excess whitespace and trailing '/'
     const u = new URL(serverUrl);
     this.serverUrl = u.origin;
+
+    this.getStorageType().then((isBucketStorage) => {
+      this.isBucketStorage = isBucketStorage;
+    });
+  }
+
+  async getStorageType(): Promise<boolean> {
+    if (process.env.NODE_ENV === 'test') {
+      return true;
+    }
+    const { isBucketStorage } = await trpc.getStorageType.query();
+    return isBucketStorage;
   }
 
   toString(): string {
@@ -75,11 +90,13 @@ export class ApiConnection {
 
     // 403 means the user is not authenticated or has an expired session
     // we retry the request once if that is the case
+    // save opts
+    const originalOpts = { ...opts };
     if (resp.status === 401) {
       try {
         // Refresh token
-        await fetch(refreshTokenUrl, opts);
-        resp = await fetch(url, opts);
+        await fetch(refreshTokenUrl);
+        resp = await fetch(url, originalOpts);
       } catch (error) {
         console.log(error);
         return null;
