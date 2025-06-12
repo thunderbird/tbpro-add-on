@@ -19,12 +19,23 @@ trap cleanup INT TERM
 
 # Wait for servers to be ready
 echo "Waiting for dev servers..."
+START_TIME=$(date +%s)
+LAST_LOG_TIME=0
 while true; do
   STATUS=$(curl -s -k -w "%{http_code}" https://localhost:8088/ -o /dev/null)
   if [ "$STATUS" = "200" ]; then
     break
   fi
-  echo "Waiting for HTTPS server..."
+  
+  CURRENT_TIME=$(date +%s)
+  ELAPSED=$((CURRENT_TIME - START_TIME))
+  
+  # Only log every 5 seconds
+  if [ $((ELAPSED - LAST_LOG_TIME)) -ge 5 ]; then
+    echo "Waiting for HTTPS server... (${ELAPSED}s elapsed)"
+    LAST_LOG_TIME=$ELAPSED
+  fi
+  
   sleep 1
 done
 echo "HTTPS server is ready"
