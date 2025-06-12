@@ -82,15 +82,56 @@ Note about shareOnly containers.
     <header class="flex flex-col items-center">
       <img src="@/apps/send/assets/file.svg" class="w-20 h-20" />
       <div class="font-semibold pt-4">
-        <span v-if="!showForm" class="cursor- pointer" @click="showForm = true">
+        <span v-if="!showRenameForm" class="cursor- pointer" @click="showRenameForm = true">
           {{ folderStore.selectedFile.name }}
         </span>
-        <FileNameForm v-if="showForm" @rename-complete="showForm = false" />
+        <FileNameForm v-if="showRenameForm" @rename-complete="showRenameForm = false" />
       </div>
       <div class="text-xs">
         {{ formatBytes(folderStore.selectedFile.upload.size) }}
       </div>
     </header>
+  <section class="form-section">
+    <label class="form-label">
+      <span class="label-text">Create Share Link</span>
+      <input
+        ref="accessUrlInput"
+        v-model="accessUrl"
+        v-tooltip="tooltipText"
+        type="text"
+        class="input-field"
+        @click="copyToClipboard(accessUrl)"
+      />
+    </label>
+    <label class="form-label">
+      <span class="label-text">Link Expires</span>
+      <input v-model="expiration" type="datetime-local" />
+    </label>
+    <label class="form-label password-field">
+      <span class="label-text">Password</span>
+      <input
+        v-model="password"
+        data-testid="password-input"
+        :type="showPassword ? 'text' : 'password'"
+      />
+      <button
+        class="toggle-password"
+        @click.prevent="showPassword = !showPassword"
+      >
+        <IconEye v-if="showPassword" class="icon" />
+        <IconEyeOff v-else class="icon" />
+      </button>
+    </label>
+  </section>
+  <Btn
+    class="create-button"
+    data-testid="create-share-link"
+    @click="shareIndividualFile"
+  >
+    Create Share Link for {{ folderStore.selectedFile.id }}
+    <IconLink class="icon" />
+  </Btn>
+
     <footer class="mt-auto flex flex-col gap-3">
       <label
         v-if="folderStore.selectedFile.createdAt"
