@@ -312,6 +312,7 @@ const useFolderStore = defineStore('folderManager', () => {
     api: ApiConnection,
     keychain: Keychain
   ) {
+    const isBucketStorage = api.isBucketStorage;
     let combinedType = '';
 
     const _uploads = await api.call<{ id: string; part: number }[]>(
@@ -362,18 +363,29 @@ const useFolderStore = defineStore('folderManager', () => {
       id: string;
       size: number;
     }) => {
-      const bucketResponse = await api.call<{ url: string }>(
-        `download/${metadata.id}/signed`
-      );
+      let downloadedBlob: Blob;
+      if (!isBucketStorage) {
+        downloadedBlob = await _download({
+          id: metadata.id,
+          progressTracker: progress,
+        });
+        if (!downloadedBlob) {
+          throw new Error('DOWNLOAD_FAILED');
+        }
+      } else {
+        const bucketResponse = await api.call<{ url: string }>(
+          `download/${metadata.id}/signed`
+        );
 
-      if (!bucketResponse?.url) {
-        throw new Error('BUCKET_URL_NOT_FOUND');
+        if (!bucketResponse?.url) {
+          throw new Error('BUCKET_URL_NOT_FOUND');
+        }
+
+        downloadedBlob = await _download({
+          url: bucketResponse.url,
+          progressTracker: progress,
+        });
       }
-
-      const downloadedBlob = await _download({
-        url: bucketResponse.url,
-        progressTracker: progress,
-      });
 
       let pieceStream: ReadableStream<Uint8Array>;
       if (contentKey) {

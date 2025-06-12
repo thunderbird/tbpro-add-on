@@ -1,7 +1,7 @@
 import { FolderStore } from '@/apps/send/stores/folder-store';
 import { ProgressTracker } from '@/apps/send/stores/status-store';
 import init from '@/lib/init';
-import { UserStore } from '@/stores/user-store';
+import { UserStoreType } from '@/stores/user-store';
 import { Canceler, JsonResponse } from '@/types';
 import { RouteLocationNormalized } from 'vue-router';
 import {
@@ -222,7 +222,7 @@ export const formatLoginURL = (url: string) => {
 // - the user has a public key
 // - the user has a default folder for email attachments
 export async function dbUserSetup(
-  userStore: UserStore,
+  userStore: UserStoreType,
   keychain: Keychain,
   folderStore: FolderStore
 ) {
