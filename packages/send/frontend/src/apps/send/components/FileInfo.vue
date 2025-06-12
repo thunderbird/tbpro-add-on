@@ -170,3 +170,43 @@ Note about shareOnly containers.
     </footer>
   </div>
 </template>
+
+<style scoped>
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(75, 85, 99);
+}
+
+.password-field {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.5rem;
+  user-select: none;
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.create-button {
+  margin-bottom: 2rem;
+}
+</style>
