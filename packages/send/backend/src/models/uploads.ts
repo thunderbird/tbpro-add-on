@@ -74,6 +74,43 @@ export async function getUploadSize(id: string) {
   return upload.size;
 }
 
+export async function getUploadParts(id: string) {
+  const upload = await prisma.upload.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      items: {
+        select: {
+          wrappedKey: true,
+        },
+      },
+    },
+  });
+
+  if (!upload || upload.items.length === 0) {
+    throw new BaseError(UPLOAD_NOT_FOUND);
+  }
+
+  // Get the first wrappedKey from the upload items (they should)
+  // This assumes that all items in the upload share the same wrappedKey.
+  const wrappedKey = upload.items[0].wrappedKey;
+  const multipartItems = await prisma.item.findMany({
+    where: {
+      wrappedKey,
+    },
+    select: {
+      upload: {
+        select: {
+          id: true,
+          part: true,
+        },
+      },
+    },
+  });
+  return multipartItems.map(({ upload }) => upload);
+}
+
 export async function getUploadMetadata(id: string) {
   const query = {
     where: {

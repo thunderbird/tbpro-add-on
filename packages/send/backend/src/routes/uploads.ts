@@ -10,6 +10,7 @@ import {
 import {
   createUpload,
   getUploadMetadata,
+  getUploadParts,
   getUploadSize,
   statUpload,
 } from '../models/uploads';
@@ -258,5 +259,66 @@ router.get(
     });
   })
 );
+
+/**
+ * @openapi
+ * /api/uploads/{id}/parts:
+ *   get:
+ *     summary: Get parts of an upload by ID
+ *     description: Retrieves all parts of a multipart upload by the upload ID
+ *     tags: [Uploads]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the upload
+ *     responses:
+ *       200:
+ *         description: Upload parts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     description: The ID of the upload part
+ *                   part:
+ *                     type: integer
+ *                     description: The part number of the multipart upload
+ *                 required:
+ *                   - id
+ *                   - part
+ *             example:
+ *               - id: "upload-123-part-1"
+ *                 part: 1
+ *               - id: "upload-123-part-2"
+ *                 part: 2
+ *       500:
+ *         description: Failed to fetch upload parts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *               example:
+ *                 message: "Failed to fetch upload parts"
+ */
+router.get('/:id/parts', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const parts = await getUploadParts(id);
+    res.status(200).json(parts);
+  } catch (error) {
+    console.error('Error fetching upload parts:', error);
+    res.status(500).json({ message: 'Failed to fetch upload parts' });
+  }
+});
 
 export default router;
