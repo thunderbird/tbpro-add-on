@@ -66,7 +66,7 @@ async function shareIndividualFile() {
   // Focus the input
   accessUrlInput.value?.focus();
 
-  
+
 }
 
 /*
@@ -82,7 +82,7 @@ Note about shareOnly containers.
     <header class="flex flex-col items-center">
       <img src="@/apps/send/assets/file.svg" class="w-20 h-20" />
       <div class="font-semibold pt-4">
-        <span v-if="!showRenameForm" class="cursor- pointer" @click="showRenameForm = true">
+        <span v-if="!showRenameForm" class="cursor-pointer" @click="showRenameForm = true">
           {{ folderStore.selectedFile.name }}
         </span>
         <FileNameForm v-if="showRenameForm" @rename-complete="showRenameForm = false" />
@@ -128,7 +128,7 @@ Note about shareOnly containers.
     data-testid="create-share-link"
     @click="shareIndividualFile"
   >
-    Create Share Link for {{ folderStore.selectedFile.id }}
+    Create Share Link
     <IconLink class="icon" />
   </Btn>
 
