@@ -9,7 +9,7 @@ export const TRPC_WS_PATH = `/trpc/ws`;
 
 const appConfig = {
   file_dir: `/tmp/send-suite-dev-dir`,
-  max_file_size: 1024 * 1024 * 1024 * 2.5,
+  max_file_size: 1024 * 1024 * 1024 * 20, // 20 GB
 };
 
 const packageJson = JSON.parse(
