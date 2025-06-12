@@ -1,15 +1,73 @@
 <script setup lang="ts">
 import useFolderStore from '@/apps/send/stores/folder-store';
+import useSharingStore from '@/apps/send/stores/sharing-store';
+import { trpc } from '@/lib/trpc';
+import { useMutation } from '@tanstack/vue-query';
 import { ref } from 'vue';
 
 import Btn from '@/apps/send/elements/BtnComponent.vue';
 import FileNameForm from '@/apps/send/elements/FileNameForm.vue';
 import { formatBytes } from '@/lib/utils';
-import { IconDownload } from '@tabler/icons-vue';
+import { IconDownload, IconEye, IconEyeOff, IconLink } from '@tabler/icons-vue';
+import { useClipboard, useDebounceFn } from '@vueuse/core';
 
 const folderStore = useFolderStore();
+const sharingStore = useSharingStore();
 
-const showForm = ref(false);
+const showRenameForm = ref(false);
+
+const password = ref('');
+const expiration = ref(null);
+const accessUrl = ref('');
+const showPassword = ref(false);
+const tooltipText = ref('Copied to clipboard');
+const clipboard = useClipboard();
+const accessUrlInput = ref<HTMLInputElement | null>(null);
+
+const { mutate } = useMutation({
+  mutationKey: ['getAccessLink'],
+  mutationFn: async () => {
+    const [url, hash] = accessUrl.value.split('share/')[1].split('#');
+    await trpc.addPasswordToAccessLink.mutate({
+      linkId: url,
+      password: hash,
+    });
+  },
+});
+
+function copyToClipboard(url: string) {
+  clipboard.copy(url);
+  tooltipText.value = 'Copied!';
+  setTimeout(() => {
+    tooltipText.value = 'Click to copy';
+  }, 3000);
+}
+
+async function shareIndividualFile() {
+  const url = await sharingStore.shareItems(
+    [folderStore.selectedFile],
+    password.value,
+  );
+
+  // if (!url) {
+  //   emit('createAccessLinkError');
+  //   return;
+  // }
+
+  accessUrl.value = url;
+
+  if (!password.value.length) {
+    mutate();
+  }
+
+  // Copy url to clipboard
+  clipboard.copy(url);
+
+  // Focus the input
+  accessUrlInput.value?.focus();
+
+  
+}
 
 /*
 Note about shareOnly containers.
