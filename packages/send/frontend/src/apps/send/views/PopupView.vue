@@ -11,7 +11,13 @@ import useFolderStore from '@/apps/send/stores/folder-store';
 import useSharingStore from '@/apps/send/stores/sharing-store';
 
 import ShieldIcon from '@/apps/common/ShieldIcon.vue';
-import { EXTENSION_READY, SHARE_ABORTED, SHARE_COMPLETE } from '@/lib/const';
+import {
+  EXTENSION_READY,
+  MAX_FILE_SIZE,
+  SHARE_ABORTED,
+  SHARE_COMPLETE,
+} from '@/lib/const';
+import { ERROR_MESSAGES } from '@/lib/errorMessages';
 import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
 import useApiStore from '@/stores/api-store';
 import { IconEye, IconEyeClosed } from '@tabler/icons-vue';
@@ -22,7 +28,7 @@ import { useStatusStore } from '../stores/status-store';
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const { api } = useApiStore();
-const { validators } = useStatusStore();
+const { validators, progress } = useStatusStore();
 
 const folderStore = useFolderStore();
 const sharingStore = useSharingStore();
@@ -61,7 +67,7 @@ async function uploadAndShare() {
       return;
     }
     fileBlob.value = null;
-    const url = await sharingStore.shareItems([itemObj], password.value);
+    const url = await sharingStore.shareItems(itemObj, password.value);
     if (!url) {
       shareAborted();
       isError.value = true;
@@ -146,6 +152,13 @@ onMounted(async () => {
     message.value = `You're not logged in properly. Please go back to the compositon panel to log back in`;
     return;
   }
+
+  // Check if the filesize is allowed
+  if (fileBlob.value.size > MAX_FILE_SIZE) {
+    progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
+    isError.value = true;
+    return;
+  }
 });
 </script>
 
@@ -159,7 +172,7 @@ onMounted(async () => {
       <ProgressBar />
     </div>
 
-    <form @submit.prevent="uploadAndShare">
+    <form v-if="!isError" @submit.prevent="uploadAndShare">
       <div class="flex items-center gap-x-2">
         <input
           type="checkbox"
