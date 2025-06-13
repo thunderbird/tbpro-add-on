@@ -241,7 +241,7 @@ export async function summarizeOnReceive(
 ) {
   if (await getFlwrApiKey()) {
     for (const message of messages.messages) {
-      if ((message.date as Date).getTime() < Date.now() - ONE_WEEK_MS) {
+      if ((message.date as Date).getTime() > Date.now() - ONE_WEEK_MS) {
         await getSummaryById(message.id, false);
       }
     }
