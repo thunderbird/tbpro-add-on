@@ -19,6 +19,7 @@ import { settingsStorage } from '@/storage';
 import { logger } from '@thunderbirdops/services-utils';
 import { parse } from 'marked';
 
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 let cachedFlowerModule: Promise<{ FlowerIntelligence: any }> | null = null;
 
 function getFlowerIntelligenceModule() {
@@ -240,7 +241,9 @@ export async function summarizeOnReceive(
 ) {
   if (await getFlwrApiKey()) {
     for (const message of messages.messages) {
-      await getSummaryById(message.id, false);
+      if ((message.date as Date).getTime() < Date.now() - ONE_WEEK_MS) {
+        await getSummaryById(message.id, false);
+      }
     }
   }
 }
