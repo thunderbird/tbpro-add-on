@@ -94,8 +94,8 @@ export class ApiConnection {
     const originalOpts = { ...opts };
     if (resp.status === 401) {
       try {
-        // Refresh token
-        await fetch(refreshTokenUrl);
+        // Refresh token (including cookies)
+        await fetch(refreshTokenUrl, { credentials: 'include', mode: 'cors' });
         resp = await fetch(url, originalOpts);
       } catch (error) {
         console.log(error);
