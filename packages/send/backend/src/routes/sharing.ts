@@ -296,9 +296,9 @@ router.post(
 // identified by the upload id.
 router.get(
   '/:uploadId/links',
-  // requireJWT,
-  // getGroupMemberPermissions,
-  // requireAdminPermission,
+  requireJWT,
+  getGroupMemberPermissions,
+  requireAdminPermission,
   addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { uploadId } = req.params;
