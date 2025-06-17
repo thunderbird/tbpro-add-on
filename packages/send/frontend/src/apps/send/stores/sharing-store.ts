@@ -54,7 +54,7 @@ const useSharingStore = defineStore('sharingManager', () => {
 
     // refetch access links
     // TODO: consider just updating sharer.requestAccessLink so that it returns the whole link and then pushing it to _links
-    await fetchAccessLinks(folderId);
+    await fetchFolderAccessLinks(folderId);
     return url;
   }
 
@@ -105,8 +105,12 @@ const useSharingStore = defineStore('sharingManager', () => {
     return await api.call<{ id: string }>(`sharing/exists/${linkId}`);
   }
 
-  async function fetchAccessLinks(folderId: string): Promise<void> {
+  async function fetchFolderAccessLinks(folderId: string): Promise<void> {
     _links.value = await api.call(`containers/${folderId}/links`);
+  }
+
+  async function fetchFileAccessLinks(uploadId: string): Promise<void> {
+    _links.value = await api.call(`sharing/${uploadId}/links`);
   }
 
   async function shareItems(
@@ -203,7 +207,8 @@ const useSharingStore = defineStore('sharingManager', () => {
     createAccessLink,
     isAccessLinkValid,
     acceptAccessLink,
-    fetchAccessLinks,
+    fetchFolderAccessLinks,
+    fetchFileAccessLinks,
     shareItems,
     getSharedFolder,
     getInvitations,
