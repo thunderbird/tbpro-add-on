@@ -18,7 +18,7 @@ const clipboard = useClipboard();
 const tooltipText = ref('Click to copy');
 
 watchEffect(async () => {
-  await sharingStore.fetchAccessLinks(props.folderId);
+  await sharingStore.fetchFolderAccessLinks(props.folderId);
 });
 
 function copyToClipboard(id: string) {
