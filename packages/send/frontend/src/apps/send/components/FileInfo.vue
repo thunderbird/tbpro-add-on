@@ -5,11 +5,13 @@ import { trpc } from '@/lib/trpc';
 import { useMutation } from '@tanstack/vue-query';
 import { ref } from 'vue';
 
-import Btn from '@/apps/send/elements/BtnComponent.vue';
 import FileNameForm from '@/apps/send/elements/FileNameForm.vue';
+import FileAccessLinksList from '@/apps/send/components/FileAccessLinksList.vue';
+import Btn from '@/apps/send/elements/BtnComponent.vue';
 import { formatBytes } from '@/lib/utils';
 import { IconDownload, IconEye, IconEyeOff, IconLink } from '@tabler/icons-vue';
 import { useClipboard, useDebounceFn } from '@vueuse/core';
+import { logger } from 'tbpro-shared';
 
 const folderStore = useFolderStore();
 const sharingStore = useSharingStore();
@@ -35,6 +37,10 @@ const { mutate } = useMutation({
   },
 });
 
+const refreshAccessLinks = useDebounceFn(async () => {
+  await sharingStore.fetchFileAccessLinks(folderStore.selectedFile.uploadId);
+}, 1000);
+
 function copyToClipboard(url: string) {
   clipboard.copy(url);
   tooltipText.value = 'Copied!';
@@ -49,10 +55,11 @@ async function shareIndividualFile() {
     password.value,
   );
 
-  // if (!url) {
-  //   emit('createAccessLinkError');
-  //   return;
-  // }
+
+  if (!url) {
+    logger.error("Could not create access link");
+    return;
+  }
 
   accessUrl.value = url;
 
@@ -66,7 +73,7 @@ async function shareIndividualFile() {
   // Focus the input
   accessUrlInput.value?.focus();
 
-
+  await refreshAccessLinks();
 }
 
 /*
@@ -131,6 +138,12 @@ Note about shareOnly containers.
     Create Share Link
     <IconLink class="icon" />
   </Btn>
+
+
+    <FileAccessLinksList
+      v-if="folderStore?.selectedFile?.id"
+      :upload-id="folderStore.selectedFile.uploadId"
+    />
 
     <footer class="mt-auto flex flex-col gap-3">
       <label

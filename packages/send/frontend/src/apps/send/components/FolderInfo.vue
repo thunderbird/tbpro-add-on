@@ -2,7 +2,7 @@
 import useFolderStore from '@/apps/send/stores/folder-store';
 import { ref } from 'vue';
 
-import AccessLinksList from '@/apps/send/components/AccessLinksList.vue';
+import FolderAccessLinksList from '@/apps/send/components/FolderAccessLinksList.vue';
 import CreateAccessLink from '@/apps/send/components/CreateAccessLink.vue';
 import FolderNameForm from '@/apps/send/elements/FolderNameForm.vue';
 import { formatBytes } from '@/lib/utils';
@@ -34,6 +34,7 @@ const showForm = ref(false);
 </script>
 
 <template>
+
   <div v-if="folderStore.selectedFolder" class="flex flex-col gap-6 h-full">
     <!-- info -->
     <header class="flex flex-col items-center gap-3 pt-6">
@@ -53,7 +54,7 @@ const showForm = ref(false);
       v-if="folderStore?.selectedFolder?.id"
       :folder-id="folderStore.selectedFolder.id"
     />
-    <AccessLinksList
+    <FolderAccessLinksList
       v-if="folderStore?.selectedFolder?.id"
       :folder-id="folderStore.selectedFolder.id"
     />
