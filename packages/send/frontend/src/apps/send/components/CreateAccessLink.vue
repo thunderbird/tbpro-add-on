@@ -36,7 +36,7 @@ const { mutate } = useMutation({
 });
 
 const refreshAccessLinks = useDebounceFn(async () => {
-  await sharingStore.fetchAccessLinks(props.folderId);
+  await sharingStore.fetchFolderAccessLinks(props.folderId);
 }, 1000);
 
 function copyToClipboard(url: string) {
