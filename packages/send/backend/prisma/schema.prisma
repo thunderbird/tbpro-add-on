@@ -207,7 +207,7 @@ model Item {
   upload        Upload        @relation(fields: [uploadId], references: [id] )
   type          ItemType
   multipart     Boolean      @default(false) // Whether the file is split into multiple uploads
-  totalSize     Int? // Total size of all multi-part items
+  totalSize     BigInt? // Total size of all multi-part items
   createdAt     DateTime?
   updatedAt     DateTime? 
 
@@ -216,7 +216,7 @@ model Item {
 
 model Upload {
   id        String        @id @default(uuid()) @db.Uuid
-  size      Int
+  size      BigInt        // Size of the upload in bytes
   ownerId   String        @db.Uuid
   owner     User          @relation(fields: [ownerId], references: [id])
   items     Item[]        // A single Upload may back multiple Items

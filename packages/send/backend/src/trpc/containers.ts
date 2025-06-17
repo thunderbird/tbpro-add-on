@@ -65,7 +65,7 @@ export const containersRouter = router({
               .map((item) => item.size)
           )
           // Make a sum of all the sizes that have expired
-          .reduce((sizeA, sizeB) => sizeA + sizeB, 0);
+          .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
 
         const active = folders
           .flatMap((folder) =>
@@ -78,7 +78,7 @@ export const containersRouter = router({
               .map((item) => item.size)
           )
           // Make a sum of all the sizes that haven't expired
-          .reduce((sizeA, sizeB) => sizeA + sizeB, 0);
+          .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
 
         response.active = active;
         response.expired = expired;
@@ -86,7 +86,7 @@ export const containersRouter = router({
       const active = folders
         // Make a sum of all the sizes that haven't expired
         .flatMap((folder) => folder.items.map((item) => item.upload.size))
-        .reduce((sizeA, sizeB) => sizeA + sizeB, 0);
+        .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
 
       response.active = active;
       response.expired = 0;

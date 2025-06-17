@@ -103,7 +103,7 @@ describe('addExpiryToContainer', () => {
       ownerId: 'user-123',
       reported: false,
       reportedAt: null,
-      size: 100,
+      size: 100n,
       type: 'image/jpeg',
       part: null,
     };
@@ -120,7 +120,7 @@ describe('addExpiryToContainer', () => {
       ownerId: 'user-123',
       reported: false,
       reportedAt: null,
-      size: 100,
+      size: 100n,
       type: 'image/jpeg',
       part: null,
     };
@@ -137,7 +137,7 @@ describe('addExpiryToContainer', () => {
       ownerId: 'user-123',
       reported: false,
       reportedAt: null,
-      size: 100,
+      size: 100n,
       type: 'image/jpeg',
       part: null,
     };
@@ -176,7 +176,7 @@ describe('addExpiryToContainer', () => {
       ownerId: 'user-123',
       reported: false,
       reportedAt: null,
-      size: 100,
+      size: 100n,
       type: 'image/jpeg',
       part: null,
     };

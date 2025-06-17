@@ -499,6 +499,7 @@ const useFolderStore = defineStore('folderManager', () => {
       if (!rootFolderValue) return null;
       return {
         ...rootFolderValue,
+        // We need to organize files to make sure that multi part files are handled correctly
         items: organizeFiles(rootFolderValue?.items || []),
       };
     }),
@@ -508,13 +509,18 @@ const useFolderStore = defineStore('folderManager', () => {
       return defaultFolderValue
         ? {
             ...defaultFolderValue,
+            // We need to organize files to make sure that multi part files are handled correctly
             items: organizeFiles(defaultFolderValue.items || []),
           }
         : null;
     }),
     visibleFolders: computed(() => visibleFolders.value),
     selectedFolder: computed(() => selectedFolder.value),
-    selectedFile: computed(() => selectedFile.value),
+    selectedFile: computed(() => {
+      if (!selectedFileId.value || !rootFolder.value?.items) return null;
+      // We need to organize files to make sure that multi part files are handled correctly
+      return organizeFiles([selectedFile.value])[0] || null;
+    }),
     print,
     init,
     fetchSubtree,
