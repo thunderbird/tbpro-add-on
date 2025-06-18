@@ -155,59 +155,103 @@ export default class Uploader {
 
       const partTracker = multipartTracker.getPartTracker(index);
 
-      // Blob is encrypted as it is uploaded through a websocket connection
-      const id = await sendBlob(blob, key, api, partTracker, isBucketStorage);
-
-      if (!id) {
-        return null;
-      }
-
-      if (!isBucketStorage) {
-        // Poll the api to check if the file is in storage
-        await retryUntilSuccessOrTimeout(async () => {
-          const { size } = await this.api.call<{ size: null | number }>(
-            `uploads/${id}/stat`
-          );
-          // Return a boolean, telling us if the size is null or not
-          return !!size;
-        });
-      }
+      // Retry the entire upload block if either the upload POST or itemObj call fail
+      let uploadResult: {
+        upload: UploadResponse;
+        itemObj: ItemResponse;
+      } | null = null;
+      let retryCount = 0;
+      const maxRetries = 3;
 
       // We set the part number starting from 1 to avoid problems with part 0 evaluating to false
       const part = shouldSplit ? index + 1 : undefined;
 
-      // Create a Content entry in the database
-      const result = await this.api.call<{
-        upload: UploadResponse;
-      }>(
-        'uploads',
-        {
-          id: id,
-          size: blob.size,
-          ownerId: this.user.id,
-          type: blob.type,
-          containerId,
-          part, // if the file was split into multiple zips, we add the part
-        },
-        'POST'
-      );
-      if (!result) {
+      while (retryCount < maxRetries && !uploadResult) {
+        try {
+          // Blob is encrypted as it is uploaded through a websocket connection
+          const id = await sendBlob(
+            blob,
+            key,
+            api,
+            partTracker,
+            isBucketStorage
+          );
+
+          if (!id) {
+            throw new Error('Failed to send blob');
+          }
+
+          if (!isBucketStorage) {
+            // Poll the api to check if the file is in storage
+            await retryUntilSuccessOrTimeout(async () => {
+              const { size } = await this.api.call<{ size: null | number }>(
+                `uploads/${id}/stat`
+              );
+              // Return a boolean, telling us if the size is null or not
+              return !!size;
+            });
+          }
+
+          // Create a Content entry in the database
+          const result = await this.api.call<{
+            upload: UploadResponse;
+          }>(
+            'uploads',
+            {
+              id: id,
+              size: blob.size,
+              ownerId: this.user.id,
+              type: blob.type,
+              containerId,
+              part, // if the file was split into multiple zips, we add the part
+            },
+            'POST'
+          );
+          if (!result) {
+            throw new Error('Failed to create upload entry');
+          }
+          const upload = result.upload;
+
+          // For the Content entry, create the corresponding Item in the Container
+          const itemObj = await this.api.call<ItemResponse>(
+            `containers/${containerId}/item`,
+            {
+              uploadId: upload.id,
+              name: filename,
+              type: 'MESSAGE',
+              wrappedKey: wrappedKeyStr,
+              multipart: shouldSplit ? true : false,
+              totalSize: fileBlob.size,
+            },
+            'POST'
+          );
+
+          if (!itemObj) {
+            throw new Error('Failed to create item object');
+          }
+
+          uploadResult = { upload, itemObj };
+        } catch (error) {
+          retryCount++;
+          console.error(`Upload attempt ${retryCount} failed:`, error);
+
+          if (retryCount >= maxRetries) {
+            console.error(`Upload failed after ${maxRetries} attempts`);
+            return null;
+          }
+
+          // Wait before retrying (exponential backoff)
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, retryCount) * 1000)
+          );
+        }
+      }
+
+      if (!uploadResult) {
         return null;
       }
-      const upload = result.upload;
-      // For the Content entry, create the corresponding Item in the Container
-      const itemObj = await this.api.call<ItemResponse>(
-        `containers/${containerId}/item`,
-        {
-          uploadId: upload.id,
-          name: filename,
-          type: 'MESSAGE',
-          wrappedKey: wrappedKeyStr,
-          multipart: shouldSplit ? true : false,
-          totalSize: fileBlob.size,
-        },
-        'POST'
-      );
+
+      const { itemObj } = uploadResult;
 
       const item: Item = {
         ...itemObj,
