@@ -375,7 +375,7 @@ describe('registerTokens', () => {
     ).toBe('7d');
     expect(
       convertMillisecondsToMinutes(JWT_EXPIRY_IN_MILLISECONDS).stringified
-    ).toBe('15m');
+    ).toBe('60m');
 
     expect(mockRes.cookie).toHaveBeenCalledTimes(2);
     expect(mockRes.cookie).toHaveBeenNthCalledWith(

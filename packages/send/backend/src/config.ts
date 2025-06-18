@@ -28,7 +28,7 @@ export const IS_USING_BUCKET_STORAGE = process.env.STORAGE_BACKEND !== 'fs';
 
 // Time constants
 const ONE_MINUTE = 60 * 1000;
-const FIFTEEN_MINUTES = ONE_MINUTE * 15;
+const ONE_HOUR = ONE_MINUTE * 60;
 const ONE_DAY = 1;
 const ONE_WEEK = ONE_DAY * 7;
 
@@ -40,7 +40,7 @@ const ONE_TB_IN_BYTES = 1 * 1_000 * 1_000 * 1_000 * 1_000; // 1 TB (roughly)
 export const TOTAL_STORAGE_LIMIT = ONE_TB_IN_BYTES;
 
 // JWT expiry
-export const JWT_EXPIRY_IN_MILLISECONDS = FIFTEEN_MINUTES;
+export const JWT_EXPIRY_IN_MILLISECONDS = ONE_HOUR;
 export const JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS = ONE_WEEK;
 
 // Determines how many times a file can be attempted to be downloaded with the wrong password before it gets locked

@@ -15,6 +15,7 @@ import {
   Item,
   ItemResponse,
 } from '@/apps/send/stores/folder-store.types';
+import { ProgressTracker } from '@/apps/send/stores/status-store';
 import { ApiConnection } from '@/lib/api';
 import { NamedBlob } from '@/lib/filesync';
 import { backupKeys } from '@/lib/keychain';
@@ -310,7 +311,8 @@ const useFolderStore = defineStore('folderManager', () => {
     wrappedKeyStr: string,
     name: string,
     api: ApiConnection,
-    keychain: Keychain
+    keychain: Keychain,
+    progressTracker: ProgressTracker
   ) {
     const isBucketStorage = api.isBucketStorage;
     let combinedType = '';
@@ -358,16 +360,33 @@ const useFolderStore = defineStore('folderManager', () => {
     // Sort pieces by part number
     const sortedMetadata = validMetadata.sort((a, b) => a.part - b.part);
 
+    // Calculate total size for progress tracking
+    const totalSize = sortedMetadata.reduce((sum, meta) => sum + meta.size, 0);
+
+    // Initialize progress tracking for multipart downloads
+    progressTracker.initialize();
+    progressTracker.setUploadSize(totalSize);
+
+    // Create a multipart progress tracker that manages overall progress across all parts
+    const multipartTracker = createMultipartDownloadProgressTracker(
+      progressTracker,
+      sortedMetadata,
+      sortedMetadata.length > 1
+    );
+
     // Create a streaming download function for each piece
-    const createPieceStream = async (metadata: {
-      id: string;
-      size: number;
-    }) => {
+    const createPieceStream = async (
+      metadata: {
+        id: string;
+        size: number;
+      },
+      partTracker: ProgressTracker
+    ) => {
       let downloadedBlob: Blob;
       if (!isBucketStorage) {
         downloadedBlob = await _download({
           id: metadata.id,
-          progressTracker: progress,
+          progressTracker: partTracker,
         });
         if (!downloadedBlob) {
           throw new Error('DOWNLOAD_FAILED');
@@ -383,7 +402,7 @@ const useFolderStore = defineStore('folderManager', () => {
 
         downloadedBlob = await _download({
           url: bucketResponse.url,
-          progressTracker: progress,
+          progressTracker: partTracker,
         });
       }
 
@@ -444,8 +463,11 @@ const useFolderStore = defineStore('folderManager', () => {
     const combinedStream = new ReadableStream<Uint8Array>({
       async start(controller) {
         try {
-          for (const metadata of sortedMetadata) {
-            const pieceStream = await createPieceStream(metadata);
+          for (let index = 0; index < sortedMetadata.length; index++) {
+            const metadata = sortedMetadata[index];
+            const partTracker = multipartTracker.getPartTracker(index);
+
+            const pieceStream = await createPieceStream(metadata, partTracker);
             const reader = pieceStream.getReader();
 
             while (true) {
@@ -453,6 +475,9 @@ const useFolderStore = defineStore('folderManager', () => {
               if (done) break;
               controller.enqueue(value);
             }
+
+            // Mark this part as complete for progress tracking
+            multipartTracker.markPartComplete(index);
           }
           controller.close();
         } catch (error) {
@@ -491,6 +516,71 @@ const useFolderStore = defineStore('folderManager', () => {
     console.log(`visibleFolders: ${visibleFolders.value}`);
     console.log(`selectedFolder: ${selectedFolder.value}`);
     console.log(`selectedFile: ${selectedFile.value}`);
+  }
+
+  /**
+   * Creates a multipart download progress tracker that manages overall progress across all parts
+   */
+  function createMultipartDownloadProgressTracker(
+    mainTracker: ProgressTracker,
+    metadata: { id: string; part: number; size: number; type: string }[],
+    isMultipart: boolean
+  ) {
+    const partSizes = metadata.map((meta) => meta.size);
+    const totalSize = partSizes.reduce((sum, size) => sum + size, 0);
+    let completedParts = 0;
+
+    return {
+      getPartTracker: (partIndex: number) => {
+        const partSize = partSizes[partIndex];
+
+        return {
+          total: mainTracker.total,
+          progressed: mainTracker.progressed,
+          percentage: mainTracker.percentage,
+          error: mainTracker.error,
+          text: mainTracker.text,
+          initialize: () => {
+            // Don't reinitialize the main tracker for each part
+          },
+          setUploadSize: () => {
+            // Already set on the main tracker
+          },
+          setText: (message: string) => {
+            // Show overall progress message without part numbers for downloads
+            if (isMultipart) {
+              if (message.includes('Downloading')) {
+                mainTracker.setText('Downloading file');
+              } else if (message.includes('Decrypting')) {
+                mainTracker.setText('Decrypting file');
+              } else {
+                mainTracker.setText(message);
+              }
+            } else {
+              mainTracker.setText(message);
+            }
+          },
+          setProgress: (partProgress: number) => {
+            // Calculate overall progress based on total download size:
+            // (completed_parts / total_parts) * total_size + (current_part_progress / current_part_size) * (total_size / total_parts)
+            const completedProgress =
+              (completedParts / metadata.length) * totalSize;
+            const currentPartRatio = Math.min(partProgress / partSize, 1); // Ensure we don't exceed 100%
+            const currentPartProgress =
+              currentPartRatio * (totalSize / metadata.length);
+            const overallProgress = completedProgress + currentPartProgress;
+
+            mainTracker.setProgress(Math.min(overallProgress, totalSize));
+          },
+        };
+      },
+      markPartComplete: (partIndex: number) => {
+        completedParts = partIndex + 1;
+        // Set progress to reflect completed parts based on total size
+        const progress = (completedParts / metadata.length) * totalSize;
+        mainTracker.setProgress(progress);
+      },
+    };
   }
 
   return {

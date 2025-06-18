@@ -1,3 +1,4 @@
+import { ProgressTracker } from '@/apps/send/stores/status-store';
 import { Item } from '@/types';
 import { ApiConnection } from './api';
 import { Keychain } from './keychain';
@@ -52,10 +53,12 @@ export async function handleMultipartDownload(
     wrappedKey: string,
     name: string,
     api: ApiConnection,
-    keychain: Keychain
+    keychain: Keychain,
+    progressTracker: ProgressTracker
   ) => Promise<void>,
   api: ApiConnection,
-  keychain: Keychain
+  keychain: Keychain,
+  progressTracker: ProgressTracker
 ) {
   await downloadCallback(
     multipartItems.map(({ id, part }) => ({ id, part })),
@@ -63,7 +66,8 @@ export async function handleMultipartDownload(
     item.wrappedKey,
     item.name,
     api,
-    keychain
+    keychain,
+    progressTracker
   );
   return true;
 }

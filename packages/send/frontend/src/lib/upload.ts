@@ -24,6 +24,76 @@ export default class Uploader {
     this.api = api;
   }
 
+  /**
+   * Creates a multipart progress tracker that manages overall progress across all parts
+   */
+  private createMultipartProgressTracker(
+    mainTracker: ProgressTracker,
+    blobs: NamedBlob[],
+    isMultipart: boolean,
+    originalFileSize: number
+  ) {
+    const blobSizes = blobs.map((blob) => blob.size);
+    let completedParts = 0;
+
+    return {
+      getPartTracker: (partIndex: number) => {
+        const partSize = blobSizes[partIndex];
+
+        return {
+          total: mainTracker.total,
+          progressed: mainTracker.progressed,
+          percentage: mainTracker.percentage,
+          error: mainTracker.error,
+          text: mainTracker.text,
+          initialize: () => {
+            // Don't reinitialize the main tracker for each part
+          },
+          setUploadSize: () => {
+            // Already set on the main tracker
+          },
+          setText: (message: string) => {
+            if (isMultipart && blobs.length > 1) {
+              // For multipart uploads, add part numbers
+              const partNumber = partIndex + 1;
+              const totalParts = blobs.length;
+              mainTracker.setText(
+                `${message} (part ${partNumber}/${totalParts})`
+              );
+            } else {
+              mainTracker.setText(message);
+            }
+          },
+          setProgress: (partProgress: number) => {
+            if (!isMultipart || blobs.length === 1) {
+              // For single file uploads, use the part progress directly
+              mainTracker.setProgress(Math.min(partProgress, originalFileSize));
+            } else {
+              // Calculate overall progress based on original file size:
+              // (completed_parts / total_parts) * original_size + (current_part_progress / current_part_size) * (original_size / total_parts)
+              const completedProgress =
+                (completedParts / blobs.length) * originalFileSize;
+              const currentPartRatio = Math.min(partProgress / partSize, 1); // Ensure we don't exceed 100%
+              const currentPartProgress =
+                currentPartRatio * (originalFileSize / blobs.length);
+              const overallProgress = completedProgress + currentPartProgress;
+
+              mainTracker.setProgress(
+                Math.min(overallProgress, originalFileSize)
+              );
+            }
+          },
+        };
+      },
+      markPartComplete: (partIndex: number) => {
+        completedParts = partIndex + 1;
+        // Set progress to reflect completed parts based on original file size
+        const progress = (completedParts / blobs.length) * originalFileSize;
+        mainTracker.setProgress(progress);
+      },
+    };
+  }
+
   async doUpload(
     fileBlob: NamedBlob,
     containerId: string,
@@ -58,83 +128,107 @@ export default class Uploader {
     const shouldSplit = fileBlob.size > SPLIT_SIZE;
     if (shouldSplit) {
       const zips = await splitIntoMultipleZips(fileBlob, SPLIT_SIZE);
-      blobs = zips;
+      blobs = zips || []; // Ensure blobs is never undefined
     } else {
       blobs = [fileBlob];
     }
 
-    const uploadResponses = await Promise.all(
-      blobs.map(async (blob: NamedBlob, index) => {
-        const filename = blob.name;
-        const isBucketStorage = api.isBucketStorage;
-        // Blob is encrypted as it is uploaded through a websocket connection
-        const id = await sendBlob(
-          blob,
-          key,
-          api,
-          progressTracker,
-          isBucketStorage
-        );
-        if (!id) {
-          return null;
-        }
+    // Ensure we have valid blobs before proceeding
+    if (!blobs || blobs.length === 0) {
+      return null;
+    }
 
-        if (!isBucketStorage) {
-          // Poll the api to check if the file is in storage
-          await retryUntilSuccessOrTimeout(async () => {
-            const { size } = await this.api.call<{ size: null | number }>(
-              `uploads/${id}/stat`
-            );
-            // Return a boolean, telling us if the size is null or not
-            return !!size;
-          });
-        }
+    // Initialize progress tracking for multipart uploads
+    progressTracker.initialize();
+    progressTracker.setUploadSize(fileBlob.size); // Use original file size for progress tracking
 
-        // We set the part number starting from 1 to avoid problems with part 0 evaluating to false
-        const part = shouldSplit ? index + 1 : undefined;
-
-        // Create a Content entry in the database
-        const result = await this.api.call<{
-          upload: UploadResponse;
-        }>(
-          'uploads',
-          {
-            id: id,
-            size: blob.size,
-            ownerId: this.user.id,
-            type: blob.type,
-            containerId,
-            part, // if the file was split into multiple zips, we add the part
-          },
-          'POST'
-        );
-        if (!result) {
-          return null;
-        }
-        const upload = result.upload;
-        // For the Content entry, create the corresponding Item in the Container
-        const itemObj = await this.api.call<ItemResponse>(
-          `containers/${containerId}/item`,
-          {
-            uploadId: upload.id,
-            name: filename,
-            type: 'MESSAGE',
-            wrappedKey: wrappedKeyStr,
-            multipart: shouldSplit ? true : false,
-            totalSize: fileBlob.size,
-          },
-          'POST'
-        );
-        return {
-          ...itemObj,
-          upload: {
-            size: blob.size,
-            type: blob.type,
-            part,
-          },
-        };
-      })
+    // Create a multipart progress tracker that manages overall progress
+    const multipartTracker = this.createMultipartProgressTracker(
+      progressTracker,
+      blobs,
+      shouldSplit,
+      fileBlob.size // Pass original file size
     );
+
+    const uploadResponses: Item[] = [];
+
+    // Process uploads sequentially to maintain proper progress tracking
+    for (let index = 0; index < blobs.length; index++) {
+      const blob = blobs[index];
+      const filename = blob.name;
+      const isBucketStorage = api.isBucketStorage;
+
+      const partTracker = multipartTracker.getPartTracker(index);
+
+      // Blob is encrypted as it is uploaded through a websocket connection
+      const id = await sendBlob(blob, key, api, partTracker, isBucketStorage);
+
+      if (!id) {
+        return null;
+      }
+
+      if (!isBucketStorage) {
+        // Poll the api to check if the file is in storage
+        await retryUntilSuccessOrTimeout(async () => {
+          const { size } = await this.api.call<{ size: null | number }>(
+            `uploads/${id}/stat`
+          );
+          // Return a boolean, telling us if the size is null or not
+          return !!size;
+        });
+      }
+
+      // We set the part number starting from 1 to avoid problems with part 0 evaluating to false
+      const part = shouldSplit ? index + 1 : undefined;
+
+      // Create a Content entry in the database
+      const result = await this.api.call<{
+        upload: UploadResponse;
+      }>(
+        'uploads',
+        {
+          id: id,
+          size: blob.size,
+          ownerId: this.user.id,
+          type: blob.type,
+          containerId,
+          part, // if the file was split into multiple zips, we add the part
+        },
+        'POST'
+      );
+      if (!result) {
+        return null;
+      }
+      const upload = result.upload;
+      // For the Content entry, create the corresponding Item in the Container
+      const itemObj = await this.api.call<ItemResponse>(
+        `containers/${containerId}/item`,
+        {
+          uploadId: upload.id,
+          name: filename,
+          type: 'MESSAGE',
+          wrappedKey: wrappedKeyStr,
+          multipart: shouldSplit ? true : false,
+          totalSize: fileBlob.size,
+        },
+        'POST'
+      );
+
+      const item: Item = {
+        ...itemObj,
+        upload: {
+          size: blob.size,
+          type: blob.type,
+          part,
+        },
+      };
+
+      uploadResponses.push(item);
+
+      // Mark this part as complete for progress tracking
+      multipartTracker.markPartComplete(index);
+    }
+
     return uploadResponses;
   }
 }
