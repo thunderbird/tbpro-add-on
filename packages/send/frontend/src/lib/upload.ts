@@ -54,12 +54,7 @@ export default class Uploader {
           },
           setText: (message: string) => {
             if (isMultipart && blobs.length > 1) {
-              // For multipart uploads, add part numbers
-              const partNumber = partIndex + 1;
-              const totalParts = blobs.length;
-              mainTracker.setText(
-                `${message} (part ${partNumber}/${totalParts})`
-              );
+              mainTracker.setText(message);
             } else {
               mainTracker.setText(message);
             }

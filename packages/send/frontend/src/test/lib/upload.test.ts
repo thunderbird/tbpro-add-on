@@ -163,7 +163,7 @@ describe('Uploader', () => {
       partTracker1.setText('Encrypting file');
 
       expect(mockProgressTracker.setText).toHaveBeenCalledWith(
-        'Encrypting file (part 1/2)'
+        'Encrypting file'
       );
     });
 
