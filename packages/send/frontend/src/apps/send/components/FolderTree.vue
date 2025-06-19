@@ -2,6 +2,7 @@
 import DownloadModal from '@/apps/common/modals/DownloadModal.vue';
 import ReportContent from '@/apps/send/components/ReportContent.vue';
 import useFolderStore from '@/apps/send/stores/folder-store';
+import { useStatusStore } from '@/apps/send/stores/status-store';
 import {
   computeMultipartFile,
   handleMultipartDownload,
@@ -13,6 +14,7 @@ import { useModal, useModalSlot } from 'vue-final-modal';
 import { FolderResponse, Item } from '../stores/folder-store.types';
 import DownloadConfirmation from './DownloadConfirmation.vue';
 const folderStore = useFolderStore();
+const statusStore = useStatusStore();
 const { api } = useApiStore();
 const { keychain } = useKeychainStore();
 
@@ -45,7 +47,8 @@ const onDownloadConfirm = () => {
       item,
       folderStore.downloadMultipart,
       api,
-      keychain
+      keychain,
+      statusStore.progress
     );
   }
 

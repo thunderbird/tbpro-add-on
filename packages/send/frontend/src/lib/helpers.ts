@@ -156,6 +156,8 @@ export async function encrypt(
     while (!state.done) {
       const buf = state.value;
       chunks.push(buf);
+
+      // For multipart uploads, the progress tracker will handle the proper calculation
       progressTracker.setProgress(size);
 
       size += buf.length;
@@ -272,6 +274,7 @@ export const uploadWithTracker = ({
   progressTracker,
 }: UploadOptions) => {
   const { setProgress } = progressTracker;
+
   // Track upload progress using XMLHttpRequest
   return new Promise<string>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -280,6 +283,7 @@ export const uploadWithTracker = ({
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
+        // For multipart uploads, the progress tracker will handle the proper calculation
         const uploadProgress = event.loaded;
         setProgress(uploadProgress);
       }

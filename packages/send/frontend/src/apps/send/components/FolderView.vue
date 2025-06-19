@@ -4,6 +4,7 @@ import { DayJsKey, Item } from '@/types';
 import { computed, inject, onMounted, ref, watch } from 'vue';
 
 import useFolderStore from '@/apps/send/stores/folder-store';
+import { useStatusStore } from '@/apps/send/stores/status-store';
 import '@thunderbirdops/services-ui/style.css';
 
 import DownloadModal from '@/apps/common/modals/DownloadModal.vue';
@@ -24,6 +25,7 @@ import { ItemResponse } from '../stores/folder-store.types';
 import DownloadConfirmation from './DownloadConfirmation.vue';
 
 const folderStore = useFolderStore();
+const statusStore = useStatusStore();
 const { api } = useApiStore();
 const { keychain } = useKeychainStore();
 
@@ -56,7 +58,8 @@ const onDownloadConfirm = () => {
       selectedFile.value,
       folderStore.downloadMultipart,
       api,
-      keychain
+      keychain,
+      statusStore.progress
     );
   }
 

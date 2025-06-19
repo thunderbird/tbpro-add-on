@@ -154,7 +154,8 @@ export async function sendBlob(
     progressTracker.setText('Encrypting file');
     const encrypted = await encrypt(stream, aesKey, progressTracker);
 
-    progressTracker.setProgress(0);
+    // Don't reset progress to 0 - maintain the encryption progress
+    // and continue from where we left off for upload
     progressTracker.setText('Uploading file');
 
     // Create a ReadableStream from the Uint8Array
