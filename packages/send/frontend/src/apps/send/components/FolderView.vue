@@ -114,14 +114,14 @@ watch(filesInFolder, (newValues, OldValues) => {
   }
 });
 
-function handleClick(id: string) {
-  if (selectedFolder.value === id) {
-    router.push({ name: 'folder', params: { id } });
+function handleFolderClick(uuid: string) {
+  if (selectedFolder.value === uuid) {
+    router.push({ name: 'folder', params: { id: uuid } });
     selectedFolder.value = null;
     return;
   }
-  folderStore.setSelectedFolder(id);
-  selectedFolder.value = id;
+  folderStore.setSelectedFolder(uuid);
+  selectedFolder.value = uuid;
 }
 </script>
 <script lang="ts">
@@ -153,7 +153,7 @@ export default { props: { id: { type: String, default: 'null' } } };
           :key="folder.id"
           class="group cursor-pointer"
           data-testid="folder-row"
-          @click="handleClick(folder.id)"
+          @click="handleFolderClick(folder.id)"
           @dblclick="router.push({ name: 'folder', params: { id: folder.id } })"
         >
           <FolderTableRowCell
@@ -195,7 +195,7 @@ export default { props: { id: { type: String, default: 'null' } } };
           v-if="filesInFolder"
           :key="item.id"
           class="group cursor-pointer"
-          @click="folderStore.setSelectedFile(item.id)"
+          @click="handleFileClick(item.id)"
         >
           <FolderTableRowCell>
             <div class="flex justify-end">

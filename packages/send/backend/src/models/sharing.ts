@@ -590,6 +590,32 @@ export async function getContainersSharedWithUser(
   return invitations.filter((i) => i.share.container.type === type);
 }
 
+export async function getAccessLinksByUploadId(uploadId: string) {
+  const links = await prisma.accessLink.findMany({
+    where: {
+      share: {
+        container: {
+          shareOnly: true,
+          items: {
+            // This is a cheat - instead of searching for containers that only
+            // have a single Item with a matching uploadId,
+            // we're looking for the containers whose items *all* match uploadId.
+            every: {
+              uploadId,
+            },
+          },
+          NOT: {
+            items: {
+              none: {},
+            },
+          },
+        },
+      },
+    },
+  });
+  return links;
+}
+
 export async function burnFolder(
   containerId: string,
   shouldDeleteUpload?: boolean
