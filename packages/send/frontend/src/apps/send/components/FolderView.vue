@@ -117,6 +117,10 @@ watch(filesInFolder, (newValues, OldValues) => {
   }
 });
 
+function handleFileClick(id: number) {
+  folderStore.setSelectedFile(id);
+}
+
 function handleFolderClick(uuid: string) {
   if (selectedFolder.value === uuid) {
     router.push({ name: 'folder', params: { id: uuid } });
