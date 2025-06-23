@@ -164,6 +164,9 @@ export async function delete_file({ page }: PlaywrightProps) {
   );
   await deleteFileButton.click({ force: true });
 
+  // Click the confirmation button in the modal
+  await page.getByText("Yes, Delete").click();
+
   // Wait for DELETE request to complete
   await responsePromise;
 

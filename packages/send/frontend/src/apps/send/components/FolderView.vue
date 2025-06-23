@@ -6,6 +6,7 @@ import { inject, onMounted, ref, watch } from 'vue';
 import useFolderStore from '@/apps/send/stores/folder-store';
 import '@thunderbirdops/services-ui/style.css';
 
+import DeleteModal from '@/apps/common/modals/DeleteModal.vue';
 import DownloadModal from '@/apps/common/modals/DownloadModal.vue';
 import BreadCrumb from '@/apps/send/components/BreadCrumb.vue';
 import Btn from '@/apps/send/elements/BtnComponent.vue';
@@ -16,6 +17,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useModal, useModalSlot } from 'vue-final-modal';
 import { useRoute, useRouter } from 'vue-router';
 import { ItemResponse } from '../stores/folder-store.types';
+import DeleteConfirmation from './DeleteConfirmation.vue';
 import DownloadConfirmation from './DownloadConfirmation.vue';
 
 const folderStore = useFolderStore();
@@ -26,6 +28,11 @@ const selectedFolder = ref<string | null>(null);
 const route = useRoute();
 const router = useRouter();
 const itemRef = ref<ItemResponse>();
+const deleteItemRef = ref<{
+  id: string | number;
+  name: string;
+  type: 'folder' | 'file';
+}>();
 
 const onDownloadConfirm = () =>
   folderStore.downloadContent(
@@ -34,6 +41,17 @@ const onDownloadConfirm = () =>
     itemRef.value.wrappedKey,
     itemRef.value.name
   );
+
+const onDeleteConfirm = async () => {
+  if (deleteItemRef.value?.type === 'folder') {
+    return await folderStore.deleteFolder(deleteItemRef.value.id as string);
+  } else {
+    return await folderStore.deleteItem(
+      deleteItemRef.value.id as number,
+      folderStore.rootFolder.id
+    );
+  }
+};
 
 const { open, close: closefn } = useModal({
   component: DownloadModal,
@@ -51,9 +69,40 @@ const { open, close: closefn } = useModal({
   },
 });
 
+const { open: openDeleteModal, close: closeDeleteModal } = useModal({
+  component: DeleteModal,
+  attrs: {
+    title: 'Delete Item?',
+  },
+  slots: {
+    default: useModalSlot({
+      component: DeleteConfirmation,
+      attrs: {
+        closefn: () => closeDeleteModal(),
+        confirm: onDeleteConfirm,
+        get itemName() {
+          return deleteItemRef.value?.name || '';
+        },
+        get itemType() {
+          return deleteItemRef.value?.type || 'file';
+        },
+      },
+    }),
+  },
+});
+
 const openModal = (item: ItemResponse) => {
   itemRef.value = item;
   open();
+};
+
+const openDeleteConfirmation = (
+  id: string | number,
+  name: string,
+  type: 'folder' | 'file'
+) => {
+  deleteItemRef.value = { id, name, type };
+  openDeleteModal();
 };
 
 const gotoRoute = useDebounceFn(() => {
@@ -146,59 +195,10 @@ export default { props: { id: { type: String, default: 'null' } } };
                   '!opacity-100': folder.id === folderStore.selectedFolder?.id,
                 }"
               >
-                <Btn danger @click="folderStore.deleteFolder(folder.id)">
-                  <IconTrash class="w-4 h-4" />
-                </Btn>
-              </div>
-              <Btn class="ml-auto">
-                <IconDotsVertical class="w-4 h-4" />
-              </Btn>
-            </div>
-          </FolderTableRowCell>
-        </tr>
-        <tr
-          v-for="item in folderStore.rootFolder.items"
-          v-if="folderStore.rootFolder"
-          :key="item.id"
-          class="group cursor-pointer"
-          @click="handleFileClick(item.id)"
-        >
-          <FolderTableRowCell>
-            <div class="flex justify-end">
-              <img src="@/apps/send/assets/file.svg" class="w-8 h-8" />
-            </div>
-          </FolderTableRowCell>
-          <FolderTableRowCell>
-            <div>{{ item.name }}</div>
-            <div class="text-sm">
-              Last modified {{ dayjs().to(dayjs(item.updatedAt)) }}
-            </div>
-            <ExpiryBadge
-              v-if="item.upload.daysToExpiry !== undefined"
-              :time-remaining="item.upload.daysToExpiry"
-              :warning-threshold="10"
-              :time-unit="ExpiryUnitTypes.Days"
-              class="my-2"
-            />
-          </FolderTableRowCell>
-          <FolderTableRowCell>
-            <div class="flex justify-between">
-              <div
-                class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
-              >
                 <Btn
-                  v-if="!item.upload.expired"
-                  secondary
-                  @click="openModal(item)"
-                >
-                  <IconDownload class="w-4 h-4" />
-                </Btn>
-                <Btn
-                  v-if="!item.upload.expired"
-                  data-testid="delete-file"
                   danger
-                  @click="
-                    folderStore.deleteItem(item.id, folderStore.rootFolder.id)
+                  @click.stop="
+                    openDeleteConfirmation(folder.id, folder.name, 'folder')
                   "
                 >
                   <IconTrash class="w-4 h-4" />
@@ -210,6 +210,61 @@ export default { props: { id: { type: String, default: 'null' } } };
             </div>
           </FolderTableRowCell>
         </tr>
+        <template v-if="folderStore.rootFolder">
+          <tr
+            v-for="item in folderStore.rootFolder.items"
+            :key="item.id"
+            class="group cursor-pointer"
+            @click="handleFileClick(item.id)"
+          >
+            <FolderTableRowCell>
+              <div class="flex justify-end">
+                <img src="@/apps/send/assets/file.svg" class="w-8 h-8" />
+              </div>
+            </FolderTableRowCell>
+            <FolderTableRowCell>
+              <div>{{ item.name }}</div>
+              <div class="text-sm">
+                Last modified {{ dayjs().to(dayjs(item.updatedAt)) }}
+              </div>
+              <ExpiryBadge
+                v-if="item.upload.daysToExpiry !== undefined"
+                :time-remaining="item.upload.daysToExpiry"
+                :warning-threshold="10"
+                :time-unit="ExpiryUnitTypes.Days"
+                class="my-2"
+              />
+            </FolderTableRowCell>
+            <FolderTableRowCell>
+              <div class="flex justify-between">
+                <div
+                  class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
+                >
+                  <Btn
+                    v-if="!item.upload.expired"
+                    secondary
+                    @click="openModal(item)"
+                  >
+                    <IconDownload class="w-4 h-4" />
+                  </Btn>
+                  <Btn
+                    v-if="!item.upload.expired"
+                    data-testid="delete-file"
+                    danger
+                    @click.stop="
+                      openDeleteConfirmation(item.id, item.name, 'file')
+                    "
+                  >
+                    <IconTrash class="w-4 h-4" />
+                  </Btn>
+                </div>
+                <Btn class="ml-auto">
+                  <IconDotsVertical class="w-4 h-4" />
+                </Btn>
+              </div>
+            </FolderTableRowCell>
+          </tr>
+        </template>
       </tbody>
     </table>
   </div>
