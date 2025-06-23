@@ -6,7 +6,6 @@ import { useClipboard } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import { useModal, useModalSlot } from 'vue-final-modal';
 import ResetConfirmation from '../send/components/ResetConfirmation.vue';
-import { useConfigStore } from '../send/stores/config-store';
 import DownloadIcon from './DownloadIcon.vue';
 import ResetModal from './modals/ResetModal.vue';
 
@@ -54,7 +53,6 @@ const userSetPassword = ref('');
 const words = computed(() => wordsProp);
 
 const { copy } = useClipboard();
-const { isProd } = useConfigStore();
 
 const onCopy = (text: string) => {
   copy(text);
@@ -147,7 +145,7 @@ const submit = () => {
       will generate a new key and you will lose access to any files you created
       before this.
     </p>
-    <button-component v-if="!isProd" danger class="mt-4" @click.prevent="open"
+    <button-component danger class="mt-4" @click.prevent="open"
       >Reset keys and lose access to previously created files</button-component
     >
   </div>

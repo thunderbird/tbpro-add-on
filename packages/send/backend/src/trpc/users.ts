@@ -192,30 +192,27 @@ export const usersRouter = router({
    *                   type: boolean
    *                   description: Whether the reset was successful
    */
-  resetKeys: trpc
-    .use(isAuthed)
-    .use((props) => useEnvironment(props, ['stage', 'development']))
-    .mutation(async ({ ctx }) => {
-      const id = ctx.user.id;
-      try {
-        await resetKeys(id);
-        const containers = await getContainersOwnedByUser(id);
-        const uploads = await getUploadsOwnedByUser(id);
+  resetKeys: trpc.use(isAuthed).mutation(async ({ ctx }) => {
+    const id = ctx.user.id;
+    try {
+      await resetKeys(id);
+      const containers = await getContainersOwnedByUser(id);
+      const uploads = await getUploadsOwnedByUser(id);
 
-        // Burn containers
-        await Promise.all(containers.map(({ id }) => deleteContainer(id)));
-        // Burn uploads
-        await Promise.all(uploads.map(({ id }) => deleteUpload(id)));
+      // Burn containers
+      await Promise.all(containers.map(({ id }) => deleteContainer(id)));
+      // Burn uploads
+      await Promise.all(uploads.map(({ id }) => deleteUpload(id)));
 
-        return { success: true };
-      } catch (e) {
-        console.error(e);
-        throw new TRPCError({
-          message: 'Could not reset keys',
-          code: 'UNPROCESSABLE_CONTENT',
-        });
-      }
-    }),
+      return { success: true };
+    } catch (e) {
+      console.error(e);
+      throw new TRPCError({
+        message: 'Could not reset keys',
+        code: 'UNPROCESSABLE_CONTENT',
+      });
+    }
+  }),
 
   /**
    * @openapi
