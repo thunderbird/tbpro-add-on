@@ -76,7 +76,7 @@ export async function getBlob(
     }
 
     return await _saveFile({
-      plaintext,
+      plaintext: plaintext as ArrayBuffer,
       name: decodeURIComponent(filename),
       type, // mime type of the upload
     });
@@ -109,7 +109,7 @@ export async function getBlob(
     }
 
     return await _saveFile({
-      plaintext,
+      plaintext: plaintext as ArrayBuffer,
       name: decodeURIComponent(filename),
       type, // mime type of the upload
     });
@@ -154,7 +154,8 @@ export async function sendBlob(
     progressTracker.setText('Encrypting file');
     const encrypted = await encrypt(stream, aesKey, progressTracker);
 
-    progressTracker.setProgress(0);
+    // Don't reset progress to 0 - maintain the encryption progress
+    // and continue from where we left off for upload
     progressTracker.setText('Uploading file');
 
     // Create a ReadableStream from the Uint8Array
@@ -175,4 +176,69 @@ export async function sendBlob(
   } catch (error) {
     throw new Error('UPLOAD_FAILED');
   }
+}
+
+interface SaveFileStreamData {
+  stream: ReadableStream<Uint8Array>;
+  name: string;
+  type: string;
+}
+
+export async function _saveFileStream(file: SaveFileStreamData): Promise<void> {
+  // Check if File System Access API is available for truly streaming saves
+  if ('showSaveFilePicker' in window) {
+    try {
+      const fileHandle = await (
+        window as { showSaveFilePicker: (options: any) => Promise<any> }
+      ).showSaveFilePicker({
+        suggestedName: file.name,
+        types: [
+          {
+            description: file.type,
+            accept: { [file.type]: [] },
+          },
+        ],
+      });
+
+      const writable = await fileHandle.createWritable();
+      const reader = file.stream.getReader();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        await writable.write(value);
+      }
+
+      await writable.close();
+      return;
+    } catch (error) {
+      // Fall back to traditional approach if user cancels or API fails
+      console.warn(
+        'File System Access API failed, falling back to blob approach:',
+        error
+      );
+    }
+  }
+
+  // Fallback: Use Response to create blob (still more memory efficient than ArrayBuffer approach)
+  // This is necessary for browsers that don't support File System Access API
+  const response = new Response(file.stream);
+  const blob = await response.blob();
+
+  // Create a blob with the correct type
+  const typedBlob = new Blob([blob], { type: file.type });
+
+  return new Promise(function (resolve) {
+    const downloadUrl = URL.createObjectURL(typedBlob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(downloadUrl);
+      resolve();
+    }, 0);
+  });
 }

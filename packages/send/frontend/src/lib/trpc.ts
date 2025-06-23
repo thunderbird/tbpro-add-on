@@ -66,7 +66,7 @@ export const trpc = createTRPCClient<AppRouter>({
         }),
         httpBatchLink({
           url: trpcUrl,
-          fetch(url, options) {
+          fetch(url, options: RequestInit) {
             return fetch(url, {
               ...options,
               // Include credentials for cookies

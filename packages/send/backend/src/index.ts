@@ -1,6 +1,8 @@
 // Configure sentry
 import * as trpcExpress from '@trpc/server/adapters/express';
 import * as t from './trpc';
+// We need to import this before importing any other modules that use BigInt
+import './utils/bigint';
 
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import swaggerUi from 'swagger-ui-express';

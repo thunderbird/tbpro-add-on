@@ -291,7 +291,6 @@ router.post(
   })
 );
 
-
 // Get all the access links for an individual file
 // identified by the upload id.
 router.get(
@@ -302,7 +301,7 @@ router.get(
   addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { uploadId } = req.params;
-    const result = await  getAccessLinksByUploadId(uploadId);
+    const result = await getAccessLinksByUploadId(uploadId);
     res.status(200).json(result);
   })
 );

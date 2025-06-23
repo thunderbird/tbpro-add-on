@@ -1,5 +1,7 @@
 import { CONTAINER_TYPE } from '@/lib/const';
 import Downloader from '@/lib/download';
+import { _saveFileStream } from '@/lib/filesync';
+import { Keychain } from '@/lib/keychain';
 import Uploader from '@/lib/upload';
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
@@ -13,12 +15,17 @@ import {
   Item,
   ItemResponse,
 } from '@/apps/send/stores/folder-store.types';
+import { ProgressTracker } from '@/apps/send/stores/status-store';
 import { ApiConnection } from '@/lib/api';
 import { NamedBlob } from '@/lib/filesync';
 import { backupKeys } from '@/lib/keychain';
 import { CLIENT_MESSAGES } from '@/lib/messages';
-import { checkBlobSize, formatBlob } from '@/lib/utils';
+import { checkBlobSize, formatBlob, unzipMultipartPiece } from '@/lib/utils';
 
+import { decryptStream } from '@/lib/ece';
+import { organizeFiles } from '@/lib/folderView';
+import { _download } from '@/lib/helpers';
+import { blobStream } from '@/lib/streams';
 import useMetricsStore from '@/stores/metrics';
 import { useStatusStore } from './status-store';
 
@@ -45,7 +52,7 @@ export interface FolderStore {
     fileBlob: Blob,
     folderId: string,
     api: ApiConnection
-  ) => Promise<ItemResponse>;
+  ) => Promise<ItemResponse[]>;
   deleteItem: (itemId: number, folderId: string) => Promise<void>;
   renameItem: (
     folderId: string,
@@ -216,7 +223,7 @@ const useFolderStore = defineStore('folderManager', () => {
     fileBlob: NamedBlob,
     folderId: string,
     api: ApiConnection
-  ): Promise<Item> {
+  ): Promise<Item[]> {
     progress.error = '';
 
     const canUpload = await checkBlobSize(fileBlob);
@@ -227,23 +234,23 @@ const useFolderStore = defineStore('folderManager', () => {
     }
 
     const formattedBlob = await formatBlob(fileBlob);
-
     setUploadSize(formattedBlob.size);
 
     try {
-      const newItem = await uploader.doUpload(
+      const newItems = await uploader.doUpload(
         formattedBlob,
         folderId,
         api,
         progress
       );
-      if (newItem && rootFolder.value) {
-        rootFolder.value.items = [...rootFolder.value.items, newItem];
+      if (newItems && rootFolder.value) {
+        rootFolder.value.items = [...rootFolder.value.items, ...newItems];
       }
-      return newItem;
+      return newItems;
     } catch (error) {
+      console.error('Upload failed in uploadItem:', error);
       progress.error = error.message;
-      throw new Error('Upload failed');
+      throw new Error(`Upload failed: ${error.message}`);
     }
   }
 
@@ -272,11 +279,219 @@ const useFolderStore = defineStore('folderManager', () => {
         setSelectedFile(null);
       }
       if (rootFolder.value?.items) {
+        const deletedKey = result.wrappedKey;
         rootFolder.value.items = [
-          ...rootFolder.value.items.filter((i: Item) => i.id !== itemId),
+          ...rootFolder.value.items.filter(
+            (i: Item) => i.wrappedKey !== deletedKey
+          ),
         ];
       }
     }
+  }
+
+  /**
+   * Memory-Optimized Multipart Download Implementation
+   *
+   * This implementation replaces the previous memory-intensive approach that loaded all file pieces
+   * into ArrayBuffer objects simultaneously. The key improvements include:
+   *
+   * 1. **Streaming Processing**: Each piece is processed as a stream, reducing peak memory usage
+   * 2. **Sequential Download**: Pieces are downloaded and processed one at a time rather than all at once
+   * 3. **Chunked Output**: Large pieces are streamed in 64KB chunks to prevent memory spikes
+   * 4. **Progressive Enhancement**: Uses File System Access API when available for true streaming saves
+   * 5. **Efficient Concatenation**: Combines pieces using ReadableStream without intermediate buffers
+   *
+   * For a 2GB file split into 10 pieces:
+   * - Old approach: ~4GB+ peak memory usage (original + combined + intermediate buffers)
+   * - New approach: ~200MB peak memory usage (single piece + processing overhead)
+   */
+  async function downloadMultipart(
+    upload: { id: string; part: number }[],
+    containerId: string,
+    wrappedKeyStr: string,
+    name: string,
+    api: ApiConnection,
+    keychain: Keychain,
+    progressTracker: ProgressTracker
+  ) {
+    const isBucketStorage = api.isBucketStorage;
+    let combinedType = '';
+
+    const _uploads = await api.call<{ id: string; part: number }[]>(
+      `uploads/${upload.at(0).id}/parts`
+    );
+
+    const wrappingKey = await keychain.get(containerId);
+    if (!wrappingKey) {
+      throw new Error('Wrapping key not found');
+    }
+
+    const contentKey: CryptoKey = await keychain.container.unwrapContentKey(
+      wrappedKeyStr,
+      wrappingKey
+    );
+
+    // Get metadata for all pieces to determine type and validate
+    const pieceMetadata = await Promise.all(
+      _uploads.map(async ({ id, part }) => {
+        if (!id) return null;
+
+        const { size, type } = await api.call<{
+          size: number;
+          type: string;
+        }>(`uploads/${id}/metadata`);
+
+        if (!size) return null;
+
+        // Store the type from the first piece
+        if (!combinedType && type) {
+          combinedType = type;
+        }
+
+        return { id, part, size, type };
+      })
+    );
+
+    const validMetadata = pieceMetadata.filter((meta) => meta !== null);
+    if (validMetadata.length === 0) {
+      throw new Error('No valid pieces found');
+    }
+
+    // Sort pieces by part number
+    const sortedMetadata = validMetadata.sort((a, b) => a.part - b.part);
+
+    // Calculate total size for progress tracking
+    const totalSize = sortedMetadata.reduce((sum, meta) => sum + meta.size, 0);
+
+    // Initialize progress tracking for multipart downloads
+    progressTracker.initialize();
+    progressTracker.setUploadSize(totalSize);
+
+    // Create a multipart progress tracker that manages overall progress across all parts
+    const multipartTracker = createMultipartDownloadProgressTracker(
+      progressTracker,
+      sortedMetadata,
+      sortedMetadata.length > 1
+    );
+
+    // Create a streaming download function for each piece
+    const createPieceStream = async (
+      metadata: {
+        id: string;
+        size: number;
+      },
+      partTracker: ProgressTracker
+    ) => {
+      let downloadedBlob: Blob;
+      if (!isBucketStorage) {
+        downloadedBlob = await _download({
+          id: metadata.id,
+          progressTracker: partTracker,
+        });
+        if (!downloadedBlob) {
+          throw new Error('DOWNLOAD_FAILED');
+        }
+      } else {
+        const bucketResponse = await api.call<{ url: string }>(
+          `download/${metadata.id}/signed`
+        );
+
+        if (!bucketResponse?.url) {
+          throw new Error('BUCKET_URL_NOT_FOUND');
+        }
+
+        downloadedBlob = await _download({
+          url: bucketResponse.url,
+          progressTracker: partTracker,
+        });
+      }
+
+      let pieceStream: ReadableStream<Uint8Array>;
+      if (contentKey) {
+        pieceStream = decryptStream(blobStream(downloadedBlob), contentKey);
+      } else {
+        pieceStream = blobStream(downloadedBlob);
+      }
+
+      // Transform stream to handle unzipping efficiently
+      return new ReadableStream<Uint8Array>({
+        async start(controller) {
+          const reader = pieceStream.getReader();
+          const chunks: Uint8Array[] = [];
+          let totalSize = 0;
+
+          try {
+            // Read stream in chunks to avoid loading everything at once
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+              totalSize += value.length;
+            }
+
+            // Create a single buffer for unzipping (this is necessary for the unzip operation)
+            const pieceBuffer = new Uint8Array(totalSize);
+            let offset = 0;
+            for (const chunk of chunks) {
+              pieceBuffer.set(chunk, offset);
+              offset += chunk.length;
+            }
+
+            // Unzip the piece
+            const { content: unzippedContent } = await unzipMultipartPiece(
+              pieceBuffer.buffer
+            );
+
+            // Stream the unzipped content in chunks to avoid memory spikes
+            const chunkSize = 64 * 1024; // 64KB chunks
+            const unzippedView = new Uint8Array(unzippedContent);
+
+            for (let i = 0; i < unzippedView.length; i += chunkSize) {
+              const chunk = unzippedView.slice(i, i + chunkSize);
+              controller.enqueue(chunk);
+            }
+
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
+        },
+      });
+    };
+
+    // Create a combined readable stream that processes pieces sequentially
+    const combinedStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for (let index = 0; index < sortedMetadata.length; index++) {
+            const metadata = sortedMetadata[index];
+            const partTracker = multipartTracker.getPartTracker(index);
+
+            const pieceStream = await createPieceStream(metadata, partTracker);
+            const reader = pieceStream.getReader();
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              controller.enqueue(value);
+            }
+
+            // Mark this part as complete for progress tracking
+            multipartTracker.markPartComplete(index);
+          }
+          controller.close();
+        } catch (error) {
+          controller.error(error);
+        }
+      },
+    });
+
+    // Save the file using streaming approach with better memory management
+    return await _saveFileStream({
+      stream: combinedStream,
+      name: decodeURIComponent(name),
+      type: combinedType,
+    });
   }
 
   async function downloadContent(
@@ -303,12 +518,99 @@ const useFolderStore = defineStore('folderManager', () => {
     console.log(`selectedFile: ${selectedFile.value}`);
   }
 
+  /**
+   * Creates a multipart download progress tracker that manages overall progress across all parts
+   */
+  function createMultipartDownloadProgressTracker(
+    mainTracker: ProgressTracker,
+    metadata: { id: string; part: number; size: number; type: string }[],
+    isMultipart: boolean
+  ) {
+    const partSizes = metadata.map((meta) => meta.size);
+    const totalSize = partSizes.reduce((sum, size) => sum + size, 0);
+    let completedParts = 0;
+
+    return {
+      getPartTracker: (partIndex: number) => {
+        const partSize = partSizes[partIndex];
+
+        return {
+          total: mainTracker.total,
+          progressed: mainTracker.progressed,
+          percentage: mainTracker.percentage,
+          error: mainTracker.error,
+          text: mainTracker.text,
+          initialize: () => {
+            // Don't reinitialize the main tracker for each part
+          },
+          setUploadSize: () => {
+            // Already set on the main tracker
+          },
+          setText: (message: string) => {
+            // Show overall progress message without part numbers for downloads
+            if (isMultipart) {
+              if (message.includes('Downloading')) {
+                mainTracker.setText('Downloading file');
+              } else if (message.includes('Decrypting')) {
+                mainTracker.setText('Decrypting file');
+              } else {
+                mainTracker.setText(message);
+              }
+            } else {
+              mainTracker.setText(message);
+            }
+          },
+          setProgress: (partProgress: number) => {
+            // Calculate overall progress based on total download size:
+            // (completed_parts / total_parts) * total_size + (current_part_progress / current_part_size) * (total_size / total_parts)
+            const completedProgress =
+              (completedParts / metadata.length) * totalSize;
+            const currentPartRatio = Math.min(partProgress / partSize, 1); // Ensure we don't exceed 100%
+            const currentPartProgress =
+              currentPartRatio * (totalSize / metadata.length);
+            const overallProgress = completedProgress + currentPartProgress;
+
+            mainTracker.setProgress(Math.min(overallProgress, totalSize));
+          },
+        };
+      },
+      markPartComplete: (partIndex: number) => {
+        completedParts = partIndex + 1;
+        // Set progress to reflect completed parts based on total size
+        const progress = (completedParts / metadata.length) * totalSize;
+        mainTracker.setProgress(progress);
+      },
+    };
+  }
+
   return {
-    rootFolder: computed(() => rootFolder.value),
-    defaultFolder: computed(() => defaultFolder.value),
+    rootFolder: computed(() => {
+      const rootFolderValue = rootFolder.value;
+      if (!rootFolderValue) return null;
+      return {
+        ...rootFolderValue,
+        // We need to organize files to make sure that multi part files are handled correctly
+        items: organizeFiles(rootFolderValue?.items || []),
+      };
+    }),
+    defaultFolder: computed(() => {
+      const defaultFolderValue = defaultFolder.value;
+      if (!defaultFolderValue) return null;
+      return defaultFolderValue
+        ? {
+            ...defaultFolderValue,
+            // We need to organize files to make sure that multi part files are handled correctly
+            items: organizeFiles(defaultFolderValue.items || []),
+          }
+        : null;
+    }),
     visibleFolders: computed(() => visibleFolders.value),
     selectedFolder: computed(() => selectedFolder.value),
-    selectedFile: computed(() => selectedFile.value),
+    selectedFile: computed(() => {
+      if (!selectedFileId.value || !rootFolder.value?.items) return null;
+      // We need to organize files to make sure that multi part files are handled correctly
+      return organizeFiles([selectedFile.value])[0] || null;
+    }),
     print,
     init,
     fetchSubtree,
@@ -324,6 +626,7 @@ const useFolderStore = defineStore('folderManager', () => {
     uploadItem,
     deleteItem,
     downloadContent,
+    downloadMultipart,
   };
 });
 

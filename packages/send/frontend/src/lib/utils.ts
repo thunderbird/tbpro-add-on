@@ -173,6 +173,107 @@ export async function zipBlob(blob: Blob, filename: string) {
   return zip.generateAsync({ type: 'blob' });
 }
 
+export async function unzipArrayBuffer(
+  arrayBuffer: ArrayBufferLike
+): Promise<ArrayBuffer> {
+  try {
+    const zip = new JSZip();
+    // Convert ArrayBufferLike to ArrayBuffer if needed
+    const buffer =
+      arrayBuffer instanceof ArrayBuffer
+        ? arrayBuffer
+        : new ArrayBuffer(arrayBuffer.byteLength);
+    if (!(arrayBuffer instanceof ArrayBuffer)) {
+      new Uint8Array(buffer).set(new Uint8Array(arrayBuffer));
+    }
+
+    const zipData = await zip.loadAsync(buffer);
+
+    // Get the first file from the zip (assuming single file per zip for this implementation)
+    const fileNames = Object.keys(zipData.files);
+    if (fileNames.length === 0) {
+      throw new Error('No files found in zip archive');
+    }
+
+    // Take the first file (or we could implement logic to find the main file)
+    const fileName = fileNames[0];
+    const file = zipData.files[fileName];
+
+    if (file.dir) {
+      throw new Error('Expected file but found directory in zip archive');
+    }
+
+    // Extract the file content as ArrayBuffer
+    const content = await file.async('arraybuffer');
+    return content;
+  } catch (error) {
+    console.error('Error unzipping content:', error);
+    // If unzipping fails, return the original content (might not be zipped)
+    // Convert ArrayBufferLike to ArrayBuffer for consistent return type
+    if (arrayBuffer instanceof ArrayBuffer) {
+      return arrayBuffer;
+    } else {
+      const buffer = new ArrayBuffer(arrayBuffer.byteLength);
+      new Uint8Array(buffer).set(new Uint8Array(arrayBuffer));
+      return buffer;
+    }
+  }
+}
+
+export async function unzipMultipartPiece(
+  arrayBuffer: ArrayBufferLike
+): Promise<{
+  content: ArrayBuffer;
+  isMultipart: boolean;
+  partNumber?: number;
+}> {
+  try {
+    const zip = new JSZip();
+    // Convert ArrayBufferLike to ArrayBuffer if needed
+    const buffer =
+      arrayBuffer instanceof ArrayBuffer
+        ? arrayBuffer
+        : new ArrayBuffer(arrayBuffer.byteLength);
+    if (!(arrayBuffer instanceof ArrayBuffer)) {
+      new Uint8Array(buffer).set(new Uint8Array(arrayBuffer));
+    }
+
+    const zipData = await zip.loadAsync(buffer);
+
+    // Get the files from the zip
+    const fileNames = Object.keys(zipData.files);
+    if (fileNames.length === 0) {
+      throw new Error('No files found in zip archive');
+    }
+
+    // Look for multipart file or take the first file
+    const targetFileName = fileNames[0];
+    const isMultipart = false;
+    let partNumber: number | undefined;
+
+    const file = zipData.files[targetFileName];
+
+    if (file.dir) {
+      throw new Error('Expected file but found directory in zip archive');
+    }
+
+    // Extract the file content as ArrayBuffer
+    const content = await file.async('arraybuffer');
+    return { content, isMultipart, partNumber };
+  } catch (error) {
+    console.error('Error unzipping multipart content:', error);
+    // If unzipping fails, return the original content (might not be zipped)
+    const buffer =
+      arrayBuffer instanceof ArrayBuffer
+        ? arrayBuffer
+        : new ArrayBuffer(arrayBuffer.byteLength);
+    if (!(arrayBuffer instanceof ArrayBuffer)) {
+      new Uint8Array(buffer).set(new Uint8Array(arrayBuffer));
+    }
+    return { content: buffer, isMultipart: false };
+  }
+}
+
 export const formatBlob = async (blob: NamedBlob): Promise<NamedBlob> => {
   if (blob.type === '') {
     const zippedBlob = await zipBlob(blob, blob.name);
@@ -183,6 +284,48 @@ export const formatBlob = async (blob: NamedBlob): Promise<NamedBlob> => {
     return compressedBlob;
   }
   return blob;
+};
+
+export const splitIntoMultipleZips = async (
+  blob: NamedBlob,
+  maxSize: number
+): Promise<NamedBlob[]> => {
+  const chunks: NamedBlob[] = [];
+
+  // If the blob is smaller than maxSize, return it as a single zip
+  if (blob.size <= maxSize) {
+    const singleZip = await zipBlob(blob, blob.name);
+    const zippedBlob = new Blob([singleZip], {
+      type: 'application/zip',
+    }) as NamedBlob;
+    zippedBlob.name = `${blob.name}`;
+    return [zippedBlob];
+  }
+
+  // Split the blob into chunks
+  const totalSize = blob.size;
+  const numChunks = Math.ceil(totalSize / maxSize);
+
+  for (let i = 0; i < numChunks; i++) {
+    const start = i * maxSize;
+    const end = Math.min(start + maxSize, totalSize);
+
+    // Create a chunk from the original blob
+    const chunk = blob.slice(start, end);
+    const chunkBlob = new Blob([chunk], { type: blob.type }) as NamedBlob;
+    chunkBlob.name = `${blob.name}`;
+
+    // Zip the chunk
+    const zippedChunk = await zipBlob(chunkBlob, chunkBlob.name);
+    const zippedBlob = new Blob([zippedChunk], {
+      type: 'application/zip',
+    }) as NamedBlob;
+    zippedBlob.name = `${chunkBlob.name}`;
+
+    chunks.push(zippedBlob);
+  }
+
+  return chunks;
 };
 
 export const checkBlobSize = async (blob: NamedBlob) => {

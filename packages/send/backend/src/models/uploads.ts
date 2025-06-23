@@ -14,7 +14,8 @@ export async function createUpload(
   id: string,
   size: number,
   ownerId: string,
-  type: string
+  type: string,
+  part?: number
 ) {
   // Confirm that file `id` exists and what's on disk
   // is at least as large as the stated size.
@@ -40,6 +41,7 @@ export async function createUpload(
         ownerId,
         createdAt: new Date(),
         type,
+        part,
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -70,6 +72,43 @@ export async function getUploadSize(id: string) {
     UPLOAD_NOT_FOUND
   );
   return upload.size;
+}
+
+export async function getUploadParts(id: string) {
+  const upload = await prisma.upload.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      items: {
+        select: {
+          wrappedKey: true,
+        },
+      },
+    },
+  });
+
+  if (!upload || upload.items.length === 0) {
+    throw new BaseError(UPLOAD_NOT_FOUND);
+  }
+
+  // Get the first wrappedKey from the upload items (they should)
+  // This assumes that all items in the upload share the same wrappedKey.
+  const wrappedKey = upload.items[0].wrappedKey;
+  const multipartItems = await prisma.item.findMany({
+    where: {
+      wrappedKey,
+    },
+    select: {
+      upload: {
+        select: {
+          id: true,
+          part: true,
+        },
+      },
+    },
+  });
+  return multipartItems.map(({ upload }) => upload);
 }
 
 export async function getUploadMetadata(id: string) {
