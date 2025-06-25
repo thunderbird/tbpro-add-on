@@ -74,6 +74,9 @@ export async function log_out_restore_keys({ page }: PlaywrightProps) {
   // look for folder (only shows when keys are restored)
   await secondPage.goto("/send");
 
+  // Create a new folder
+  await secondPage.getByTestId("new-folder-button").click();
+
   // Check that default folder exists
   await secondPage.waitForSelector(folderRowSelector);
   let folder = secondPage.getByTestId(folderRowTestID);
