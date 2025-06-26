@@ -38,7 +38,6 @@ const route = useRoute();
 const router = useRouter();
 const selectedFile = ref<Item>();
 
-const itemRef = ref<ItemResponse>();
 const deleteItemRef = ref<{
   id: string | number;
   name: string;
@@ -237,7 +236,6 @@ export default { props: { id: { type: String, default: 'null' } } };
                   '!opacity-100': folder.id === folderStore.selectedFolder?.id,
                 }"
               >
-                <<<<<<< HEAD =======
                 <Btn danger @click="folderStore.deleteFolder(folder.id)">
                   <IconTrash class="w-4 h-4" />
                 </Btn>
@@ -282,7 +280,7 @@ export default { props: { id: { type: String, default: 'null' } } };
                 <Btn
                   danger
                   @click.stop="
-                    openDeleteConfirmation(folder.id, folder.name, 'folder')
+                    openDeleteConfirmation(item.id, item.name, 'folder')
                   "
                 >
                   <IconTrash class="w-4 h-4" />
