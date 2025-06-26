@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import useFolderStore from '@/apps/send/stores/folder-store';
-
 import DragAndDropUpload from '@/apps/send/components/DragAndDropUpload.vue';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
-const folderStore = useFolderStore();
+const { currentRoute } = useRouter();
+
+const showUploadZone = computed(() => {
+  return currentRoute.value.path.includes('/folder');
+});
 
 const handleUploadKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' || event.key === ' ') {
@@ -27,7 +31,7 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
     <!-- upload zone -->
     <section class="px-2.5" aria-labelledby="upload-heading">
       <h3 id="upload-heading" class="sr-only">Upload Files</h3>
-      <DragAndDropUpload v-if="folderStore.rootFolder">
+      <DragAndDropUpload v-if="showUploadZone">
         <div
           class="h-36 flex justify-center items-center text-center font-bold text-lg text-gray-500 border-4 border-dashed border-gray-300 rounded-lg"
           role="button"
