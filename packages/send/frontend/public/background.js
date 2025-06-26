@@ -190,17 +190,15 @@ browser.runtime.onMessage.addListener((message) => {
   });
 });
 
-// Removing this for now, since we're also closing on success.
-// But keeping this if we want to handle this differently.
 // Listen for when our popup window is closed.
-// browser.windows.onRemoved.addListener((windowId) => {
-//   if (windowId === popupWindowId) {
-//     console.log(`[onRemoved] Popup window closed.`);
-//     popupWindowId = null;
-//     // If the window is closed before uploads complete, we consider it an abort.
-//     rejectAllInQueue(new Error("Popup window was closed prematurely."));
-//   }
-// });
+browser.windows.onRemoved.addListener((windowId) => {
+  if (windowId === popupWindowId) {
+    console.log(`[onRemoved] Popup window closed.`);
+    popupWindowId = null;
+    // If the window is closed before uploads complete, we consider it an abort.
+    rejectAllInQueue(new Error("Popup window was closed prematurely."));
+  }
+});
 
 // Listen for upload abort.
 browser.cloudFile.onFileUploadAbort.addListener((_, id) => {
