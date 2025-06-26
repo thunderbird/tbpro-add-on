@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Item" ALTER COLUMN "totalSize" SET DATA TYPE BIGINT;
+
+-- AlterTable
+ALTER TABLE "Upload" ALTER COLUMN "size" SET DATA TYPE BIGINT;

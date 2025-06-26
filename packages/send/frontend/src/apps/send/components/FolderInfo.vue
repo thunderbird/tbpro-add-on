@@ -34,7 +34,6 @@ const showForm = ref(false);
 </script>
 
 <template>
-
   <div v-if="folderStore.selectedFolder" class="flex flex-col gap-6 h-full">
     <!-- info -->
     <header class="flex flex-col items-center gap-3 pt-6">

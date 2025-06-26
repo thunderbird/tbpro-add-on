@@ -1,7 +1,7 @@
 import { FolderStore } from '@/apps/send/stores/folder-store';
 import { ProgressTracker } from '@/apps/send/stores/status-store';
 import init from '@/lib/init';
-import { UserStore } from '@/stores/user-store';
+import { UserStoreType } from '@/stores/user-store';
 import { Canceler, JsonResponse } from '@/types';
 import { RouteLocationNormalized } from 'vue-router';
 import {
@@ -156,6 +156,8 @@ export async function encrypt(
     while (!state.done) {
       const buf = state.value;
       chunks.push(buf);
+
+      // For multipart uploads, the progress tracker will handle the proper calculation
       progressTracker.setProgress(size);
 
       size += buf.length;
@@ -222,7 +224,7 @@ export const formatLoginURL = (url: string) => {
 // - the user has a public key
 // - the user has a default folder for email attachments
 export async function dbUserSetup(
-  userStore: UserStore,
+  userStore: UserStoreType,
   keychain: Keychain,
   folderStore: FolderStore
 ) {
@@ -272,6 +274,7 @@ export const uploadWithTracker = ({
   progressTracker,
 }: UploadOptions) => {
   const { setProgress } = progressTracker;
+
   // Track upload progress using XMLHttpRequest
   return new Promise<string>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -280,6 +283,7 @@ export const uploadWithTracker = ({
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
+        // For multipart uploads, the progress tracker will handle the proper calculation
         const uploadProgress = event.loaded;
         setProgress(uploadProgress);
       }

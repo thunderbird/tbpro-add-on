@@ -158,7 +158,9 @@ export async function createItem(
   containerId: string,
   uploadId: string,
   type: ItemType,
-  wrappedKey: string
+  wrappedKey: string,
+  multipart = false,
+  totalSize?: number
 ) {
   const query = {
     data: {
@@ -167,6 +169,8 @@ export async function createItem(
       name,
       wrappedKey,
       type,
+      multipart,
+      totalSize,
       upload: {
         connect: {
           id: uploadId,
@@ -191,6 +195,8 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
     select: {
       containerId: true,
       uploadId: true,
+      multipart: true,
+      wrappedKey: true,
     },
   };
 
@@ -226,6 +232,15 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
     itemDeleteQuery,
     ITEM_NOT_DELETED
   );
+
+  // For multipart items, we need to delete all items that contain the other parts
+  if (item.multipart) {
+    await prisma.item.deleteMany({
+      where: {
+        wrappedKey: item.wrappedKey,
+      },
+    });
+  }
 
   if (containerId && result) {
     // touch the container's `updatedAt` date

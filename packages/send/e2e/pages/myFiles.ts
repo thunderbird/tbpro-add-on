@@ -37,7 +37,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   expect(await dropZone.textContent({ timeout })).toContain(
     "files here to upload"
   );
-  await dragAndDropFile(page, "#drop-zone", "/test.txt", "test.txt");
+  await dragAndDropFile(page, "#drop-zone", "/test.png", "test.png");
   await uploadButton.click();
   await page.waitForSelector(tableCellID);
 

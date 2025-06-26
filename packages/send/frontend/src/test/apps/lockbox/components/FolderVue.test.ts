@@ -2,7 +2,8 @@ import FolderView from '@/apps/send/components/FolderView.vue';
 import { routes } from '@/apps/send/router';
 import { DayJsKey } from '@/types';
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRouter, createWebHistory } from 'vue-router';
 
 let router;
@@ -21,10 +22,36 @@ vi.mock('@/apps/send/stores/folder-store', () => {
     })),
   };
 });
+
+vi.mock('@/stores/api-store', () => {
+  return {
+    esmodule: true,
+    default: vi.fn(() => ({
+      api: {
+        // Mock API methods as needed
+      },
+    })),
+  };
+});
+
+vi.mock('@/stores/keychain-store', () => {
+  return {
+    esmodule: true,
+    default: vi.fn(() => ({
+      keychain: {
+        // Mock keychain methods as needed
+      },
+    })),
+  };
+});
 vi.useFakeTimers();
 
 describe('FolderView', () => {
   beforeEach(() => {
+    // Set up Pinia
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
     router = createRouter({
       history: createWebHistory(),
       routes,
@@ -32,7 +59,7 @@ describe('FolderView', () => {
 
     wrapper = mount(FolderView, {
       global: {
-        plugins: [router],
+        plugins: [router, pinia],
         provide: {
           //@ts-ignore
           [DayJsKey]: () => ({ to: () => 'a while ago' }),

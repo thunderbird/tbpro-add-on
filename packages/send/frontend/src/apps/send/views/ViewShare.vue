@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import FolderTree from '@/apps/send/components/FolderTree.vue';
 import useSharingStore from '@/apps/send/stores/sharing-store';
+import { organizeFiles } from '@/lib/folderView';
 import logger from '@/logger';
 import { Container } from '@/types';
 import { onMounted, ref } from 'vue';
@@ -18,7 +19,7 @@ onMounted(async () => {
   const container = await sharingStore.getSharedFolder(
     route.params.linkId as string
   );
-  folder.value = container;
+  folder.value = { ...container, items: organizeFiles(container.items) };
   containerId.value = container.id;
 });
 </script>

@@ -52,7 +52,7 @@ describe('convertMillisecondsToMinutes', () => {
   it('should convert milliseconds to minutes and stringify', () => {
     const ms = JWT_EXPIRY_IN_MILLISECONDS;
     const result = convertMillisecondsToMinutes(ms);
-    expect(result).toEqual({ minutes: 15, stringified: '15m' });
+    expect(result).toEqual({ minutes: 60, stringified: '60m' });
   });
 
   it('should handle zero milliseconds', () => {
@@ -103,8 +103,9 @@ describe('addExpiryToContainer', () => {
       ownerId: 'user-123',
       reported: false,
       reportedAt: null,
-      size: 100,
+      size: 100n,
       type: 'image/jpeg',
+      part: null,
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -119,8 +120,9 @@ describe('addExpiryToContainer', () => {
       ownerId: 'user-123',
       reported: false,
       reportedAt: null,
-      size: 100,
+      size: 100n,
       type: 'image/jpeg',
+      part: null,
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -135,8 +137,9 @@ describe('addExpiryToContainer', () => {
       ownerId: 'user-123',
       reported: false,
       reportedAt: null,
-      size: 100,
+      size: 100n,
       type: 'image/jpeg',
+      part: null,
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -173,8 +176,9 @@ describe('addExpiryToContainer', () => {
       ownerId: 'user-123',
       reported: false,
       reportedAt: null,
-      size: 100,
+      size: 100n,
       type: 'image/jpeg',
+      part: null,
     };
 
     const result = addExpiryToContainer(mockUpload);

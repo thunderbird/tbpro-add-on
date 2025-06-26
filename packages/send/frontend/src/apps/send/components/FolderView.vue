@@ -1,16 +1,22 @@
 <!-- eslint-disable vue/no-use-v-if-with-v-for -->
 <script setup lang="ts">
-import { DayJsKey } from '@/types';
-import { inject, onMounted, ref, watch } from 'vue';
+import { DayJsKey, Item } from '@/types';
+import { computed, inject, onMounted, ref, watch } from 'vue';
 
 import useFolderStore from '@/apps/send/stores/folder-store';
+import { useStatusStore } from '@/apps/send/stores/status-store';
 import '@thunderbirdops/services-ui/style.css';
 
 import DeleteModal from '@/apps/common/modals/DeleteModal.vue';
 import DownloadModal from '@/apps/common/modals/DownloadModal.vue';
 import BreadCrumb from '@/apps/send/components/BreadCrumb.vue';
-import Btn from '@/apps/send/elements/BtnComponent.vue';
+import { default as Btn } from '@/apps/send/elements/BtnComponent.vue';
 import FolderTableRowCell from '@/apps/send/elements/FolderTableRowCell.vue';
+import {
+  computeMultipartFile,
+  handleMultipartDownload,
+} from '@/lib/folderView';
+import { useApiStore, useKeychainStore } from '@/stores';
 import { IconDotsVertical, IconDownload, IconTrash } from '@tabler/icons-vue';
 import { ExpiryBadge, ExpiryUnitTypes } from '@thunderbirdops/services-ui';
 import { useDebounceFn } from '@vueuse/core';
@@ -21,12 +27,17 @@ import DeleteConfirmation from './DeleteConfirmation.vue';
 import DownloadConfirmation from './DownloadConfirmation.vue';
 
 const folderStore = useFolderStore();
+const statusStore = useStatusStore();
+const { api } = useApiStore();
+const { keychain } = useKeychainStore();
 
 const dayjs = inject(DayJsKey);
 const selectedFolder = ref<string | null>(null);
 
 const route = useRoute();
 const router = useRouter();
+const selectedFile = ref<Item>();
+
 const itemRef = ref<ItemResponse>();
 const deleteItemRef = ref<{
   id: string | number;
@@ -34,13 +45,35 @@ const deleteItemRef = ref<{
   type: 'folder' | 'file';
 }>();
 
-const onDownloadConfirm = () =>
-  folderStore.downloadContent(
-    itemRef.value.uploadId,
-    itemRef.value.containerId,
-    itemRef.value.wrappedKey,
-    itemRef.value.name
+const filesInFolder = computed(() => {
+  return folderStore.rootFolder?.items;
+});
+
+const multipartFile = computed(() => {
+  return computeMultipartFile(
+    folderStore.selectedFile.wrappedKey,
+    folderStore.rootFolder.items
   );
+});
+
+const onDownloadConfirm = () => {
+  const { id, uploadId, wrappedKey, name, containerId, multipart } =
+    selectedFile.value;
+
+  if (multipart) {
+    folderStore.setSelectedFile(id);
+    return handleMultipartDownload(
+      multipartFile.value,
+      selectedFile.value,
+      folderStore.downloadMultipart,
+      api,
+      keychain,
+      statusStore.progress
+    );
+  }
+
+  return folderStore.downloadContent(uploadId, containerId, wrappedKey, name);
+};
 
 const onDeleteConfirm = async () => {
   if (deleteItemRef.value?.type === 'folder') {
@@ -92,7 +125,7 @@ const { open: openDeleteModal, close: closeDeleteModal } = useModal({
 });
 
 const openModal = (item: ItemResponse) => {
-  itemRef.value = item;
+  selectedFile.value = item;
   open();
 };
 
@@ -127,6 +160,18 @@ watch(
   }
 );
 
+// To make sure multi part files are loded in memory correctly we refetch after
+// the number of files in the folder changes.
+watch(filesInFolder, (newValues, OldValues) => {
+  if (newValues?.length !== OldValues?.length) {
+    gotoRoute();
+  }
+});
+
+function handleFileClick(id: number) {
+  folderStore.setSelectedFile(id);
+}
+
 function handleFolderClick(uuid: string) {
   if (selectedFolder.value === uuid) {
     router.push({ name: 'folder', params: { id: uuid } });
@@ -135,10 +180,6 @@ function handleFolderClick(uuid: string) {
   }
   folderStore.setSelectedFolder(uuid);
   selectedFolder.value = uuid;
-}
-
-function handleFileClick(id: number) {
-  folderStore.setSelectedFile(id);
 }
 </script>
 <script lang="ts">
@@ -164,6 +205,7 @@ export default { props: { id: { type: String, default: 'null' } } };
         </tr>
       </thead>
       <tbody>
+        <!-- FOLDERS -->
         <tr
           v-for="folder in folderStore.visibleFolders"
           :key="folder.id"
@@ -194,6 +236,48 @@ export default { props: { id: { type: String, default: 'null' } } };
                 :class="{
                   '!opacity-100': folder.id === folderStore.selectedFolder?.id,
                 }"
+              >
+                <<<<<<< HEAD =======
+                <Btn danger @click="folderStore.deleteFolder(folder.id)">
+                  <IconTrash class="w-4 h-4" />
+                </Btn>
+              </div>
+              <Btn class="ml-auto">
+                <IconDotsVertical class="w-4 h-4" />
+              </Btn>
+            </div>
+          </FolderTableRowCell>
+        </tr>
+        <!-- FILES -->
+        <tr
+          v-for="item in filesInFolder"
+          v-if="filesInFolder"
+          :key="item.id"
+          class="group cursor-pointer"
+          @click="handleFileClick(item.id)"
+        >
+          <FolderTableRowCell>
+            <div class="flex justify-end">
+              <img src="@/apps/send/assets/file.svg" class="w-8 h-8" />
+            </div>
+          </FolderTableRowCell>
+          <FolderTableRowCell>
+            <div>{{ item.name }}</div>
+            <div class="text-sm">
+              Last modified {{ dayjs().to(dayjs(item.updatedAt)) }}
+            </div>
+            <ExpiryBadge
+              v-if="item.upload.daysToExpiry !== undefined"
+              :time-remaining="item.upload.daysToExpiry"
+              :warning-threshold="10"
+              :time-unit="ExpiryUnitTypes.Days"
+              class="my-2"
+            />
+          </FolderTableRowCell>
+          <FolderTableRowCell>
+            <div class="flex justify-between">
+              <div
+                class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
               >
                 <Btn
                   danger
