@@ -208,7 +208,7 @@ export default { props: { id: { type: String, default: 'null' } } };
         <tr
           v-for="folder in folderStore.visibleFolders"
           :key="folder.id"
-          class="group cursor-pointer"
+          class="group"
           data-testid="folder-row"
           @click="handleFolderClick(folder.id)"
           @dblclick="router.push({ name: 'folder', params: { id: folder.id } })"
@@ -221,7 +221,9 @@ export default { props: { id: { type: String, default: 'null' } } };
           <FolderTableRowCell
             :selected="folder.id === folderStore.selectedFolder?.id"
           >
-            <div>{{ folder.name }}</div>
+            <div class="cursor-pointer">
+              {{ folder.name }}
+            </div>
             <div class="text-sm">
               Last modified {{ dayjs().to(dayjs(folder.updatedAt)) }}
             </div>
@@ -236,51 +238,10 @@ export default { props: { id: { type: String, default: 'null' } } };
                   '!opacity-100': folder.id === folderStore.selectedFolder?.id,
                 }"
               >
-                <Btn danger @click="folderStore.deleteFolder(folder.id)">
-                  <IconTrash class="w-4 h-4" />
-                </Btn>
-              </div>
-              <Btn class="ml-auto">
-                <IconDotsVertical class="w-4 h-4" />
-              </Btn>
-            </div>
-          </FolderTableRowCell>
-        </tr>
-        <!-- FILES -->
-        <tr
-          v-for="item in filesInFolder"
-          v-if="filesInFolder"
-          :key="item.id"
-          class="group cursor-pointer"
-          @click="handleFileClick(item.id)"
-        >
-          <FolderTableRowCell>
-            <div class="flex justify-end">
-              <img src="@/apps/send/assets/file.svg" class="w-8 h-8" />
-            </div>
-          </FolderTableRowCell>
-          <FolderTableRowCell>
-            <div>{{ item.name }}</div>
-            <div class="text-sm">
-              Last modified {{ dayjs().to(dayjs(item.updatedAt)) }}
-            </div>
-            <ExpiryBadge
-              v-if="item.upload.daysToExpiry !== undefined"
-              :time-remaining="item.upload.daysToExpiry"
-              :warning-threshold="10"
-              :time-unit="ExpiryUnitTypes.Days"
-              class="my-2"
-            />
-          </FolderTableRowCell>
-          <FolderTableRowCell>
-            <div class="flex justify-between">
-              <div
-                class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
-              >
                 <Btn
                   danger
                   @click.stop="
-                    openDeleteConfirmation(item.id, item.name, 'folder')
+                    openDeleteConfirmation(folder.id, folder.name, 'folder')
                   "
                 >
                   <IconTrash class="w-4 h-4" />
@@ -292,6 +253,7 @@ export default { props: { id: { type: String, default: 'null' } } };
             </div>
           </FolderTableRowCell>
         </tr>
+        <!-- FILES -->
         <template v-if="folderStore.rootFolder">
           <tr
             v-for="item in folderStore.rootFolder.items"
