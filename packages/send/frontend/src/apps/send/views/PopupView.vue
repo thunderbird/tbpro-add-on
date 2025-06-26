@@ -38,6 +38,7 @@ const isUploading = ref(false);
 const isError = ref(false);
 const isAllowed = ref(true);
 
+const uploadMap = ref<Map<number, boolean>>(new Map());
 const files = ref<Record<string, any>[] | null>(null);
 const password = ref('');
 
@@ -90,6 +91,7 @@ async function uploadAndShare() {
           originalId: file.id,
           ...itemObj
         })
+        uploadMap.value.set(file.id, true);
       }
     } catch (err) {
       console.log(err);
@@ -151,6 +153,10 @@ function togglePasswordVisibility() {
 
 function togglePasswordField() {
   isPasswordProtected.value = !isPasswordProtected.value;
+}
+
+function indicatorForFile(fileId: number) {
+  return uploadMap.value.get(fileId) ? `✅` : `⏳`;
 }
 
 onMounted(async () => {
@@ -222,6 +228,7 @@ onMounted(async () => {
     <div>
       <ul>
         <li v-for="file in files" :key="file.id">
+          <span>{{ indicatorForFile(file.id) }}</span>
           {{ file.name }}
         </li>
       </ul>
