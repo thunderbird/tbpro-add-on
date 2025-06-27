@@ -13,5 +13,5 @@ export const PACKAGE_NAME = {
 };
 
 export const getIsEnvProd = () => {
-  return process.env.BASE_URL.includes('https://send.tb.pro');
+  return process.env.VITE_BASE_URL == 'https://send.tb.pro';
 };

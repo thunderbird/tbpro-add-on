@@ -6,8 +6,9 @@
   "scripts": {
     "build": "NODE_ENV=production ./scripts/build.sh",
     "build-and-submit": "NODE_ENV=production ./scripts/build.sh && ./scripts/submit.sh",
-    "build:dev": "./scripts/build.sh",
+    "build:dev": "NODE_ENV=development ./scripts/build.sh",
     "build:watch": "nodemon -e vue,ts,js,json --watch './{src,public}/**/*' --exec 'pnpm build'",
+    "build:dev:watch": "nodemon -e vue,ts,js,json --ignore 'dist*/' --ignore manifest.json --watch './{src,public}/**/*' --exec 'pnpm build:dev'",
     "ci:validate": "pnpm lint:all; pnpm prettier:all; pnpm run test",
     "deploy-xpi": "bun run ./scripts/deploy_xpi.ts",
     "dev": "vite --host",

@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
       },
       minify: true,
       sourcemap: true,
-      outDir: 'dist',
+      outDir: 'dist/background',
     },
   };
 });
