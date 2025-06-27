@@ -1,4 +1,6 @@
 /// <reference types="thunderbird-webext-browser" />
+import { createPinia, setActivePinia } from 'pinia';
+
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
@@ -7,17 +9,24 @@ import useFolderStore from '@/apps/send/stores/folder-store';
 import init from '@/lib/init';
 import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
 
+// We have to create a Pinia instance in order to
+// access the folder-store, user-store, etc.
+const pinia = createPinia();
+setActivePinia(pinia);
+
+// Once we have an active Pinia instance, we can get references
+// to our stores. We initialize everything in the anonymous
+// function below.
 const folderStore = useFolderStore();
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 
 
-
 console.log('hello from the background.js!', new Date().getTime());
 
 // ==============================================
-// Account initialization
+// Initialize the cloudFile accounts, keychain, and stores.
 (async () => {
   const allAccounts = await browser.cloudFile.getAllAccounts();
   for (let { id } of allAccounts) {
@@ -26,7 +35,6 @@ console.log('hello from the background.js!', new Date().getTime());
   }
   await restoreKeysUsingLocalStorage(keychain, api);
   await init(userStore, keychain, folderStore);
-
 })();
 
 function setAccountConfigured(accountId: string) {
