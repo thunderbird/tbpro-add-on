@@ -7,7 +7,7 @@ import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import {
   Container,
@@ -26,6 +26,7 @@ import { decryptStream } from '@/lib/ece';
 import { organizeFiles } from '@/lib/folderView';
 import { _download } from '@/lib/helpers';
 import { blobStream } from '@/lib/streams';
+import { trpc } from '@/lib/trpc';
 import useMetricsStore from '@/stores/metrics';
 import { useStatusStore } from './status-store';
 
@@ -83,6 +84,16 @@ const useFolderStore = defineStore('folderManager', () => {
 
   const selectedFolderId = ref<string | null>(null);
   const selectedFileId = ref<number | null>(null);
+
+  const rootFolderId = ref<string | null>(null);
+  onMounted(async () => {
+    await getDefaultFolderId();
+  });
+
+  async function getDefaultFolderId() {
+    const result = (await trpc.getDefaultFolder.query()).id || null;
+    rootFolderId.value = result;
+  }
 
   const defaultFolder = computed(() => {
     if (!folders?.value) {
@@ -153,7 +164,7 @@ const useFolderStore = defineStore('folderManager', () => {
   }
 
   async function createFolder(
-    name = 'Untitled',
+    name = 'Default',
     parentId?: string,
     shareOnly = false
   ): Promise<Container | null> {
@@ -611,6 +622,7 @@ const useFolderStore = defineStore('folderManager', () => {
       // We need to organize files to make sure that multi part files are handled correctly
       return organizeFiles([selectedFile.value])[0] || null;
     }),
+    rootFolderId: computed(() => rootFolderId.value),
     print,
     init,
     fetchSubtree,
