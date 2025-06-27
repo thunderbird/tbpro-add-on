@@ -1,4 +1,18 @@
 /// <reference types="thunderbird-webext-browser" />
+import useApiStore from '@/stores/api-store';
+import useKeychainStore from '@/stores/keychain-store';
+import useUserStore from '@/stores/user-store';
+import useFolderStore from '@/apps/send/stores/folder-store';
+
+import init from '@/lib/init';
+import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
+
+const folderStore = useFolderStore();
+const userStore = useUserStore();
+const { keychain } = useKeychainStore();
+const { api } = useApiStore();
+
+
 
 console.log('hello from the background.js!', new Date().getTime());
 
@@ -10,9 +24,12 @@ console.log('hello from the background.js!', new Date().getTime());
     console.log(`found an account with id ${id}`);
     setAccountConfigured(id);
   }
+  await restoreKeysUsingLocalStorage(keychain, api);
+  await init(userStore, keychain, folderStore);
+
 })();
 
-function setAccountConfigured(accountId) {
+function setAccountConfigured(accountId: string) {
   try {
     browser.cloudFile.updateAccount(accountId, {
       configured: true,
@@ -32,7 +49,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(
     // Remove our origin header from requests to backblazeb2.
     const requestHeaders = details.requestHeaders.filter(
       ({ name, value }) =>
-        !(name.toLowerCase() === 'origin' && value === origin)
+	!(name.toLowerCase() === 'origin' && value === origin)
     );
 
     const hostName = requestHeaders.find(({ name }) => name === 'Host')?.value;
@@ -53,7 +70,6 @@ console.log('webRequest listeners have been set up.');
 // ==============================================
 
 
-
 // ==============================================
 // Stores info for each file that need uploading.
 let uploadInfoQueue = [];
@@ -69,8 +85,13 @@ let popupTimer = null;
 // Prevents multiple popups from opening.
 let popupWindowId = null;
 
+
 browser.cloudFile.onFileUpload.addListener(
-  async (account, { id, name, data }) => {
+  // We disregard the third (tab) arg, and aren't following the cb return type.
+  //@ts-expect-error
+  async (_, fileInfo) => {
+
+    const { id, name, data } = fileInfo;
     console.log(`[onFileUpload] Received file: ${name} (ID: ${id})`);
 
     // Clear the timer
@@ -99,9 +120,9 @@ browser.cloudFile.onFileUpload.addListener(
     // - reject() and abortController.abort()
     const uploadPromise = new Promise((resolve, reject) => {
       uploadPromiseMap.set(id, {
-        resolve,
-        reject,
-        abortController
+	resolve,
+	reject,
+	abortController
       })
     });
 
@@ -154,8 +175,8 @@ browser.runtime.onMessage.addListener((message) => {
       console.log(`[onMessage] Popup is ready. Sending file list.`);
 
       browser.runtime.sendMessage({
-        type: 'FILE_LIST',
-        files: uploadInfoQueue, // Send the entire queue
+	type: 'FILE_LIST',
+	files: uploadInfoQueue, // Send the entire queue
       });
 
       // Clear the queue now that we've sent it.
@@ -168,10 +189,10 @@ browser.runtime.onMessage.addListener((message) => {
       const { url } = message;
 
       message.results.forEach(({ originalId: id }) => {
-        if (uploadPromiseMap.has(id)) {
-          uploadPromiseMap.get(id).resolve({ aborted: false, url });
-          uploadPromiseMap.delete(id);
-        }
+	if (uploadPromiseMap.has(id)) {
+	  uploadPromiseMap.get(id).resolve({ aborted: false, url });
+	  uploadPromiseMap.delete(id);
+	}
       });
 
       break;
@@ -219,7 +240,7 @@ browser.cloudFile.onFileUploadAbort.addListener((_, id) => {
  * This is used for cleanup on errors or cancellations.
  * @param {Error} reason - The reason for the rejection.
  */
-function rejectAllInQueue(reason) {
+function rejectAllInQueue(reason: Error) {
   const remainingIds = Array.from(uploadPromiseMap.keys());
   if (remainingIds.length > 0) {
     console.log(`[rejectAllInQueue] Rejecting ${remainingIds.length} pending promises.`);

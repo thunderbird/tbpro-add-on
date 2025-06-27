@@ -26,6 +26,12 @@ mkdir -p dist/assets
 ### this should get copied automatically when compiling a page
 cp -R public/* dist/
 
+### Build `background.js` as a library
+vite build --config vite.config.background.js
+# cp -R dist/background/*.js dist/
+# cp -R dist/background/*.map dist/
+# rm -rf dist/background
+
 ### Extension UI
 vite build --config vite.config.extension.js
 cp -R dist/extension/assets/* dist/assets/
