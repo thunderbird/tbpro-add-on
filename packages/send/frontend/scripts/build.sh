@@ -29,7 +29,7 @@ cp -R public/* dist/
 echo "================================================================"
 echo "=============== background.js =================================="
 ### Build `background.js` as a library
-vite build --mode ${NODE_ENV:-development} --config vite.config.background.js
+vite build --config vite.config.background.js
 cp -R dist/background/* dist/
 # cp -R dist/background/*.map dist/
 # rm -rf dist/background
@@ -38,7 +38,7 @@ cp -R dist/background/* dist/
 echo "================================================================"
 echo "=============== extension UI ==================================="
 ### Extension UI
-vite build --mode ${NODE_ENV:-development} --config vite.config.extension.js
+vite build --config vite.config.extension.js
 cp -R dist/extension/assets/* dist/assets/
 cp -R dist/extension/*.* dist/
 rm -rf dist/extension
@@ -46,7 +46,7 @@ rm -rf dist/extension
 echo "================================================================"
 echo "=============== management page================================="
 ### Management page, commenting out for now
-vite build --mode ${NODE_ENV:-development} --config vite.config.management.js
+vite build --config vite.config.management.js
 cp -R dist/pages/assets/* dist/assets/
 cp -R dist/pages/*.* dist/
 rm -rf dist/pages
@@ -59,6 +59,5 @@ zip -r -FS ../../send-suite-${VERSION}.xpi *
 echo 'Add-on build complete 🎉'
 
 echo 'Building web app 🏭'
-pnpm exec vite build --mode ${NODE_ENV:-development}
-
+pnpm exec vite build
 echo 'Web app build complete 🎉'
