@@ -51,6 +51,10 @@ export default class Downloader {
     const isBucketStorage = this.api.isBucketStorage;
 
     try {
+      // Set the filename for progress tracking before starting download
+      progressTracker.setFileName(filename);
+      progressTracker.setProcessStage('downloading');
+
       await getBlob(
         id,
         size,
