@@ -27,7 +27,6 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
     <header class="flex items-center justify-between pt-2 px-2.5">
       <h2 class="sr-only">File Management Actions</h2>
     </header>
-
     <!-- upload zone -->
     <section class="px-2.5" aria-labelledby="upload-heading">
       <h3 id="upload-heading" class="sr-only">Upload Files</h3>
@@ -44,7 +43,6 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
         </div>
       </DragAndDropUpload>
     </section>
-
     <!-- navigation -->
     <nav class="flex flex-col gap-2 p-2.5" aria-labelledby="nav-heading">
       <h3 id="nav-heading" class="sr-only">Navigation</h3>
