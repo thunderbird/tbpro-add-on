@@ -63,10 +63,14 @@ describe('Uploader', () => {
       percentage: 0,
       error: '',
       text: '',
+      fileName: '',
+      processStage: 'idle' as const,
       initialize: vi.fn(),
       setUploadSize: vi.fn(),
       setText: vi.fn(),
       setProgress: vi.fn(),
+      setFileName: vi.fn(),
+      setProcessStage: vi.fn(),
     };
 
     uploader = new Uploader(mockUser, mockKeychain, mockApi);
@@ -244,7 +248,12 @@ describe('Uploader', () => {
       expect(mockProgressTracker.setUploadSize).toHaveBeenCalledWith(
         largeFileSize
       ); // Original file size
-      expect(mockProgressTracker.initialize).toHaveBeenCalled();
+      expect(mockProgressTracker.setProcessStage).toHaveBeenCalledWith(
+        'preparing'
+      );
+      expect(mockProgressTracker.setText).toHaveBeenCalledWith(
+        'Preparing file for upload'
+      );
     });
   });
 });

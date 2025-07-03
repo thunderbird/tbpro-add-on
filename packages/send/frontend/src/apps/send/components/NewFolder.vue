@@ -10,7 +10,11 @@ const folderStore = useFolderStore();
 <template>
   <!-- Only show button outside of profile page -->
   <div v-if="isInProfileView">
-    <Btn primary @click="folderStore.createFolder()">
+    <Btn
+      primary
+      data-testid="new-folder-button"
+      @click="folderStore.createFolder()"
+    >
       <IconPlus class="w-5 h-5 stroke-2" />
       New Folder
     </Btn>

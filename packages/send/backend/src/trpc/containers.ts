@@ -1,5 +1,8 @@
 import { IS_USING_BUCKET_STORAGE, TOTAL_STORAGE_LIMIT } from '@/config';
-import { getAccessLinksForContainer as getAccessLinks } from '@/models/containers';
+import {
+  getAccessLinksForContainer as getAccessLinks,
+  getContainerWithoutAncestors,
+} from '@/models/containers';
 import { getAllUserGroupContainers } from '@/models/users';
 import { addExpiryToContainer } from '@/utils';
 import { ContainerType } from '@prisma/client';
@@ -156,4 +159,65 @@ export const containersRouter = router({
     }
     return { isBucketStorage: false };
   }),
+
+  /**
+   * @openapi
+   * /trpc/getDefaultFolder:
+   *   get:
+   *     tags:
+   *       - Containers
+   *     summary: Get user's default folder
+   *     description: Returns the default folder/container for the authenticated user
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Default folder information
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: string
+   *                   description: ID of the default folder
+   *       404:
+   *         description: Default folder not found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: object
+   *                   properties:
+   *                     code:
+   *                       type: string
+   *                       example: "NOT_FOUND"
+   *                     message:
+   *                       type: string
+   *                       example: "An error occurred while fetching the default folder"
+   */
+  getDefaultFolder: t.use(isAuthed).query(
+    async ({
+      ctx: {
+        user: { id },
+      },
+    }) => {
+      const response = {
+        id: '',
+      };
+
+      try {
+        const containers = await getContainerWithoutAncestors(id);
+        response.id = containers.id;
+        return response;
+      } catch {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'An error occurred while fetching the default folder',
+        });
+      }
+    }
+  ),
 });
