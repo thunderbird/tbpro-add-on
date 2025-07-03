@@ -30,25 +30,21 @@ console.log('hello from the background.js!', new Date().getTime());
 // Initialize the cloudFile accounts, keychain, and stores.
 (async () => {
   const allAccounts = await browser.cloudFile.getAllAccounts();
-  for (let { id } of allAccounts) {
-    await configureExtension(id);
+  if (allAccounts.length > 0) {
+    for (let { id } of allAccounts) {
+      console.log(`[background.td] passing ${id} to configureExtension()`);
+      await configureExtension(id);
+    }
+
+  } else {
+    for (let i=0; i<100; i++) {
+      await configureExtension(`account${i}`);
+    }
   }
+
   await restoreKeysUsingLocalStorage(keychain, api);
   await init(userStore, keychain, folderStore);
 })();
-
-function setAccountConfigured(accountId: string) {
-  try {
-    browser.cloudFile.updateAccount(accountId, {
-      configured: true,
-    });
-    console.log(`Set ${accountId} as configured:true`);
-  } catch (e) {
-    console.log(
-      `setAccountConfigured: You're probably running this outside of Thundebird`
-    );
-  }
-}
 
 browser.webRequest.onBeforeSendHeaders.addListener(
   (details) => {

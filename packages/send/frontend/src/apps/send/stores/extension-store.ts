@@ -28,7 +28,7 @@ export const useExtensionStore = defineStore('extension', () => {
     }
   }
 
-  async function configureExtension(id) {
+  async function configureExtension(id: string) {
     id = id || accountId;
 
     // This function only needs to run if we're in the TB addon.
@@ -37,15 +37,15 @@ export const useExtensionStore = defineStore('extension', () => {
       console.log(`[extension-store] No id provided to configureExtension()`);
       return;
     }
-    console.log(`
+  //   console.log(`
 
-  Configuring extension with:
+  // Configuring extension with:
 
-  accountId: ${id}
-  SERVER: ${SERVER}
-  currentServerUrl.value: ${serverUrl.value}
+  // accountId: ${id}
+  // SERVER: ${SERVER}
+  // currentServerUrl.value: ${serverUrl.value}
 
-  `);
+  // `);
 
     return browser.storage.local
       .set({
