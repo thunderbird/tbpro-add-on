@@ -31,12 +31,10 @@ console.log('hello from the background.js!', new Date().getTime());
 (async () => {
   const allAccounts = await browser.cloudFile.getAllAccounts();
   for (let { id } of allAccounts) {
-    console.log(`found an account with id ${id}`);
-    setAccountConfigured(id);
+    await configureExtension(id);
   }
   await restoreKeysUsingLocalStorage(keychain, api);
   await init(userStore, keychain, folderStore);
-  await configureExtension();
 })();
 
 function setAccountConfigured(accountId: string) {

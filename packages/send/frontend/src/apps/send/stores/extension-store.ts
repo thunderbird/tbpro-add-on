@@ -19,25 +19,25 @@ export const useExtensionStore = defineStore('extension', () => {
     try {
       //@ts-ignore
       browser.cloudFile.updateAccount(accountId, {
-        configured: true,
+	configured: true,
       });
     } catch {
       console.log(
-        `setAccountConfigured: You're probably running this outside of Thundebird`
+	`setAccountConfigured: You're probably running this outside of Thundebird`
       );
     }
   }
 
-  async function configureExtension() {
+  async function configureExtension(id = accountId | null) {
     // This should only run on TB
-    if (!accountId) {
+    if (!id) {
       return;
     }
     console.log(`
 
   Configuring extension with:
 
-  accountId: ${accountId}
+  accountId: ${id}
   SERVER: ${SERVER}
   currentServerUrl.value: ${serverUrl.value}
 
@@ -45,26 +45,26 @@ export const useExtensionStore = defineStore('extension', () => {
 
     return browser.storage.local
       .set({
-        [accountId]: {
-          [SERVER]: serverUrl.value,
-        },
+	[id]: {
+	  [SERVER]: serverUrl.value,
+	},
       })
       .catch((error) => {
-        console.log(error);
+	console.log(error);
       })
       .then(() => {
-        setAccountConfigured(accountId);
-        setServerUrl(serverUrl.value);
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        DEBUG &&
-          browser.storage.local.get(accountId).then((accountInfo) => {
-            if (accountInfo[accountId] && SERVER in accountInfo[accountId]) {
-              setServerUrl(accountInfo[accountId][SERVER]);
-              setAccountConfigured(accountId);
-            } else {
-              console.log(`You probably need to wait longer`);
-            }
-          });
+	setAccountConfigured(id);
+	setServerUrl(serverUrl.value);
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+	DEBUG &&
+	  browser.storage.local.get(id).then((accountInfo) => {
+	    if (accountInfo[id] && SERVER in accountInfo[id]) {
+	      setServerUrl(accountInfo[id][SERVER]);
+	      setAccountConfigured(id);
+	    } else {
+	      console.log(`You probably need to wait longer`);
+	    }
+	  });
       });
   }
 
