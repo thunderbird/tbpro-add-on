@@ -5,6 +5,7 @@ import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
 import useFolderStore from '@/apps/send/stores/folder-store';
+import { useExtensionStore } from '@/apps/send/stores/extension-store';
 
 import init from '@/lib/init';
 import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
@@ -21,7 +22,7 @@ const folderStore = useFolderStore();
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const { api } = useApiStore();
-
+const { configureExtension } = useExtensionStore();
 
 console.log('hello from the background.js!', new Date().getTime());
 
@@ -35,6 +36,7 @@ console.log('hello from the background.js!', new Date().getTime());
   }
   await restoreKeysUsingLocalStorage(keychain, api);
   await init(userStore, keychain, folderStore);
+  await configureExtension();
 })();
 
 function setAccountConfigured(accountId: string) {
