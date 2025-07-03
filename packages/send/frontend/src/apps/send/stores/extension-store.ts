@@ -28,9 +28,13 @@ export const useExtensionStore = defineStore('extension', () => {
     }
   }
 
-  async function configureExtension(id = accountId | null) {
-    // This should only run on TB
+  async function configureExtension(id) {
+    id = id || accountId;
+
+    // This function only needs to run if we're in the TB addon.
+    // Exit early if there's no account id.
     if (!id) {
+      console.log(`[extension-store] No id provided to configureExtension()`);
       return;
     }
     console.log(`
