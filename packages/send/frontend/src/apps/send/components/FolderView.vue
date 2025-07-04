@@ -38,10 +38,6 @@ const route = useRoute();
 const router = useRouter();
 const selectedFile = ref<Item>();
 
-const { id: folderIdProp } = defineProps<{ id: string }>();
-
-console.log('FolderView mounted with folderIdProp:', folderIdProp);
-
 const deleteItemRef = ref<{
   id: string | number;
   name: string;
