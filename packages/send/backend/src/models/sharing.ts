@@ -616,6 +616,32 @@ export async function getAccessLinksByUploadId(uploadId: string) {
   return links;
 }
 
+export async function getAccessLinksByUploadIdAndWrappedKey(uploadId: string) {
+  const links = await prisma.accessLink.findMany({
+    where: {
+      share: {
+        container: {
+          shareOnly: true,
+          items: {
+            // This is a cheat - instead of searching for containers that only
+            // have a single Item with a matching uploadId,
+            // we're looking for the containers whose items *all* match uploadId.
+            some: {
+              uploadId,
+            },
+          },
+          NOT: {
+            items: {
+              none: {},
+            },
+          },
+        },
+      },
+    },
+  });
+  return links;
+}
+
 export async function burnFolder(
   containerId: string,
   shouldDeleteUpload?: boolean

@@ -87,6 +87,7 @@ const useFolderStore = defineStore('folderManager', () => {
   const selectedFileId = ref<number | null>(null);
 
   const rootFolderId = ref<string | null>(null);
+
   onMounted(async () => {
     await getDefaultFolderId();
   });
@@ -94,6 +95,8 @@ const useFolderStore = defineStore('folderManager', () => {
   async function getDefaultFolderId() {
     const result = (await trpc.getDefaultFolder.query()).id || null;
     rootFolderId.value = result;
+    // We want to return the value in case we need it immediately
+    return result;
   }
 
   const defaultFolder = computed(() => {
@@ -637,6 +640,7 @@ const useFolderStore = defineStore('folderManager', () => {
       return organizeFiles([selectedFile.value])[0] || null;
     }),
     rootFolderId: computed(() => rootFolderId.value),
+    getDefaultFolderId,
     print,
     init,
     fetchSubtree,

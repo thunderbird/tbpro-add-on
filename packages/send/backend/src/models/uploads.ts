@@ -111,6 +111,38 @@ export async function getUploadParts(id: string) {
   return multipartItems.map(({ upload }) => upload);
 }
 
+export async function getUploadPartsByWrappedKey(wrappedKey: string) {
+  const multipartItems = await prisma.item.findMany({
+    where: {
+      wrappedKey,
+    },
+    select: {
+      upload: {
+        select: {
+          id: true,
+          part: true,
+        },
+      },
+    },
+  });
+  return multipartItems.map(({ upload }) => upload);
+}
+
+export const getItemsByUploadIdandWrappedKey = async (
+  id: string,
+  wrappedKey: string
+) => {
+  const items = await prisma.item.findFirst({
+    where: {
+      upload: {
+        id,
+      },
+      wrappedKey,
+    },
+  });
+  return items;
+};
+
 export async function getUploadMetadata(id: string) {
   const query = {
     where: {

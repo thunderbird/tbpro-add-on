@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/no-use-v-if-with-v-for -->
 <script setup lang="ts">
 import { DayJsKey, Item } from '@/types';
-import { computed, inject, onMounted, ref, watch } from 'vue';
+import { computed, inject, onBeforeMount, ref, watch } from 'vue';
 
 import useFolderStore from '@/apps/send/stores/folder-store';
 import { useStatusStore } from '@/apps/send/stores/status-store';
@@ -37,6 +37,10 @@ const selectedFolder = ref<string | null>(null);
 const route = useRoute();
 const router = useRouter();
 const selectedFile = ref<Item>();
+
+const { id: folderIdProp } = defineProps<{ id: string }>();
+
+console.log('FolderView mounted with folderIdProp:', folderIdProp);
 
 const deleteItemRef = ref<{
   id: string | number;
@@ -146,9 +150,12 @@ const gotoRoute = useDebounceFn(() => {
   folderStore.goToRootFolder(null);
 }, 1);
 
-onMounted(() => {
+onBeforeMount(() => {
+  console.log('FolderView onBeforeMount with folderIdProp:', folderIdProp);
   gotoRoute();
 });
+
+// onMounted(() => {});
 
 watch(
   () => route.params.id,
@@ -181,9 +188,7 @@ function handleFolderClick(uuid: string) {
   selectedFolder.value = uuid;
 }
 </script>
-<script lang="ts">
-export default { props: { id: { type: String, default: 'null' } } };
-</script>
+
 <template>
   <div class="w-full flex flex-col gap-3">
     <h2 class="font-bold">Your Files</h2>
