@@ -111,7 +111,9 @@ const useFolderStore = defineStore('folderManager', () => {
     if (folders.value.length === 0) {
       return [];
     }
-    return calculateFolderSizes(folders.value);
+    const foldersWithSizes = calculateFolderSizes(folders.value);
+    const sortedFolders = sortFolders(foldersWithSizes, rootFolderId.value);
+    return sortedFolders;
   });
 
   const selectedFolder = computed<Container | null>(() => {
@@ -674,6 +676,11 @@ function calculateFolderSizes(folders: Container[]): Container[] {
     return folder;
   });
   return foldersWithSizes;
+}
+
+function sortFolders(folders: Container[], rootFolderId: string): Container[] {
+  // Make sure we don't show the root folder to avoid confusion and in some cases layout shifts
+  return folders.filter((folder) => folder.id !== rootFolderId);
 }
 
 function findContainer(

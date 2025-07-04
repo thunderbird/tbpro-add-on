@@ -15,6 +15,7 @@ export default class Sharer {
   }
 
   async handleMultipartItems(item: Item): Promise<Item[]> {
+    // Get each of the parts for the multipart item. They should have the wrappedKey in common
     const _uploads = await this.api.call<{ id: string; part: number }[]>(
       `uploads/parts`,
       {
@@ -23,7 +24,7 @@ export default class Sharer {
       'POST'
     );
     const ids = _uploads.map((u) => u.id);
-    console.log(`ids:`, ids);
+    // Get the correspoding items for the multipart uploads
     const _items = await this.api.call<Item[]>(
       `uploads/items`,
       {
@@ -32,17 +33,16 @@ export default class Sharer {
       },
       'POST'
     );
-    console.log(`_items:`, _items);
     return _items;
   }
 
   // Creates AccessLink
   async shareItemsWithPassword(items: Item[], password: string) {
     const __items: Item[] = [];
-    // Loop through the items
-    // Multipart items should be handled by `handleMultipartItems`
+    // Loop through the items and handle multipart items separately
     for (const item of items) {
       if (item.multipart) {
+        // We should handle multipart items separately because the UI displays a single part and we need to get all the parts to create the shareable link
         const _items = await this.handleMultipartItems(item);
         __items.push(..._items);
       } else {
@@ -50,6 +50,7 @@ export default class Sharer {
       }
     }
 
+    // Now that we all our items we can handle them normally
     const containerId = await this.createShareOnlyContainer(__items, null);
     return await this.requestAccessLink(containerId, password);
   }

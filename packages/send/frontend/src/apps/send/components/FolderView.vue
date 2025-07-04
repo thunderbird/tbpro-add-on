@@ -151,11 +151,8 @@ const gotoRoute = useDebounceFn(() => {
 }, 1);
 
 onBeforeMount(() => {
-  console.log('FolderView onBeforeMount with folderIdProp:', folderIdProp);
   gotoRoute();
 });
-
-// onMounted(() => {});
 
 watch(
   () => route.params.id,

@@ -8,8 +8,8 @@ import {
   createInvitationFromAccessLink,
   getAccessLinkChallenge,
   getAccessLinksByUploadId,
-  getAccessLinksByUploadIdAndWrappedKey,
   getContainerForAccessLink,
+  getFileAccessLinkByUploadId,
   isAccessLinkValid,
   removeAccessLink,
   resetAccessLinkRetryCount,
@@ -306,9 +306,10 @@ router.get(
     const type = req.query?.type;
 
     if (type === 'file') {
-      const result = await getAccessLinksByUploadIdAndWrappedKey(uploadId);
+      const result = await getFileAccessLinkByUploadId(uploadId);
       return res.status(200).json(result);
     }
+    // If type is not 'file', we assume it's a folder
     const result = await getAccessLinksByUploadId(uploadId);
     return res.status(200).json(result);
   })

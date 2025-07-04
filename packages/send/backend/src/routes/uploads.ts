@@ -303,7 +303,7 @@ router.get(
  *                 part: 2
  *       500:
  *         description: Failed to fetch upload parts
- *         content:`
+ *         content:
  *           application/json:
  *             schema:
  *               type: object
@@ -325,6 +325,65 @@ router.get('/:id/parts', async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/uploads/parts:
+ *   post:
+ *     summary: Get upload parts by wrapped key
+ *     description: Retrieves upload parts using a wrapped key for authentication
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               wrappedKey:
+ *                 type: string
+ *                 description: The wrapped key for accessing the upload parts
+ *             required:
+ *               - wrappedKey
+ *             example:
+ *               wrappedKey: "wrapped-key-123"
+ *     responses:
+ *       200:
+ *         description: Upload parts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     description: The ID of the upload part
+ *                   part:
+ *                     type: integer
+ *                     description: The part number of the multipart upload
+ *                 required:
+ *                   - id
+ *                   - part
+ *             example:
+ *               - id: "upload-123-part-1"
+ *                 part: 1
+ *               - id: "upload-123-part-2"
+ *                 part: 2
+ *       500:
+ *         description: Failed to fetch upload parts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *               example:
+ *                 message: "Failed to fetch upload parts"
+ */
 router.post('/parts', requireJWT, async (req, res) => {
   const { wrappedKey } = req.body;
   try {
@@ -343,6 +402,78 @@ const partsItemsSchema = z.object({
   wrappedKey: z.string(),
 });
 
+/**
+ * @openapi
+ * /api/uploads/items:
+ *   post:
+ *     summary: Get upload items by IDs and wrapped key
+ *     description: Retrieves multiple upload items using their IDs and a common wrapped key
+ *     tags: [Uploads]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *                 description: Array of upload IDs to retrieve
+ *               wrappedKey:
+ *                 type: string
+ *                 description: The wrapped key for accessing the upload items
+ *             required:
+ *               - ids
+ *               - wrappedKey
+ *             example:
+ *               ids: ["upload-123", "upload-456", "upload-789"]
+ *               wrappedKey: "wrapped-key-123"
+ *     responses:
+ *       200:
+ *         description: Upload items retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 description: Upload item data
+ *             example:
+ *               - id: "upload-123"
+ *                 data: "item data 1"
+ *               - id: "upload-456"
+ *                 data: "item data 2"
+ *       400:
+ *         description: Invalid request body
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *               example:
+ *                 message: "Invalid request body"
+ *                 errors: []
+ *       500:
+ *         description: Failed to fetch upload parts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *               example:
+ *                 message: "Failed to fetch upload parts"
+ */
 // This endpoint retrieves items by their upload IDs and the common wrapped key.
 router.post('/items', async (req, res) => {
   try {
