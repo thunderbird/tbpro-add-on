@@ -8,6 +8,7 @@ import {
   createInvitationFromAccessLink,
   getAccessLinkChallenge,
   getAccessLinksByUploadId,
+  getAccessLinksByUploadIdAndWrappedKey,
   getContainerForAccessLink,
   isAccessLinkValid,
   removeAccessLink,
@@ -25,9 +26,9 @@ import { useMetrics } from '@/metrics';
 import { addExpiryToContainer } from '@/utils';
 import {
   getGroupMemberPermissions,
+  requireAdminPermission,
   requireJWT,
   requireSharePermission,
-  requireAdminPermission,
 } from '../middleware';
 
 const router: Router = Router();
@@ -301,8 +302,15 @@ router.get(
   addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { uploadId } = req.params;
+
+    const type = req.query?.type;
+
+    if (type === 'file') {
+      const result = await getAccessLinksByUploadIdAndWrappedKey(uploadId);
+      return res.status(200).json(result);
+    }
     const result = await getAccessLinksByUploadId(uploadId);
-    res.status(200).json(result);
+    return res.status(200).json(result);
   })
 );
 
