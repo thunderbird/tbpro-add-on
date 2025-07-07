@@ -12,10 +12,11 @@ import useSharingStore from '@/apps/send/stores/sharing-store';
 
 import ShieldIcon from '@/apps/common/ShieldIcon.vue';
 import {
-  EXTENSION_READY,
+  POPUP_READY,
   MAX_FILE_SIZE,
-  SHARE_ABORTED,
-  SHARE_COMPLETE,
+  ALL_UPLOADS_ABORTED,
+  ALL_UPLOADS_COMPLETE,
+  FILE_LIST,
 } from '@/lib/const';
 import { ERROR_MESSAGES } from '@/lib/errorMessages';
 import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
@@ -35,12 +36,16 @@ const sharingStore = useSharingStore();
 
 const isUploading = ref(false);
 const isError = ref(false);
-const password = ref('');
-const fileBlob = ref<Blob>(null);
 const isAllowed = ref(true);
+
+const uploadMap = ref<Map<number, boolean>>(new Map());
+const files = ref<Record<string, any>[] | null>(null);
+const password = ref('');
+
 const message = ref('');
 const passwordFieldType = ref<'password' | 'text'>('password');
 const isPasswordProtected = ref(false);
+
 const isPasswordVisible = computed(() => {
   return passwordFieldType.value === 'text';
 });
@@ -51,59 +56,90 @@ const isPasswordVisible = computed(() => {
 // Need to decide if you should be able to designate
 // the location of the file from the tb send popup.
 async function uploadAndShare() {
-  try {
-    isUploading.value = true;
-    const itemObj = await folderStore.uploadItem(
-      // TO-DO: We should fix this type
-      // @ts-ignore
-      fileBlob.value,
-      folderStore.defaultFolder.id,
-      api
-    );
-    if (!itemObj) {
+  isUploading.value = true;
+  isError.value = false;
+  let uploadedItems = [];
+
+  for (const file of files.value) {
+    try {
+      // Note: folderStore.uploadItem returns an Array
+      const itemObjArray = await folderStore.uploadItem(
+        // TO-DO: We should fix this type
+        // @ts-ignore
+        file.data,
+        folderStore.defaultFolder.id,
+        api
+      );
+
+      if (!itemObjArray || itemObjArray.length === 0) {
+        throw new Error(`Could not upload file ${file.name}`);
+      }
+
+      console.log(`[uploadAndShare] Successfully uploaded ${file.name}`);
+
+      // We don't want nested arrays, we want a flat array of Items.
+      //
+      // In case itemObjArray has multiple items (because of multi part
+      // uploads), we add each to the `uploadedItems` array.
+      //
+      // And we stamp each of these with the original file.id.
+      // This will be reported back to `background.js` so that it can
+      // mark it as complete.
+      for (const itemObj of itemObjArray) {
+        uploadedItems.push({
+          originalId: file.id,
+          ...itemObj,
+        });
+        uploadMap.value.set(file.id, true);
+      }
+    } catch (err) {
+      console.log(err);
       uploadAborted();
       isError.value = true;
       isUploading.value = false;
       return;
     }
-    fileBlob.value = null;
-    const url = await sharingStore.shareItems(itemObj, password.value);
+  }
+
+  try {
+    const url = await sharingStore.shareItems(uploadedItems, password.value);
     if (!url) {
-      shareAborted();
-      isError.value = true;
-      isUploading.value = false;
-      return;
+      throw new Error(`Did not get URL back from sharingStore`);
     }
-    shareComplete(url);
-    isUploading.value = false;
-  } catch {
+    console.log(`I got a sharing url and it is`);
+    console.log(url);
+    shareComplete(url, [...uploadedItems]);
+  } catch (err) {
+    console.log(err.message);
+
+    shareAborted();
     isError.value = true;
     isUploading.value = false;
     return;
   }
 }
 
-function uploadAborted() {
-  console.log('upload aborted for reasons');
-}
-
-function shareComplete(url) {
-  console.log(`you should tell the user that it's done`);
-
+function shareComplete(url: string, results: Record<string, any>[]) {
   browser.runtime.sendMessage({
-    type: SHARE_COMPLETE,
+    type: ALL_UPLOADS_COMPLETE,
     url,
+    results,
     aborted: false,
   });
+
   window.close();
 }
 
-function shareAborted() {
-  console.log(`Could not finish creating share for tb send`);
-
+function uploadAborted() {
   browser.runtime.sendMessage({
-    type: SHARE_ABORTED,
-    url: '',
+    type: ALL_UPLOADS_ABORTED,
+    aborted: true,
+  });
+}
+
+function shareAborted() {
+  browser.runtime.sendMessage({
+    type: ALL_UPLOADS_ABORTED,
     aborted: true,
   });
   window.close();
@@ -118,6 +154,10 @@ function togglePasswordField() {
   isPasswordProtected.value = !isPasswordProtected.value;
 }
 
+function indicatorForFile(fileId: number) {
+  return uploadMap.value.get(fileId) ? `✅` : `⏳`;
+}
+
 onMounted(async () => {
   try {
     await restoreKeysUsingLocalStorage(keychain, api);
@@ -125,20 +165,20 @@ onMounted(async () => {
     console.log(`adding listener in Popup for runtime messages`);
 
     browser.runtime.onMessage.addListener(async (message) => {
-      console.log(message);
-      const { data } = message;
-      fileBlob.value = data;
-      console.log(`We set the fileBlob to:`);
-      console.log(data);
+      if (message.type === FILE_LIST) {
+        files.value = message.files;
+      }
     });
+
     browser.runtime.sendMessage({
-      type: EXTENSION_READY,
+      type: POPUP_READY,
     });
   } catch {
     console.log(
       `Cannot access browser.runtime, probably not running as an extension`
     );
   }
+
   // At the very end we have to validate that everything is in order for the upload to happen
   const { hasBackedUpKeys, isTokenValid, hasForcedLogin } = await validators();
 
@@ -153,12 +193,25 @@ onMounted(async () => {
     return;
   }
 
-  // Check if the filesize is allowed
-  if (fileBlob.value.size > MAX_FILE_SIZE) {
-    progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
-    isError.value = true;
-    return;
+  // Check if the filesize is allowed.
+  // Using a for loop so we can return.
+  for (let i = 0; i < files.value.length; i++) {
+    const file = files.value[i].data;
+    if (file.size > MAX_FILE_SIZE) {
+      progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
+      console.log(`Max file size exceeded`);
+      isError.value = true;
+
+      browser.runtime.sendMessage({
+        type: ALL_UPLOADS_ABORTED,
+        url: '',
+        aborted: true,
+      });
+
+      return;
+    }
   }
+  // TODO: do this for each file
 });
 </script>
 
@@ -171,7 +224,14 @@ onMounted(async () => {
     <div v-if="isUploading">
       <ProgressBar />
     </div>
-
+    <div>
+      <ul>
+        <li v-for="file in files" :key="file.id">
+          <span>{{ indicatorForFile(file.id) }}</span>
+          {{ file.name }}
+        </li>
+      </ul>
+    </div>
     <form v-if="!isError" @submit.prevent="uploadAndShare">
       <div class="flex items-center gap-x-2">
         <input

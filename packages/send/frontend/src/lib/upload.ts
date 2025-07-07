@@ -3,6 +3,7 @@ import {
   ItemResponse,
   UploadResponse,
 } from '@/apps/send/stores/folder-store.types';
+import type { ProcessStage } from '@/apps/send/stores/status-store';
 import { ProgressTracker } from '@/apps/send/stores/status-store';
 import { ApiConnection } from '@/lib/api';
 import { NamedBlob, sendBlob } from '@/lib/filesync';
@@ -46,11 +47,19 @@ export default class Uploader {
           percentage: mainTracker.percentage,
           error: mainTracker.error,
           text: mainTracker.text,
+          fileName: mainTracker.fileName,
+          processStage: mainTracker.processStage,
           initialize: () => {
             // Don't reinitialize the main tracker for each part
           },
           setUploadSize: () => {
             // Already set on the main tracker
+          },
+          setFileName: (name: string) => {
+            mainTracker.setFileName(name);
+          },
+          setProcessStage: (stage: ProcessStage) => {
+            mainTracker.setProcessStage(stage);
           },
           setText: (message: string) => {
             if (isMultipart && blobs.length > 1) {
@@ -133,9 +142,10 @@ export default class Uploader {
       return null;
     }
 
-    // Initialize progress tracking for multipart uploads
-    progressTracker.initialize();
+    // Initialize progress tracking for multipart uploads - don't call initialize() as it resets fileName
     progressTracker.setUploadSize(fileBlob.size); // Use original file size for progress tracking
+    progressTracker.setProcessStage('preparing');
+    progressTracker.setText('Preparing file for upload');
 
     // Create a multipart progress tracker that manages overall progress
     const multipartTracker = this.createMultipartProgressTracker(

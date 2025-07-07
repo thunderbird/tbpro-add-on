@@ -7,7 +7,7 @@ import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import {
   Container,
@@ -26,7 +26,9 @@ import { decryptStream } from '@/lib/ece';
 import { organizeFiles } from '@/lib/folderView';
 import { _download } from '@/lib/helpers';
 import { blobStream } from '@/lib/streams';
+import { trpc } from '@/lib/trpc';
 import useMetricsStore from '@/stores/metrics';
+import type { ProcessStage } from './status-store';
 import { useStatusStore } from './status-store';
 
 export interface FolderStore {
@@ -70,7 +72,7 @@ export interface FolderStore {
 const useFolderStore = defineStore('folderManager', () => {
   const { api } = useApiStore();
   const { user } = useUserStore();
-  const { setUploadSize, progress } = useStatusStore();
+  const { progress } = useStatusStore();
   const { metrics } = useMetricsStore();
   const { keychain } = useKeychainStore();
 
@@ -83,6 +85,16 @@ const useFolderStore = defineStore('folderManager', () => {
 
   const selectedFolderId = ref<string | null>(null);
   const selectedFileId = ref<number | null>(null);
+
+  const rootFolderId = ref<string | null>(null);
+  onMounted(async () => {
+    await getDefaultFolderId();
+  });
+
+  async function getDefaultFolderId() {
+    const result = (await trpc.getDefaultFolder.query()).id || null;
+    rootFolderId.value = result;
+  }
 
   const defaultFolder = computed(() => {
     if (!folders?.value) {
@@ -153,7 +165,7 @@ const useFolderStore = defineStore('folderManager', () => {
   }
 
   async function createFolder(
-    name = 'Untitled',
+    name = 'Default',
     parentId?: string,
     shareOnly = false
   ): Promise<Container | null> {
@@ -234,7 +246,9 @@ const useFolderStore = defineStore('folderManager', () => {
     }
 
     const formattedBlob = await formatBlob(fileBlob);
-    setUploadSize(formattedBlob.size);
+
+    // Set up initial progress tracking - only set filename since uploader will handle the rest
+    progress.setFileName(formattedBlob.name);
 
     try {
       const newItems = await uploader.doUpload(
@@ -243,9 +257,11 @@ const useFolderStore = defineStore('folderManager', () => {
         api,
         progress
       );
+
       if (newItems && rootFolder.value) {
         rootFolder.value.items = [...rootFolder.value.items, ...newItems];
       }
+
       return newItems;
     } catch (error) {
       console.error('Upload failed in uploadItem:', error);
@@ -363,9 +379,10 @@ const useFolderStore = defineStore('folderManager', () => {
     // Calculate total size for progress tracking
     const totalSize = sortedMetadata.reduce((sum, meta) => sum + meta.size, 0);
 
-    // Initialize progress tracking for multipart downloads
-    progressTracker.initialize();
+    // Set up progress tracking for multipart downloads - don't call initialize() as it resets fileName
     progressTracker.setUploadSize(totalSize);
+    progressTracker.setProcessStage('downloading');
+    progressTracker.setText('Downloading file');
 
     // Create a multipart progress tracker that manages overall progress across all parts
     const multipartTracker = createMultipartDownloadProgressTracker(
@@ -540,11 +557,19 @@ const useFolderStore = defineStore('folderManager', () => {
           percentage: mainTracker.percentage,
           error: mainTracker.error,
           text: mainTracker.text,
+          fileName: mainTracker.fileName,
+          processStage: mainTracker.processStage,
           initialize: () => {
             // Don't reinitialize the main tracker for each part
           },
           setUploadSize: () => {
             // Already set on the main tracker
+          },
+          setFileName: (name: string) => {
+            mainTracker.setFileName(name);
+          },
+          setProcessStage: (stage: ProcessStage) => {
+            mainTracker.setProcessStage(stage);
           },
           setText: (message: string) => {
             // Show overall progress message without part numbers for downloads
@@ -611,6 +636,7 @@ const useFolderStore = defineStore('folderManager', () => {
       // We need to organize files to make sure that multi part files are handled correctly
       return organizeFiles([selectedFile.value])[0] || null;
     }),
+    rootFolderId: computed(() => rootFolderId.value),
     print,
     init,
     fetchSubtree,

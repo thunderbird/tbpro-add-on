@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router';
 const folderStore = useFolderStore();
 
 const path = ref([]);
-
 const router = useRouter();
 
 watchEffect(() => {
@@ -19,33 +18,75 @@ watchEffect(() => {
 </script>
 
 <template>
-  <ul>
-    <li class="inline-block pl-1">
-      <button data-testid="home-button" @click="router.push('/send')">
-        🏠
-      </button>
-    </li>
-    <li
-      v-for="node of path"
-      v-if="folderStore.rootFolder"
-      :key="node.id"
-      class="inline-block pl-1"
-    >
-      &nbsp;&gt;&nbsp;
-      <button
-        @click.prevent="
-          router.push({ name: 'folder', params: { id: node.id } })
-        "
-      >
-        {{ node.name }}
-      </button>
-    </li>
-  </ul>
+  <nav aria-label="Breadcrumb navigation">
+    <ol class="breadcrumb-list">
+      <template v-if="folderStore.rootFolder">
+        <li
+          v-for="(folder, index) of path"
+          :key="folder.id"
+          class="breadcrumb-item"
+        >
+          <!-- We just want to show the separator with more than one item -->
+          <span class="breadcrumb-separator" aria-hidden="true">{{
+            index !== 0 ? '&gt;' : ''
+          }}</span>
+          <button
+            :aria-label="`Go to ${folder.name} folder`"
+            :aria-current="index === path.length - 1 ? 'page' : undefined"
+            class="breadcrumb-button"
+            :data-testid="index !== 0 ? 'breadcrumb-item' : 'home-button'"
+            @click.prevent="
+              router.push({ name: 'folder', params: { id: folder.id } })
+            "
+          >
+            {{ folder.id === folderStore.rootFolderId ? '🏠' : folder.name }}
+          </button>
+        </li>
+      </template>
+    </ol>
+  </nav>
 </template>
 
 <style scoped>
-li,
-button {
+.breadcrumb-list {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumb-list li {
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumb-button {
   user-select: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.breadcrumb-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.breadcrumb-button:focus {
+  outline: 2px solid #007acc;
+  outline-offset: 2px;
+}
+
+.breadcrumb-separator {
+  margin: 0 0.5rem;
+  color: #666;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
 }
 </style>
