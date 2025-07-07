@@ -19,6 +19,7 @@ import {
   POPUP_READY,
 } from '@/lib/const';
 import { ERROR_MESSAGES } from '@/lib/errorMessages';
+import { organizeFiles } from '@/lib/folderView';
 import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
 import useApiStore from '@/stores/api-store';
 import { IconEye, IconEyeClosed } from '@tabler/icons-vue';
@@ -102,7 +103,9 @@ async function uploadAndShare() {
   }
 
   try {
-    const url = await sharingStore.shareItems(uploadedItems, password.value);
+    // We make ure that multifile uploads are organized so we can share them
+    const organizedFiles = organizeFiles(uploadedItems);
+    const url = await sharingStore.shareItems(organizedFiles, password.value);
     if (!url) {
       throw new Error(`Did not get URL back from sharingStore`);
     }

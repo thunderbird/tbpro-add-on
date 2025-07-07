@@ -87,6 +87,7 @@ const useFolderStore = defineStore('folderManager', () => {
   const selectedFileId = ref<number | null>(null);
 
   const rootFolderId = ref<string | null>(null);
+
   onMounted(async () => {
     await getDefaultFolderId();
   });
@@ -94,6 +95,8 @@ const useFolderStore = defineStore('folderManager', () => {
   async function getDefaultFolderId() {
     const result = (await trpc.getDefaultFolder.query()).id || null;
     rootFolderId.value = result;
+    // We want to return the value in case we need it immediately
+    return result;
   }
 
   const defaultFolder = computed(() => {
@@ -108,7 +111,9 @@ const useFolderStore = defineStore('folderManager', () => {
     if (folders.value.length === 0) {
       return [];
     }
-    return calculateFolderSizes(folders.value);
+    const foldersWithSizes = calculateFolderSizes(folders.value);
+    const sortedFolders = sortFolders(foldersWithSizes, rootFolderId.value);
+    return sortedFolders;
   });
 
   const selectedFolder = computed<Container | null>(() => {
@@ -637,6 +642,7 @@ const useFolderStore = defineStore('folderManager', () => {
       return organizeFiles([selectedFile.value])[0] || null;
     }),
     rootFolderId: computed(() => rootFolderId.value),
+    getDefaultFolderId,
     print,
     init,
     fetchSubtree,
@@ -670,6 +676,11 @@ function calculateFolderSizes(folders: Container[]): Container[] {
     return folder;
   });
   return foldersWithSizes;
+}
+
+function sortFolders(folders: Container[], rootFolderId: string): Container[] {
+  // Make sure we don't show the root folder to avoid confusion and in some cases layout shifts
+  return folders.filter((folder) => folder.id !== rootFolderId);
 }
 
 function findContainer(

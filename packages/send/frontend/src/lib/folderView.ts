@@ -16,7 +16,7 @@ export const organizeFiles = (files: Item[]) => {
 
   files.forEach((item) => {
     // When items are not multipart, we can directly add them to the list
-    if (!item.multipart) {
+    if (!item?.multipart) {
       items.push(item);
       return;
     }

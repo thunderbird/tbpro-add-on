@@ -9,6 +9,7 @@ import {
   getAccessLinkChallenge,
   getAccessLinksByUploadId,
   getContainerForAccessLink,
+  getFileAccessLinkByUploadId,
   isAccessLinkValid,
   removeAccessLink,
   resetAccessLinkRetryCount,
@@ -25,9 +26,9 @@ import { useMetrics } from '@/metrics';
 import { addExpiryToContainer } from '@/utils';
 import {
   getGroupMemberPermissions,
+  requireAdminPermission,
   requireJWT,
   requireSharePermission,
-  requireAdminPermission,
 } from '../middleware';
 
 const router: Router = Router();
@@ -301,8 +302,16 @@ router.get(
   addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { uploadId } = req.params;
+
+    const type = req.query?.type;
+
+    if (type === 'file') {
+      const result = await getFileAccessLinkByUploadId(uploadId);
+      return res.status(200).json(result);
+    }
+    // If type is not 'file', we assume it's a folder
     const result = await getAccessLinksByUploadId(uploadId);
-    res.status(200).json(result);
+    return res.status(200).json(result);
   })
 );
 

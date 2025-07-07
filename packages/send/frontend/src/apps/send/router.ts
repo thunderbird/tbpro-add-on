@@ -190,6 +190,12 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
+  if (to.path === '/send/folder/null') {
+    // If the user tries to access the folder with id 'null', we redirect them to the root folder
+    const rootFolderId = await folderStore.getDefaultFolderId();
+    return next(`/send/folder/${rootFolderId}`);
+  }
+
   if (resolveDefaultFolder) {
     return next(`/send/folder/${folderStore.rootFolderId}`);
   }
