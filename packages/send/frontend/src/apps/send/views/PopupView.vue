@@ -12,11 +12,11 @@ import useSharingStore from '@/apps/send/stores/sharing-store';
 
 import ShieldIcon from '@/apps/common/ShieldIcon.vue';
 import {
-  POPUP_READY,
-  MAX_FILE_SIZE,
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
   FILE_LIST,
+  MAX_FILE_SIZE,
+  POPUP_READY,
 } from '@/lib/const';
 import { ERROR_MESSAGES } from '@/lib/errorMessages';
 import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
@@ -56,7 +56,6 @@ const isPasswordVisible = computed(() => {
 // Need to decide if you should be able to designate
 // the location of the file from the tb send popup.
 async function uploadAndShare() {
-
   isUploading.value = true;
   isError.value = false;
   let uploadedItems = [];
@@ -89,8 +88,8 @@ async function uploadAndShare() {
       for (const itemObj of itemObjArray) {
         uploadedItems.push({
           originalId: file.id,
-          ...itemObj
-        })
+          ...itemObj,
+        });
         uploadMap.value.set(file.id, true);
       }
     } catch (err) {
@@ -196,7 +195,7 @@ onMounted(async () => {
 
   // Check if the filesize is allowed.
   // Using a for loop so we can return.
-  for (let i=0; i<files.value.length; i++) {
+  for (let i = 0; i < files.value.length; i++) {
     const file = files.value[i].data;
     if (file.size > MAX_FILE_SIZE) {
       progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;

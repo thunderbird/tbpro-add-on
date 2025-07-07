@@ -137,8 +137,7 @@ export async function _upload(
 
 export async function encrypt(
   stream: ReadableStream,
-  key: CryptoKey,
-  progressTracker: ProgressTracker
+  key: CryptoKey
 ): Promise<Uint8Array> {
   try {
     let size = 0;
@@ -157,8 +156,8 @@ export async function encrypt(
       const buf = state.value;
       chunks.push(buf);
 
-      // For multipart uploads, the progress tracker will handle the proper calculation
-      progressTracker.setProgress(size);
+      // Don't update progress during encryption - only during actual upload
+      // progressTracker.setProgress(size);
 
       size += buf.length;
       console.log('Encrypted', size, 'bytes', '- timestamp:', Date.now());

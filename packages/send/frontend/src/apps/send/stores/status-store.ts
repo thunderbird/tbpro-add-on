@@ -7,6 +7,18 @@ import { useDebounceFn } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
+// Define the possible process stages
+export type ProcessStage =
+  | 'idle'
+  | 'preparing'
+  | 'encrypting'
+  | 'uploading'
+  | 'downloading'
+  | 'decrypting'
+  | 'processing'
+  | 'completed'
+  | 'error';
+
 export const useStatusStore = defineStore('status', () => {
   const { api } = useApiStore();
   const userStore = useUserStore();
@@ -17,6 +29,10 @@ export const useStatusStore = defineStore('status', () => {
   const progressed = ref(0);
   const error = ref<string>('');
   const text = ref<string>('');
+
+  // File metadata
+  const fileName = ref<string>('');
+  const processStage = ref<ProcessStage>('idle');
 
   const debouncedUpdate = useDebounceFn((updatedValue: number) => {
     progressed.value = updatedValue;
@@ -35,11 +51,21 @@ export const useStatusStore = defineStore('status', () => {
     debouncedUpdate(number);
   }
 
+  function setFileName(name: string) {
+    fileName.value = name;
+  }
+
+  function setProcessStage(stage: ProcessStage) {
+    processStage.value = stage;
+  }
+
   function initialize() {
     total.value = 0;
     progressed.value = 0;
     error.value = '';
     text.value = '';
+    fileName.value = '';
+    processStage.value = 'idle';
   }
 
   const percentage = computed(() => {
@@ -60,16 +86,22 @@ export const useStatusStore = defineStore('status', () => {
     setProgress,
     setUploadSize,
     setText,
+    setFileName,
+    setProcessStage,
     progress: {
       total,
       progressed,
       percentage,
       error,
       text,
+      fileName,
+      processStage,
       initialize,
       setProgress,
       setUploadSize,
       setText,
+      setFileName,
+      setProcessStage,
     },
   };
 });

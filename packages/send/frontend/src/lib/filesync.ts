@@ -91,7 +91,6 @@ export async function getBlob(
       throw new Error('BUCKET_URL_NOT_FOUND');
     }
 
-    progressTracker.initialize();
     progressTracker.setUploadSize(size);
     progressTracker.setText('Downloading file');
 
@@ -151,11 +150,13 @@ export async function sendBlob(
       'POST'
     );
 
+    progressTracker.setProcessStage('encrypting');
     progressTracker.setText('Encrypting file');
-    const encrypted = await encrypt(stream, aesKey, progressTracker);
+    const encrypted = await encrypt(stream, aesKey);
 
     // Don't reset progress to 0 - maintain the encryption progress
     // and continue from where we left off for upload
+    progressTracker.setProcessStage('uploading');
     progressTracker.setText('Uploading file');
 
     // Create a ReadableStream from the Uint8Array
