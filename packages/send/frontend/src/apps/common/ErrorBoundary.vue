@@ -7,9 +7,11 @@ const hasError = ref(false);
 const error = ref(null);
 
 onErrorCaptured((err) => {
+  // We explicitly check for DEBUG mode to decide whether to display the error or log it to the console.
+  const shouldDisplayError = import.meta.env.DEBUG;
   hasError.value = true;
   error.value = err;
-  return false;
+  return shouldDisplayError;
 });
 
 const reload = () => {
