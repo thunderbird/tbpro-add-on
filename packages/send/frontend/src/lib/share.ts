@@ -14,9 +14,43 @@ export default class Sharer {
     this.api = api;
   }
 
+  async handleMultipartItems(item: Item): Promise<Item[]> {
+    const _uploads = await this.api.call<{ id: string; part: number }[]>(
+      `uploads/parts`,
+      {
+        wrappedKey: item.wrappedKey,
+      },
+      'POST'
+    );
+    const ids = _uploads.map((u) => u.id);
+    console.log(`ids:`, ids);
+    const _items = await this.api.call<Item[]>(
+      `uploads/items`,
+      {
+        ids,
+        wrappedKey: item.wrappedKey,
+      },
+      'POST'
+    );
+    console.log(`_items:`, _items);
+    return _items;
+  }
+
   // Creates AccessLink
   async shareItemsWithPassword(items: Item[], password: string) {
-    const containerId = await this.createShareOnlyContainer(items, null);
+    const __items: Item[] = [];
+    // Loop through the items
+    // Multipart items should be handled by `handleMultipartItems`
+    for (const item of items) {
+      if (item.multipart) {
+        const _items = await this.handleMultipartItems(item);
+        __items.push(..._items);
+      } else {
+        __items.push(item);
+      }
+    }
+
+    const containerId = await this.createShareOnlyContainer(__items, null);
     return await this.requestAccessLink(containerId, password);
   }
 
@@ -157,6 +191,8 @@ export default class Sharer {
             name: filename,
             type,
             wrappedKey: wrappedKeyStr,
+            multipart: item.multipart ?? false,
+            totalSize: item.totalSize ?? undefined,
           },
           'POST'
         );
@@ -181,6 +217,7 @@ export default class Sharer {
     const passwordWrappedKeyStr = await this.keychain.password.wrapContainerKey(
       unwrappedKey,
       password,
+      //@ts-ignore
       salt
     );
 
@@ -191,6 +228,7 @@ export default class Sharer {
       await this.keychain.password.wrapContentKey(
         challengeKey,
         password,
+        //@ts-ignore
         challengeSalt
       );
 
@@ -199,6 +237,7 @@ export default class Sharer {
     const challengeCiphertext = await this.keychain.challenge.encryptChallenge(
       challengePlaintext,
       challengeKey,
+      //@ts-ignore
       challengeSalt
     );
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 
 import {
   addErrorHandling,
@@ -9,8 +10,10 @@ import {
 
 import {
   createUpload,
+  getItemsByUploadIdandWrappedKey,
   getUploadMetadata,
   getUploadParts,
+  getUploadPartsByWrappedKey,
   getUploadSize,
   statUpload,
 } from '../models/uploads';
@@ -300,7 +303,7 @@ router.get(
  *                 part: 2
  *       500:
  *         description: Failed to fetch upload parts
- *         content:
+ *         content:`
  *           application/json:
  *             schema:
  *               type: object
@@ -313,9 +316,55 @@ router.get(
 router.get('/:id/parts', async (req, res) => {
   const { id } = req.params;
   try {
+    // Returns the id and part number of each upload
     const parts = await getUploadParts(id);
     res.status(200).json(parts);
   } catch (error) {
+    console.error('Error fetching upload parts:', error);
+    res.status(500).json({ message: 'Failed to fetch upload parts' });
+  }
+});
+
+router.post('/parts', requireJWT, async (req, res) => {
+  const { wrappedKey } = req.body;
+  try {
+    // Returns the id and part number of each upload
+    const parts = await getUploadPartsByWrappedKey(wrappedKey);
+    res.status(200).json(parts);
+  } catch (error) {
+    console.error('Error fetching upload parts:', error);
+    res.status(500).json({ message: 'Failed to fetch upload parts' });
+  }
+});
+
+// Zod schema for validating the request body
+const partsItemsSchema = z.object({
+  ids: z.array(z.string()).min(1, 'At least one ID is required'),
+  wrappedKey: z.string(),
+});
+
+// This endpoint retrieves items by their upload IDs and the common wrapped key.
+router.post('/items', async (req, res) => {
+  try {
+    // Validate the request body using Zod
+    const { ids, wrappedKey } = partsItemsSchema.parse(req.body);
+
+    // Returns the id and part number of each upload
+    const items = await Promise.all(
+      ids.map(async (id) => {
+        const item = await getItemsByUploadIdandWrappedKey(id, wrappedKey);
+        return item;
+      })
+    );
+    res.status(200).json(items);
+    // Validate schema and handle errors
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        message: 'Invalid request body',
+        errors: error.errors,
+      });
+    }
     console.error('Error fetching upload parts:', error);
     res.status(500).json({ message: 'Failed to fetch upload parts' });
   }
