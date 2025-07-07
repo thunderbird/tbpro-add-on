@@ -12,11 +12,11 @@ import useSharingStore from '@/apps/send/stores/sharing-store';
 
 import ShieldIcon from '@/apps/common/ShieldIcon.vue';
 import {
-  POPUP_READY,
-  MAX_FILE_SIZE,
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
   FILE_LIST,
+  MAX_FILE_SIZE,
+  POPUP_READY,
 } from '@/lib/const';
 import { ERROR_MESSAGES } from '@/lib/errorMessages';
 import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
