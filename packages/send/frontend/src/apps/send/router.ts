@@ -15,6 +15,7 @@ import useKeychainStore from '@/stores/keychain-store';
 import { IS_DEV } from '@/lib/clientConfig';
 import { getCanRetry } from '@/lib/validations';
 
+import { useFolderStore } from '@/stores';
 import useMetricsStore from '@/stores/metrics';
 import NotFoundPage from '../common/NotFoundPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
@@ -29,6 +30,7 @@ enum META_OPTIONS {
   autoRestoresKeys = 'autoRestoresKeys',
   requiresBackedUpKeys = 'requiresBackedUpKeys',
   requiresRetryCountCheck = 'requiresRetryCountCheck',
+  resolveDefaultFolder = 'resolveDefaultFolder',
 }
 
 export const routes: RouteRecordRaw[] = [
@@ -47,11 +49,21 @@ export const routes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
+        redirect: '/send/folder/root',
+        meta: {
+          [META_OPTIONS.requiresValidToken]: true,
+          [META_OPTIONS.autoRestoresKeys]: true,
+          [META_OPTIONS.requiresBackedUpKeys]: true,
+        },
+      },
+      {
+        path: 'folder/root',
         component: FolderView,
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.autoRestoresKeys]: true,
           [META_OPTIONS.requiresBackedUpKeys]: true,
+          [META_OPTIONS.resolveDefaultFolder]: true,
         },
       },
       {
@@ -131,6 +143,8 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+  const folderStore = useFolderStore();
+
   const { keychain } = useKeychainStore();
   const { api } = useApiStore();
   const { validators } = useStatusStore();
@@ -142,6 +156,7 @@ router.beforeEach(async (to, from, next) => {
     to,
     META_OPTIONS.redirectOnValidSession
   );
+  const resolveDefaultFolder = matchMeta(to, META_OPTIONS.resolveDefaultFolder);
   const requiresValidToken = matchMeta(to, META_OPTIONS.requiresValidToken);
   const autoRestoresKeys = matchMeta(to, META_OPTIONS.autoRestoresKeys);
   const requiresBackedUpKeys = matchMeta(to, META_OPTIONS.requiresBackedUpKeys);
@@ -173,6 +188,16 @@ router.beforeEach(async (to, from, next) => {
     } catch (error) {
       console.error('Error restoring keys', error);
     }
+  }
+
+  if (to.path === '/send/folder/null') {
+    // If the user tries to access the folder with id 'null', we redirect them to the root folder
+    const rootFolderId = await folderStore.getDefaultFolderId();
+    return next(`/send/folder/${rootFolderId}`);
+  }
+
+  if (resolveDefaultFolder) {
+    return next(`/send/folder/${folderStore.rootFolderId}`);
   }
 
   // If a file has exceeded the maximum number of retries, it will be locked.

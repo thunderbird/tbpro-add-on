@@ -14,9 +14,44 @@ export default class Sharer {
     this.api = api;
   }
 
+  async handleMultipartItems(item: Item): Promise<Item[]> {
+    // Get each of the parts for the multipart item. They should have the wrappedKey in common
+    const _uploads = await this.api.call<{ id: string; part: number }[]>(
+      `uploads/parts`,
+      {
+        wrappedKey: item.wrappedKey,
+      },
+      'POST'
+    );
+    const ids = _uploads.map((u) => u.id);
+    // Get the correspoding items for the multipart uploads
+    const _items = await this.api.call<Item[]>(
+      `uploads/items`,
+      {
+        ids,
+        wrappedKey: item.wrappedKey,
+      },
+      'POST'
+    );
+    return _items;
+  }
+
   // Creates AccessLink
   async shareItemsWithPassword(items: Item[], password: string) {
-    const containerId = await this.createShareOnlyContainer(items, null);
+    const __items: Item[] = [];
+    // Loop through the items and handle multipart items separately
+    for (const item of items) {
+      if (item.multipart) {
+        // We should handle multipart items separately because the UI displays a single part and we need to get all the parts to create the shareable link
+        const _items = await this.handleMultipartItems(item);
+        __items.push(..._items);
+      } else {
+        __items.push(item);
+      }
+    }
+
+    // Now that we all our items we can handle them normally
+    const containerId = await this.createShareOnlyContainer(__items, null);
     return await this.requestAccessLink(containerId, password);
   }
 
@@ -91,7 +126,7 @@ export default class Sharer {
 
     const itemsToShare = [...items];
 
-    let currentContainer = { name: 'untitled' };
+    let currentContainer = { name: 'default' };
     if (containerId) {
       currentContainer = await this.api.call(`containers/${containerId}/info`);
       // TODO: future enhancement
@@ -157,6 +192,8 @@ export default class Sharer {
             name: filename,
             type,
             wrappedKey: wrappedKeyStr,
+            multipart: item.multipart ?? false,
+            totalSize: item.totalSize ?? undefined,
           },
           'POST'
         );
@@ -181,6 +218,7 @@ export default class Sharer {
     const passwordWrappedKeyStr = await this.keychain.password.wrapContainerKey(
       unwrappedKey,
       password,
+      //@ts-ignore
       salt
     );
 
@@ -191,6 +229,7 @@ export default class Sharer {
       await this.keychain.password.wrapContentKey(
         challengeKey,
         password,
+        //@ts-ignore
         challengeSalt
       );
 
@@ -199,6 +238,7 @@ export default class Sharer {
     const challengeCiphertext = await this.keychain.challenge.encryptChallenge(
       challengePlaintext,
       challengeKey,
+      //@ts-ignore
       challengeSalt
     );
 

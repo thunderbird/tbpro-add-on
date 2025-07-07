@@ -36,11 +36,6 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
   const profileButton = page.getByRole("link", { name: "My Files" });
   await profileButton.click();
 
-  // Check that default folder exists
-  await page.waitForSelector(folderRowSelector);
-  let folder = page.getByTestId(folderRowTestID);
-  await folder.click();
-
   await saveStorage(context);
 }
 
@@ -74,7 +69,10 @@ export async function log_out_restore_keys({ page }: PlaywrightProps) {
   // look for folder (only shows when keys are restored)
   await secondPage.goto("/send");
 
-  // Check that default folder exists
+  // Create a new folder
+  await secondPage.getByTestId("new-folder-button").click();
+
+  // Check that newly created folder exists
   await secondPage.waitForSelector(folderRowSelector);
   let folder = secondPage.getByTestId(folderRowTestID);
   await folder.click();

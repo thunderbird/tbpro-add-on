@@ -110,7 +110,7 @@ const useSharingStore = defineStore('sharingManager', () => {
   }
 
   async function fetchFileAccessLinks(uploadId: string): Promise<void> {
-    _links.value = await api.call(`sharing/${uploadId}/links`);
+    _links.value = await api.call(`sharing/${uploadId}/links?type=file`);
   }
 
   async function shareItems(

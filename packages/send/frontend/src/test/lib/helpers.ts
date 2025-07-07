@@ -8,8 +8,12 @@ export const mockProgressTracker = {
   percentage: 0,
   error: '',
   text: '',
+  fileName: '',
+  processStage: 'idle' as const,
   initialize: progressTracker,
   setProgress: progressTracker,
   setUploadSize: progressTracker,
   setText: progressTracker,
+  setFileName: progressTracker,
+  setProcessStage: progressTracker,
 } as ProgressTracker;

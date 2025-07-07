@@ -104,6 +104,16 @@ export async function getContainerWithAncestors(id: string) {
   return container;
 }
 
+export async function getContainerWithoutAncestors(userId: string) {
+  const topLevelContainers = prisma.container.findFirst({
+    where: {
+      parent: { is: null },
+      owner: { id: userId },
+    },
+  });
+  return topLevelContainers;
+}
+
 export async function getAccessLinksForContainer(containerId: string) {
   const shares = await fromPrismaV2(prisma.share.findMany, {
     where: {
