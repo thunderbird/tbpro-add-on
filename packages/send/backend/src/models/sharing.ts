@@ -623,7 +623,6 @@ export async function getFileAccessLinkByUploadId(uploadId: string) {
         container: {
           shareOnly: true,
           items: {
-            // Since we created the share-only container for for uploads that might be split into multiple parts,
             // we need to ensure that the container has items with the same uploadId.
             some: {
               uploadId,
@@ -635,6 +634,7 @@ export async function getFileAccessLinkByUploadId(uploadId: string) {
             },
           },
         },
+	    // Since we created the share-only container for uploads that might be split into multiple parts,
       },
     },
   });
