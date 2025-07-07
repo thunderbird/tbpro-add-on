@@ -1,12 +1,11 @@
 # Check if environment NODE_ENV has been set to production
 if [ "$NODE_ENV" = "production" ]; then
     echo 'Starting production build 🐧'
+    # Pre-build makes sure the ID and name are set on the xpi for prod/stage
+    bun run scripts/set-id.ts
 else
     echo 'Starting development build 🐣'
 fi
-
-# Pre-build makes sure the ID and name are set on the xpi for prod/stage
-bun run scripts/set-id.ts
 
 # Get version from package.json and replace dots with hyphens
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
