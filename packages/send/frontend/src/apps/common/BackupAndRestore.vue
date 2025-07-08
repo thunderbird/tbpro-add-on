@@ -5,6 +5,7 @@ import StatusBar from '@/apps/common/StatusBar.vue';
 import useKeychainStore from '@/stores/keychain-store';
 
 // move the following imports elsewhere
+import { useAuth } from '@/lib/auth';
 import { downloadTxt } from '@/lib/filesync';
 import { dbUserSetup } from '@/lib/helpers';
 import { backupKeys, restoreKeys } from '@/lib/keychain';
@@ -21,6 +22,7 @@ import ExpandIcon from './ExpandIcon.vue';
 import KeyRecovery from './KeyRecovery.vue';
 const userStore = useUserStore();
 const folderStore = useFolderStore();
+const { logOutAuth } = useAuth();
 
 const words = ref(generatePassphrase(PHRASE_SIZE));
 
@@ -42,7 +44,6 @@ const setPassphrase = (newPassphrase: string) => {
 const { api } = useApiStore();
 const {
   getBackup,
-  logOut,
   user: { email },
 } = useUserStore();
 const { keychain } = useKeychainStore();
@@ -60,7 +61,7 @@ const { mutate: resetKeys } = useMutation({
     await trpc.resetKeys.mutate();
   },
   onSuccess: async () => {
-    await logOut();
+    await logOutAuth();
     window.location.reload();
   },
 });
