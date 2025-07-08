@@ -1,14 +1,14 @@
 {
   "name": "send-frontend",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "private": false,
   "type": "module",
   "scripts": {
     "build": "NODE_ENV=production ./scripts/build.sh",
     "build-and-submit": "NODE_ENV=production ./scripts/build.sh && ./scripts/submit.sh",
-    "build:watch": "nodemon -e vue,ts,js,json --watch './{src,public}/**/*' --exec 'pnpm build'",
     "build:dev": "./scripts/build.sh",
     "build:dev:watch": "nodemon -e vue,ts,js,json --ignore 'dist*/' --ignore manifest.json --watch './{src,public}/**/*' --exec 'pnpm build:dev'",
+    "build:watch": "nodemon -e vue,ts,js,json --watch './{src,public}/**/*' --exec 'pnpm build'",
     "ci:validate": "pnpm lint:all; pnpm prettier:all; pnpm run test",
     "deploy-xpi": "bun run ./scripts/deploy_xpi.ts",
     "dev": "vite --host",

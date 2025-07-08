@@ -303,7 +303,7 @@ router.get(
  *                 part: 2
  *       500:
  *         description: Failed to fetch upload parts
- *         content:`
+ *         content:
  *           application/json:
  *             schema:
  *               type: object
