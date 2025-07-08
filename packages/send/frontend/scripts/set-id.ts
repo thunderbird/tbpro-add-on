@@ -12,9 +12,16 @@ import {
 dotenv.config();
 
 export async function updateManifestConfig(): Promise<void> {
-  const isProd = getIsEnvProd();
-  console.log(`Updating manifest.json for ${isProd ? 'PROD' : 'STAGE'}`);
+  let isProd = false;
   try {
+    isProd = getIsEnvProd();
+  } catch {
+    // No-op
+  }
+
+  try {
+    console.log(`Updating manifest.json for ${isProd ? 'PROD' : 'STAGE'}`);
+
     // Define relative paths from current directory
     const manifestPath = path.resolve(__dirname, '../public/manifest.json');
     // Read the Manifest file as string
