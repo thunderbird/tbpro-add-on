@@ -52,9 +52,6 @@ const useSharingStore = defineStore('sharingManager', () => {
       url = `${url}#${password}`;
     }
 
-    // refetch access links
-    // TODO: consider just updating sharer.requestAccessLink so that it returns the whole link and then pushing it to _links
-    await fetchFolderAccessLinks(folderId);
     return url;
   }
 

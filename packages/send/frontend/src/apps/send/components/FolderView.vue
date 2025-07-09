@@ -254,9 +254,10 @@ function handleFolderClick(uuid: string) {
         <!-- FILES -->
         <template v-if="folderStore.rootFolder">
           <tr
-            v-for="item in folderStore.rootFolder.items"
+            v-for="(item, index) in folderStore.rootFolder.items"
             :key="item.id"
             class="group cursor-pointer"
+            :data-testid="'file-' + index"
             @click="handleFileClick(item.id)"
           >
             <FolderTableRowCell>

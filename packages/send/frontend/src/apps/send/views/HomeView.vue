@@ -7,9 +7,16 @@ import FileInfo from '@/apps/send/components/FileInfo.vue';
 import FolderInfo from '@/apps/send/components/FolderInfo.vue';
 import FolderNavigation from '@/apps/send/components/FolderNavigation.vue';
 import NewFolder from '@/apps/send/components/NewFolder.vue';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 const { user } = useUserStore();
 const folderStore = useFolderStore();
+const { currentRoute } = useRouter();
+
+const showFileComponents = computed(() => {
+  return currentRoute.value.path.includes('/folder');
+});
 </script>
 
 <template>
@@ -32,7 +39,10 @@ const folderStore = useFolderStore();
       <FeedbackBox />
     </main>
 
-    <aside class="w-64 border border-gray-300 bg-gray-50 p-2.5">
+    <aside
+      v-if="showFileComponents"
+      class="w-64 border border-gray-300 bg-gray-50 p-2.5"
+    >
       <FileInfo v-if="folderStore.selectedFile" />
       <FolderInfo v-if="folderStore.selectedFolder" />
     </aside>
