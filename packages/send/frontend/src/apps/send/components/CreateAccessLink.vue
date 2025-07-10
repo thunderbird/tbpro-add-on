@@ -23,6 +23,7 @@ const showPassword = ref(false);
 const tooltipText = ref('Copied to clipboard');
 const clipboard = useClipboard();
 const accessUrlInput = ref<HTMLInputElement | null>(null);
+const isLoading = ref(false);
 
 const { mutate } = useMutation({
   mutationKey: ['getAccessLink'],
@@ -48,6 +49,7 @@ function copyToClipboard(url: string) {
 }
 
 async function newAccessLink() {
+  isLoading.value = true;
   const url = await sharingStore.createAccessLink(
     props.folderId,
     password.value,
@@ -72,6 +74,7 @@ async function newAccessLink() {
   accessUrlInput.value?.focus();
 
   await refreshAccessLinks();
+  isLoading.value = false;
 }
 
 watch(
@@ -120,9 +123,16 @@ watch(
   <Btn
     class="create-button"
     data-testid="create-share-link"
+    :disabled="isLoading"
     @click="newAccessLink"
   >
-    Create Share Link <IconLink class="icon" />
+    <div v-if="isLoading">
+      <p>Creating...</p>
+    </div>
+    <div v-else class="flex justify-center items-center gap-2">
+      <span>Create Access Link</span>
+      <IconLink class="icon" />
+    </div>
   </Btn>
 </template>
 

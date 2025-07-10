@@ -5,9 +5,9 @@ import { trpc } from '@/lib/trpc';
 import { useMutation } from '@tanstack/vue-query';
 import { ref } from 'vue';
 
-import FileNameForm from '@/apps/send/elements/FileNameForm.vue';
 import FileAccessLinksList from '@/apps/send/components/FileAccessLinksList.vue';
 import Btn from '@/apps/send/elements/BtnComponent.vue';
+import FileNameForm from '@/apps/send/elements/FileNameForm.vue';
 import { formatBytes } from '@/lib/utils';
 import { IconDownload, IconEye, IconEyeOff, IconLink } from '@tabler/icons-vue';
 import { useClipboard, useDebounceFn } from '@vueuse/core';
@@ -25,6 +25,7 @@ const showPassword = ref(false);
 const tooltipText = ref('Copied to clipboard');
 const clipboard = useClipboard();
 const accessUrlInput = ref<HTMLInputElement | null>(null);
+const isLoading = ref(false);
 
 const { mutate } = useMutation({
   mutationKey: ['getAccessLink'],
@@ -50,6 +51,7 @@ function copyToClipboard(url: string) {
 }
 
 async function shareIndividualFile() {
+  isLoading.value = true;
   const url = await sharingStore.shareItems(
     [folderStore.selectedFile],
     password.value
@@ -73,6 +75,7 @@ async function shareIndividualFile() {
   accessUrlInput.value?.focus();
 
   await refreshAccessLinks();
+  isLoading.value = false;
 }
 
 /*
@@ -141,8 +144,13 @@ Note about shareOnly containers.
       data-testid="create-share-link"
       @click="shareIndividualFile"
     >
-      Create Share Link
-      <IconLink class="icon" />
+      <div v-if="isLoading">
+        <p>Creating...</p>
+      </div>
+      <div v-else class="flex justify-center items-center gap-2">
+        <span>Create Share Link</span>
+        <IconLink class="icon" />
+      </div>
     </Btn>
 
     <FileAccessLinksList

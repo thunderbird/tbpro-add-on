@@ -819,6 +819,17 @@ export async function burnFolder(
   };
 }
 
+export async function deleteAccessLink(linkId: string) {
+  return await prisma.accessLink.delete({
+    where: {
+      id: linkId,
+    },
+    select: {
+      id: true,
+    },
+  });
+}
+
 export async function burnEphemeralConversation(containerId: string) {
   return await burnFolder(containerId);
 }

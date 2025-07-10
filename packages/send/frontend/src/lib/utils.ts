@@ -344,3 +344,10 @@ export const getDaysUntilDate = (date: Date | string): number => {
   const result = Math.ceil(diff / (1000 * 3600 * 24));
   return !result || result < 0 ? 0 : result;
 };
+
+export const getAccessLinkWithoutPasswordHash = (link: string): string => {
+  if (link.includes('#')) {
+    return link.split('#')[0];
+  }
+  return link;
+};

@@ -15,6 +15,7 @@ export const playwrightConfig = {
   email: `myemail${Date.now()}@tb.pro`,
   timeout: 3_000,
   shareLinks: [] as string[],
+  fileLinks: [] as string[],
 };
 
 export async function downloadFirstFile(page: Page) {
