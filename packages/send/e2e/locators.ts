@@ -8,7 +8,7 @@ export const fileLocators = (page: Page) => {
   const passwordInputID = "password-input";
   const submitButtonID = "submit-button";
   const tableCellID = `[data-testid="folder-table-row-cell"]`;
-
+  const emptyFolderIndicator = page.getByTestId("empty-folder");
   const createdShareLinkWithPassword = page.getByTestId("access-link-item-1");
   const sharelinkButton = page.getByTestId("create-share-link");
   const submitButton = page.getByTestId(submitButtonID);
@@ -41,6 +41,7 @@ export const fileLocators = (page: Page) => {
     fileCountID,
     homeButton,
     dropZone,
+    emptyFolderIndicator,
   };
 };
 
@@ -56,6 +57,11 @@ export const dashboardLocators = (page: Page) => {
   const restoreKeysButton = page.getByTestId("restore-keys-button");
   const passphraseInput = page.getByTestId("passphrase-input");
   const restorekeyInput = page.getByTestId("restore-key-input");
+
+  const keyRecoveryButton = page.getByTestId("toggle-key-recovery");
+  const keyRestoreButton = page.getByTestId("restore-keys");
+  const confirmButton = page.getByTestId("confirm");
+
   return {
     registerButton,
     emailField,
@@ -68,5 +74,8 @@ export const dashboardLocators = (page: Page) => {
     restoreKeysButton,
     passphraseInput,
     restorekeyInput,
+    keyRecoveryButton,
+    keyRestoreButton,
+    confirmButton,
   };
 };

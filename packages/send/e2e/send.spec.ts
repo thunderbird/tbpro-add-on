@@ -1,7 +1,11 @@
 import { BrowserContext, expect, Page, test } from "@playwright/test";
 import fs from "fs";
 import path from "path";
-import { log_out_restore_keys, register_and_login } from "./pages/dashboard";
+import {
+  log_out_restore_keys,
+  register_and_login,
+  reset_keys,
+} from "./pages/dashboard";
 import {
   delete_file,
   download_workflow,
@@ -68,6 +72,26 @@ test.describe("File workflows", () => {
     { title: "Upload workflow", action: upload_workflow },
     { title: "Download workflow", action: download_workflow },
     { title: "Delete files", action: delete_file },
+  ];
+
+  workflows.forEach(({ title, action }) => {
+    test(title, async () => await action({ page, context }));
+  });
+});
+
+test.describe("Key restore", async () => {
+  let page: Page;
+  let context: BrowserContext;
+
+  test.beforeEach(async () => {
+    ({ page, context } = await setup_browser());
+    await page.goto("/send");
+    await expect(page).toHaveTitle(/Thunderbird Send/);
+  });
+
+  const workflows = [
+    { title: "File upload", action: upload_workflow },
+    { title: "Reset keys", action: reset_keys },
   ];
 
   workflows.forEach(({ title, action }) => {

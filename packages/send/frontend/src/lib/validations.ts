@@ -3,7 +3,7 @@ import type { UserStoreType as UserStore } from '@/stores/user-store';
 import { UserType } from '@/types';
 import { ApiConnection } from './api';
 import { MAX_ACCESS_LINK_RETRIES } from './const';
-import { Keychain } from './keychain';
+import { Keychain, restoreKeysUsingLocalStorage } from './keychain';
 import { trpc } from './trpc';
 
 export const validateToken = async (api: ApiConnection): Promise<boolean> => {
@@ -72,27 +72,38 @@ export const validator = async ({
     hasBackedUpKeys: false,
     hasLocalStorageSession: false,
     isTokenValid: false,
+    hasCorrectKeys: false,
     // Flag used to force login
     hasForcedLogin: false,
   };
 
+  let shouldClearSessionAndStorage = false;
+
   const userResponse = await validateUser(api);
   const userIDFromBackend = userResponse?.user?.id;
   const userIDFromStore = userStore?.user?.id;
+
+  // Check that the passphrase in local storage is set correctly
+  // If not done correctly, the user can lose access to their encrypted items
+  // This can happen if a user restores their account while another client is logged in.
+  // This will cause every key backup operation to fail and not sync properly.
+  try {
+    await restoreKeysUsingLocalStorage(keychain, api);
+    validations.hasCorrectKeys = true;
+  } catch {
+    validations.hasCorrectKeys = false;
+    shouldClearSessionAndStorage = true;
+    logger.error('Incorrect passphrase. Removing local storage data.');
+  }
 
   if (
     userIDFromStore &&
     userIDFromBackend &&
     userIDFromBackend !== userIDFromStore
   ) {
-    await userStore.clearUserFromStorage();
-    validations.hasForcedLogin = true;
+    // This check prevents data corruption if the user has local storage from a different user
     logger.error('User ID mismatch. Removing local storage data.');
-    try {
-      location.reload();
-    } catch {
-      console.warn('Failed to reload page');
-    }
+    shouldClearSessionAndStorage = true;
   } else {
     validations.hasLocalStorageSession = validateLocalStorageSession(userStore);
     validations.isTokenValid = await validateToken(api);
@@ -102,8 +113,21 @@ export const validator = async ({
     );
   }
 
+  // Finally, if we should flush data, we will do so
+  if (shouldClearSessionAndStorage) {
+    await userStore.clearUserFromStorage();
+    validations.hasForcedLogin = true;
+
+    // Attempt to reload the page to ensure the user is redirected to the login page
+    // This is a workaround to ensure the user is logged out and the app state is reset
+    try {
+      location.reload();
+    } catch {
+      console.warn('Failed to reload page');
+    }
+  }
+
   return validations;
-  // This check prevents data corruption if the user has local storage from a different user
 };
 
 export const getCanRetry = async (linkId: string) => {
