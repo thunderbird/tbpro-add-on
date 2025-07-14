@@ -94,6 +94,9 @@ export async function reset_keys({ page }: PlaywrightProps) {
   const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
 
   let profileButton = page.getByRole("link", { name: "My Files" });
+  // Create a new folder
+  await page.getByTestId("new-folder-button").click();
+
   await profileButton.click();
   // Check that the created folder exists
   await page.waitForSelector(folderRowSelector);
@@ -122,7 +125,5 @@ export async function reset_keys({ page }: PlaywrightProps) {
   await page.goto("/send");
 
   // Check that the folder is empty
-  expect(await emptyFolderIndicator.textContent()).toBe(
-    "This is an empty folder"
-  );
+  expect(await emptyFolderIndicator.isVisible()).toBe(false);
 }

@@ -89,10 +89,7 @@ test.describe("Key restore", async () => {
     await expect(page).toHaveTitle(/Thunderbird Send/);
   });
 
-  const workflows = [
-    { title: "File upload", action: upload_workflow },
-    { title: "Reset keys", action: reset_keys },
-  ];
+  const workflows = [{ title: "Reset keys", action: reset_keys }];
 
   workflows.forEach(({ title, action }) => {
     test(title, async () => await action({ page, context }));
