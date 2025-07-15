@@ -27,8 +27,10 @@ const onConfirm = async () => {
       <strong class="text-red-600">delete all your uploads and folders</strong>.
     </p>
     <div class="space-x-4 mt-8">
-      <BtnComponent danger @click="onConfirm">Yes</BtnComponent>
-      <BtnComponent @click="closefn">No</BtnComponent>
+      <BtnComponent data-testid="confirm" danger @click="onConfirm"
+        >Yes</BtnComponent
+      >
+      <BtnComponent data-testid="cancel" @click="closefn">No</BtnComponent>
     </div>
   </div>
 </template>

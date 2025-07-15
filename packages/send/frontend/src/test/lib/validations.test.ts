@@ -1,6 +1,6 @@
 import { ApiConnection } from '@/lib/api';
 import { MAX_ACCESS_LINK_RETRIES } from '@/lib/const';
-import { Keychain } from '@/lib/keychain';
+import { Keychain, restoreKeysUsingLocalStorage } from '@/lib/keychain';
 import { trpc } from '@/lib/trpc';
 // Import the module itself for spying
 // Keep direct imports for convenience and direct testing
@@ -33,9 +33,16 @@ vi.mock('@/lib/trpc', () => ({
   },
 }));
 
+vi.mock('@/lib/keychain', () => ({
+  restoreKeysUsingLocalStorage: vi.fn(),
+}));
+
 // Helper to create a valid mock Backup object (adjust fields based on actual type)
 const createMockBackup = (data: Partial<Backup> = {}): Backup => ({
-  keys: 'encrypted-keys', // Assuming 'keys' is the primary field needed
+  backupContainerKeys: 'encrypted-container-keys',
+  backupKeypair: 'encrypted-keypair',
+  backupKeystring: 'encrypted-keystring',
+  backupSalt: 'backup-salt',
   // Add other required fields from the actual Backup type if necessary
   ...data,
 });
@@ -66,7 +73,9 @@ describe('validateToken (direct test)', () => {
   it('should return true if the token is valid', async () => {
     // Mock the specific call made by actualValidateToken
     mockApi.call.mockResolvedValueOnce(true); // Mock the response for 'auth/me'
-    const result = await actualValidateToken(mockApi as ApiConnection);
+    const result = await actualValidateToken(
+      mockApi as unknown as ApiConnection
+    );
     expect(mockApi.call).toHaveBeenCalledWith(
       'auth/me', // Endpoint called by actualValidateToken
       {},
@@ -79,7 +88,9 @@ describe('validateToken (direct test)', () => {
 
   it('should return false if the token is invalid', async () => {
     mockApi.call.mockResolvedValueOnce(null); // Mock the response for 'auth/me'
-    const result = await actualValidateToken(mockApi as ApiConnection);
+    const result = await actualValidateToken(
+      mockApi as unknown as ApiConnection
+    );
     expect(mockApi.call).toHaveBeenCalledWith(
       'auth/me',
       {},
@@ -95,7 +106,9 @@ describe('validateToken (direct test)', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
     mockApi.call.mockRejectedValueOnce(new Error('Network error')); // Mock the response for 'auth/me'
-    const result = await actualValidateToken(mockApi as ApiConnection);
+    const result = await actualValidateToken(
+      mockApi as unknown as ApiConnection
+    );
     expect(mockApi.call).toHaveBeenCalledWith(
       'auth/me',
       {},
@@ -130,7 +143,7 @@ describe('validateBackedUpKeys', () => {
     mockKeychain.getPassphraseValue.mockReturnValueOnce('passphrase');
     const result = await validateBackedUpKeys(
       mockGetBackup,
-      mockKeychain as Keychain
+      mockKeychain as unknown as Keychain
     );
     expect(result).toBe(true);
   });
@@ -140,7 +153,7 @@ describe('validateBackedUpKeys', () => {
     mockKeychain.getPassphraseValue.mockReturnValueOnce('passphrase');
     const result = await validateBackedUpKeys(
       mockGetBackup,
-      mockKeychain as Keychain
+      mockKeychain as unknown as Keychain
     );
     expect(result).toBe(false);
   });
@@ -150,7 +163,7 @@ describe('validateBackedUpKeys', () => {
     mockKeychain.getPassphraseValue.mockReturnValueOnce('');
     const result = await validateBackedUpKeys(
       mockGetBackup,
-      mockKeychain as Keychain
+      mockKeychain as unknown as Keychain
     );
     expect(result).toBe(false);
   });
@@ -245,6 +258,9 @@ describe('validator', () => {
     mockKeychain = {
       getPassphraseValue: vi.fn().mockReturnValue('passphrase'),
     };
+
+    // Mock restoreKeysUsingLocalStorage to succeed by default
+    vi.mocked(restoreKeysUsingLocalStorage).mockResolvedValue();
   });
 
   it('returns all true when everything is valid', async () => {
@@ -257,12 +273,13 @@ describe('validator', () => {
     ).validator({
       api: mockApi as unknown as ApiConnection,
       userStore: mockUserStore as UserStore,
-      keychain: mockKeychain as Keychain,
+      keychain: mockKeychain as unknown as Keychain,
     });
     expect(result).toEqual({
       hasBackedUpKeys: true,
       hasLocalStorageSession: true,
       isTokenValid: true,
+      hasCorrectKeys: true,
       hasForcedLogin: false,
     });
   });
@@ -274,12 +291,13 @@ describe('validator', () => {
     ).validator({
       api: mockApi as unknown as ApiConnection,
       userStore: mockUserStore as UserStore,
-      keychain: mockKeychain as Keychain,
+      keychain: mockKeychain as unknown as Keychain,
     });
     expect(result).toMatchObject({
       hasLocalStorageSession: false,
       hasBackedUpKeys: true,
       isTokenValid: false,
+      hasCorrectKeys: true,
       hasForcedLogin: false,
     });
   });
@@ -297,9 +315,40 @@ describe('validator', () => {
     ).validator({
       api: mockApi as unknown as ApiConnection,
       userStore: mockUserStore as UserStore,
-      keychain: mockKeychain as Keychain,
+      keychain: mockKeychain as unknown as Keychain,
     });
     expect(result.hasForcedLogin).toBe(true);
+    reloadSpy.mockRestore();
+  });
+
+  it('handles incorrect keys and triggers forced login', async () => {
+    mockApi.call = vi.fn().mockResolvedValueOnce({ user: { id: '123' } }); // users/me matches
+
+    // Mock restoreKeysUsingLocalStorage to fail
+    vi.mocked(restoreKeysUsingLocalStorage).mockRejectedValueOnce(
+      new Error('Invalid passphrase')
+    );
+
+    const reloadSpy = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {});
+
+    const result = await (
+      await import('@/lib/validations')
+    ).validator({
+      api: mockApi as unknown as ApiConnection,
+      userStore: mockUserStore as UserStore,
+      keychain: mockKeychain as unknown as Keychain,
+    });
+
+    expect(result).toEqual({
+      hasBackedUpKeys: true, // This gets validated in the else block
+      hasLocalStorageSession: true, // User is still in storage
+      isTokenValid: false, // No auth validation done when keys are invalid
+      hasCorrectKeys: false,
+      hasForcedLogin: true,
+    });
+
     reloadSpy.mockRestore();
   });
 
@@ -311,12 +360,13 @@ describe('validator', () => {
       (await import('@/lib/validations')).validator({
         api: mockApi as unknown as ApiConnection,
         userStore: mockUserStore as UserStore,
-        keychain: mockKeychain as Keychain,
+        keychain: mockKeychain as unknown as Keychain,
       })
     ).resolves.toStrictEqual({
       hasBackedUpKeys: true,
       hasLocalStorageSession: true,
       isTokenValid: false,
+      hasCorrectKeys: true,
       hasForcedLogin: false,
     });
   });

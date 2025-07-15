@@ -192,6 +192,9 @@ function handleFolderClick(uuid: string) {
     >
       {{ `${folderStore.rootFolder.items.length}` }}
     </span>
+    <span v-else data-testid="empty-folder" style="display: none"
+      >This is an empty folder</span
+    >
     <BreadCrumb />
     <table class="w-full border-separate border-spacing-x-0 border-spacing-y-1">
       <thead>

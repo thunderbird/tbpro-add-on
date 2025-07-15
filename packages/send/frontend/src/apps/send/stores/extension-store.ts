@@ -19,56 +19,54 @@ export const useExtensionStore = defineStore('extension', () => {
     try {
       //@ts-ignore
       browser.cloudFile.updateAccount(accountId, {
-	configured: true,
+        configured: true,
       });
     } catch {
       console.log(
-	`setAccountConfigured: You're probably running this outside of Thundebird`
+        `setAccountConfigured: You're probably running this outside of Thundebird`
       );
     }
   }
 
-  async function configureExtension(id: string) {
-    id = id || accountId;
-
+  async function configureExtension(id = accountId) {
     // This function only needs to run if we're in the TB addon.
     // Exit early if there's no account id.
     if (!id) {
       console.log(`[extension-store] No id provided to configureExtension()`);
       return;
     }
-  //   console.log(`
+    //   console.log(`
 
-  // Configuring extension with:
+    // Configuring extension with:
 
-  // accountId: ${id}
-  // SERVER: ${SERVER}
-  // currentServerUrl.value: ${serverUrl.value}
+    // accountId: ${id}
+    // SERVER: ${SERVER}
+    // currentServerUrl.value: ${serverUrl.value}
 
-  // `);
+    // `);
 
     return browser.storage.local
       .set({
-	[id]: {
-	  [SERVER]: serverUrl.value,
-	},
+        [id]: {
+          [SERVER]: serverUrl.value,
+        },
       })
       .catch((error) => {
-	console.log(error);
+        console.log(error);
       })
       .then(() => {
-	setAccountConfigured(id);
-	setServerUrl(serverUrl.value);
-	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-	DEBUG &&
-	  browser.storage.local.get(id).then((accountInfo) => {
-	    if (accountInfo[id] && SERVER in accountInfo[id]) {
-	      setServerUrl(accountInfo[id][SERVER]);
-	      setAccountConfigured(id);
-	    } else {
-	      console.log(`You probably need to wait longer`);
-	    }
-	  });
+        setAccountConfigured(id);
+        setServerUrl(serverUrl.value);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        DEBUG &&
+          browser.storage.local.get(id).then((accountInfo) => {
+            if (accountInfo[id] && SERVER in accountInfo[id]) {
+              setServerUrl(accountInfo[id][SERVER]);
+              setAccountConfigured(id);
+            } else {
+              console.log(`You probably need to wait longer`);
+            }
+          });
       });
   }
 

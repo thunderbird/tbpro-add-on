@@ -45,6 +45,7 @@ const { api } = useApiStore();
 const {
   getBackup,
   user: { email },
+  clearUserFromStorage,
 } = useUserStore();
 const { keychain } = useKeychainStore();
 const { metrics } = useMetricsStore();
@@ -62,14 +63,19 @@ const { mutate: resetKeys } = useMutation({
   },
   onSuccess: async () => {
     await logOutAuth();
+    // Make sure we clear the user from storage
+    await clearUserFromStorage();
     window.location.reload();
   },
 });
 
-const userSetPassword = keychain.getPassphraseValue();
+const passphraseFromLocalStorage = keychain.getPassphraseValue();
 
-if (!!userSetPassword && userSetPassword !== passphraseString.value) {
-  words.value = userSetPassword.split(' ');
+if (
+  !!passphraseFromLocalStorage &&
+  passphraseFromLocalStorage !== passphraseString.value
+) {
+  words.value = passphraseFromLocalStorage.split(' ');
 }
 
 function hideBackupRestore() {
@@ -157,7 +163,11 @@ async function restoreFromBackup() {
 <template>
   <section class="container">
     <div class="content max-w-xl">
-      <div :onclick="toggleVisible" class="toggle">
+      <div
+        :onclick="toggleVisible"
+        class="toggle"
+        data-testid="toggle-key-recovery"
+      >
         <h3 class="font-bold">Recovery Key</h3>
         <ExpandIcon :is-open="showKeyRecovery" />
       </div>
