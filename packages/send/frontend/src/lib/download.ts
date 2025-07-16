@@ -1,8 +1,8 @@
-import { ProgressTracker } from '@/apps/send/stores/status-store';
-import { ApiConnection } from '@/lib/api';
-import { getBlob } from '@/lib/filesync';
-import { Keychain } from '@/lib/keychain';
-import useMetricsStore from '@/stores/metrics';
+import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { getBlob } from '@send-frontend/lib/filesync';
+import { Keychain } from '@send-frontend/lib/keychain';
+import useMetricsStore from '@send-frontend/stores/metrics';
 
 export default class Downloader {
   keychain: Keychain;

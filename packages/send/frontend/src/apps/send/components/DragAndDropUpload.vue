@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import CheckmarkIcon from '@/apps/common/CheckmarkIcon.vue';
-import DocumentIcon from '@/apps/common/DocumentIcon.vue';
-import ImageIcon from '@/apps/common/ImageIcon.vue';
-import RemoveIcon from '@/apps/common/RemoveIcon.vue';
-import ErrorUploading from '@/apps/send/components/ErrorUploading.vue';
-import useFolderStore from '@/apps/send/stores/folder-store';
-import { MAX_FILE_SIZE } from '@/lib/const';
-import { ERROR_MESSAGES } from '@/lib/errorMessages';
-import { NamedBlob } from '@/lib/filesync';
-import { useStatusStore } from '@/stores';
-import useApiStore from '@/stores/api-store';
+import CheckmarkIcon from '@send-frontend/apps/common/CheckmarkIcon.vue';
+import DocumentIcon from '@send-frontend/apps/common/DocumentIcon.vue';
+import ImageIcon from '@send-frontend/apps/common/ImageIcon.vue';
+import RemoveIcon from '@send-frontend/apps/common/RemoveIcon.vue';
+import ErrorUploading from '@send-frontend/apps/send/components/ErrorUploading.vue';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { MAX_FILE_SIZE } from '@send-frontend/lib/const';
+import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
+import { NamedBlob } from '@send-frontend/lib/filesync';
+import { useStatusStore } from '@send-frontend/stores';
+import useApiStore from '@send-frontend/stores/api-store';
 import { useDropZone } from '@vueuse/core';
 import prettyBytes from 'pretty-bytes';
 import { ref } from 'vue';

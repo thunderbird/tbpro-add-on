@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { useMetricsUpdate } from '@/apps/common/mixins/metrics';
-import useFolderStore from '@/apps/send/stores/folder-store';
-import init from '@/lib/init';
-import useApiStore from '@/stores/api-store';
-import useKeychainStore from '@/stores/keychain-store';
-import useMetricsStore from '@/stores/metrics';
-import useUserStore from '@/stores/user-store';
+import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import init from '@send-frontend/lib/init';
+import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useMetricsStore from '@send-frontend/stores/metrics';
+import useUserStore from '@send-frontend/stores/user-store';
 import { onMounted } from 'vue';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';

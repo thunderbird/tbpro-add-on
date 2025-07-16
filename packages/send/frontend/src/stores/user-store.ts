@@ -1,7 +1,7 @@
-import { Storage } from '@/lib/storage';
-import useApiStore from '@/stores/api-store';
-import { Backup } from '@/stores/user-store.types';
-import { UserTier, UserType } from '@/types';
+import { Storage } from '@send-frontend/lib/storage';
+import useApiStore from '@send-frontend/stores/api-store';
+import { Backup } from '@send-frontend/stores/user-store.types';
+import { UserTier, UserType } from '@send-frontend/types';
 import { defineStore } from 'pinia';
 
 export const EMPTY_USER: UserType = {

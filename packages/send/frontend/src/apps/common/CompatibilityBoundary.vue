@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { trpc } from '@/lib/trpc';
+import { trpc } from '@send-frontend/lib/trpc';
 import { useQuery } from '@tanstack/vue-query';
 import { computed } from 'vue';
 import { useConfigStore } from '../send/stores/config-store';

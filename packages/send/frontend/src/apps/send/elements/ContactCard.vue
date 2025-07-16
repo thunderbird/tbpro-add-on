@@ -1,5 +1,6 @@
+<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import Avatar from '@/apps/send/elements/Avatar.vue';
+import Avatar from '@send-frontend/apps/send/elements/Avatar.vue';
 
 defineProps({
   title: String,

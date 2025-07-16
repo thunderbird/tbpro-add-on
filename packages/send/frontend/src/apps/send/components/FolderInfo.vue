@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import useFolderStore from '@/apps/send/stores/folder-store';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { ref } from 'vue';
 
-import FolderAccessLinksList from '@/apps/send/components/FolderAccessLinksList.vue';
-import CreateAccessLink from '@/apps/send/components/CreateAccessLink.vue';
-import FolderNameForm from '@/apps/send/elements/FolderNameForm.vue';
-import { formatBytes } from '@/lib/utils';
+import CreateAccessLink from '@send-frontend/apps/send/components/CreateAccessLink.vue';
+import FolderAccessLinksList from '@send-frontend/apps/send/components/FolderAccessLinksList.vue';
+import FolderNameForm from '@send-frontend/apps/send/elements/FolderNameForm.vue';
+import { formatBytes } from '@send-frontend/lib/utils';
 
 const folderStore = useFolderStore();
 
@@ -37,7 +37,7 @@ const showForm = ref(false);
   <div v-if="folderStore.selectedFolder" class="flex flex-col gap-6 h-full">
     <!-- info -->
     <header class="flex flex-col items-center gap-3 pt-6">
-      <img src="@/apps/send/assets/folder.svg" class="w-20 h-20" />
+      <img src="@send-frontend/apps/send/assets/folder.svg" class="w-20 h-20" />
       <div class="font-semibold pt-4">
         <span v-if="!showForm" class="cursor-pointer" @click="showForm = true">
           {{ folderStore.selectedFolder.name }}

@@ -7,7 +7,7 @@
       "@addon/*": ["./src/*"],
       "server/*": ["../backend/src/*"],
       "prisma/*": ["../backend/node_modules/@prisma/*"],
-      "@/*": ["node_modules/send-frontend/src/*"]
+      "@send-frontend/*": ["node_modules/send-frontend/src/*"]
     },
     "types": [
       "vite/client",

@@ -4,7 +4,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@/*": ["./src/*"],
+      "@send-frontend/*": ["./src/*"],
       "server/*": ["../backend/src/*"],
       "prisma/*": ["../backend/node_modules/@prisma/*"]
     },

@@ -1,22 +1,22 @@
 import { RouteRecordRaw, createRouter, createWebHistory } from 'vue-router';
 
-import FolderView from '@/apps/send/components/FolderView.vue';
-import ProfileView from '@/apps/send/components/ProfileView.vue';
-import Received from '@/apps/send/components/Received.vue';
-import Sent from '@/apps/send/components/Sent.vue';
-import Send from '@/apps/send/pages/WebPage.vue';
+import FolderView from '@send-frontend/apps/send/components/FolderView.vue';
+import ProfileView from '@send-frontend/apps/send/components/ProfileView.vue';
+import Received from '@send-frontend/apps/send/components/Received.vue';
+import Sent from '@send-frontend/apps/send/components/Sent.vue';
+import Send from '@send-frontend/apps/send/pages/WebPage.vue';
 
-import Share from '@/apps/send/pages/SharePage.vue';
-import { matchMeta } from '@/lib/helpers';
-import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
-import useApiStore from '@/stores/api-store';
-import useKeychainStore from '@/stores/keychain-store';
+import Share from '@send-frontend/apps/send/pages/SharePage.vue';
+import { matchMeta } from '@send-frontend/lib/helpers';
+import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
+import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
 
-import { IS_DEV } from '@/lib/clientConfig';
-import { getCanRetry } from '@/lib/validations';
+import { IS_DEV } from '@send-frontend/lib/clientConfig';
+import { getCanRetry } from '@send-frontend/lib/validations';
 
-import { useFolderStore } from '@/stores';
-import useMetricsStore from '@/stores/metrics';
+import { useFolderStore } from '@send-frontend/stores';
+import useMetricsStore from '@send-frontend/stores/metrics';
 import NotFoundPage from '../common/NotFoundPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';

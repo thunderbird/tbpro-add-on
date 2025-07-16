@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import BackupAndRestore from '@/apps/common/BackupAndRestore.vue';
-import SecureSendIcon from '@/apps/common/SecureSendIcon.vue';
-import UserDashboard from '@/apps/common/UserDashboard.vue';
+import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
+import SecureSendIcon from '@send-frontend/apps/common/SecureSendIcon.vue';
+import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
 </script>
 <template>
   <div class="container">

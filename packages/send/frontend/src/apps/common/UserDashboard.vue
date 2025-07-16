@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import LogOutButton from '@/apps/send/elements/LogOutButton.vue';
-import { useAuth } from '@/lib/auth';
-import { DAYS_TO_EXPIRY } from '@/lib/const';
-import { trpc } from '@/lib/trpc';
-import useUserStore from '@/stores/user-store';
+import LogOutButton from '@send-frontend/apps/send/elements/LogOutButton.vue';
+import { useAuth } from '@send-frontend/lib/auth';
+import { DAYS_TO_EXPIRY } from '@send-frontend/lib/const';
+import { trpc } from '@send-frontend/lib/trpc';
+import useUserStore from '@send-frontend/stores/user-store';
 import { useQuery } from '@tanstack/vue-query';
 import prettyBytes from 'pretty-bytes';
 import { computed } from 'vue';

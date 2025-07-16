@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import ErrorGeneric from '@/apps/common/errors/ErrorGeneric.vue';
-import BtnComponent from '@/apps/send/elements/BtnComponent.vue';
+import ErrorGeneric from '@send-frontend/apps/common/errors/ErrorGeneric.vue';
+import BtnComponent from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import { ref } from 'vue';
 
 const { closefn, confirm, itemName, itemType } = defineProps<{

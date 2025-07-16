@@ -1,18 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as filesync from '@/lib/filesync';
+import * as filesync from '@send-frontend/lib/filesync';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Keychain } from '@/lib/keychain';
+import { Keychain } from '@send-frontend/lib/keychain';
 import {
   arrayBufferToReadableStream,
   readableStreamToArrayBuffer,
-} from '@/lib/streams';
-import * as utils from '@/lib/utils';
+} from '@send-frontend/lib/streams';
+import * as utils from '@send-frontend/lib/utils';
 
 import { WebSocket } from 'mock-socket';
 import WS from 'vitest-websocket-mock';
 
-import { encryptStream } from '@/lib/ece';
+import { encryptStream } from '@send-frontend/lib/ece';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { mockProgressTracker } from './helpers';
@@ -40,8 +40,9 @@ const plaintextStream = arrayBufferToReadableStream(plaintextUint8Array);
 const encryptedStream = encryptStream(plaintextStream, key);
 const encryptedArrayBuffer = await readableStreamToArrayBuffer(encryptedStream);
 
-vi.mock('@/lib/helpers', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/lib/utils')>();
+vi.mock('@send-frontend/lib/helpers', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@send-frontend/lib/utils')>();
 
   const _download = vi.fn().mockImplementation(() => {
     return new Blob([encryptedArrayBuffer]);

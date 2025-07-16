@@ -1,27 +1,27 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 
-import init from '@/lib/init';
+import init from '@send-frontend/lib/init';
 
-import useKeychainStore from '@/stores/keychain-store';
-import useUserStore from '@/stores/user-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useUserStore from '@send-frontend/stores/user-store';
 
-import ErrorUploading from '@/apps/send/components/ErrorUploading.vue';
-import useFolderStore from '@/apps/send/stores/folder-store';
-import useSharingStore from '@/apps/send/stores/sharing-store';
+import ErrorUploading from '@send-frontend/apps/send/components/ErrorUploading.vue';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
 
-import ShieldIcon from '@/apps/common/ShieldIcon.vue';
+import ShieldIcon from '@send-frontend/apps/common/ShieldIcon.vue';
 import {
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
   FILE_LIST,
   MAX_FILE_SIZE,
   POPUP_READY,
-} from '@/lib/const';
-import { ERROR_MESSAGES } from '@/lib/errorMessages';
-import { organizeFiles } from '@/lib/folderView';
-import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
-import useApiStore from '@/stores/api-store';
+} from '@send-frontend/lib/const';
+import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
+import { organizeFiles } from '@send-frontend/lib/folderView';
+import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
+import useApiStore from '@send-frontend/stores/api-store';
 import { IconEye, IconEyeClosed } from '@tabler/icons-vue';
 import ProgressBar from '../components/ProgressBar.vue';
 import { default as Btn } from '../elements/BtnComponent.vue';
@@ -40,6 +40,7 @@ const isError = ref(false);
 const isAllowed = ref(true);
 
 const uploadMap = ref<Map<number, boolean>>(new Map());
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const files = ref<Record<string, any>[] | null>(null);
 const password = ref('');
 
@@ -122,6 +123,7 @@ async function uploadAndShare() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shareComplete(url: string, results: Record<string, any>[]) {
   browser.runtime.sendMessage({
     type: ALL_UPLOADS_COMPLETE,

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import FolderTree from '@/apps/send/components/FolderTree.vue';
-import useSharingStore from '@/apps/send/stores/sharing-store';
-import { organizeFiles } from '@/lib/folderView';
-import logger from '@/logger';
-import { Container } from '@/types';
+import FolderTree from '@send-frontend/apps/send/components/FolderTree.vue';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { organizeFiles } from '@send-frontend/lib/folderView';
+import logger from '@send-frontend/logger';
+import { Container } from '@send-frontend/types';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 

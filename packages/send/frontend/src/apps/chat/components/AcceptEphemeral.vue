@@ -1,7 +1,7 @@
 <script setup>
-import { ref, watch, inject } from 'vue';
+import { Util } from '@send-frontend/lib/keychain';
+import { inject, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Util } from '@/lib/keychain';
 
 const router = useRouter();
 
@@ -13,6 +13,7 @@ const password = ref('');
 const message = ref('');
 
 const props = defineProps({
+  // eslint-disable-next-line vue/require-default-prop
   hash: String,
 });
 
@@ -93,7 +94,7 @@ async function getContainerKeyFromChallenge() {
   let challengeSalt;
   try {
     challengeSalt = Util.base64ToArrayBuffer(challengeSaltStr);
-  } catch (e) {
+  } catch {
     message.value = 'Link is not valid';
     return;
   }
@@ -124,7 +125,6 @@ async function getContainerKeyFromChallenge() {
 
     if (!challengeResp.containerId) {
       throw Error('Challenge unsuccessful');
-      return;
     }
     const {
       containerId,

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import Btn from '@/apps/send/elements/BtnComponent.vue';
+import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import { onMounted, ref, watch } from 'vue';
 
 const emit = defineEmits(['renameComplete']);
 
-import useFolderStore from '@/apps/send/stores/folder-store';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 
 const folderStore = useFolderStore();
 
@@ -43,9 +43,9 @@ onMounted(() => {
 <template>
   <form @submit.prevent="updateFileName">
     <input
-      type="text"
-      v-model="selectedFileName"
       ref="input"
+      v-model="selectedFileName"
+      type="text"
       @keydown.esc="resetForm"
     />
     <div class="flex flex-row justify-end">

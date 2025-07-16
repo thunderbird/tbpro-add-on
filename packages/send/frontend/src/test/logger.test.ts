@@ -1,4 +1,4 @@
-import logger, { loggerPrefix } from '@/logger';
+import logger, { loggerPrefix } from '@send-frontend/logger';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('Logger module', () => {

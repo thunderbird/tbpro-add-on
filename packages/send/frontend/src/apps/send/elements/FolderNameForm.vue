@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import Btn from '@/apps/send/elements/BtnComponent.vue';
-import useFolderStore from '@/apps/send/stores/folder-store';
+import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { onMounted, ref, watch } from 'vue';
 
 const emit = defineEmits(['renameComplete']);
@@ -43,10 +43,10 @@ onMounted(() => {
     <form @submit.prevent="updateFolderName">
       <label class="flex flex-col gap-2">
         <input
+          ref="input"
+          v-model="selectedFolderName"
           class="!rounded-r-none"
           type="text"
-          v-model="selectedFolderName"
-          ref="input"
           @keydown.esc="resetForm"
         />
         <div class="flex flex-row justify-end">

@@ -1,7 +1,7 @@
 /**
  * This is the client-side code that uses the inferred types from the server
  */
-import logger from '@/logger';
+import logger from '@send-frontend/logger';
 import {
   createTRPCClient,
   createWSClient,

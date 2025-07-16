@@ -1,11 +1,13 @@
+<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import { TagColors } from '@/apps/send/const';
-import Btn from '@/apps/send/elements/BtnComponent.vue';
-import TagLabel from '@/apps/send/elements/TagLabel.vue';
+import { TagColors } from '@send-frontend/apps/send/const';
+import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import TagLabel from '@send-frontend/apps/send/elements/TagLabel.vue';
 import { ref } from 'vue';
 
 const props = defineProps({
   type: String,
+
   id: Number,
 });
 

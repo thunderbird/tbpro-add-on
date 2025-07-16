@@ -1,4 +1,4 @@
-import { getByTestId } from '@/lib/testUtils';
+import { getByTestId } from '@send-frontend/lib/testUtils';
 import { useQuery } from '@tanstack/vue-query';
 import { shallowMount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,7 +6,7 @@ import { useConfigStore } from '../send/stores/config-store';
 import CompatibilityBoundary from './CompatibilityBoundary.vue';
 
 // Mock dependencies
-vi.mock('@/lib/trpc', () => ({
+vi.mock('@send-frontend/lib/trpc', () => ({
   trpc: {
     settings: {
       query: vi.fn(),

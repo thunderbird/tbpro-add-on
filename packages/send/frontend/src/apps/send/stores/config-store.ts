@@ -1,4 +1,4 @@
-import { getEnvName } from '@/lib/clientConfig';
+import { getEnvName } from '@send-frontend/lib/clientConfig';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 

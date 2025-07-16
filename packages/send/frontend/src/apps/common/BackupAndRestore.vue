@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 
-import StatusBar from '@/apps/common/StatusBar.vue';
-import useKeychainStore from '@/stores/keychain-store';
+import StatusBar from '@send-frontend/apps/common/StatusBar.vue';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
 
 // move the following imports elsewhere
-import { useAuth } from '@/lib/auth';
-import { downloadTxt } from '@/lib/filesync';
-import { dbUserSetup } from '@/lib/helpers';
-import { backupKeys, restoreKeys } from '@/lib/keychain';
-import { generatePassphrase } from '@/lib/passphrase';
-import { trpc } from '@/lib/trpc';
-import useApiStore from '@/stores/api-store';
-import useMetricsStore from '@/stores/metrics';
-import useUserStore from '@/stores/user-store';
+import { useAuth } from '@send-frontend/lib/auth';
+import { downloadTxt } from '@send-frontend/lib/filesync';
+import { dbUserSetup } from '@send-frontend/lib/helpers';
+import { backupKeys, restoreKeys } from '@send-frontend/lib/keychain';
+import { generatePassphrase } from '@send-frontend/lib/passphrase';
+import { trpc } from '@send-frontend/lib/trpc';
+import useApiStore from '@send-frontend/stores/api-store';
+import useMetricsStore from '@send-frontend/stores/metrics';
+import useUserStore from '@send-frontend/stores/user-store';
 import { useMutation } from '@tanstack/vue-query';
 import { useExtensionStore } from '../send/stores/extension-store';
 import useFolderStore from '../send/stores/folder-store';

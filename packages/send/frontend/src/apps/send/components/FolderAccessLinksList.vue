@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { BASE_URL } from '@/apps/common/constants';
-import useSharingStore from '@/apps/send/stores/sharing-store';
-import { trpc } from '@/lib/trpc';
+import { BASE_URL } from '@send-frontend/apps/common/constants';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { trpc } from '@send-frontend/lib/trpc';
 import {
   getAccessLinkWithoutPasswordHash,
   getDaysUntilDate,
-} from '@/lib/utils';
+} from '@send-frontend/lib/utils';
 import { useMutation } from '@tanstack/vue-query';
 import { ExpiryBadge, ExpiryUnitTypes } from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';

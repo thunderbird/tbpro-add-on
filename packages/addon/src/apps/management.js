@@ -1,4 +1,4 @@
-// import { initSentry } from '@/lib/sentry';
+// import { initSentry } from '@send-frontend/lib/sentry';
 import { mountApp, setupApp } from 'send-frontend/src/apps/send/setup';
 import { createApp } from 'vue';
 import ManagementPage from './AddonManagementPage.vue';

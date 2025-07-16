@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import Btn from '@/apps/send/elements/BtnComponent.vue';
-import { dbUserSetup } from '@/lib/helpers';
-import { CLIENT_MESSAGES } from '@/lib/messages';
-import { trpc } from '@/lib/trpc';
-import { useAuthStore } from '@/stores';
-import useApiStore from '@/stores/api-store';
-import useKeychainStore from '@/stores/keychain-store';
-import useUserStore from '@/stores/user-store';
+import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import { dbUserSetup } from '@send-frontend/lib/helpers';
+import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
+import { trpc } from '@send-frontend/lib/trpc';
+import { useAuthStore } from '@send-frontend/stores';
+import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useUserStore from '@send-frontend/stores/user-store';
+import { logger } from 'tbpro-shared';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FeedbackBox from '../common/FeedbackBox.vue';
@@ -17,7 +18,6 @@ import StatusBar from '../common/StatusBar.vue';
 import TBBanner from '../common/TBBanner.vue';
 import { useConfigStore } from './stores/config-store';
 import useFolderStore from './stores/folder-store';
-import { logger } from 'tbpro-shared'
 
 const { api } = useApiStore();
 const { user } = useUserStore();

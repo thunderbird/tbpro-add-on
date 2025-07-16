@@ -1,22 +1,22 @@
 <!-- eslint-disable no-undef -->
 <script setup lang="ts">
-import { dbUserSetup } from '@/lib/helpers';
-import init from '@/lib/init';
-import useApiStore from '@/stores/api-store';
-import useKeychainStore from '@/stores/keychain-store';
-import useUserStore from '@/stores/user-store';
+import { dbUserSetup } from '@send-frontend/lib/helpers';
+import init from '@send-frontend/lib/init';
+import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useUserStore from '@send-frontend/stores/user-store';
 
-import BackupAndRestore from '@/apps/common/BackupAndRestore.vue';
-import FeedbackBox from '@/apps/common/FeedbackBox.vue';
-import { useMetricsUpdate } from '@/apps/common/mixins/metrics';
-import UserDashboard from '@/apps/common/UserDashboard.vue';
-import Btn from '@/apps/send/elements/BtnComponent.vue';
-import useFolderStore from '@/apps/send/stores/folder-store';
-import { useAuth } from '@/lib/auth';
-import { CLIENT_MESSAGES } from '@/lib/messages';
-import { validateToken } from '@/lib/validations';
-import { useAuthStore } from '@/stores/auth-store';
-import useMetricsStore from '@/stores/metrics';
+import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
+import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
+import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
+import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
+import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { useAuth } from '@send-frontend/lib/auth';
+import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
+import { validateToken } from '@send-frontend/lib/validations';
+import { useAuthStore } from '@send-frontend/stores/auth-store';
+import useMetricsStore from '@send-frontend/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
 import { ref } from 'vue';
 import { ModalsContainer } from 'vue-final-modal';

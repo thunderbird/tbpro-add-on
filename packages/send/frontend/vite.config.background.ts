@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@send-frontend': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
     build: {

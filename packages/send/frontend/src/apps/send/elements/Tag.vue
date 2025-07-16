@@ -1,7 +1,9 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
+import { TagColors } from '@send-frontend/apps/send/const';
 import { IconTag } from '@tabler/icons-vue';
-import { TagColors } from '@/apps/send/const';
 defineProps({
+  // eslint-disable-next-line vue/require-default-prop
   color: String,
 });
 </script>

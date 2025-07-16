@@ -1,18 +1,18 @@
-import { ProgressTracker } from '@/apps/send/stores/status-store';
-import { ApiConnection } from '@/lib/api';
-import { SPLIT_SIZE } from '@/lib/const';
-import { NamedBlob } from '@/lib/filesync';
-import { Keychain } from '@/lib/keychain';
-import Uploader from '@/lib/upload';
-import { UserType } from '@/types';
+import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { SPLIT_SIZE } from '@send-frontend/lib/const';
+import { NamedBlob } from '@send-frontend/lib/filesync';
+import { Keychain } from '@send-frontend/lib/keychain';
+import Uploader from '@send-frontend/lib/upload';
+import { UserType } from '@send-frontend/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock dependencies
-vi.mock('@/lib/filesync', () => ({
+vi.mock('@send-frontend/lib/filesync', () => ({
   sendBlob: vi.fn().mockResolvedValue('upload-id'),
 }));
 
-vi.mock('@/lib/utils', () => ({
+vi.mock('@send-frontend/lib/utils', () => ({
   splitIntoMultipleZips: vi
     .fn()
     .mockResolvedValue([

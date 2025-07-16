@@ -1,6 +1,6 @@
-import FolderView from '@/apps/send/components/FolderView.vue';
-import { routes } from '@/apps/send/router';
-import { DayJsKey } from '@/types';
+import FolderView from '@send-frontend/apps/send/components/FolderView.vue';
+import { routes } from '@send-frontend/apps/send/router';
+import { DayJsKey } from '@send-frontend/types';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,7 +14,7 @@ const { goToRootFolderSpy } = vi.hoisted(() => {
 });
 
 // Setup testing environment
-vi.mock('@/apps/send/stores/folder-store', () => {
+vi.mock('@send-frontend/apps/send/stores/folder-store', () => {
   return {
     esmodule: true,
     default: vi.fn(() => ({
@@ -23,7 +23,7 @@ vi.mock('@/apps/send/stores/folder-store', () => {
   };
 });
 
-vi.mock('@/stores/api-store', () => {
+vi.mock('@send-frontend/stores/api-store', () => {
   return {
     esmodule: true,
     default: vi.fn(() => ({
@@ -34,7 +34,7 @@ vi.mock('@/stores/api-store', () => {
   };
 });
 
-vi.mock('@/stores/keychain-store', () => {
+vi.mock('@send-frontend/stores/keychain-store', () => {
   return {
     esmodule: true,
     default: vi.fn(() => ({

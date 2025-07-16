@@ -1,6 +1,6 @@
-import logger from '@/logger';
-import type { UserStoreType as UserStore } from '@/stores/user-store';
-import { UserType } from '@/types';
+import logger from '@send-frontend/logger';
+import type { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
+import { UserType } from '@send-frontend/types';
 import { ApiConnection } from './api';
 import { MAX_ACCESS_LINK_RETRIES } from './const';
 import { Keychain, restoreKeysUsingLocalStorage } from './keychain';

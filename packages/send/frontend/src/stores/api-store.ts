@@ -1,5 +1,5 @@
-import { useConfigStore } from '@/apps/send/stores/config-store';
-import { ApiConnection } from '@/lib/api';
+import { useConfigStore } from '@send-frontend/apps/send/stores/config-store';
+import { ApiConnection } from '@send-frontend/lib/api';
 import { defineStore } from 'pinia';
 
 const useApiStore = defineStore('api', () => {

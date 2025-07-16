@@ -1,8 +1,8 @@
 // stores/counter.js
 
-import { formatLoginURL } from '@/lib/helpers';
-import { openPopup } from '@/lib/login';
-import { useApiStore, useConfigStore } from '@/stores';
+import { formatLoginURL } from '@send-frontend/lib/helpers';
+import { openPopup } from '@send-frontend/lib/login';
+import { useApiStore, useConfigStore } from '@send-frontend/stores';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 

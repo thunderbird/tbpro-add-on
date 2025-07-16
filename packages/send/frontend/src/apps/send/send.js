@@ -1,4 +1,4 @@
-import { initSentry } from '@/lib/sentry';
+import { initSentry } from '@send-frontend/lib/sentry';
 import { createApp } from 'vue';
 import Send from './SendPage.vue';
 import router from './router';

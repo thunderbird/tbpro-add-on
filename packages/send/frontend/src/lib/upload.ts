@@ -2,13 +2,13 @@ import {
   Item,
   ItemResponse,
   UploadResponse,
-} from '@/apps/send/stores/folder-store.types';
-import type { ProcessStage } from '@/apps/send/stores/status-store';
-import { ProgressTracker } from '@/apps/send/stores/status-store';
-import { ApiConnection } from '@/lib/api';
-import { NamedBlob, sendBlob } from '@/lib/filesync';
-import { Keychain } from '@/lib/keychain';
-import { UserType } from '@/types';
+} from '@send-frontend/apps/send/stores/folder-store.types';
+import type { ProcessStage } from '@send-frontend/apps/send/stores/status-store';
+import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { NamedBlob, sendBlob } from '@send-frontend/lib/filesync';
+import { Keychain } from '@send-frontend/lib/keychain';
+import { UserType } from '@send-frontend/types';
 import { SPLIT_SIZE } from './const';
 import { retryUntilSuccessOrTimeout, splitIntoMultipleZips } from './utils';
 

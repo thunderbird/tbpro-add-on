@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { TagLabelColors } from '@/apps/send/const';
+import { TagLabelColors } from '@send-frontend/apps/send/const';
 defineProps({
+  // eslint-disable-next-line vue/require-default-prop
   color: String,
 });
 </script>

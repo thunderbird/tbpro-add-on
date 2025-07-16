@@ -1,5 +1,5 @@
-import { ApiConnection } from '@/lib/api';
-import posthog from '@/plugins/posthog';
+import { ApiConnection } from '@send-frontend/lib/api';
+import posthog from '@send-frontend/plugins/posthog';
 import { defineStore } from 'pinia';
 import UAParser from 'ua-parser-js';
 

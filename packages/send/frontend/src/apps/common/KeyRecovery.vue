@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import ButtonComponent from '@/apps/send/elements/BtnComponent.vue';
-import useMetricsStore from '@/stores/metrics';
+import ButtonComponent from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import useMetricsStore from '@send-frontend/stores/metrics';
 import { CopyIcon } from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';
 import { computed, ref } from 'vue';

@@ -1,7 +1,7 @@
-import { Storage } from '@/lib/storage';
-import useApiStore from '@/stores/api-store';
-import useUserStore from '@/stores/user-store';
-import { UserTier } from '@/types';
+import { Storage } from '@send-frontend/lib/storage';
+import useApiStore from '@send-frontend/stores/api-store';
+import useUserStore from '@send-frontend/stores/user-store';
+import { UserTier } from '@send-frontend/types';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

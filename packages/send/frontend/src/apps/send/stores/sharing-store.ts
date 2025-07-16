@@ -1,12 +1,15 @@
-import { FolderResponse, Item } from '@/apps/send/stores/folder-store.types';
-import { getContainerKeyFromChallenge } from '@/lib/challenge';
-import { Keychain, Util } from '@/lib/keychain';
-import Sharer from '@/lib/share';
-import { trpc } from '@/lib/trpc';
-import useApiStore from '@/stores/api-store';
-import useKeychainStore from '@/stores/keychain-store';
-import useUserStore from '@/stores/user-store';
-import { UserType } from '@/types';
+import {
+  FolderResponse,
+  Item,
+} from '@send-frontend/apps/send/stores/folder-store.types';
+import { getContainerKeyFromChallenge } from '@send-frontend/lib/challenge';
+import { Keychain, Util } from '@send-frontend/lib/keychain';
+import Sharer from '@send-frontend/lib/share';
+import { trpc } from '@send-frontend/lib/trpc';
+import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useUserStore from '@send-frontend/stores/user-store';
+import { UserType } from '@send-frontend/types';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -143,14 +146,15 @@ const useSharingStore = defineStore('sharingManager', () => {
     return await api.call(`users/${userId}/invitations/`);
   }
 
-  async function getFoldersSharedWithUser(userId: number) {
+  async function getFoldersSharedWithUser(userId: string) {
     // TODO: shift the userId from frontend argument to backend session
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return await api.call<{ [key: string]: any }[]>(
       `users/${userId}/folders/sharedWithUser`
     );
   }
 
-  async function getFoldersSharedByUser(userId: number) {
+  async function getFoldersSharedByUser(userId: string) {
     // TODO: shift the userId from frontend argument to backend session
     return await api.call(`users/${userId}/folders/sharedByUser`);
   }

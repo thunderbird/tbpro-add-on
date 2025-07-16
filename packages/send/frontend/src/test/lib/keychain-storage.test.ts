@@ -1,5 +1,5 @@
-import { expect, describe, it } from 'vitest';
-import { Keychain, Util } from '@/lib/keychain';
+import { Keychain, Util } from '@send-frontend/lib/keychain';
+import { describe, expect, it } from 'vitest';
 
 describe('RSA key storage', () => {
   it('Can store public/private keys', async () => {

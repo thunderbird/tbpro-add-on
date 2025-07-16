@@ -1,5 +1,5 @@
-import { JsonResponse } from '@/lib/api';
-import { NamedBlob } from '@/types';
+import { JsonResponse } from '@send-frontend/lib/api';
+import { NamedBlob } from '@send-frontend/types';
 import JSZip from 'jszip';
 import { MAX_FILE_SIZE } from './const';
 /**

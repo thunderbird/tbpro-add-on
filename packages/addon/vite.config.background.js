@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
         },
         resolve: {
             alias: {
-                '@': resolve(__dirname, 'node_modules/send-frontend/src'),
+                '@send-frontend': resolve(__dirname, 'node_modules/send-frontend/src'),
                 '@addon': resolve(__dirname, 'src'),
             },
         },

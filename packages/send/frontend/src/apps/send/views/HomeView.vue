@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import useFolderStore from '@/apps/send/stores/folder-store';
-import useUserStore from '@/stores/user-store';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import useUserStore from '@send-frontend/stores/user-store';
 
-import FeedbackBox from '@/apps/common/FeedbackBox.vue';
-import FileInfo from '@/apps/send/components/FileInfo.vue';
-import FolderInfo from '@/apps/send/components/FolderInfo.vue';
-import FolderNavigation from '@/apps/send/components/FolderNavigation.vue';
-import NewFolder from '@/apps/send/components/NewFolder.vue';
+import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
+import FileInfo from '@send-frontend/apps/send/components/FileInfo.vue';
+import FolderInfo from '@send-frontend/apps/send/components/FolderInfo.vue';
+import FolderNavigation from '@send-frontend/apps/send/components/FolderNavigation.vue';
+import NewFolder from '@send-frontend/apps/send/components/NewFolder.vue';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 

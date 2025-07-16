@@ -1,10 +1,10 @@
-import Sharer from '@/lib/share';
+import Sharer from '@send-frontend/lib/share';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApiConnection } from '@/lib/api';
-import { Keychain } from '@/lib/keychain';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { Keychain } from '@send-frontend/lib/keychain';
 
-import { UserTier, UserType } from '@/types';
+import { UserTier, UserType } from '@send-frontend/types';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 
@@ -14,7 +14,7 @@ const defaultUser: UserType = {
   email: '',
 };
 
-vi.mock('@/lib/keychain', () => {
+vi.mock('@send-frontend/lib/keychain', () => {
   const Keychain = vi.fn(() => ({
     newKeyForContainer: vi.fn(),
     store: vi.fn(),

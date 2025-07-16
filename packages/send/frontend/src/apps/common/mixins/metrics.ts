@@ -1,5 +1,5 @@
-import useMetricsStore from '@/stores/metrics';
-import useUserStore from '@/stores/user-store';
+import useMetricsStore from '@send-frontend/stores/metrics';
+import useUserStore from '@send-frontend/stores/user-store';
 import { onBeforeUnmount, onMounted } from 'vue';
 
 /*

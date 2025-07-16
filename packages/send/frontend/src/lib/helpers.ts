@@ -1,8 +1,8 @@
-import { FolderStore } from '@/apps/send/stores/folder-store';
-import { ProgressTracker } from '@/apps/send/stores/status-store';
-import init from '@/lib/init';
-import { UserStoreType } from '@/stores/user-store';
-import { Canceler, JsonResponse } from '@/types';
+import { FolderStore } from '@send-frontend/apps/send/stores/folder-store';
+import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import init from '@send-frontend/lib/init';
+import { UserStoreType } from '@send-frontend/stores/user-store';
+import { Canceler, JsonResponse } from '@send-frontend/types';
 import { RouteLocationNormalized } from 'vue-router';
 import {
   ECE_RECORD_SIZE,

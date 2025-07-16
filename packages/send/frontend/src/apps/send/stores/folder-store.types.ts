@@ -1,5 +1,5 @@
-import { UserResponse } from '@/stores/user-store.types';
-import { Container, Item } from '@/types';
+import { UserResponse } from '@send-frontend/stores/user-store.types';
+import { Container, Item } from '@send-frontend/types';
 import { FolderStore as FS } from './folder-store';
 
 export type ContainerResponse = Container;

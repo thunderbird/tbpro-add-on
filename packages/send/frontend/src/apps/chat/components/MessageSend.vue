@@ -1,8 +1,9 @@
 <script setup>
-import { ref, inject } from 'vue';
-import { sendBlob } from '@/lib/filesync';
+import { sendBlob } from '@send-frontend/lib/filesync';
+import { inject, ref } from 'vue';
 
 const props = defineProps({
+  // eslint-disable-next-line vue/require-default-prop
   conversationId: Number,
 });
 
@@ -81,7 +82,8 @@ async function sendMessage(isText = true) {
   console.log(uploadResp);
 
   if (id !== uploadResp.id) {
-    debugger;
+    console.log(`upload id does not match content id`);
+    return;
   }
 
   const itemResp = await api.createItemInContainer(
@@ -108,7 +110,7 @@ async function sendMessage(isText = true) {
 
 <template>
   <form @submit.prevent>
-    <input type="file" @change="handleFile" class="hidden" ref="fileInput" />
+    <input ref="fileInput" type="file" class="hidden" @change="handleFile" />
     <div v-if="props.conversationId" class="sticky bottom-0">
       <div class="border-t-2 border-gray-200 px-4 pt-4 mb-2 sm:mb-0 bg-white">
         <div class="relative flex">
@@ -134,11 +136,11 @@ async function sendMessage(isText = true) {
           </button> -->
           </span>
           <input
+            ref="msgInput"
+            v-model="message"
             type="text"
             placeholder="Write your message here"
             class="w-full focus:outline-none focus:placeholder-gray-400 text-gray-600 placeholder-gray-600 pl-3 bg-gray-200 rounded-md py-3"
-            v-model="message"
-            ref="msgInput"
           />
           <div class="absolute right-0 items-center inset-y-0 hidden sm:flex">
             <button

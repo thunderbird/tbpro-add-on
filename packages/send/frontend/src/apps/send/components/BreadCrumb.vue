@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import useFolderStore from '@/apps/send/stores/folder-store';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { ref, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 const folderStore = useFolderStore();

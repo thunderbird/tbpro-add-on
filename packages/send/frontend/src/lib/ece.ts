@@ -1,4 +1,4 @@
-import { transformStream } from '@/lib/streams';
+import { transformStream } from '@send-frontend/lib/streams';
 import { Buffer } from 'buffer';
 
 // Polyfill necessary after tsconfig.json chnages

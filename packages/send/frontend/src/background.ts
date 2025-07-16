@@ -1,14 +1,14 @@
 /// <reference types="thunderbird-webext-browser" />
 import { createPinia, setActivePinia } from 'pinia';
 
-import { useExtensionStore } from '@/apps/send/stores/extension-store';
-import useFolderStore from '@/apps/send/stores/folder-store';
-import useApiStore from '@/stores/api-store';
-import useKeychainStore from '@/stores/keychain-store';
-import useUserStore from '@/stores/user-store';
+import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-store';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useUserStore from '@send-frontend/stores/user-store';
 
-import init from '@/lib/init';
-import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
+import init from '@send-frontend/lib/init';
+import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.

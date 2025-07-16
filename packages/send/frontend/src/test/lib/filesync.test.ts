@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getBlob, sendBlob } from '@/lib/filesync';
+import { getBlob, sendBlob } from '@send-frontend/lib/filesync';
 import { createPinia, setActivePinia } from 'pinia';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Keychain } from '@/lib/keychain';
+import { Keychain } from '@send-frontend/lib/keychain';
 import {
   arrayBufferToReadableStream,
   readableStreamToArrayBuffer,
-} from '@/lib/streams';
+} from '@send-frontend/lib/streams';
 
-import { encryptStream } from '@/lib/ece';
-import * as useApiStore from '@/stores/api-store';
+import { encryptStream } from '@send-frontend/lib/ece';
+import * as useApiStore from '@send-frontend/stores/api-store';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { mockProgressTracker } from './helpers';
@@ -44,8 +44,9 @@ const { downloadMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/lib/helpers', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/lib/utils')>();
+vi.mock('@send-frontend/lib/helpers', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@send-frontend/lib/utils')>();
 
   const _download = downloadMock;
   return {
