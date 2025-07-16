@@ -44,7 +44,7 @@ export const trpc = createTRPCClient<AppRouter>({
            */
           retry(opts) {
             // Retry unauthorized requests (401) to refresh token
-            if (opts.error.data.code === 'UNAUTHORIZED') {
+            if (opts.error.data?.code === 'UNAUTHORIZED') {
               // Only retry queries
               if (opts.op.type !== 'query') {
                 return false;

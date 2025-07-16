@@ -1,11 +1,11 @@
 /// <reference types="thunderbird-webext-browser" />
 import { createPinia, setActivePinia } from 'pinia';
 
+import { useExtensionStore } from '@/apps/send/stores/extension-store';
+import useFolderStore from '@/apps/send/stores/folder-store';
 import useApiStore from '@/stores/api-store';
 import useKeychainStore from '@/stores/keychain-store';
 import useUserStore from '@/stores/user-store';
-import useFolderStore from '@/apps/send/stores/folder-store';
-import { useExtensionStore } from '@/apps/send/stores/extension-store';
 
 import init from '@/lib/init';
 import { restoreKeysUsingLocalStorage } from '@/lib/keychain';
@@ -31,13 +31,12 @@ console.log('hello from the background.js!', new Date().getTime());
 (async () => {
   const allAccounts = await browser.cloudFile.getAllAccounts();
   if (allAccounts.length > 0) {
-    for (let { id } of allAccounts) {
+    for (const { id } of allAccounts) {
       console.log(`[background.td] passing ${id} to configureExtension()`);
       await configureExtension(id);
     }
-
   } else {
-    for (let i=0; i<100; i++) {
+    for (let i = 0; i < 100; i++) {
       await configureExtension(`account${i}`);
     }
   }
@@ -53,7 +52,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(
     // Remove our origin header from requests to backblazeb2.
     const requestHeaders = details.requestHeaders.filter(
       ({ name, value }) =>
-	!(name.toLowerCase() === 'origin' && value === origin)
+        !(name.toLowerCase() === 'origin' && value === origin)
     );
 
     const hostName = requestHeaders.find(({ name }) => name === 'Host')?.value;
@@ -73,7 +72,6 @@ console.log('webRequest listeners have been set up.');
 
 // ==============================================
 
-
 // ==============================================
 // Stores info for each file that need uploading.
 let uploadInfoQueue = [];
@@ -89,12 +87,10 @@ let popupTimer = null;
 // Prevents multiple popups from opening.
 let popupWindowId = null;
 
-
 browser.cloudFile.onFileUpload.addListener(
   // We disregard the third (tab) arg, and aren't following the cb return type.
   //@ts-expect-error
   async (_, fileInfo) => {
-
     const { id, name, data } = fileInfo;
     console.log(`[onFileUpload] Received file: ${name} (ID: ${id})`);
 
@@ -124,10 +120,10 @@ browser.cloudFile.onFileUpload.addListener(
     // - reject() and abortController.abort()
     const uploadPromise = new Promise((resolve, reject) => {
       uploadPromiseMap.set(id, {
-	resolve,
-	reject,
-	abortController
-      })
+        resolve,
+        reject,
+        abortController,
+      });
     });
 
     // Since we just got a new upload, we need to start a new
@@ -139,7 +135,6 @@ browser.cloudFile.onFileUpload.addListener(
   }
 );
 
-
 /**
  * Opens a single popup window for all queued files.
  */
@@ -150,7 +145,9 @@ async function openUnifiedPopup() {
     return;
   }
 
-  console.log(`[openUnifiedPopup] Timer expired. Opening popup for ${uploadInfoQueue.length} files.`);
+  console.log(
+    `[openUnifiedPopup] Timer expired. Opening popup for ${uploadInfoQueue.length} files.`
+  );
 
   try {
     const popup = await browser.windows.create({
@@ -166,21 +163,20 @@ async function openUnifiedPopup() {
     console.error(`[openUnifiedPopup] Error creating popup:`, error);
 
     // If popup creation fails, we must reject all waiting promises.
-    rejectAllInQueue(new Error("Popup window could not be opened."));
+    rejectAllInQueue(new Error('Popup window could not be opened.'));
   }
 }
 
 // Handle all messages from popup.
 browser.runtime.onMessage.addListener((message) => {
-
   switch (message.type) {
     // Popup is ready and is requesting the file list.
     case 'POPUP_READY':
       console.log(`[onMessage] Popup is ready. Sending file list.`);
 
       browser.runtime.sendMessage({
-	type: 'FILE_LIST',
-	files: uploadInfoQueue, // Send the entire queue
+        type: 'FILE_LIST',
+        files: uploadInfoQueue, // Send the entire queue
       });
 
       // Clear the queue now that we've sent it.
@@ -188,23 +184,24 @@ browser.runtime.onMessage.addListener((message) => {
       break;
 
     // Popup reports that all uploads are complete.
-    case 'ALL_UPLOADS_COMPLETE':
+    case 'ALL_UPLOADS_COMPLETE': {
       console.log(`[onMessage] Received message that files were uploaded.`);
       const { url } = message;
 
       message.results.forEach(({ originalId: id }) => {
-	if (uploadPromiseMap.has(id)) {
-	  uploadPromiseMap.get(id).resolve({ aborted: false, url });
-	  uploadPromiseMap.delete(id);
-	}
+        if (uploadPromiseMap.has(id)) {
+          uploadPromiseMap.get(id).resolve({ aborted: false, url });
+          uploadPromiseMap.delete(id);
+        }
       });
 
       break;
+    }
 
     // Popup reports that the user cancelled the entire process.
     case 'ALL_UPLOADS_ABORTED':
       console.log(`[onMessage] User aborted all uploads.`);
-      rejectAllInQueue(new Error("User aborted the operation."));
+      rejectAllInQueue(new Error('User aborted the operation.'));
       break;
   }
 
@@ -221,13 +218,13 @@ browser.windows.onRemoved.addListener((windowId) => {
     console.log(`[onRemoved] Popup window closed.`);
     popupWindowId = null;
     // If the window is closed before uploads complete, we consider it an abort.
-    rejectAllInQueue(new Error("Popup window was closed prematurely."));
+    rejectAllInQueue(new Error('Popup window was closed prematurely.'));
   }
 });
 
 // Listen for upload abort.
 browser.cloudFile.onFileUploadAbort.addListener((_, id) => {
-  let uploadInfo = uploadPromiseMap.get(id);
+  const uploadInfo = uploadPromiseMap.get(id);
   if (uploadInfo && uploadInfo.abortController) {
     console.log(`aborting upload:`);
     console.log(uploadInfo);
@@ -247,8 +244,10 @@ browser.cloudFile.onFileUploadAbort.addListener((_, id) => {
 function rejectAllInQueue(reason: Error) {
   const remainingIds = Array.from(uploadPromiseMap.keys());
   if (remainingIds.length > 0) {
-    console.log(`[rejectAllInQueue] Rejecting ${remainingIds.length} pending promises.`);
-    remainingIds.forEach(id => {
+    console.log(
+      `[rejectAllInQueue] Rejecting ${remainingIds.length} pending promises.`
+    );
+    remainingIds.forEach((id) => {
       uploadPromiseMap.get(id).abortController.abort();
       uploadPromiseMap.get(id).reject(reason);
       uploadPromiseMap.delete(id);

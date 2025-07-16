@@ -72,7 +72,7 @@ async function uploadAndShare() {
         api
       );
 
-      if (!itemObjArray || itemObjArray.length === 0) {
+      if (!itemObjArray || itemObjArray?.length === 0) {
         throw new Error(`Could not upload file ${file.name}`);
       }
 
@@ -198,7 +198,7 @@ onMounted(async () => {
 
   // Check if the filesize is allowed.
   // Using a for loop so we can return.
-  for (let i = 0; i < files.value.length; i++) {
+  for (let i = 0; i < files.value?.length; i++) {
     const file = files.value[i].data;
     if (file.size > MAX_FILE_SIZE) {
       progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
