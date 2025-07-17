@@ -148,6 +148,7 @@ jobs:
           npm install -g pnpm
           pnpm install --filter send-frontend
           pnpm install --filter send-backend
+          lerna run db:generate --scope=send-backend
           pnpm install --filter tbpro-shared
 
       - name: Create .env file so tests will work
