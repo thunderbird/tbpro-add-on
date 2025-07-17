@@ -9,7 +9,7 @@ const { mockcapture, mockAuth, mockAuthenticatedRequest } = vi.hoisted(() => ({
   mockAuthenticatedRequest: vi.fn(),
 }));
 
-vi.mock('@/metrics', () => {
+vi.mock('@send-backend/metrics', () => {
   const mMetrics = {
     useMetrics: vi.fn(() => ({
       capture: mockcapture,
@@ -21,7 +21,7 @@ vi.mock('@/metrics', () => {
   };
 });
 
-vi.mock('@/auth/client', () => {
+vi.mock('@send-backend/auth/client', () => {
   const mMetrics = {
     getDataFromAuthenticatedRequest: mockAuthenticatedRequest,
     getJWTfromToken: mockAuth,
@@ -31,7 +31,7 @@ vi.mock('@/auth/client', () => {
   };
 });
 
-vi.mock('@/utils/session', () => {
+vi.mock('@send-backend/utils/session', () => {
   return {
     getUniqueHashFromAnonId: vi.fn().mockReturnValue('hash'),
   };
@@ -71,7 +71,7 @@ describe('POST /api/metrics/page-load', () => {
   });
 
   it('should capture metrics for logged users', async () => {
-    vi.mock('@/middleware', () => {
+    vi.mock('@send-backend/middleware', () => {
       return {
         requireJWT: vi.fn().mockReturnValue('hash'),
       };

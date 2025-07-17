@@ -1,4 +1,4 @@
-import { getEnvironmentName } from '@/config';
+import { getEnvironmentName } from '@send-backend/config';
 import { extended_client } from './posthog';
 
 const client = new extended_client(process.env.POSTHOG_API_KEY || 'test', {

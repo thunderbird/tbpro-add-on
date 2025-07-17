@@ -1,4 +1,4 @@
-import { getDataFromAuthenticatedRequest } from '@/auth/client';
+import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { Router } from 'express';
 import {
   addErrorHandling,

@@ -1,9 +1,9 @@
-import { getJWTfromToken } from '@/auth/client';
-import { validateJWT } from '@/auth/jwt';
+import { getJWTfromToken } from '@send-backend/auth/client';
+import { validateJWT } from '@send-backend/auth/jwt';
 import jwt from 'jsonwebtoken';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/auth/client', () => ({
+vi.mock('@send-backend/auth/client', () => ({
   getJWTfromToken: vi.fn(),
 }));
 

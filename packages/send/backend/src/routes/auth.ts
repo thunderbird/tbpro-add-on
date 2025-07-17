@@ -6,17 +6,17 @@ import {
   wrapAsyncHandler,
 } from '../errors/routes';
 
+import { User, UserTier } from '@prisma/client';
 import {
   getDataFromAuthenticatedRequest,
   getJWTfromToken,
   getUserFromJWT,
   registerAuthToken,
   registerTokens,
-} from '@/auth/client';
-import { getLoginSession } from '@/models';
-import { getUserByEmail, getUserById } from '@/models/users';
-import { getCookie } from '@/utils';
-import { User, UserTier } from '@prisma/client';
+} from '@send-backend/auth/client';
+import { getLoginSession } from '@send-backend/models';
+import { getUserByEmail, getUserById } from '@send-backend/models/users';
+import { getCookie } from '@send-backend/utils';
 import { requireJWT, requirePublicLogin } from '../middleware';
 
 export type AuthResponse = {

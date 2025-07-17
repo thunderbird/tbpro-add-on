@@ -11,7 +11,7 @@ import {
   wsLink,
 } from '@trpc/client';
 
-import { AppRouter } from 'server/index';
+import { AppRouter } from '@send-backend/index';
 import { TRPC_WS_PATH } from './config';
 
 // create persistent WebSocket connection

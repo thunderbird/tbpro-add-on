@@ -5,7 +5,7 @@
     "baseUrl": "./",
     "paths": {
       "@send-frontend/*": ["./src/*"],
-      "server/*": ["../backend/src/*"],
+      "@send-backend/*": ["../backend/src/*"],
       "prisma/*": ["../backend/node_modules/@prisma/*"]
     },
     "types": [

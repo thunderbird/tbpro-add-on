@@ -26,7 +26,7 @@ import {
   updateUserPublicKey,
 } from '../models/users';
 
-import { getDataFromAuthenticatedRequest } from '@/auth/client';
+import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { requireJWT } from '../middleware';
 
 const router: Router = Router();

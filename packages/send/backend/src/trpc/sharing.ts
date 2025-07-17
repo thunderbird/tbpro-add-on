@@ -3,7 +3,7 @@ import {
   getAccessLinkRetryCount,
   incrementAccessLinkRetryCount,
   updateAccessLink,
-} from '@/models/sharing';
+} from '@send-backend/models/sharing';
 import { z } from 'zod';
 import { router, publicProcedure as t } from '../trpc';
 import { isAuthed } from './middlewares';

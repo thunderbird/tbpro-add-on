@@ -20,7 +20,7 @@
     "esModuleInterop": true,
 
     "paths": {
-      "@/*": ["./src/*"]
+      "@send-backend/*": ["./src/*"]
     },
     "inlineSources": true,
 

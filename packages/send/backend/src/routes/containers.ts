@@ -44,8 +44,8 @@ import {
 import {
   getDataFromAuthenticatedRequest,
   getStorageLimit,
-} from '@/auth/client';
-import { addExpiryToContainer } from '@/utils';
+} from '@send-backend/auth/client';
+import { addExpiryToContainer } from '@send-backend/utils';
 
 const router: Router = Router();
 
