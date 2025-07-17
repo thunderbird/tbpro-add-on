@@ -1,6 +1,6 @@
 import { getByTestId } from '@send-frontend/lib/testUtils';
 import { mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import CompatibilityBanner from './CompatibilityBanner.vue';
 
 const { queryResults, isProd, isLoading } = vi.hoisted(() => {
@@ -50,6 +50,7 @@ describe('CompatibilityBanner.vue', () => {
     const closeButton = wrapper.find(getByTestId('close-button'));
 
     await closeButton.trigger('click');
+    //@ts-ignore
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('header').exists()).toBe(false);

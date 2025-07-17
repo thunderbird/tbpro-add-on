@@ -234,7 +234,7 @@ describe('Keychain methods', async () => {
     await keychain.rsa.generateKeyPair();
     const id = 1;
     const key = await keychain.container.generateContainerKey();
-    await keychain.add(id, key);
+    await keychain.add(id.toString(), key);
     expect(Object.keys(keychain._keys).length).toEqual(1);
   });
   it('can add multiple keys to the keychain', async () => {
@@ -246,7 +246,7 @@ describe('Keychain methods', async () => {
     await Promise.all(
       range.map(async (_, i) => {
         const key = await keychain.container.generateContainerKey();
-        return keychain.add(i, key);
+        return keychain.add(i.toString(), key);
       })
     );
 
@@ -256,7 +256,7 @@ describe('Keychain methods', async () => {
     const keychain = new Keychain();
     // Keys are stored internally in keychain.rsa.{ publicKey, privateKey }
     await keychain.rsa.generateKeyPair();
-    const id = 1;
+    const id = '1';
     const key = await keychain.container.generateContainerKey();
     await keychain.add(id, key);
     const sameKey = await keychain.get(id);

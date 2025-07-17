@@ -9,7 +9,7 @@
     "build:dev": "./scripts/build.sh",
     "build:dev:watch": "nodemon -e vue,ts,js,json --ignore 'dist*/' --ignore manifest.json --watch './{src,public}/**/*' --exec 'pnpm build:dev'",
     "build:watch": "nodemon -e vue,ts,js,json --watch './{src,public}/**/*' --exec 'pnpm build'",
-    "ci:validate": "pnpm lint:all; pnpm prettier:all; pnpm run test",
+    "ci:validate": "pnpm lint:all; pnpm prettier:all; pnpm run test; pnpm run typecheck",
     "deploy-xpi": "bun run ./scripts/deploy_xpi.ts",
     "dev": "vite --host",
     "lint:all": "pnpx eslint src/**/*.ts --fix",

@@ -79,10 +79,13 @@ describe('Container keys', () => {
     const howMany = 3;
     const indexToCheck = Math.floor(Math.random() * howMany);
     for (let i = 0; i < howMany; i++) {
-      await keychain.add(i, await keychain.container.generateContainerKey());
+      await keychain.add(
+        i.toString(),
+        await keychain.container.generateContainerKey()
+      );
     }
     // get the 0th key before we reinitialize the keychain
-    const key = await keychain.get(indexToCheck);
+    const key = await keychain.get(indexToCheck.toString());
     await keychain.store();
 
     // intantiate new keychain, load keys from storage
@@ -90,7 +93,7 @@ describe('Container keys', () => {
     await keychain.load();
 
     expect(keychain.count()).toBe(howMany);
-    const storedKey = await keychain.get(indexToCheck);
+    const storedKey = await keychain.get(indexToCheck.toString());
     expect(await Util.compareKeys(key, storedKey)).toBeTruthy();
   });
 });
