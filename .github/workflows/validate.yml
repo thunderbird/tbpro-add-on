@@ -146,7 +146,6 @@ jobs:
         shell: bash
         run: |
           npm install -g pnpm
-          cd packages/send
           pnpm install --filter send-frontend
           pnpm install --filter send-backend
           pnpm install --filter tbpro-shared
@@ -169,8 +168,7 @@ jobs:
         id: frontend-tests-and-lint
         shell: bash
         run: |
-          cd packages/send/frontend
-          pnpm ci:validate
+          lerna run ci:validate --scope=send-frontend
 
   # When the shared package code changes, run these steps
   shared-tests:
