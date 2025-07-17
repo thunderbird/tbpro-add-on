@@ -148,6 +148,7 @@ jobs:
           npm install -g pnpm
           cd packages/send
           pnpm install --filter send-frontend
+          pnpm install --filter send-backend
           pnpm install --filter tbpro-shared
 
       - name: Create .env file so tests will work
