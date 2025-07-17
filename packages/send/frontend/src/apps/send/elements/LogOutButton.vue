@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import OpenerIcon from '@/apps/common/OpenerIcon.vue';
+import OpenerIcon from '@send-frontend/apps/common/OpenerIcon.vue';
 
 type LogOutProps = {
   logOut: () => Promise<void>;

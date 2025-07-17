@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import DocumentIcon from '@/apps/common/DocumentIcon.vue';
-import ImageIcon from '@/apps/common/ImageIcon.vue';
+import DocumentIcon from '@send-frontend/apps/common/DocumentIcon.vue';
+import ImageIcon from '@send-frontend/apps/common/ImageIcon.vue';
 import prettyBytes from 'pretty-bytes';
 import { computed, onUnmounted } from 'vue';
 import { useStatusStore, type ProcessStage } from '../stores/status-store';

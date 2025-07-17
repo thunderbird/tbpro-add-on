@@ -1,7 +1,7 @@
 /**
  * This is the client-side code that uses the inferred types from the server
  */
-import logger from '@/logger';
+import logger from '@send-frontend/logger';
 import {
   createTRPCClient,
   createWSClient,
@@ -44,7 +44,7 @@ export const trpc = createTRPCClient<AppRouter>({
            */
           retry(opts) {
             // Retry unauthorized requests (401) to refresh token
-            if (opts.error.data.code === 'UNAUTHORIZED') {
+            if (opts.error.data?.code === 'UNAUTHORIZED') {
               // Only retry queries
               if (opts.op.type !== 'query') {
                 return false;

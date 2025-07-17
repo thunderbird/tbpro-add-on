@@ -1,4 +1,4 @@
-import { getByTestId } from '@/lib/testUtils';
+import { getByTestId } from '@send-frontend/lib/testUtils';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CompatibilityBanner from './CompatibilityBanner.vue';
@@ -14,7 +14,7 @@ vi.mock('../send/stores/config-store', () => ({
 }));
 
 // Mock trpc
-vi.mock('@/lib/trpc', () => ({
+vi.mock('@send-frontend/lib/trpc', () => ({
   trpc: {
     settings: {
       query: queryResults(),

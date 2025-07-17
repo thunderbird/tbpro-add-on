@@ -1,5 +1,5 @@
-import { expect, describe, it } from 'vitest';
-import { Keychain, Util } from '@/lib/keychain';
+import { Keychain, Util } from '@send-frontend/lib/keychain';
+import { describe, expect, it } from 'vitest';
 
 describe('AES Key Generation', () => {
   const keychain = new Keychain();
@@ -7,7 +7,7 @@ describe('AES Key Generation', () => {
     const key = await keychain.content.generateKey();
     expect(key).toBeTruthy();
     expect(key.algorithm.name).toBe('AES-GCM');
-    for (let p of key.usages) {
+    for (const p of key.usages) {
       expect(['encrypt', 'decrypt'].includes(p));
     }
     expect((key.algorithm as AesKeyGenParams).length).toBe(256);
@@ -16,7 +16,7 @@ describe('AES Key Generation', () => {
     const key = await keychain.container.generateContainerKey();
     expect(key).toBeTruthy();
     expect(key.algorithm.name).toBe('AES-KW');
-    for (let p of key.usages) {
+    for (const p of key.usages) {
       expect(['wrap', 'unwrap'].includes(p));
     }
     expect((key.algorithm as AesKeyGenParams).length).toBe(256);
@@ -63,7 +63,7 @@ describe('AES Wrapping Keys', () => {
     );
     expect(unwrappedKey).toBeTruthy();
     expect(unwrappedKey.algorithm.name).toBe('AES-GCM');
-    for (let p of unwrappedKey.usages) {
+    for (const p of unwrappedKey.usages) {
       expect(['encrypt', 'decrypt'].includes(p));
     }
     expect((unwrappedKey.algorithm as AesKeyGenParams).length).toBe(256);
@@ -117,7 +117,7 @@ describe('Password protected keys', () => {
     );
     expect(key.algorithm.name).toBe('AES-KW');
     expect(unwrappedKey.algorithm.name).toBe('AES-KW');
-    for (let p of unwrappedKey.usages) {
+    for (const p of unwrappedKey.usages) {
       expect(['wrap', 'unwrap'].includes(p));
     }
     expect((unwrappedKey.algorithm as AesKeyGenParams).length).toBe(256);
@@ -164,7 +164,7 @@ describe('Password protected keys', () => {
     );
     expect(key.algorithm.name).toBe('AES-GCM');
     expect(unwrappedKey.algorithm.name).toBe('AES-GCM');
-    for (let p of unwrappedKey.usages) {
+    for (const p of unwrappedKey.usages) {
       expect(['encrypt', 'decrypt'].includes(p));
     }
     expect((unwrappedKey.algorithm as AesKeyGenParams).length).toBe(256);
@@ -211,7 +211,7 @@ describe('RSA Keypairs', () => {
       privateKey
     );
     expect(await Util.compareKeys(key, unwrappedKey)).toBeTruthy();
-    for (let p of unwrappedKey.usages) {
+    for (const p of unwrappedKey.usages) {
       expect(['wrap', 'unwrap'].includes(p));
     }
   });
@@ -245,7 +245,7 @@ describe('Keychain methods', async () => {
     const range = Array.from(Array(howMany).keys());
     await Promise.all(
       range.map(async (_, i) => {
-        let key = await keychain.container.generateContainerKey();
+        const key = await keychain.container.generateContainerKey();
         return keychain.add(i, key);
       })
     );

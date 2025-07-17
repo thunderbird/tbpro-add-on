@@ -1,14 +1,15 @@
-import { ProgressTracker } from '@/apps/send/stores/status-store';
-import { decryptStream } from '@/lib/ece';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { decryptStream } from '@send-frontend/lib/ece';
 import {
   _download,
   _upload,
   calculateEncryptedSize,
   encrypt,
   uploadWithTracker,
-} from '@/lib/helpers';
-import { blobStream } from '@/lib/streams';
-import { streamToArrayBuffer } from '@/lib/utils';
+} from '@send-frontend/lib/helpers';
+import { blobStream } from '@send-frontend/lib/streams';
+import { streamToArrayBuffer } from '@send-frontend/lib/utils';
 import { ApiConnection } from './api';
 
 export type NamedBlob = Blob & { name: string };

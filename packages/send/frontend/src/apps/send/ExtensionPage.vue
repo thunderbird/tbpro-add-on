@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import FeedbackBox from '@/apps/common/FeedbackBox.vue';
-import useFolderStore from '@/apps/send/stores/folder-store';
-import init from '@/lib/init';
-import useKeychainStore from '@/stores/keychain-store';
-import useUserStore from '@/stores/user-store';
+import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import init from '@send-frontend/lib/init';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useUserStore from '@send-frontend/stores/user-store';
 import { onMounted } from 'vue';
 
-import { useMetricsUpdate } from '@/apps/common/mixins/metrics';
-import useApiStore from '@/stores/api-store';
-import useMetricsStore from '@/stores/metrics';
+import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
+import useApiStore from '@send-frontend/stores/api-store';
+import useMetricsStore from '@send-frontend/stores/metrics';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';

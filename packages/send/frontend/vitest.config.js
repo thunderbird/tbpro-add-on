@@ -8,7 +8,7 @@ export default defineConfig({
   viteConfig,
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      '@send-frontend': path.resolve(__dirname, 'src'),
     },
   },
   test: {

@@ -1,9 +1,11 @@
-import { JwkKeyPair, StoredKey } from '@/lib/keychain';
-import { UserType } from '@/types';
+import { JwkKeyPair, StoredKey } from '@send-frontend/lib/keychain';
+import { UserType } from '@send-frontend/types';
 import LocalStorageAdapter from './LocalStorage';
 
 export interface StorageAdapter {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   get: (k: string) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   set: (k: string, v: any) => void;
   clear: () => void;
 }

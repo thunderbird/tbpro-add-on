@@ -1,4 +1,4 @@
-import { mockProgressTracker } from '@/test/lib/helpers';
+import { mockProgressTracker } from '@send-frontend/test/lib/helpers';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { describe, expect, it, vi } from 'vitest';

@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, 'src'),
+        '@send-frontend': path.resolve(__dirname, 'src'),
       },
     },
     build: {

@@ -1,5 +1,5 @@
-import { ProgressTracker } from '@/apps/send/stores/status-store';
-import { Item } from '@/types';
+import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { Item } from '@send-frontend/types';
 import { ApiConnection } from './api';
 import { Keychain } from './keychain';
 

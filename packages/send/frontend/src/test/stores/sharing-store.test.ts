@@ -1,13 +1,13 @@
-import useSharingStore from '@/apps/send/stores/sharing-store';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Util } from '@/lib/keychain';
-import Sharer from '@/lib/share';
+import { Util } from '@send-frontend/lib/keychain';
+import Sharer from '@send-frontend/lib/share';
 
 const URL = 'http://just.kidding';
 
-vi.mock('@/lib/share', () => {
+vi.mock('@send-frontend/lib/share', () => {
   const Sharer = vi.fn();
 
   // Must use .prototype, otherwise `sharing-store` can

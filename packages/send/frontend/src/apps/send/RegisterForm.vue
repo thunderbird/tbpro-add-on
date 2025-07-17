@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { trpc } from '@/lib/trpc';
-import { validateEmail, validatePassword } from '@/lib/validations';
-import useApiStore from '@/stores/api-store';
+import { trpc } from '@send-frontend/lib/trpc';
+import {
+  validateEmail,
+  validatePassword,
+} from '@send-frontend/lib/validations';
+import useApiStore from '@send-frontend/stores/api-store';
 import { useMutation } from '@tanstack/vue-query';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';

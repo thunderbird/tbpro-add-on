@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import DownloadModal from '@/apps/common/modals/DownloadModal.vue';
-import ReportContent from '@/apps/send/components/ReportContent.vue';
-import useFolderStore from '@/apps/send/stores/folder-store';
-import { useStatusStore } from '@/apps/send/stores/status-store';
+import DownloadModal from '@send-frontend/apps/common/modals/DownloadModal.vue';
+import ReportContent from '@send-frontend/apps/send/components/ReportContent.vue';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { useStatusStore } from '@send-frontend/apps/send/stores/status-store';
 import {
   computeMultipartFile,
   handleMultipartDownload,
-} from '@/lib/folderView';
-import { useApiStore, useKeychainStore } from '@/stores';
+} from '@send-frontend/lib/folderView';
+import { useApiStore, useKeychainStore } from '@send-frontend/stores';
 import prettyBytes from 'pretty-bytes';
 import { computed, ref } from 'vue';
 import { useModal, useModalSlot } from 'vue-final-modal';

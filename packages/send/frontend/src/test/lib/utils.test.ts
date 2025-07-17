@@ -1,4 +1,4 @@
-import { getDaysUntilDate } from '@/lib/utils';
+import { getDaysUntilDate } from '@send-frontend/lib/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('getDaysUntilDate', () => {

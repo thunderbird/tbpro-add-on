@@ -1,9 +1,10 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
-import { ref, computed, onMounted, toRaw } from 'vue';
+import { computed, onMounted, ref, toRaw } from 'vue';
 
 // TODO: after proof-of-concept, move these to the sharing-store
-import useUserStore from '@/stores/user-store';
-import useSharingStore from '@/apps/send/stores/sharing-store';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import useUserStore from '@send-frontend/stores/user-store';
 
 const { user } = useUserStore();
 const sharingStore = useSharingStore();
@@ -52,10 +53,10 @@ function groupBySender(shareArray) {
 <template>
   <h1>Stuff you've received as user {{ user.id }}</h1>
   <ul>
-    <li v-for="[id, email] in emailsBySenderId">
+    <li v-for="[id, email] in emailsBySenderId" :key="id">
       Sent by {{ id }} ({{ email }})
       <ul>
-        <li v-for="folder in foldersBySenderId.get(id)">
+        <li v-for="folder in foldersBySenderId.get(id)" :key="folder.id">
           {{ folder }}
         </li>
       </ul>

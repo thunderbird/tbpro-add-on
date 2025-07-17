@@ -1,9 +1,10 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
-import { ref, computed, onMounted, toRaw } from 'vue';
+import { computed, onMounted, ref, toRaw } from 'vue';
 
 // TODO: after proof-of-concept, move these to the sharing-store
-import useUserStore from '@/stores/user-store';
-import useSharingStore from '@/apps/send/stores/sharing-store';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import useUserStore from '@send-frontend/stores/user-store';
 
 const { user } = useUserStore();
 const sharingStore = useSharingStore();
@@ -56,7 +57,10 @@ onMounted(getSentFolders);
 <template>
   <h1>stuff you've shared</h1>
   <ul>
-    <li v-for="{ container, accessLinks } in shareOnlyFolders">
+    <li
+      v-for="{ container, accessLinks } in shareOnlyFolders"
+      :key="container.id"
+    >
       {{ container }}: {{ accessLinks.length }}
     </li>
   </ul>

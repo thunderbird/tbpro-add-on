@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import useSharingStore from '@/apps/send/stores/sharing-store';
-import { trpc } from '@/lib/trpc';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { trpc } from '@send-frontend/lib/trpc';
 import { useMutation } from '@tanstack/vue-query';
 import { ref, watch } from 'vue';
 
-import Btn from '@/apps/send/elements/BtnComponent.vue';
+import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import { IconEye, IconEyeOff, IconLink } from '@tabler/icons-vue';
 import { useClipboard, useDebounceFn } from '@vueuse/core';
 

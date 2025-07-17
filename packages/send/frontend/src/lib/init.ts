@@ -1,7 +1,7 @@
-import { INIT_ERRORS } from '@/apps/send/const';
-import { FolderStore } from '@/apps/send/stores/folder-store.types';
-import { Keychain } from '@/lib/keychain';
-import { UserStoreType as UserStore } from '@/stores/user-store';
+import { INIT_ERRORS } from '@send-frontend/apps/send/const';
+import { FolderStore } from '@send-frontend/apps/send/stores/folder-store.types';
+import { Keychain } from '@send-frontend/lib/keychain';
+import { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
 
 /**
  * Loads user and keychain from storage; creates default folder if necessary.

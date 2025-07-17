@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import useSharingStore from '@/apps/send/stores/sharing-store';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
 import { onMounted, ref } from 'vue';
 
-import { getCanRetry } from '@/lib/validations';
+import { getCanRetry } from '@send-frontend/lib/validations';
 import { useRoute } from 'vue-router';
 import BtnComponent from '../elements/BtnComponent.vue';
 

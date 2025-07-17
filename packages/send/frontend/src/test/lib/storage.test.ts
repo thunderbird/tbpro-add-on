@@ -1,5 +1,5 @@
-import { Storage } from '@/lib/storage/index';
-import { UserTier } from '@/types';
+import { Storage } from '@send-frontend/lib/storage/index';
+import { UserTier } from '@send-frontend/types';
 import { describe, expect, it } from 'vitest';
 
 describe('User storage', () => {

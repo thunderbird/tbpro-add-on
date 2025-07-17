@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import useApiStore from '@/stores/api-store';
-import useMetricsStore from '@/stores/metrics';
+import useApiStore from '@send-frontend/stores/api-store';
+import useMetricsStore from '@send-frontend/stores/metrics';
 import { ref } from 'vue';
 import { FolderResponse } from '../stores/folder-store.types';
 

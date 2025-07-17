@@ -1,4 +1,4 @@
-import { connectToWebSocketServer } from '@/lib/utils';
+import { connectToWebSocketServer } from '@send-frontend/lib/utils';
 
 export async function createMessageSocket(
   endpoint: string

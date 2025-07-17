@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, onMounted, inject } from 'vue';
-import { getBlob } from '@/lib/filesync';
+import { getBlob } from '@send-frontend/lib/filesync';
+import { inject, onMounted, ref, watch } from 'vue';
 import BurnButton from './BurnButton.vue';
 
 // onmounted, get all items for this convo/container
@@ -9,6 +9,7 @@ import BurnButton from './BurnButton.vue';
 // add a button to add a participant
 
 const props = defineProps({
+  // eslint-disable-next-line vue/require-default-prop
   conversationId: Number,
 });
 
@@ -57,7 +58,7 @@ async function getContainerWithItems(id) {
   let wrappingKey;
   try {
     wrappingKey = await keychain.get(props.conversationId);
-  } catch (e) {
+  } catch {
     console.log(`cannot send message - no key for conversation`);
     return;
   }
@@ -209,7 +210,7 @@ watch(
             ></path>
           </svg>
         </button> -->
-        <BurnButton :conversationId="conversationId" />
+        <BurnButton :conversation-id="conversationId" />
       </div>
     </div>
     <div
@@ -218,7 +219,7 @@ watch(
       ref="messageContainer"
       class="flex flex-col space-y-4 p-3 overflow-y-auto scrollbar-thumb-blue scrollbar-thumb-rounded scrollbar-track-blue-lighter scrollbar-w-2 scrolling-touch"
     >
-      <div class="chat-message mb-2" v-for="m in messageList" :key="m.id">
+      <div v-for="m in messageList" :key="m.id" class="chat-message mb-2">
         <template v-if="m.sender.email === user.email">
           <div class="flex items-end justify-end">
             <div

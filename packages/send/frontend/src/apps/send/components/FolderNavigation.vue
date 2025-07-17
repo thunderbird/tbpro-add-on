@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import DragAndDropUpload from '@/apps/send/components/DragAndDropUpload.vue';
+import DragAndDropUpload from '@send-frontend/apps/send/components/DragAndDropUpload.vue';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 

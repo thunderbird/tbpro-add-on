@@ -1,5 +1,5 @@
-import { ApiConnection } from '@/lib/api';
-import { Keychain, Util } from '@/lib/keychain';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { Keychain, Util } from '@send-frontend/lib/keychain';
 
 export async function getContainerKeyFromChallenge(
   hash: string,

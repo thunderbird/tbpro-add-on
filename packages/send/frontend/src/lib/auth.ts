@@ -1,5 +1,5 @@
 // Import necessary stores and utilities
-import { useApiStore, useAuthStore } from '@/stores';
+import { useApiStore, useAuthStore } from '@send-frontend/stores';
 import { useQuery } from '@tanstack/vue-query';
 import { storeToRefs } from 'pinia';
 import { validateToken } from './validations';

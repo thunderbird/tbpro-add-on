@@ -1,5 +1,5 @@
-import { Keychain } from '@/lib/keychain';
-import { Storage } from '@/lib/storage';
+import { Keychain } from '@send-frontend/lib/keychain';
+import { Storage } from '@send-frontend/lib/storage';
 import { defineStore } from 'pinia';
 
 // TODO: decide if it's worth it to move the internals of the Keychain class to the store.

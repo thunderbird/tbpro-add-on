@@ -1,5 +1,5 @@
-import { Storage } from '@/lib/storage';
-import { Backup as BackupUserStore } from '@/stores/user-store.types';
+import { Storage } from '@send-frontend/lib/storage';
+import { Backup as BackupUserStore } from '@send-frontend/stores/user-store.types';
 
 export type JwkKeyPair = Record<'publicKey' | 'privateKey', string>;
 

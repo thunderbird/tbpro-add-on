@@ -1,8 +1,11 @@
-import { FolderResponse, Item } from '@/apps/send/stores/folder-store.types';
-import { ApiConnection } from '@/lib/api';
-import { CONTAINER_TYPE } from '@/lib/const';
-import { Keychain, Util } from '@/lib/keychain';
-import { UserType } from '@/types';
+import {
+  FolderResponse,
+  Item,
+} from '@send-frontend/apps/send/stores/folder-store.types';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { CONTAINER_TYPE } from '@send-frontend/lib/const';
+import { Keychain, Util } from '@send-frontend/lib/keychain';
+import { UserType } from '@send-frontend/types';
 
 export default class Sharer {
   user: UserType;

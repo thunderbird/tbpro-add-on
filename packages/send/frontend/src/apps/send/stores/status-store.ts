@@ -1,8 +1,8 @@
 // stores/counter.js
-import { validator } from '@/lib/validations';
-import useApiStore from '@/stores/api-store';
-import useKeychainStore from '@/stores/keychain-store';
-import useUserStore from '@/stores/user-store';
+import { validator } from '@send-frontend/lib/validations';
+import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useUserStore from '@send-frontend/stores/user-store';
 import { useDebounceFn } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';

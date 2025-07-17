@@ -1,11 +1,11 @@
-import { CONTAINER_TYPE } from '@/lib/const';
-import Downloader from '@/lib/download';
-import { _saveFileStream } from '@/lib/filesync';
-import { Keychain } from '@/lib/keychain';
-import Uploader from '@/lib/upload';
-import useApiStore from '@/stores/api-store';
-import useKeychainStore from '@/stores/keychain-store';
-import useUserStore from '@/stores/user-store';
+import { CONTAINER_TYPE } from '@send-frontend/lib/const';
+import Downloader from '@send-frontend/lib/download';
+import { _saveFileStream } from '@send-frontend/lib/filesync';
+import { Keychain } from '@send-frontend/lib/keychain';
+import Uploader from '@send-frontend/lib/upload';
+import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import useUserStore from '@send-frontend/stores/user-store';
 import { defineStore } from 'pinia';
 import { computed, onMounted, ref } from 'vue';
 
@@ -14,20 +14,24 @@ import {
   ContainerResponse,
   Item,
   ItemResponse,
-} from '@/apps/send/stores/folder-store.types';
-import { ProgressTracker } from '@/apps/send/stores/status-store';
-import { ApiConnection } from '@/lib/api';
-import { NamedBlob } from '@/lib/filesync';
-import { backupKeys } from '@/lib/keychain';
-import { CLIENT_MESSAGES } from '@/lib/messages';
-import { checkBlobSize, formatBlob, unzipMultipartPiece } from '@/lib/utils';
+} from '@send-frontend/apps/send/stores/folder-store.types';
+import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { NamedBlob } from '@send-frontend/lib/filesync';
+import { backupKeys } from '@send-frontend/lib/keychain';
+import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
+import {
+  checkBlobSize,
+  formatBlob,
+  unzipMultipartPiece,
+} from '@send-frontend/lib/utils';
 
-import { decryptStream } from '@/lib/ece';
-import { organizeFiles } from '@/lib/folderView';
-import { _download } from '@/lib/helpers';
-import { blobStream } from '@/lib/streams';
-import { trpc } from '@/lib/trpc';
-import useMetricsStore from '@/stores/metrics';
+import { decryptStream } from '@send-frontend/lib/ece';
+import { organizeFiles } from '@send-frontend/lib/folderView';
+import { _download } from '@send-frontend/lib/helpers';
+import { blobStream } from '@send-frontend/lib/streams';
+import { trpc } from '@send-frontend/lib/trpc';
+import useMetricsStore from '@send-frontend/stores/metrics';
 import type { ProcessStage } from './status-store';
 import { useStatusStore } from './status-store';
 

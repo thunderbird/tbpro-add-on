@@ -1,7 +1,10 @@
-import { ApiConnection } from '@/lib/api';
-import { MAX_ACCESS_LINK_RETRIES } from '@/lib/const';
-import { Keychain, restoreKeysUsingLocalStorage } from '@/lib/keychain';
-import { trpc } from '@/lib/trpc';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { MAX_ACCESS_LINK_RETRIES } from '@send-frontend/lib/const';
+import {
+  Keychain,
+  restoreKeysUsingLocalStorage,
+} from '@send-frontend/lib/keychain';
+import { trpc } from '@send-frontend/lib/trpc';
 // Import the module itself for spying
 // Keep direct imports for convenience and direct testing
 import {
@@ -11,21 +14,21 @@ import {
   validateEmail,
   validateLocalStorageSession,
   validatePassword,
-} from '@/lib/validations';
-import type { UserStoreType as UserStore } from '@/stores/user-store';
-import { Backup, UserTier, UserType } from '@/types'; // Import Backup and User types
+} from '@send-frontend/lib/validations';
+import type { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
+import { Backup, UserTier, UserType } from '@send-frontend/types'; // Import Backup and User types
 import { MockedFunction, beforeEach, describe, expect, it, vi } from 'vitest'; // Import SpyInstance
 
 // --- Mock Setup ---
 
-vi.mock('@/logger', () => ({
+vi.mock('@send-frontend/logger', () => ({
   default: {
     error: vi.fn(),
     warn: vi.fn(),
   },
 }));
 
-vi.mock('@/lib/trpc', () => ({
+vi.mock('@send-frontend/lib/trpc', () => ({
   trpc: {
     getPasswordRetryCount: {
       query: vi.fn(),
@@ -33,7 +36,7 @@ vi.mock('@/lib/trpc', () => ({
   },
 }));
 
-vi.mock('@/lib/keychain', () => ({
+vi.mock('@send-frontend/lib/keychain', () => ({
   restoreKeysUsingLocalStorage: vi.fn(),
 }));
 
@@ -269,7 +272,7 @@ describe('validator', () => {
       .mockResolvedValueOnce({ user: { id: '123' } }) // users/me
       .mockResolvedValueOnce(true); // auth/me
     const result = await (
-      await import('@/lib/validations')
+      await import('@send-frontend/lib/validations')
     ).validator({
       api: mockApi as unknown as ApiConnection,
       userStore: mockUserStore as UserStore,
@@ -287,7 +290,7 @@ describe('validator', () => {
   it('returns early if no local session', async () => {
     mockUserStore.user = { id: undefined, email: '', tier: UserTier.FREE };
     const result = await (
-      await import('@/lib/validations')
+      await import('@send-frontend/lib/validations')
     ).validator({
       api: mockApi as unknown as ApiConnection,
       userStore: mockUserStore as UserStore,
@@ -311,7 +314,7 @@ describe('validator', () => {
       .spyOn(globalThis.location, 'reload')
       .mockImplementation(() => {});
     const result = await (
-      await import('@/lib/validations')
+      await import('@send-frontend/lib/validations')
     ).validator({
       api: mockApi as unknown as ApiConnection,
       userStore: mockUserStore as UserStore,
@@ -334,7 +337,7 @@ describe('validator', () => {
       .mockImplementation(() => {});
 
     const result = await (
-      await import('@/lib/validations')
+      await import('@send-frontend/lib/validations')
     ).validator({
       api: mockApi as unknown as ApiConnection,
       userStore: mockUserStore as UserStore,
@@ -357,7 +360,7 @@ describe('validator', () => {
   it('handles error fetching user ID. Finishes validation', async () => {
     mockApi.call = vi.fn().mockRejectedValueOnce(new Error('fail'));
     await expect(
-      (await import('@/lib/validations')).validator({
+      (await import('@send-frontend/lib/validations')).validator({
         api: mockApi as unknown as ApiConnection,
         userStore: mockUserStore as UserStore,
         keychain: mockKeychain as unknown as Keychain,

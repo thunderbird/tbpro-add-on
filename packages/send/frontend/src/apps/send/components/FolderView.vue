@@ -1,22 +1,22 @@
 <!-- eslint-disable vue/no-use-v-if-with-v-for -->
 <script setup lang="ts">
-import { DayJsKey, Item } from '@/types';
+import { DayJsKey, Item } from '@send-frontend/types';
 import { computed, inject, onBeforeMount, ref, watch } from 'vue';
 
-import useFolderStore from '@/apps/send/stores/folder-store';
-import { useStatusStore } from '@/apps/send/stores/status-store';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { useStatusStore } from '@send-frontend/apps/send/stores/status-store';
 import '@thunderbirdops/services-ui/style.css';
 
-import DeleteModal from '@/apps/common/modals/DeleteModal.vue';
-import DownloadModal from '@/apps/common/modals/DownloadModal.vue';
-import BreadCrumb from '@/apps/send/components/BreadCrumb.vue';
-import { default as Btn } from '@/apps/send/elements/BtnComponent.vue';
-import FolderTableRowCell from '@/apps/send/elements/FolderTableRowCell.vue';
+import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
+import DownloadModal from '@send-frontend/apps/common/modals/DownloadModal.vue';
+import BreadCrumb from '@send-frontend/apps/send/components/BreadCrumb.vue';
+import { default as Btn } from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import FolderTableRowCell from '@send-frontend/apps/send/elements/FolderTableRowCell.vue';
 import {
   computeMultipartFile,
   handleMultipartDownload,
-} from '@/lib/folderView';
-import { useApiStore, useKeychainStore } from '@/stores';
+} from '@send-frontend/lib/folderView';
+import { useApiStore, useKeychainStore } from '@send-frontend/stores';
 import { IconDotsVertical, IconDownload, IconTrash } from '@tabler/icons-vue';
 import { ExpiryBadge, ExpiryUnitTypes } from '@thunderbirdops/services-ui';
 import { useDebounceFn } from '@vueuse/core';
@@ -217,7 +217,10 @@ function handleFolderClick(uuid: string) {
           <FolderTableRowCell
             :selected="folder.id === folderStore.selectedFolder?.id"
           >
-            <img src="@/apps/send/assets/folder.svg" class="w-8 h-8" />
+            <img
+              src="@send-frontend/apps/send/assets/folder.svg"
+              class="w-8 h-8"
+            />
           </FolderTableRowCell>
           <FolderTableRowCell
             :selected="folder.id === folderStore.selectedFolder?.id"
@@ -265,7 +268,10 @@ function handleFolderClick(uuid: string) {
           >
             <FolderTableRowCell>
               <div class="flex justify-end">
-                <img src="@/apps/send/assets/file.svg" class="w-8 h-8" />
+                <img
+                  src="@send-frontend/apps/send/assets/file.svg"
+                  class="w-8 h-8"
+                />
               </div>
             </FolderTableRowCell>
             <FolderTableRowCell>

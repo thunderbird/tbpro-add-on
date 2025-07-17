@@ -4,7 +4,7 @@
   includes a toggle button and performs periodic health checks every 10 seconds.
 -->
 <script setup lang="ts">
-import useApiStore from '@/stores/api-store';
+import useApiStore from '@send-frontend/stores/api-store';
 import { onMounted, ref } from 'vue';
 const { api } = useApiStore();
 

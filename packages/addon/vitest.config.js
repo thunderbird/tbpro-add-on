@@ -9,7 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@addon': path.resolve(__dirname, 'src'),
-      '@': path.resolve(__dirname, 'node_modules/send-frontend/src'),
+      '@send-frontend': path.resolve(__dirname, 'node_modules/send-frontend/src'),
     },
   },
   test: {
@@ -17,5 +17,6 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     mockReset: false,
+    setupFiles: ['./src/test/setup.ts'],
   },
 });

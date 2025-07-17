@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ErrorGeneric from '@/apps/common/errors/ErrorGeneric.vue';
+import ErrorGeneric from '@send-frontend/apps/common/errors/ErrorGeneric.vue';
 import { ref } from 'vue';
 import BtnComponent from '../elements/BtnComponent.vue';
 import ProgressBar from './ProgressBar.vue';

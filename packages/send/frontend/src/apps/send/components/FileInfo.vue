@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import useFolderStore from '@/apps/send/stores/folder-store';
-import useSharingStore from '@/apps/send/stores/sharing-store';
-import { trpc } from '@/lib/trpc';
+import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { trpc } from '@send-frontend/lib/trpc';
 import { useMutation } from '@tanstack/vue-query';
 import { ref } from 'vue';
 
-import FileAccessLinksList from '@/apps/send/components/FileAccessLinksList.vue';
-import Btn from '@/apps/send/elements/BtnComponent.vue';
-import FileNameForm from '@/apps/send/elements/FileNameForm.vue';
-import { formatBytes } from '@/lib/utils';
+import FileAccessLinksList from '@send-frontend/apps/send/components/FileAccessLinksList.vue';
+import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import FileNameForm from '@send-frontend/apps/send/elements/FileNameForm.vue';
+import { formatBytes } from '@send-frontend/lib/utils';
 import { IconDownload, IconEye, IconEyeOff, IconLink } from '@tabler/icons-vue';
 import { useClipboard, useDebounceFn } from '@vueuse/core';
 import { logger } from 'tbpro-shared';
@@ -89,7 +89,7 @@ Note about shareOnly containers.
   <div v-if="folderStore.selectedFile" class="flex flex-col gap-6 h-full">
     <!-- info -->
     <header class="flex flex-col items-center">
-      <img src="@/apps/send/assets/file.svg" class="w-20 h-20" />
+      <img src="@send-frontend/apps/send/assets/file.svg" class="w-20 h-20" />
       <div class="font-semibold pt-4">
         <span
           v-if="!showRenameForm"

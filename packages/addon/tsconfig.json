@@ -6,7 +6,8 @@
     "paths": {
       "@addon/*": ["./src/*"],
       "server/*": ["../backend/src/*"],
-      "prisma/*": ["../backend/node_modules/@prisma/*"]
+      "prisma/*": ["../backend/node_modules/@prisma/*"],
+      "@send-frontend/*": ["node_modules/send-frontend/src/*"]
     },
     "types": [
       "vite/client",

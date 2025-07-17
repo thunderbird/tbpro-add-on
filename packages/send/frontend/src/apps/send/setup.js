@@ -1,5 +1,5 @@
-import '@/lib/logger';
-import posthogPlugin from '@/plugins/posthog';
+import '@send-frontend/lib/logger';
+import posthogPlugin from '@send-frontend/plugins/posthog';
 import { VueQueryPlugin } from '@tanstack/vue-query';
 import '@thunderbirdops/services-ui/style.css';
 import FloatingVue from 'floating-vue';
