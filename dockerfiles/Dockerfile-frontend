@@ -2,6 +2,8 @@ FROM node:22.14.0
 
 WORKDIR /app
 
+ENV runtime_user=send
+
 # ADD every file from the top directory but no directories
 ADD package.json \ 
     pnpm-lock.yaml \
@@ -14,11 +16,19 @@ ADD package.json \
 ADD packages/send/frontend ./packages/send/frontend
 ADD packages/shared ./packages/shared
 
-
 # Install dependencies 
 RUN npm install -g pnpm
 RUN pnpm install --filter send-frontend
 RUN pnpm install --filter tbpro-shared
+
+# Add runtime user
+RUN useradd ${runtime_user} -d /home/${runtime_user}
+
+# Chown /app to runtime_user
+RUN chown -Rvf ${runtime_user} /app
+
+# Switch to runtime user
+USER ${runtime_user}
 
 # Run the development server
 CMD ["pnpm", "--filter", "send-frontend", "run", "dev"]
