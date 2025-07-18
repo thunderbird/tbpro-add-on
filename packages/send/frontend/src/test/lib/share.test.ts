@@ -9,7 +9,7 @@ import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 
 const defaultUser: UserType = {
-  id: 0,
+  id: '0',
   tier: UserTier.FREE,
   email: '',
 };
@@ -169,7 +169,7 @@ describe(`Sharer`, () => {
       const api = new ApiConnection(API_URL);
       const user = defaultUser;
       const sharer = new Sharer(user, keychain, api);
-      const result = await sharer.requestAccessLink(1, 'abc');
+      const result = await sharer.requestAccessLink('1', 'abc');
 
       expect(result).toBeNull();
       server.close();
@@ -190,7 +190,7 @@ describe(`Sharer`, () => {
       const api = new ApiConnection(API_URL);
       const user = defaultUser;
       const sharer = new Sharer(user, keychain, api);
-      const result = await sharer.requestAccessLink(1, 'abc');
+      const result = await sharer.requestAccessLink('1', 'abc');
 
       expect(result).toBe(url);
       server.close();

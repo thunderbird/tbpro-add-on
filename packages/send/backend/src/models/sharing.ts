@@ -9,7 +9,7 @@ import {
 } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 
-import { MAX_ACCESS_LINK_RETRIES } from '@/config';
+import { MAX_ACCESS_LINK_RETRIES } from '@send-backend/config';
 import {
   ACCESSLINK_NOT_DELETED,
   ACCESSLINK_NOT_FOUND,

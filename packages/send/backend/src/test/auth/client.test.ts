@@ -4,11 +4,11 @@ import {
   DAYS_TO_EXPIRY,
   JWT_EXPIRY_IN_MILLISECONDS,
   JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS,
-} from '@/config';
+} from '@send-backend/config';
 import {
   convertDaysToMilliseconds,
   convertMillisecondsToMinutes,
-} from '@/utils';
+} from '@send-backend/utils';
 import { after, before, beforeEach } from 'node:test';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {

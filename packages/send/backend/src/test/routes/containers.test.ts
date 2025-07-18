@@ -1,4 +1,4 @@
-import { flattenDescendants, TreeNode } from '@/routes/containers';
+import { flattenDescendants, TreeNode } from '@send-backend/routes/containers';
 import { describe, expect, it } from 'vitest';
 
 const containerNoChild: TreeNode = {

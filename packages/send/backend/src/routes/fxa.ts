@@ -1,5 +1,9 @@
-import { createLoginSession, deleteSession, getLoginSession } from '@/models';
-import { loginEmitter } from '@/ws/login';
+import {
+  createLoginSession,
+  deleteSession,
+  getLoginSession,
+} from '@send-backend/models';
+import { loginEmitter } from '@send-backend/ws/login';
 import axios from 'axios';
 import { createHash } from 'crypto';
 import { Request, Router } from 'express';

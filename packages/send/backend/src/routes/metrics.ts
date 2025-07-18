@@ -1,7 +1,7 @@
 import {
   getDataFromAuthenticatedRequest,
   getJWTfromToken,
-} from '@/auth/client';
+} from '@send-backend/auth/client';
 import { Router } from 'express';
 import { useMetrics } from '../metrics';
 import { getUniqueHashFromAnonId } from '../utils/session';

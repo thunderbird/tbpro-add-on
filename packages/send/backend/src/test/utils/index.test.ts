@@ -1,12 +1,15 @@
-import { DAYS_TO_EXPIRY, JWT_EXPIRY_IN_MILLISECONDS } from '@/config';
+import { Upload } from '@prisma/client';
+import {
+  DAYS_TO_EXPIRY,
+  JWT_EXPIRY_IN_MILLISECONDS,
+} from '@send-backend/config';
 import {
   addExpiryToContainer,
   convertDaysToMilliseconds,
   convertMillisecondsToMinutes,
   formatDaysToExpiry,
   getCookie,
-} from '@/utils';
-import { Upload } from '@prisma/client';
+} from '@send-backend/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('getCookie', () => {

@@ -1,5 +1,5 @@
-import * as authClient from '@/auth/client';
-import * as utils from '@/utils';
+import * as authClient from '@send-backend/auth/client';
+import * as utils from '@send-backend/utils';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
@@ -23,11 +23,11 @@ vi.mock('jsonwebtoken', () => ({
   default: { verify: mockedVerify },
 }));
 
-vi.mock('@/models', () => ({
+vi.mock('@send-backend/models', () => ({
   getLoginSession: mockedGetLoginSession,
 }));
 
-vi.mock('@/models/users', () => ({
+vi.mock('@send-backend/models/users', () => ({
   getUserByEmail: mockedGetUserByEmail,
   getUserById: mockedGetUserById,
 }));

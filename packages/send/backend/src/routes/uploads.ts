@@ -18,8 +18,8 @@ import {
   statUpload,
 } from '../models/uploads';
 
-import { getDataFromAuthenticatedRequest } from '@/auth/client';
-import storage from '@/storage';
+import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
+import storage from '@send-backend/storage';
 import { useMetrics } from '../metrics';
 import {
   getGroupMemberPermissions,

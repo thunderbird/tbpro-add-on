@@ -2,9 +2,9 @@ import {
   DAYS_TO_EXPIRY,
   JWT_EXPIRY_IN_MILLISECONDS,
   JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS,
-} from '@/config';
-import { AuthResponse } from '@/routes/auth';
-import { convertDaysToMilliseconds, getCookie } from '@/utils';
+} from '@send-backend/config';
+import { AuthResponse } from '@send-backend/routes/auth';
+import { convertDaysToMilliseconds, getCookie } from '@send-backend/utils';
 import bcrypt from 'bcryptjs';
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';

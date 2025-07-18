@@ -1,14 +1,14 @@
-import { hashPassword, verifyHash } from '@/auth/client';
-import { VERSION } from '@/config';
+import { hashPassword, verifyHash } from '@send-backend/auth/client';
+import { VERSION } from '@send-backend/config';
 import {
   createLoginSession,
   deleteContainer,
   deleteUpload,
   getContainersOwnedByUser,
   getUploadsOwnedByUser,
-} from '@/models';
-import { checkCompatibility } from '@/utils/compatibility';
-import { loginEmitter } from '@/ws/login';
+} from '@send-backend/models';
+import { checkCompatibility } from '@send-backend/utils/compatibility';
+import { loginEmitter } from '@send-backend/ws/login';
 import { TRPCError } from '@trpc/server';
 import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';

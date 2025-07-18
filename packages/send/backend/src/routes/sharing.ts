@@ -21,9 +21,9 @@ import {
   wrapAsyncHandler,
 } from '../errors/routes';
 
-import { getDataFromAuthenticatedRequest } from '@/auth/client';
-import { useMetrics } from '@/metrics';
-import { addExpiryToContainer } from '@/utils';
+import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
+import { useMetrics } from '@send-backend/metrics';
+import { addExpiryToContainer } from '@send-backend/utils';
 import {
   getGroupMemberPermissions,
   requireAdminPermission,
