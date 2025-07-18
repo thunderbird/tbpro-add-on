@@ -1,5 +1,8 @@
 FROM node:22.14.0
 
+# Set environment vartiable for runtime container user name
+ENV runtime_user=send
+
 RUN apt update -y && apt upgrade -y
 
 WORKDIR /app
@@ -17,5 +20,14 @@ ADD src ./src
 RUN npm install -g pnpm && \
     pnpm install --no-frozen-lockfile && \
     chown -R node:node /app
+
+# Add runtime user
+RUN useradd ${runtime_user} -d /home/${runtime_user}
+
+# Chown /app to runtime_user
+RUN chown -Rvf ${runtime_user} /app
+
+# Switch to runtime user
+USER ${runtime_user}
 
 CMD ["/bin/sh", "/app/scripts/entry.sh"]
