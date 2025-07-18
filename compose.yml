@@ -18,7 +18,9 @@ services:
   backend:
     build:
       context: ./packages/send/backend
-      dockerfile: Dockerfile-dev
+      dockerfile: Dockerfile
+      args:
+        BUILD_ENV: "development"
     ports:
       - "8080:8080"
       - "5555:5555" # for browsing db with prisma studio
