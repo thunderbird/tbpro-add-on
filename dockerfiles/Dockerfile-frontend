@@ -1,8 +1,9 @@
 FROM node:22.14.0
 
-WORKDIR /app
-
+# Set environment vartiable for runtime container user name
 ENV runtime_user=send
+
+WORKDIR /app
 
 # ADD every file from the top directory but no directories
 ADD package.json \ 
