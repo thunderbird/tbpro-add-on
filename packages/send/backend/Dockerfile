@@ -7,6 +7,17 @@ FROM node:22.14.0 AS base
 # Update packages
 RUN apt update -y && apt upgrade -y
 
+# Add project source
+WORKDIR /app
+ADD package.json \
+    tsconfig.json \
+    ./
+
+ADD prisma ./prisma
+ADD public ./public
+ADD scripts ./scripts
+ADD src ./src
+
 # build prodction
 FROM base AS build_lockfile_production
 ONBUILD RUN echo "Add pnpm-lock.yaml"
@@ -19,17 +30,6 @@ FROM base AS build_lockfile_development
 ONBUILD RUN echo "Don't add pnpm-lock.yaml"
 
 FROM build_lockfile_${BUILD_ENV} AS build_app
-
-WORKDIR /app
-ADD package.json \
-    tsconfig.json \
-    ./
-
-ADD prisma ./prisma
-ADD public ./public
-ADD scripts ./scripts
-ADD src ./src
-
 RUN npm install -g pnpm
 RUN pnpm install --no-frozen-lockfile
 
