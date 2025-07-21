@@ -13,7 +13,7 @@ export default defineConfig({
     include: ['**/**/*.test.{js,ts}'],
     exclude: ['**/build/**', '**/node_modules/**'],
     environment: 'node',
-    setupFiles: ['dotenv/config'],
+    setupFiles: ['dotenv/config', './src/test/setup.ts'],
     env: {
       ...config({ path: './env' }).parsed,
     },
