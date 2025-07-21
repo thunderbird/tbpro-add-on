@@ -45,6 +45,8 @@ services:
     build:
       context: ./
       dockerfile: ./dockerfiles/Dockerfile-frontend
+      args:
+        BUILD_ENV: "development"
     ports:
       - "5173:5173"
     volumes:
