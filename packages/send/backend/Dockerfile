@@ -7,10 +7,12 @@ FROM node:22.14.0 AS base
 # Update packages
 RUN apt update -y && apt upgrade -y
 
+# build prodction
 FROM base AS build_lockfile_production
 ONBUILD RUN echo "Add pnpm-lock.yaml"
 ONBUILD ADD pnpm-lock.yaml ./
 
+# build development
 FROM base AS build_lockfile_development
 # We don't copy the lockfile during development 
 # because we resolve our dependencies at the root
@@ -31,18 +33,19 @@ ADD src ./src
 RUN npm install -g pnpm
 RUN pnpm install --no-frozen-lockfile
 
-# If we are adding a runtime user
+# runtime production
 FROM build_app AS runtime_production
+# Set environment vartiable for runtime container user name
 ENV runtime_user=send
 # Add runtime user
-ONBUILD RUN echo "Add runtime user '$send'"
+ONBUILD RUN echo "Add runtime user"
 ONBUILD RUN useradd ${runtime_user} -d /home/${runtime_user}
 # Chown /app to runtime_user
 ONBUILD RUN chown -Rvf ${runtime_user} /app
 # Switch to runtime user
 ONBUILD USER ${runtime_user}
 
-# If we are not adding a runtime user
+# runtime dev
 FROM build_app AS runtime_development
 ONBUILD RUN echo "Don't add runtime user"
 ONBUILD RUN chown -Rvf node:node /app
