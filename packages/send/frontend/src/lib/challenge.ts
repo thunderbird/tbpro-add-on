@@ -62,7 +62,7 @@ export async function getContainerKeyFromChallenge(
     // - salt (for unwrapping container key)
     const challengeResp = await api.call<{
       status: string;
-      containerId: number;
+      containerId: string;
       wrappedKey: string;
       salt: string;
     }>(

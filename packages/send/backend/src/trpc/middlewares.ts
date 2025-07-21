@@ -1,6 +1,6 @@
-import { validateJWT } from '@/auth/jwt';
-import { EnvironmentName, getEnvironmentName } from '@/config';
-import { Context } from '@/trpc';
+import { validateJWT } from '@send-backend/auth/jwt';
+import { EnvironmentName, getEnvironmentName } from '@send-backend/config';
+import { Context } from '@send-backend/trpc';
 import { TRPCError } from '@trpc/server';
 
 type ContextPlugin = {

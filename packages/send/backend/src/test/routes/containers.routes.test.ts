@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(router);
 
-vi.mock('@/models', () => {
+vi.mock('@send-backend/models', () => {
   const models = {
     reportUpload: mockReportUpload,
   };

@@ -1,4 +1,4 @@
-import { logger } from '@/utils/logger';
+import { logger } from '@send-backend/utils/logger';
 import { EventEmitter } from 'websocket';
 
 export const loginEmitter = new EventEmitter();

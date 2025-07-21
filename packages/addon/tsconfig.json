@@ -5,8 +5,8 @@
     "baseUrl": "./",
     "paths": {
       "@addon/*": ["./src/*"],
-      "server/*": ["../backend/src/*"],
       "prisma/*": ["../backend/node_modules/@prisma/*"],
+      "@send-backend/*": ["../backend/src/*"],
       "@send-frontend/*": ["node_modules/send-frontend/src/*"]
     },
     "types": [

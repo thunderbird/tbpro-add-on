@@ -6,7 +6,7 @@ describe('User storage', () => {
   it('can store a user without error', async () => {
     const storage = new Storage();
     const userObj = {
-      id: 12345,
+      id: '12345',
       email: 'ned@ryerson.com',
       tier: UserTier.PRO,
     };
@@ -17,7 +17,7 @@ describe('User storage', () => {
   it('can load the same user', async () => {
     const storage = new Storage();
     const userObj = {
-      id: 12345,
+      id: '12345',
       email: 'ned@ryerson.com',
       tier: UserTier.PRO,
     };

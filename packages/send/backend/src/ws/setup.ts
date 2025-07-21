@@ -1,8 +1,8 @@
 // Configure sentry
-import { TRPC_WS_PATH } from '@/config';
+import { TRPC_WS_PATH } from '@send-backend/config';
 import '../sentry';
 
-import { logger } from '@/utils/logger';
+import { logger } from '@send-backend/utils/logger';
 import 'dotenv/config';
 import { wsMessageServer, wss, wsUploadServer } from '../index';
 import wsMsgHandler from '../wsMsgHandler';

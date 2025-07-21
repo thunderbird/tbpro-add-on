@@ -65,11 +65,11 @@ jobs:
           docker tag $source_tag $target_tag
           docker push $target_tag
 
-      - name: Set up Python 3.12
+      - name: Set up Python 3.13
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
+          python-version: 3.13
 
       - name: Set up virtual environment
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')

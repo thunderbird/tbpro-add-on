@@ -146,8 +146,9 @@ jobs:
         shell: bash
         run: |
           npm install -g pnpm
-          cd packages/send
           pnpm install --filter send-frontend
+          pnpm install --filter send-backend
+          lerna run db:generate --scope=send-backend
           pnpm install --filter tbpro-shared
 
       - name: Create .env file so tests will work
@@ -168,8 +169,7 @@ jobs:
         id: frontend-tests-and-lint
         shell: bash
         run: |
-          cd packages/send/frontend
-          pnpm ci:validate
+          lerna run ci:validate --scope=send-frontend
 
   # When the shared package code changes, run these steps
   shared-tests:

@@ -1,4 +1,4 @@
-import { logger } from '@/utils/logger';
+import { logger } from '@send-backend/utils/logger';
 import { afterEach } from 'node:test';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import * as jwt from '@/auth/jwt';
+import * as jwt from '@send-backend/auth/jwt';
 import { TRPCError } from '@trpc/server';
 import { describe, expect, it, vi } from 'vitest';
 import { getGroupMemberPermission, isAuthed } from '../../trpc/middlewares';
 
-vi.mock('@/auth/jwt', () => ({
+vi.mock('@send-backend/auth/jwt', () => ({
   validateJWT: vi.fn(),
 }));
 

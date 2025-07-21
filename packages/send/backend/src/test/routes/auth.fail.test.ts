@@ -1,4 +1,4 @@
-import * as authClient from '@/auth/client';
+import * as authClient from '@send-backend/auth/client';
 import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,11 +9,11 @@ const { mockedGetLoginSession, mockedGetUserByEmail } = vi.hoisted(() => ({
   mockedGetUserByEmail: vi.fn(),
 }));
 
-vi.mock('@/models', () => ({
+vi.mock('@send-backend/models', () => ({
   getLoginSession: mockedGetLoginSession,
 }));
 
-vi.mock('@/models/users', () => ({
+vi.mock('@send-backend/models/users', () => ({
   getUserByEmail: mockedGetUserByEmail,
 }));
 
