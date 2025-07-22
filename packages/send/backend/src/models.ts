@@ -659,6 +659,8 @@ export async function deleteOrphans() {
     try {
       await deleteUpload(id);
     } catch (e) {
+      console.error(`[deleteOrphans] Could not delete upload ${id}`);
+      console.error(e);
       errorUploadIds.push(id);
     }
   }
