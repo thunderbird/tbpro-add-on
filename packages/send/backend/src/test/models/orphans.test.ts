@@ -1,25 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { createItem, findOrphans } from '../../models';
 
-import { Container, ContainerType, Group, ItemType, User, UserTier } from '@prisma/client';
+import { Container, ContainerType, Group, ItemType, PrismaClient, User, UserTier } from '@prisma/client';
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: 'file:memdb1?mode=memory&cache=shared',
-    },
-  },
-});
-
-beforeAll(async () => {
-  await prisma.$connect();
-});
-
-afterAll(async () => {
-  await prisma.$disconnect();
-});
 
 describe('findOrphans', () => {
   let user: User;
