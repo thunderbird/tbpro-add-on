@@ -1,0 +1,80 @@
+---
+name: integration-tests
+
+concurrency:
+  group: integration-tests
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - "**"
+      - "!main"
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    outputs:
+      backend-changed: ${{ steps.check.outputs.backend-changed }}
+      iac-changed: ${{ steps.check.outputs.iac-changed }}
+      frontend-changed: ${{ steps.check.outputs.frontend-changed }}
+      shared-changed: ${{ steps.check.outputs.shared-changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dorny/paths-filter@v3
+        id: check
+        with:
+          filters: |
+            backend-changed:
+              - 'packages/send/backend/**'
+            iac-changed:
+              - 'packages/send/pulumi/**'
+              - '.github/workflows/validate.yml'
+            frontend-changed:
+              - 'packages/send/frontend/**'
+            shared-changed:
+              - 'packages/shared/**'
+  integration-tests:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    strategy:
+      matrix:
+        node-version: ["22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Set up environments and install dependencies
+        id: setup-and-install-dependencies
+        shell: bash
+        run: |
+          npm install -g pnpm
+          npm install -g bun
+          pnpm i --filter "send-*"
+          pnpm install --filter tbpro-shared
+
+          cd packages/send
+          # Setup local environment (use public login)
+          echo Y | pnpm setup:local
+
+      - name: Run stack and test
+        id: run-stack-and-test
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          lerna run build-image:backend --scope=send-suite
+          pnpm run test:integration:ci
