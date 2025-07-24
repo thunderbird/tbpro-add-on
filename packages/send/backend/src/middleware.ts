@@ -3,8 +3,10 @@ import { PrismaClient } from '@prisma/client';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { getDataFromAuthenticatedRequest } from './auth/client';
 import { validateJWT } from './auth/jwt';
+import { extractBearerToken, validateOIDCToken } from './auth/oidc';
 import { VERSION } from './config';
 import { fromPrismaV2 } from './models/prisma-helper';
+import { getUserByOIDCSubject } from './models/users';
 import {
   allPermissions,
   hasAdmin,
@@ -13,6 +15,21 @@ import {
   hasWrite,
 } from './types/custom';
 import { getCookie } from './utils';
+
+// Extended request interface to include authentication info
+interface AuthenticatedRequest extends Request {
+  oidcUser?: {
+    sub: string;
+    email?: string;
+    username?: string;
+  };
+  authenticatedUser?: {
+    id: string;
+    email: string;
+    uniqueHash: string;
+    tier: string;
+  };
+}
 
 const prisma = new PrismaClient();
 const PERMISSION_REQUEST_KEY = '_permission';
@@ -51,7 +68,92 @@ export function reject(
 }
 
 /**
- * This Express middleware verifies the JWT token in the request cookies.
+ * Unified authentication middleware that supports both OIDC and legacy JWT authentication
+ * This middleware prioritizes OIDC authentication but falls back to JWT for backward compatibility
+ * Returns 403 if no valid authentication is found, 401 if token needs refresh
+ */
+export async function requireAuth(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  // First, try OIDC authentication
+  const authHeader = req.headers.authorization;
+  const oidcToken = extractBearerToken(authHeader);
+
+  if (oidcToken) {
+    try {
+      const validation = await validateOIDCToken(oidcToken);
+
+      if (validation.isValid) {
+        // Add OIDC user info to request
+        req.oidcUser = validation.userInfo;
+
+        // For compatibility, try to find the user in our database and add to request
+        try {
+          const user = await getUserByOIDCSubject(validation.userInfo.sub);
+          if (user) {
+            req.authenticatedUser = {
+              id: user.id,
+              email: user.email,
+              uniqueHash: user.uniqueHash,
+              tier: user.tier,
+            };
+          }
+        } catch (error) {
+          console.warn('Could not find OIDC user in database:', error);
+        }
+
+        return next();
+      }
+    } catch (error) {
+      console.error('OIDC authentication failed:', error);
+      // Don't return here, fall through to JWT authentication
+    }
+  }
+
+  // Fallback to legacy JWT authentication
+  const jwtToken = getCookie(req?.headers?.cookie, 'authorization');
+  const jwtRefreshToken = getCookie(req?.headers?.cookie, 'refresh_token');
+
+  const validationResult = validateJWT({ jwtToken, jwtRefreshToken });
+
+  if (!validationResult) {
+    return res
+      .status(403)
+      .json({ message: `Not authorized: No valid authentication found` });
+  }
+
+  if (validationResult === 'valid') {
+    // Add JWT user info to request for backward compatibility
+    try {
+      const userData = getDataFromAuthenticatedRequest(req);
+      req.authenticatedUser = userData;
+    } catch (error) {
+      console.error('Error extracting JWT user data:', error);
+    }
+    return next();
+  }
+
+  // When refresh token is invalid, we should return 403 and ask to login
+  if (validationResult === 'shouldLogin') {
+    return res.status(403).json({
+      message: `Not authorized: Refresh token expired`,
+    });
+  }
+
+  // When the refresh token is valid but the token is not, we should return 401
+  // this is handled as autoretry in the client
+  if (validationResult === 'shouldRefresh') {
+    return res.status(401).json({
+      message: `Not authorized: Token expired`,
+    });
+  }
+}
+
+/**
+ * Legacy JWT-only middleware for backward compatibility
+ * This middleware verifies the JWT token in the request cookies.
  * Returns 403 if token is missing, 401 if token needs refresh, or calls next() if valid.
  * Note: This middleware mirrors `isAuthed` from backend/src/trpc/middlewares.ts
  * These middlewares should be maintained in tandem to avoid unintended behavior
@@ -101,33 +203,58 @@ export function renameBodyProperty(from: string, to: string) {
   };
 }
 
+/**
+ * Helper function to get user data from either OIDC or JWT authentication
+ */
+function getAuthenticatedUserData(
+  req: AuthenticatedRequest
+): { id: string; email: string } | null {
+  // Prefer the unified authenticatedUser field
+  if (req.authenticatedUser) {
+    return {
+      id: req.authenticatedUser.id,
+      email: req.authenticatedUser.email,
+    };
+  }
+
+  // Fallback to legacy JWT extraction
+  try {
+    const userData = getDataFromAuthenticatedRequest(req);
+    return {
+      id: userData.id,
+      email: userData.email,
+    };
+  } catch (error) {
+    console.warn('Could not extract user data from request:', error);
+    return null;
+  }
+}
+
 // Gets a user's permissions for a container and adds it to the request.
 export const getGroupMemberPermissions: RequestHandler = async (
   req,
   res,
   next
 ) => {
-  // Since we're calling a function intended to be used as middleware, we need to call next() if the JWT is valid
-  // We set a boolean to make sure next() is called. This means that the jwt has been verified
+  // Since we're calling a function intended to be used as middleware, we need to call next() if auth is valid
+  // We set a boolean to make sure next() is called. This means that the auth has been verified
   let goodToGo = false;
   const nextTrigger = () => {
     goodToGo = true;
   };
-  await requireJWT(req, res, nextTrigger);
+  await requireAuth(req as AuthenticatedRequest, res, nextTrigger);
 
   if (!goodToGo) {
     return reject(res);
   }
 
-  let userId: string;
-  try {
-    const userData = getDataFromAuthenticatedRequest(req);
-    userId = userData.id;
-  } catch (error) {
-    console.error('Error getting user data:', error);
+  const userData = getAuthenticatedUserData(req as AuthenticatedRequest);
+  if (!userData) {
+    console.error('No authenticated user data found');
     return reject(res);
   }
 
+  const userId = userData.id;
   const containerId = extractContainerId(req);
 
   /* 

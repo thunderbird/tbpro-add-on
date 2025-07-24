@@ -359,3 +359,93 @@ export async function setBackup(
 
   return await fromPrismaV2(prisma.user.update, query, USER_NOT_FOUND);
 }
+
+// OIDC Authentication Functions
+
+export async function getUserByOIDCSubject(oidcSubject: string) {
+  return prisma.user.findUnique({
+    where: {
+      oidcSubject,
+    },
+    select: {
+      id: true,
+      email: true,
+      uniqueHash: true,
+      tier: true,
+      oidcSubject: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+}
+
+export async function findOrCreateUserByOIDC({
+  oidcSubject,
+  email,
+}: {
+  oidcSubject: string;
+  email: string;
+}) {
+  // First try to find existing user by OIDC subject
+  let user = await getUserByOIDCSubject(oidcSubject);
+
+  if (user) {
+    // Update user info if email has changed
+    if (user.email !== email) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { email },
+        select: {
+          id: true,
+          email: true,
+          uniqueHash: true,
+          tier: true,
+          oidcSubject: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    }
+    return user;
+  }
+
+  // Try to find by email and update with OIDC subject if exists
+  const existingUser = await getUserByEmail(email);
+  if (existingUser && !existingUser.oidcSubject) {
+    return await prisma.user.update({
+      where: { id: existingUser.id },
+      data: { oidcSubject },
+      select: {
+        id: true,
+        email: true,
+        uniqueHash: true,
+        tier: true,
+        oidcSubject: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  // Create new user
+  const newUser = await prisma.user.create({
+    data: {
+      email,
+      oidcSubject,
+      tier: UserTier.FREE,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    select: {
+      id: true,
+      email: true,
+      uniqueHash: true,
+      tier: true,
+      oidcSubject: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return newUser;
+}

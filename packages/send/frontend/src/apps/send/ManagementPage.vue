@@ -38,7 +38,7 @@ const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 const { isLoggedIn } = useAuth();
 const authStore = useAuthStore();
-const { loginToMozAccount } = authStore;
+const { loginToOIDC } = authStore;
 
 const loginFailureMessage = ref(null);
 
@@ -106,8 +106,8 @@ async function finishLogin() {
   isLoggedIn.value = true;
 }
 
-async function _loginToMozAccount() {
-  loginToMozAccount({ onSuccess: finishLogin });
+async function _loginToOIDC() {
+  loginToOIDC({ onSuccess: finishLogin });
 }
 </script>
 
@@ -128,11 +128,14 @@ async function _loginToMozAccount() {
         </div>
 
         <div v-else>
-          <Btn
+          <!-- <Btn
             primary
             data-testid="login-button"
             @click.prevent="_loginToMozAccount"
             >Log into Mozilla Account</Btn
+          > -->
+          <Btn primary data-testid="login-button" @click.prevent="_loginToOIDC"
+            >Log in</Btn
           >
         </div>
       </div>

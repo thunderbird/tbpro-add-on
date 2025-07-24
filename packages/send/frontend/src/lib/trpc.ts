@@ -76,11 +76,24 @@ export const trpc = createTRPCClient<AppRouter>({
         }),
       ],
       // Handle subscriptions with WebSocket
-      true: [
-        wsLink({
-          client: wsClient,
-        }),
-      ],
+      true: wsClient
+        ? [
+            wsLink({
+              client: wsClient,
+            }),
+          ]
+        : [
+            // Fallback to HTTP for subscriptions in testing
+            httpBatchLink({
+              url: trpcUrl,
+              fetch(url, options: RequestInit) {
+                return fetch(url, {
+                  ...options,
+                  credentials: 'include',
+                });
+              },
+            }),
+          ],
     }),
   ],
 });

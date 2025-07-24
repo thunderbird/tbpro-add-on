@@ -1,4 +1,5 @@
 import { validateJWT } from '@send-backend/auth/jwt';
+import { extractBearerToken, validateOIDCToken } from '@send-backend/auth/oidc';
 import { EnvironmentName, getEnvironmentName } from '@send-backend/config';
 import { Context } from '@send-backend/trpc';
 import { TRPCError } from '@trpc/server';
@@ -10,15 +11,31 @@ type ContextPlugin = {
 type NextFunction = (p: ContextPlugin | void) => Promise<any>;
 
 /**
- * This middleware is used to check if the user has a valid token and associated account information.
- * If the jwt token has expired but the request contains a valid refresh token, we return UNAUTHORIZED to let the client know they should refresh
- * If both token and refresh token are invalid, we return FORBIDDEN
- * Note: This middleware mirrors `requireJWT` from backend/src/middleware.ts
- * These middlewares should be maintained in tandem to avoid unintended behavior
+ * This middleware checks for OIDC authentication using Bearer tokens
+ * It validates tokens via introspection and adds user info to context
  */
-export async function isAuthed(opts: { ctx: Context; next: NextFunction }) {
+export async function isOIDCAuthed(opts: { ctx: Context; next: NextFunction }) {
   const { ctx } = opts;
 
+  // First try OIDC authentication
+  const authHeader = ctx?.authorization;
+  const token = extractBearerToken(authHeader);
+
+  if (token) {
+    try {
+      const validation = await validateOIDCToken(token);
+
+      if (validation.isValid) {
+        // Add OIDC user info to context
+        ctx.oidcUser = validation.userInfo;
+        return opts.next();
+      }
+    } catch (error) {
+      console.error('OIDC validation failed:', error);
+    }
+  }
+
+  // Fallback to JWT validation for backward compatibility
   const validationResult = validateJWT({
     jwtToken: ctx?.cookies?.jwtToken,
     jwtRefreshToken: ctx?.cookies?.jwtRefreshToken,
@@ -37,6 +54,18 @@ export async function isAuthed(opts: { ctx: Context; next: NextFunction }) {
   if (!validationResult || validationResult === 'shouldLogin') {
     throw new TRPCError({ code: 'FORBIDDEN' });
   }
+}
+
+/**
+ * This middleware is used to check if the user has a valid token and associated account information.
+ * If the jwt token has expired but the request contains a valid refresh token, we return UNAUTHORIZED to let the client know they should refresh
+ * If both token and refresh token are invalid, we return FORBIDDEN
+ * Note: This middleware mirrors `requireJWT` from backend/src/middleware.ts
+ * These middlewares should be maintained in tandem to avoid unintended behavior
+ */
+export async function isAuthed(opts: { ctx: Context; next: NextFunction }) {
+  // Use the new OIDC-compatible middleware
+  return isOIDCAuthed(opts);
 }
 
 export async function getGroupMemberPermission(opts: {

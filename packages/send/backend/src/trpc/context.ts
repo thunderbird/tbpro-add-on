@@ -1,6 +1,8 @@
 import * as trpcExpress from '@trpc/server/adapters/express';
-import { getDataFromAuthenticatedRequest } from '../auth/client';
-import { getStorageLimit } from '../auth/client';
+import {
+  getDataFromAuthenticatedRequest,
+  getStorageLimit,
+} from '../auth/client';
 import { getCookie } from '../utils';
 
 export const createContext = ({
@@ -17,6 +19,8 @@ export const createContext = ({
     const { daysToExpiry, hasLimitedStorage } = getStorageLimit(req);
 
     return {
+      // req, // Include request object for OIDC middleware
+      authorization: req.headers?.authorization || null,
       user: {
         id: id.toString(),
         email,
@@ -29,15 +33,19 @@ export const createContext = ({
         jwtToken,
         jwtRefreshToken,
       },
+      oidcUser: null, // Will be populated by OIDC middleware
     };
   } catch {
     // If the user is not authenticated, we return only the cookies
     return {
+      // req, // Include request object for OIDC middleware
+      authorization: req.headers?.authorization || null,
       user: null,
       cookies: {
         jwtToken,
         jwtRefreshToken,
       },
+      oidcUser: null, // Will be populated by OIDC middleware
     };
   }
 };
