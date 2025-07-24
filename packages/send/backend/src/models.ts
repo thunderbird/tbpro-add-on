@@ -627,3 +627,43 @@ export const deleteSession = async (id: string) =>
     },
     SESSION_NOT_DELETED
   );
+
+export async function findOrphans(): Promise<{ uploadIds: string[] }> {
+  // An orphan is an Upload with no associated Item
+
+  const uploadsWithoutItem = await prisma.upload.findMany({
+    where: {
+      items: {
+        none: {}
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+
+
+  return {
+    uploadIds: [...uploadsWithoutItem.map(({id}) => id)],
+  };
+}
+
+export async function deleteOrphans() {
+  const { uploadIds } = await findOrphans();
+  const errorUploadIds = [];
+
+  for (let id of uploadIds) {
+    try {
+      await deleteUpload(id);
+    } catch (e) {
+      console.error(`[deleteOrphans] Could not delete upload ${id}`);
+      console.error(e);
+      errorUploadIds.push(id);
+    }
+  }
+
+  return {
+    errorUploadIds,
+  };
+
+}
