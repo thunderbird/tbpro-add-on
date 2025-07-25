@@ -21,7 +21,7 @@ enum UserTier {
 
 model User {
   id                  String               @id @default(uuid()) @unique @db.Uuid
-  email               String?              @unique
+  email               String?
   publicKey           String?
   tier                UserTier
   createdAt           DateTime?
