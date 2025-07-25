@@ -24,8 +24,6 @@ jobs:
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
-      dockerfile-fontend-changed: ${{ steps.check.outputs.dockerfile-frontend-changed }}
-      docker-compose-file-changed: ${{ steps.check.outputs.docker-compose-file-changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -45,10 +43,6 @@ jobs:
               - 'packages/send/frontend/**'
             shared-changed:
               - 'packages/shared/**'
-            dockerfile-frontend-changed:
-              - 'dockerfiles/**'
-            docker-compose-file-changed:
-              - 'compose.yml'
 
   end-to-end-tests:
     needs: detect-changes
