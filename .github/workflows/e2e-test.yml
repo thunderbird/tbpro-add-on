@@ -6,8 +6,12 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  push:
+    branches:
+      - "**"
+      - "!main"
   pull_request:
-    types: [opened, ready_for_review, syncronize]
+
 
 permissions:
   contents: read
