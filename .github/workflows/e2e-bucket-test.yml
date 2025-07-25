@@ -19,8 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IS_CI_AUTOMATION: "yes"
-      TBPRO_USERNAME: ${{ secrets.TBPRO_USERNAME }}
-      TPRO_PASSWORD: ${{ secrets.TPRO_PASSWORD }}
     outputs:
       backend-changed: ${{ steps.check.outputs.backend-changed }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
@@ -68,6 +66,11 @@ jobs:
           npm install -g bun
           pnpm i --filter "send-*"
           pnpm install --filter tbpro-shared
+
+          # Create .env file with secrets
+          echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
+          echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
+          mv .env packages/send/e2e
 
           cd packages/send
           # Setup local environment (use public login)
