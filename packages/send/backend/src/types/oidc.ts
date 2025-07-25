@@ -6,12 +6,8 @@ export interface OIDCUserInfo {
 }
 
 // Extend Express Request interface
-declare global {
-  namespace Express {
-    interface Request {
-      oidcUser?: OIDCUserInfo;
-    }
+declare module 'express' {
+  interface Request {
+    oidcUser?: OIDCUserInfo;
   }
 }
-
-export {};

@@ -1,3 +1,4 @@
+import { JWT_EXPIRY_IN_MILLISECONDS } from '@send-backend/config';
 import axios from 'axios';
 import 'dotenv/config';
 
@@ -66,12 +67,15 @@ export async function introspectToken(
 
     const introspectionResult: TokenIntrospectionResponse = response.data;
 
-    // Cache the result for 5 minutes or until token expires (whichever is shorter)
-    const fiveMinutes = 5 * 60 * 1000;
+    // Cache the result for the same duration as the jwt or until token expires (whichever is shorter)
+
     const tokenExpiry = introspectionResult.exp
       ? introspectionResult.exp * 1000
-      : Date.now() + fiveMinutes;
-    const cacheExpiry = Math.min(Date.now() + fiveMinutes, tokenExpiry);
+      : Date.now() + JWT_EXPIRY_IN_MILLISECONDS;
+    const cacheExpiry = Math.min(
+      Date.now() + JWT_EXPIRY_IN_MILLISECONDS,
+      tokenExpiry
+    );
 
     tokenCache.set(token, {
       response: introspectionResult,
@@ -119,7 +123,7 @@ export async function validateOIDCToken(token: string): Promise<{
     // Check if token is expired
     if (
       introspectionResult.exp &&
-      introspectionResult.exp < Date.now() / 1000
+      introspectionResult.exp < Date.now() / JWT_EXPIRY_IN_MILLISECONDS
     ) {
       return { isValid: false };
     }

@@ -1,8 +1,14 @@
-import { registerAuthToken, registerTokens } from '@send-backend/auth/client';
+import {
+  clearJWTCookies,
+  registerAuthToken,
+  registerTokens,
+} from '@send-backend/auth/client';
 import {
   findOrCreateUserByOIDC,
   getUserByOIDCSubject,
+  updateUniqueHash,
 } from '@send-backend/models/users';
+import { createHash } from 'crypto';
 import { Router } from 'express';
 import { RequestWithOIDC, requireOIDCAuth } from '../auth/oidc-middleware';
 import {
@@ -37,6 +43,10 @@ router.get(
         oidcSubject: sub,
         email: email || '',
       });
+
+      const uniqueHash = createHash('sha256').update(sub).digest('hex');
+      user.uniqueHash = uniqueHash;
+      await updateUniqueHash(user.id, uniqueHash);
 
       registerTokens(user, res);
 
@@ -120,6 +130,8 @@ router.post(
     // The frontend should:
     // 1. Clear the access token from storage
     // 2. Optionally redirect to OIDC provider logout URL
+
+    clearJWTCookies(res);
 
     return res.status(200).json({
       message: 'Logout successful',

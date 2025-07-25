@@ -584,9 +584,15 @@ router.get(
   requireJWT,
   addErrorHandling(USER_ERRORS.BACKUP_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
-    const { id } = getDataFromAuthenticatedRequest(req);
-    const backup = await getBackup(id);
-    res.status(200).json(backup);
+    try {
+      const { id } = getDataFromAuthenticatedRequest(req);
+      const backup = await getBackup(id);
+      res.status(200).json(backup);
+    } catch {
+      res.status(USER_ERRORS.BACKUP_NOT_FOUND.statusCode).json({
+        message: USER_ERRORS.BACKUP_NOT_FOUND.message,
+      });
+    }
   })
 );
 
@@ -617,9 +623,15 @@ router.get(
   requireJWT,
   addErrorHandling(USER_ERRORS.BACKUP_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
-    const { id } = getDataFromAuthenticatedRequest(req);
-    const backup = await getBackup(id);
-    res.status(200).json(backup);
+    try {
+      const { id } = getDataFromAuthenticatedRequest(req);
+      const backup = await getBackup(id);
+      res.status(200).json(backup);
+    } catch {
+      return res.status(USER_ERRORS.BACKUP_NOT_FOUND.statusCode).json({
+        message: USER_ERRORS.BACKUP_NOT_FOUND.message,
+      });
+    }
   })
 );
 

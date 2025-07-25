@@ -41,16 +41,10 @@ export function useAuth() {
   // Log out by removing the auth token and updating login status
   const logOutAuth = async () => {
     try {
-      // Check if we have an OIDC session
-      const accessToken = await authStore.getAccessToken();
-
-      if (accessToken) {
-        // OIDC logout
-        await authStore.logoutFromOIDC();
-      } else {
-        // Legacy logout
-        await api.removeAuthToken();
-      }
+      // OIDC logout
+      await authStore.logoutFromOIDC();
+      // Legacy logout
+      await api.removeAuthToken();
     } catch (error) {
       console.warn('Logout error, clearing local state:', error);
       // Clear local state regardless

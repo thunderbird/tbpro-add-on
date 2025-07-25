@@ -141,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function logoutFromOIDC() {
     try {
+      await api.call('auth/oidc/logout', {}, 'POST');
       await userManager.signoutRedirect();
     } catch (error) {
       console.error('OIDC logout failed:', error);

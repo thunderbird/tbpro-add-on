@@ -53,36 +53,3 @@ export async function requireOIDCAuth(
     });
   }
 }
-
-/**
- * Optional middleware that validates OIDC tokens but doesn't require them
- * Useful for endpoints that work with both authenticated and unauthenticated users
- */
-export async function optionalOIDCAuth(
-  req: RequestWithOIDC,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  const authHeader = req.headers.authorization;
-  const token = extractBearerToken(authHeader);
-
-  if (!token) {
-    // No token provided, continue without authentication
-    next();
-    return;
-  }
-
-  try {
-    const validation = await validateOIDCToken(token);
-
-    if (validation.isValid) {
-      req.oidcUser = validation.userInfo;
-    }
-    // Continue regardless of token validity for optional auth
-    next();
-  } catch (error) {
-    console.error('Optional OIDC authentication error:', error);
-    // Continue without authentication on error for optional auth
-    next();
-  }
-}

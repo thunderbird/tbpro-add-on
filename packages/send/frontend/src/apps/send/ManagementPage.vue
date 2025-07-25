@@ -38,7 +38,7 @@ const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 const { isLoggedIn } = useAuth();
 const authStore = useAuthStore();
-const { loginToOIDC } = authStore;
+const { loginToOIDC, loginToMozAccount } = authStore;
 
 const loginFailureMessage = ref(null);
 
@@ -109,6 +109,10 @@ async function finishLogin() {
 async function _loginToOIDC() {
   loginToOIDC({ onSuccess: finishLogin });
 }
+
+async function _loginToMozAccount() {
+  loginToMozAccount({ onSuccess: finishLogin });
+}
 </script>
 
 <template>
@@ -127,15 +131,18 @@ async function _loginToOIDC() {
           <BackupAndRestore />
         </div>
 
-        <div v-else>
-          <!-- <Btn
+        <div v-else class="flex flex-col items-start gap-4">
+          <Btn
             primary
             data-testid="login-button"
             @click.prevent="_loginToMozAccount"
             >Log into Mozilla Account</Btn
-          > -->
-          <Btn primary data-testid="login-button" @click.prevent="_loginToOIDC"
-            >Log in</Btn
+          >
+          <Btn
+            primary
+            data-testid="login-button-tbpro"
+            @click.prevent="_loginToOIDC"
+            >Log in using your TB Pro Account</Btn
           >
         </div>
       </div>

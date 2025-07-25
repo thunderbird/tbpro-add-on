@@ -64,6 +64,18 @@ export async function getUserByEmail(email: string) {
   return users[0];
 }
 
+export async function getUserByProfile(mozid: string) {
+  const userQuery = {
+    where: {
+      profile: {
+        mozid,
+      },
+    },
+  };
+
+  return await fromPrismaV2(prisma.user.findFirst, userQuery);
+}
+
 export async function getUserByEmailV2(email: string) {
   return prisma.user.findFirst({
     where: {
@@ -76,6 +88,7 @@ export async function getUserByEmailV2(email: string) {
       createdAt: true,
       updatedAt: true,
       activatedAt: true,
+      oidcSubject: true,
     },
   });
 }
@@ -115,70 +128,84 @@ export async function findOrCreateUserProfileByMozillaId(
   accessToken?: string,
   refreshToken?: string
 ) {
-  let user: User;
-  const userQuery = {
-    where: {
-      profile: {
-        mozid,
-      },
-    },
-  };
+  let userResponse: User;
 
-  try {
-    user = await fromPrismaV2(prisma.user.findFirst, userQuery);
-  } catch (err) {
-    console.error(err);
+  const userFromProfile = await getUserByProfile(mozid);
+  const userFromEmail = await getUserByEmailV2(email);
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  userResponse = userFromProfile || userFromEmail;
+
+  // If a user hasn't been created via OIDC or previousliy by fxa, we create one
+  if (!userFromProfile?.id && !userFromEmail) {
+    userResponse = await createUser('', email, UserTier.FREE);
   }
-
-  if (!user?.id) {
-    user = await createUser('', email, UserTier.FREE);
-  }
-
-  const profileQuery = {
-    where: {
-      mozid,
-    },
-    update: {
-      avatar,
-      accessToken,
-      refreshToken,
-    },
-    create: {
-      mozid,
-      avatar,
-      accessToken,
-      refreshToken,
-      user: {
-        connect: {
-          id: user.id,
-        },
-      },
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          tier: true,
-          createdAt: true,
-          updatedAt: true,
-          activatedAt: true,
-        },
-      },
-    },
-  };
 
   const profile = await fromPrismaV2(
     prisma.profile.upsert,
-    profileQuery,
+    {
+      where: {
+        mozid,
+      },
+      update: {
+        avatar,
+        accessToken,
+        refreshToken,
+      },
+      create: {
+        mozid,
+        avatar,
+        accessToken,
+        refreshToken,
+        user: {
+          connect: {
+            id: userResponse.id,
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            tier: true,
+            createdAt: true,
+            updatedAt: true,
+            activatedAt: true,
+          },
+        },
+      },
+    },
     PROFILE_NOT_CREATED
   );
 
+  // If the user exists, update the profile connection
+  if (userFromEmail && userFromEmail?.oidcSubject) {
+    return await prisma.user.update({
+      where: { id: userFromEmail.id },
+      data: {
+        profile: {
+          connect: profile,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        uniqueHash: true,
+        tier: true,
+        oidcSubject: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   // Flip the nesting of the user and the profile.
   delete profile.user;
-  user['profile'] = profile;
+  userResponse['profile'] = profile;
 
-  return user;
+  return userResponse;
 }
 
 export async function getUserPublicKey(id: string) {
@@ -319,21 +346,19 @@ export async function getRecentActivity(
 }
 
 export async function getBackup(id: string) {
-  const query = {
-    where: {
-      id,
-    },
-    select: {
-      backupContainerKeys: true,
-      backupKeypair: true,
-      backupKeystring: true,
-      backupSalt: true,
-    },
-  };
-
   return await fromPrismaV2(
-    prisma.user.findUniqueOrThrow,
-    query,
+    prisma.user.findUnique,
+    {
+      where: {
+        id,
+      },
+      select: {
+        backupContainerKeys: true,
+        backupKeypair: true,
+        backupKeystring: true,
+        backupSalt: true,
+      },
+    },
     USER_NOT_FOUND
   );
 }
@@ -410,7 +435,7 @@ export async function findOrCreateUserByOIDC({
   }
 
   // Try to find by email and update with OIDC subject if exists
-  const existingUser = await getUserByEmail(email);
+  const existingUser = await getUserByEmailV2(email);
   if (existingUser && !existingUser.oidcSubject) {
     return await prisma.user.update({
       where: { id: existingUser.id },
