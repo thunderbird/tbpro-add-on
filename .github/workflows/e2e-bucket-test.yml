@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IS_CI_AUTOMATION: "yes"
+      TBPRO_USERNAME: ${{ secrets.TBPRO_USERNAME }}
+      TPRO_PASSWORD: ${{ secrets.TPRO_PASSWORD }}
     outputs:
       backend-changed: ${{ steps.check.outputs.backend-changed }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
