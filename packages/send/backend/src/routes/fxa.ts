@@ -9,7 +9,7 @@ import { createHash } from 'crypto';
 import { Request, Router } from 'express';
 import {
   checkAllowList,
-  clearCookie,
+  clearJWTCookies,
   generateState,
   getClient,
   getIssuer,
@@ -207,8 +207,7 @@ TODO:
 - handle errors
   */
 
-    clearCookie('authorization', res);
-    clearCookie('refresh_token', res);
+    clearJWTCookies(res);
 
     const destroyUrl = `https://oauth.stage.mozaws.net/v1/destroy`;
     const accessToken = null; // this is still todo, adding null to avoid unnecessary errors

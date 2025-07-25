@@ -1,4 +1,5 @@
 import { BrowserContext, expect, Page, test } from "@playwright/test";
+import "dotenv/config";
 import fs from "fs";
 import path from "path";
 import {
@@ -12,7 +13,8 @@ import {
   share_links,
   upload_workflow,
 } from "./pages/myFiles";
-import { setup_browser } from "./testUtils";
+import { oidc_login } from "./pages/oidc";
+import { playwrightConfig, setup_browser } from "./testUtils";
 
 export type PlaywrightProps = {
   context: BrowserContext;
@@ -45,6 +47,28 @@ const authTests = [
     action: log_out_restore_keys,
   },
 ];
+
+test.describe("OICD Flow", async () => {
+  let page: Page;
+  let context: BrowserContext;
+
+  const username = playwrightConfig.tbprousername;
+  const password = playwrightConfig.tbproPassword;
+
+  console.log(`Using username: ${username} and password: ${password}`);
+
+  test.beforeEach(async () => {
+    ({ page, context } = await setup_browser());
+    await page.goto("/send");
+    await expect(page).toHaveTitle(/Thunderbird Send/);
+  });
+
+  const workflows = [{ title: "Login", action: oidc_login }];
+
+  workflows.forEach(({ title, action }) => {
+    test(title, async () => await action({ page, context }));
+  });
+});
 
 test.describe("Authentication", () => {
   authTests.forEach(({ title, path, action }) => {

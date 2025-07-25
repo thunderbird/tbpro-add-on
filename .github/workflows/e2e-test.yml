@@ -67,7 +67,11 @@ jobs:
           pnpm i --filter "send-*"
           pnpm install --filter tbpro-shared
 
-          cd packages/send
+          # Create .env file with secrets
+          echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
+          echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
+          mv .env packages/send/e2e
+
           # Setup local environment (use public login)
           echo Y | pnpm setup:local
 

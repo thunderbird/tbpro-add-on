@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
+import path from "path";
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, "./e2e/.env") });
 
 const THREE_MINUTES = 3 * 60 * 1000;
 

@@ -8,6 +8,52 @@ import { trpc } from './trpc';
 
 export const validateToken = async (api: ApiConnection): Promise<boolean> => {
   try {
+    // First try OIDC authentication if we have an access token
+    try {
+      const authStore = await import('@send-frontend/stores/auth-store').then(
+        (m) => m.useAuthStore()
+      );
+      const accessToken = await authStore.getAccessToken();
+
+      if (accessToken) {
+        // Try OIDC validation
+        const oidcResponse = await api.call(
+          'auth/oidc/me',
+          {},
+          'GET',
+          {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          { fullResponse: true }
+        );
+
+        if (oidcResponse?.ok) {
+          return true;
+        }
+
+        // If OIDC token is invalid, try to refresh it
+        console.log('OIDC token appears invalid, attempting refresh...');
+        const newToken = await authStore.refreshToken();
+
+        if (newToken) {
+          // Retry with refreshed token
+          const retryResponse = await api.call(
+            'auth/oidc/me',
+            {},
+            'GET',
+            {
+              Authorization: `Bearer ${newToken}`,
+            },
+            { fullResponse: true }
+          );
+          return !!retryResponse?.ok;
+        }
+      }
+    } catch (error) {
+      console.debug('OIDC validation failed, falling back to JWT:', error);
+    }
+
+    // Fallback to legacy JWT validation
     const isTokenValid = await api.call(
       'auth/me',
       {},

@@ -64,13 +64,34 @@ export class ApiConnection {
   ): Promise<O extends { fullResponse: true } ? Response : T | null> {
     const url = `${this.serverUrl}/api/${path}`;
     const refreshTokenUrl = `${this.serverUrl}/api/auth/refresh`;
+
+    // Try to get OIDC access token and add to headers if available
+    const requestHeaders = { ...headers };
+    if (!requestHeaders['Authorization']) {
+      try {
+        // Dynamically import to avoid circular dependency
+        const { useAuthStore } = await import(
+          '@send-frontend/stores/auth-store'
+        );
+        const authStore = useAuthStore();
+        const accessToken = await authStore.getAccessToken();
+
+        if (accessToken) {
+          requestHeaders['Authorization'] = `Bearer ${accessToken}`;
+        }
+      } catch (error) {
+        // If we can't get the auth store (e.g., during initialization), continue without token
+        console.debug('Could not get OIDC token for request:', error);
+      }
+    }
+
     const opts: Record<string, any> = {
       mode: 'cors',
-      credentials: 'include', // include cookies
+      credentials: 'include', // include cookies for legacy auth
       method,
       headers: {
         'content-type': 'application/json',
-        ...headers,
+        ...requestHeaders,
       },
     };
 
@@ -88,18 +109,39 @@ export class ApiConnection {
       return null;
     }
 
-    // 403 means the user is not authenticated or has an expired session
-    // we retry the request once if that is the case
-    // save opts
-    const originalOpts = { ...opts };
+    // Handle authentication errors
     if (resp.status === 401) {
-      try {
-        // Refresh token (including cookies)
-        await fetch(refreshTokenUrl, { credentials: 'include', mode: 'cors' });
-        resp = await fetch(url, originalOpts);
-      } catch (error) {
-        console.log(error);
-        return null;
+      // If we're using OIDC and get 401, try to refresh the token
+      if (requestHeaders['Authorization']) {
+        try {
+          const { useAuthStore } = await import(
+            '@send-frontend/stores/auth-store'
+          );
+          const authStore = useAuthStore();
+          const newToken = await authStore.refreshToken();
+
+          if (newToken) {
+            // Retry with new token
+            opts.headers['Authorization'] = `Bearer ${newToken}`;
+            resp = await fetch(url, opts);
+          }
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+          return null;
+        }
+      } else {
+        // Legacy JWT refresh flow
+        try {
+          // Refresh token (including cookies)
+          await fetch(refreshTokenUrl, {
+            credentials: 'include',
+            mode: 'cors',
+          });
+          resp = await fetch(url, opts);
+        } catch (error) {
+          console.log(error);
+          return null;
+        }
       }
     }
 
