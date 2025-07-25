@@ -43,7 +43,6 @@ jobs:
               - 'packages/send/frontend/**'
             shared-changed:
               - 'packages/shared/**'
-            
   integration-tests:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
