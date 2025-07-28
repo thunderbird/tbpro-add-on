@@ -21,6 +21,7 @@ import NotFoundPage from '../common/NotFoundPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
 import ManagementPage from './ManagementPage.vue';
+import PostLoginPage from './PostLoginPage.vue';
 import LockedPage from './pages/LockedPage.vue';
 import { useStatusStore } from './stores/status-store';
 
@@ -42,6 +43,10 @@ export const routes: RouteRecordRaw[] = [
     path: '/login',
     component: LoginPage,
     meta: { [META_OPTIONS.redirectOnValidSession]: true },
+  },
+  {
+    path: '/post-login',
+    component: PostLoginPage,
   },
   {
     path: '/send',

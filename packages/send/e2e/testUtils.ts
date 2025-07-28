@@ -10,12 +10,19 @@ import { readFileSync } from "fs";
 import { fileLocators } from "./locators";
 import { storageStatePath } from "./send.spec";
 
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config({ path: path.resolve(__dirname, ".env") });
+
 export const playwrightConfig = {
   password: `qghp392784rq3rgqp329r@$`,
   email: `myemail${Date.now()}@tb.pro`,
   timeout: 3_000,
   shareLinks: [] as string[],
   fileLinks: [] as string[],
+  tbprousername: process.env.TBPRO_USERNAME || "",
+  tbproPassword: process.env.TPRO_PASSWORD || "",
 };
 
 export async function downloadFirstFile(page: Page) {

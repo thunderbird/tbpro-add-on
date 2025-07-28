@@ -1,7 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import dotenv from "dotenv";
-
-dotenv.config();
+import "dotenv/config";
 
 const THREE_MINUTES = 3 * 60 * 1000;
 

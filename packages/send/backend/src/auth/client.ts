@@ -103,6 +103,11 @@ export function getDataFromAuthenticatedRequest(req: Request) {
   return user;
 }
 
+export const clearJWTCookies = (res: Response) => {
+  clearCookie('authorization', res);
+  clearCookie('refresh_token', res);
+};
+
 export const registerAuthToken = (signedData: AuthResponse, res: Response) => {
   const expiration = Date.now() + JWT_EXPIRY_IN_MILLISECONDS;
   // Sign the jwt and pass it as a cookie

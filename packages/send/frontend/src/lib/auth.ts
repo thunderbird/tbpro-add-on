@@ -20,15 +20,37 @@ export function useAuth() {
   const { refetch: refetchAuth } = useQuery({
     queryKey: ['session'],
     queryFn: async () => {
-      // Validate the token and update the logged in state
-      isLoggedIn.value = await validateToken(api);
-      return isLoggedIn.value;
+      // Check OIDC authentication status first
+      try {
+        const user = await authStore.checkAuthStatus();
+        if (user) {
+          isLoggedIn.value = true;
+          return true;
+        }
+      } catch (error) {
+        console.debug('OIDC auth check failed:', error);
+      }
+
+      // Fallback to legacy token validation
+      const isValid = await validateToken(api);
+      isLoggedIn.value = isValid;
+      return isValid;
     },
   });
 
   // Log out by removing the auth token and updating login status
   const logOutAuth = async () => {
-    await api.removeAuthToken();
+    try {
+      // OIDC logout
+      await authStore.logoutFromOIDC();
+      // Legacy logout
+      await api.removeAuthToken();
+    } catch (error) {
+      console.warn('Logout error, clearing local state:', error);
+      // Clear local state regardless
+      await api.removeAuthToken();
+    }
+
     isLoggedIn.value = false;
   };
 
