@@ -21,9 +21,15 @@ export const playwrightConfig = {
   timeout: 3_000,
   shareLinks: [] as string[],
   fileLinks: [] as string[],
-  tbprousername: process.env.TBPRO_USERNAME || "",
-  tbproPassword: process.env.TPRO_PASSWORD || "",
+  tbprousername: process.env.TBPRO_USERNAME,
+  tbproPassword: process.env.TPRO_PASSWORD,
 };
+
+if (!process.env.TBPRO_USERNAME || !process.env.TBPRO_PASSWORD) {
+  throw new Error(
+    "Environment variables TBPRO_USERNAME and TBPRO_PASSWORD must be set in .env file"
+  );
+}
 
 export async function downloadFirstFile(page: Page) {
   const { downloadButton, confirmDownload } = fileLocators(page);
