@@ -13,6 +13,13 @@ import { storageStatePath } from "./send.spec";
 import dotenv from "dotenv";
 import path from "path";
 
+console.log("Current directory:", __dirname);
+// run ls on this directory
+console.log(
+  "Files in current directory:",
+  require("fs").readdirSync(__dirname)
+);
+
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 export const playwrightConfig = {
