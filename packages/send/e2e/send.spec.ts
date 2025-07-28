@@ -14,11 +14,20 @@ import {
   upload_workflow,
 } from "./pages/myFiles";
 import { oidc_login } from "./pages/oidc";
-import { playwrightConfig, setup_browser } from "./testUtils";
+import { setup_browser } from "./testUtils";
+
+import config from "dotenv";
+
+config.config({ path: path.resolve(__dirname, "./.env") });
 
 export type PlaywrightProps = {
   context: BrowserContext;
   page: Page;
+};
+
+export const credentials = {
+  TBPRO_USERNAME: process.env.TBPRO_USERNAME,
+  TBPRO_PASSWORD: process.env.TBPRO_PASSWORD,
 };
 
 export const storageStatePath = path.resolve(
@@ -51,11 +60,6 @@ const authTests = [
 test.describe("OICD Flow", async () => {
   let page: Page;
   let context: BrowserContext;
-
-  const username = playwrightConfig.tbprousername;
-  const password = playwrightConfig.tbproPassword;
-
-  console.log(`Using username: ${username} and password: ${password}`);
 
   test.beforeEach(async () => {
     ({ page, context } = await setup_browser());
