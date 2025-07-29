@@ -76,7 +76,7 @@ jobs:
         timeout-minutes: 10
         shell: bash
         run: |
-          # Create .env file with secrets
+          # Create .env file with secrets (for end to end run only)# Create .env file with secrets
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
           mv .env packages/send/e2e        
