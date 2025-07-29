@@ -43,12 +43,15 @@ export function useAuth() {
     try {
       // OIDC logout
       await authStore.logoutFromOIDC();
-      // Legacy logout
+    } catch (error) {
+      console.error('OIDC logout failed:', error);
+    }
+
+    try {
+      // FXA/JWT logout
       await api.removeAuthToken();
     } catch (error) {
-      console.warn('Logout error, clearing local state:', error);
-      // Clear local state regardless
-      await api.removeAuthToken();
+      console.error('Legacy (fxa) logout failed:', error);
     }
 
     isLoggedIn.value = false;
