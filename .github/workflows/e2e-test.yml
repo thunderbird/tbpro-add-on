@@ -74,20 +74,16 @@ jobs:
         shell: bash
         run: |
           cd packages/send/backend
-          cat << EOF > .env
-          OIDC_CLIENT_ID=${{ secrets.OIDC_CLIENT_ID }}
-          OIDC_CLIENT_SECRET=${{ secrets.OIDC_CLIENT_SECRET }}
-          OIDC_TOKEN_INTROSPECTION_URL=${{ secrets.OIDC_TOKEN_INTROSPECTION_URL }}
-          EOF
+          echo "OIDC_CLIENT_ID=${{ secrets.OIDC_CLIENT_ID }}" >> .env
+          echo "OIDC_CLIENT_SECRET=${{ secrets.OIDC_CLIENT_SECRET }}" >> .env
+          echo "OIDC_TOKEN_INTROSPECTION_URL=${{ secrets.OIDC_TOKEN_INTROSPECTION_URL }}" >> .env
 
       - name: Add env vars for frontend
         shell: bash
         run: |
           cd packages/send/frontend
-          cat << EOF > .env
-          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}
-          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL }}
-          EOF
+          echo "VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}" >> .env
+          echo "VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL }}" >> .env
 
       - name: Run stack and test
         id: run-stack-and-test
