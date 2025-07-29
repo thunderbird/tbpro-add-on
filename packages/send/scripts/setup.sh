@@ -16,6 +16,9 @@ cp .env.sample .env
 cd ../backend
 cp .env.sample .env
 cd ..
+# Copy e2e env file
+cd e2e
+cp .env.sample .env
 
 
 

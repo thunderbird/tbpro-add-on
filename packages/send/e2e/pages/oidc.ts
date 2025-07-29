@@ -2,6 +2,11 @@ import { expect } from "@playwright/test";
 import { credentials, PlaywrightProps } from "../send.spec";
 
 export async function oidc_login({ page }: PlaywrightProps) {
+  //  We can skip this test if we're not running in CI automation mode
+  if (!process.env.IS_CI_AUTOMATION) {
+    console.log("Skipping OIDC login test in non-CI environment.");
+    return;
+  }
   const username = credentials.TBPRO_USERNAME as string;
   const password = credentials.TBPRO_PASSWORD as string;
 

@@ -67,7 +67,7 @@ test.describe("OICD Flow", async () => {
     await expect(page).toHaveTitle(/Thunderbird Send/);
   });
 
-  const workflows = [{ title: "Login", action: oidc_login }];
+  const workflows = [{ title: "Login using OIDC", action: oidc_login }];
 
   workflows.forEach(({ title, action }) => {
     test(title, async () => await action({ page, context }));

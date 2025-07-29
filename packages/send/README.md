@@ -194,9 +194,13 @@ cd frontend
 cp .env .env.backup
 cd ../backend
 cp .env .env.backup
+cd ../e2e
+cp .env .env.backup
 ```
 
-2. Set your environment variables by running `lerna run setup:local`
+2. Set your environment variables by running `lerna run setup:local` To test TB Pro auth, you should add your TB Pro username and password to the `.env` file in the `e2e` directory:
+
+Then edit the `.env` file and add your TB Pro username and password
 
 3. Make sure you install playwright's dependencies by running:
 
