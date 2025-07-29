@@ -5,14 +5,6 @@ export async function oidc_login({ page }: PlaywrightProps) {
   const username = credentials.TBPRO_USERNAME as string;
   const password = credentials.TBPRO_PASSWORD as string;
 
-  // if (!username || !password) {
-  //   throw new Error(
-  //     "Environment variables TBPRO_USERNAME and TBPRO_PASSWORD must be set in .env file"
-  //   );
-  // }
-
-  console.log(`Using username: ${username} and password: ${password}`);
-
   await page.goto("/extension/management");
   await page.getByTestId("login-button-tbpro").click();
 
