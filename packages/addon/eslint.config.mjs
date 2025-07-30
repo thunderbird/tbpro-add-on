@@ -4,7 +4,8 @@ import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-export default [
+/** @type {import('typescript-eslint').Config} */
+const config = [
   {
     languageOptions: {
       parserOptions: {
@@ -35,3 +36,5 @@ export default [
     },
   },
 ];
+
+export default config;

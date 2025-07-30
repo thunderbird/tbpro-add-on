@@ -1,5 +1,15 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
-import { PrismaClient, Container, ContainerType, Group, ItemType, User, UserTier, Item, Upload } from '@prisma/client';
+import {
+  Container,
+  ContainerType,
+  Group,
+  Item,
+  ItemType,
+  PrismaClient,
+  Upload,
+  User,
+  UserTier,
+} from '@prisma/client';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createItem, findOrphans } from '../../models';
 
 describe('findOrphans', () => {
@@ -14,18 +24,18 @@ describe('findOrphans', () => {
     const uploadPromises = uploads.map((upload) => {
       return prisma.upload.delete({
         where: {
-          id: upload.id
-        }
+          id: upload.id,
+        },
       });
-    })
+    });
 
     const itemPromises = items.map((item) => {
       return prisma.item.delete({
         where: {
-          id: item.id
-        }
-      })
-    })
+          id: item.id,
+        },
+      });
+    });
 
     await Promise.all(itemPromises);
     await Promise.all(uploadPromises);
@@ -33,29 +43,37 @@ describe('findOrphans', () => {
     try {
       await prisma.group.delete({
         where: {
-          id: group.id
-        }
+          id: group.id,
+        },
       });
 
       await prisma.container.delete({
         where: {
-          id: container.id
-        }
+          id: container.id,
+        },
       });
 
       await prisma.user.delete({
         where: {
-          id: user.id
-        }
+          id: user.id,
+        },
       });
     } catch {
-
+      // Ignore errors if the user, group, or container cannot be deleted.
+      // This can happen if they have other dependencies or if they were already deleted.
+      console.warn(
+        'Error cleaning up user, group, or container:',
+        user.id,
+        group.id,
+        container.id
+      );
     }
 
     items = [];
     uploads = [];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function deleteAll() {
     console.warn(`💥💥💥 destroying all Items and all Uploads 💥💥💥`);
     await prisma.item.deleteMany({});
@@ -77,7 +95,7 @@ describe('findOrphans', () => {
     });
 
     group = await prisma.group.create({
-      data: {}
+      data: {},
     });
 
     container = await prisma.container.create({
@@ -89,8 +107,8 @@ describe('findOrphans', () => {
         shareOnly: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
-    })
+      },
+    });
   });
 
   afterEach(async () => {
@@ -165,8 +183,24 @@ describe('findOrphans', () => {
     uploads.push(orphanedUpload);
 
     // Create items for the first two uploads
-    items.push(await createItem('item1', container.id, upload1.id, ItemType.FILE, 'abc123'));
-    items.push(await createItem('item2', container.id, upload2.id, ItemType.FILE, 'abc123'));
+    items.push(
+      await createItem(
+        'item1',
+        container.id,
+        upload1.id,
+        ItemType.FILE,
+        'abc123'
+      )
+    );
+    items.push(
+      await createItem(
+        'item2',
+        container.id,
+        upload2.id,
+        ItemType.FILE,
+        'abc123'
+      )
+    );
 
     const result = await findOrphans();
     expect(result.uploadIds).toEqual([orphanedUpload.id]);
