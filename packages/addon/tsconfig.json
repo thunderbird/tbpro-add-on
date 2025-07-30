@@ -5,16 +5,13 @@
     "baseUrl": "./",
     "paths": {
       "@addon/*": ["./src/*"],
-      "prisma/*": ["../backend/node_modules/@prisma/*"],
-      "@send-backend/*": ["../backend/src/*"],
-      "@send-frontend/*": ["node_modules/send-frontend/src/*"]
+      "prisma/*": ["../send/backend/node_modules/@prisma/*"],
+      "@send-backend/*": ["../send/backend/src/*"],
+      "@send-frontend/*": ["node_modules/send-frontend/src/*"],
+      "send-frontend/*": ["node_modules/send-frontend/*"]
     },
-    "types": [
-      "vite/client",
-      "vitest/globals",
-      "@types/firefox-webext-browser",
-      "@trpc/server"
-    ]
+    "types": ["vite/client", "vitest/globals", "@types/firefox-webext-browser"]
   },
-  "exclude": ["node_modules", "dist", "build"]
+  "include": ["src/**/*", "src/env.d.ts"],
+  "exclude": ["node_modules", "dist", "build", "../send/**/*"]
 }

@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
+// @ts-ignore - Vue component import
 import AdminPage from '../apps/AdminPage.vue';
 import { mountWithPlugins } from './testingUtils';
 
