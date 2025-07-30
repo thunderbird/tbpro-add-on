@@ -37,4 +37,4 @@ export type ShareResponse = {
 
 export type FolderStore = FS;
 
-export { Container, Item };
+export type { Container, Item };

@@ -13,12 +13,8 @@
     "postinstall": "pnpm build"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.3",
-    "@vitest/coverage-v8": "*",
-    "dotenv": "*",
-    "typescript": "*",
-    "vite": "*",
-    "vitest": "*"
+    "dotenv": "^17.2.1",
+    "typescript": "^5.8.3"
   },
   "keywords": [],
   "author": "",

@@ -652,7 +652,7 @@ export async function deleteOrphans() {
   const { uploadIds } = await findOrphans();
   const errorUploadIds = [];
 
-  for (let id of uploadIds) {
+  for (const id of uploadIds) {
     try {
       await deleteUpload(id);
     } catch (e) {

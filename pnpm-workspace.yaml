@@ -1,8 +1,11 @@
 packages:
-  - "packages/assist"
-  - "packages/assist/frontend"
-  - "packages/send"
-  - "packages/send/backend"
-  - "packages/send/frontend"
-  - "packages/shared"
-  - "packages/addon"
+  - packages/assist
+  - packages/assist/frontend
+  - packages/send
+  - packages/send/backend
+  - packages/send/frontend
+  - packages/shared
+  - packages/addon
+
+overrides:
+  esbuild@<=0.24.2: '>=0.25.0'
