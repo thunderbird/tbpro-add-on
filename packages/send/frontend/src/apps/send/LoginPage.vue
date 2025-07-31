@@ -25,6 +25,7 @@ const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
 const { isPublicLogin } = useConfigStore();
+const { isExtension } = useConfigStore();
 const { loginToMozAccount, loginToOIDC } = useAuthStore();
 
 const router = useRouter();
@@ -73,6 +74,7 @@ async function _loginToOIDC() {
         >Login to Mozilla Account</Btn
       >
       <Btn
+        v-if="!isExtension"
         primary
         data-testid="login-button-tbpro"
         @click.prevent="_loginToOIDC"
