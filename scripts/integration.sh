@@ -49,7 +49,11 @@ while true; do
 done
 echo "Vite dev server is ready"
 
+echo "About to run the integration tests in backend container"
 # Run integration tests for send-backend
+docker compose exec -T backend ls
+docker compose exec -T backend ls vitest.integration.config.js
+docker compose exec -T backend cat vitest.integration.config.js
 docker compose exec -T backend pnpx vitest run --config vitest.integration.config.js
 VITEST_EXIT_CODE=$?
 
