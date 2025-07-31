@@ -15,6 +15,7 @@ import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { useAuth } from '@send-frontend/lib/auth';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
 import { validateToken } from '@send-frontend/lib/validations';
+import { useConfigStore } from '@send-frontend/stores';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
@@ -34,11 +35,12 @@ const { api } = useApiStore();
 const folderStore = useFolderStore();
 const { validators } = useStatusStore();
 const { configureExtension } = useExtensionStore();
+const { isExtension } = useConfigStore();
 const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 const { isLoggedIn } = useAuth();
 const authStore = useAuthStore();
-const { loginToMozAccount } = authStore;
+const { loginToOIDC, loginToMozAccount } = authStore;
 
 const loginFailureMessage = ref(null);
 
@@ -106,6 +108,10 @@ async function finishLogin() {
   isLoggedIn.value = true;
 }
 
+async function _loginToOIDC() {
+  loginToOIDC({ onSuccess: finishLogin });
+}
+
 async function _loginToMozAccount() {
   loginToMozAccount({ onSuccess: finishLogin });
 }
@@ -127,12 +133,19 @@ async function _loginToMozAccount() {
           <BackupAndRestore />
         </div>
 
-        <div v-else>
+        <div v-else class="flex flex-col items-start gap-4">
           <Btn
             primary
             data-testid="login-button"
             @click.prevent="_loginToMozAccount"
             >Log into Mozilla Account</Btn
+          >
+          <Btn
+            v-if="!isExtension"
+            primary
+            data-testid="login-button-tbpro"
+            @click.prevent="_loginToOIDC"
+            >Log in using your TB Pro Account</Btn
           >
         </div>
       </div>

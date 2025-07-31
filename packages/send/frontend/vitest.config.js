@@ -18,4 +18,8 @@ export default defineConfig({
     globals: true,
     mockReset: false,
   },
+  define: {
+    'import.meta.env.VITE_TESTING': '"true"',
+    'import.meta.env.VITE_SEND_SERVER_URL': '"https://localhost:8088"',
+  },
 });

@@ -115,6 +115,9 @@ export async function reset_keys({ page }: PlaywrightProps) {
 
   page.on("dialog", (dialog) => dialog.accept());
 
+  // wait for network idle
+  await page.waitForLoadState("networkidle");
+
   // Back up keys
   const passPhrase = await passphraseInput.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");

@@ -18,6 +18,7 @@ import auth from './routes/auth';
 import containers from './routes/containers';
 import download from './routes/download';
 import fxa from './routes/fxa';
+import oidcAuth from './routes/oidc-auth';
 import sharing from './routes/sharing';
 import tags from './routes/tags';
 import uploads from './routes/uploads';
@@ -150,6 +151,7 @@ app.use('/lockbox/fxa', fxa);
 app.use('/fxa', fxa);
 app.use('/api/lockbox/fxa', fxa);
 app.use('/api/auth', auth);
+app.use('/api/auth', oidcAuth);
 app.use(metricsRoute);
 app.use(
   '/api/docs',

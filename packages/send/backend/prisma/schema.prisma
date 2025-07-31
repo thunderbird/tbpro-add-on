@@ -30,6 +30,8 @@ model User {
   uniqueHash          String?
   // we only store hashed passwords when environment variable ALLOW_PUBLIC_LOGIN is set to true
   hashedPassword      String?  
+  // OIDC subject identifier for stateless authentication
+  oidcSubject         String?              @unique
 
   profile             Profile?
 

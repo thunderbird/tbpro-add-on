@@ -64,7 +64,7 @@ describe('CompatibilityBoundary', () => {
     wrapper = shallowMount(CompatibilityBoundary);
     expect(wrapper.find(getByTestId('error')).exists()).toBe(true);
     expect(wrapper.find(getByTestId('error')).text()).toContain(
-      'Error: Error: Test error'
+      'Error: Test error'
     );
   });
 

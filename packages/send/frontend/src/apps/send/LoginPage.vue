@@ -25,7 +25,8 @@ const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
 const { isPublicLogin } = useConfigStore();
-const { loginToMozAccount } = useAuthStore();
+const { isExtension } = useConfigStore();
+const { loginToMozAccount, loginToOIDC } = useAuthStore();
 
 const router = useRouter();
 
@@ -60,6 +61,10 @@ trpc.onLoginFinished.subscribe(
     onData: onSuccess,
   }
 );
+
+async function _loginToOIDC() {
+  loginToOIDC({ onSuccess });
+}
 </script>
 <template>
   <main class="container">
@@ -67,6 +72,13 @@ trpc.onLoginFinished.subscribe(
     <FxaLogin v-if="!isPublicLogin" :id="user.id">
       <Btn primary data-testid="login-button" @click.prevent="mozAcctLogin"
         >Login to Mozilla Account</Btn
+      >
+      <Btn
+        v-if="!isExtension"
+        primary
+        data-testid="login-button-tbpro"
+        @click.prevent="_loginToOIDC"
+        >Log in using your TB Pro Account</Btn
       >
     </FxaLogin>
     <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />

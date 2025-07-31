@@ -40,6 +40,8 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   );
   await dragAndDropFile(page, "#drop-zone", "/test.png", "test.png");
   await uploadButton.click();
+  // wait for network idle
+  await page.waitForLoadState("networkidle");
   await page.waitForSelector(tableCellID);
 
   // Check if the file count has updated
