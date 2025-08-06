@@ -1,6 +1,6 @@
 {
   "name": "tbpro-shared",
-  "version": "0.1.2",
+  "version": "0.1.3-alpha.0",
   "private": false,
   "description": "Shared code for tbpro add-on",
   "main": "dist/src/index.js",
