@@ -7,6 +7,7 @@ import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
 import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
+import { BASE_URL } from '@send-frontend/apps/common/constants';
 import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
 import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
 import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
@@ -109,11 +110,20 @@ async function finishLogin() {
 }
 
 async function _loginToOIDC() {
-  loginToOIDC({ onSuccess: finishLogin });
+  loginToOIDC({ onSuccess: finishLogin, isExtension });
 }
 
 async function _loginToMozAccount() {
   loginToMozAccount({ onSuccess: finishLogin });
+}
+
+function openExtensionManagement() {
+  const managementUrl = `${BASE_URL}/login?isExtension=true`;
+  window.open(
+    managementUrl,
+    '_blank',
+    'width=800,height=600,scrollbars=yes,resizable=yes'
+  );
 }
 </script>
 
@@ -146,6 +156,13 @@ async function _loginToMozAccount() {
             data-testid="login-button-tbpro"
             @click.prevent="_loginToOIDC"
             >Log in using your TB Pro Account</Btn
+          >
+          <Btn
+            v-if="isExtension"
+            secondary
+            data-testid="extension-management-button"
+            @click.prevent="openExtensionManagement"
+            >Open Extension Management</Btn
           >
         </div>
       </div>

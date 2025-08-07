@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -6,6 +7,7 @@ import LoadingComponent from '../common/LoadingComponent.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const { isRouteExtension } = useIsRouteExtension();
 
 const isLoading = ref(true);
 const error = ref<string | null>(null);
@@ -17,7 +19,8 @@ onMounted(async () => {
 
     if (user) {
       // Authentication successful, redirect to main app
-      router.push('/send/profile');
+      // We add the isExtension query parameter to the URL so that the extension will close the web version and open the extension
+      router.push(`/send/profile?isExtension=${isRouteExtension.value}`);
     } else {
       throw new Error('Authentication failed');
     }
