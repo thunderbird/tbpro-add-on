@@ -47,17 +47,7 @@ test.afterAll(async () => {
   fs.writeFileSync(storageStatePath, JSON.stringify(emptyState));
 });
 
-// Authentication-related tests
-const authTests = [
-  { title: "Register and log in", path: "/send", action: register_and_login },
-  {
-    title: "Restores keys",
-    path: "/send/profile",
-    action: log_out_restore_keys,
-  },
-];
-
-test.describe("OICD Flow", async () => {
+test.describe("OIDC Flow", async () => {
   let page: Page;
   let context: BrowserContext;
 
@@ -73,6 +63,16 @@ test.describe("OICD Flow", async () => {
     test(title, async () => await action({ page, context }));
   });
 });
+
+// Authentication-related tests
+const authTests = [
+  { title: "Register and log in", path: "/send", action: register_and_login },
+  {
+    title: "Restores keys",
+    path: "/send/profile",
+    action: log_out_restore_keys,
+  },
+];
 
 test.describe("Authentication", () => {
   authTests.forEach(({ title, path, action }) => {

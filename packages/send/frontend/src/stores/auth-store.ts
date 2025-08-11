@@ -11,7 +11,8 @@ const settings: UserManagerSettings = {
   authority: import.meta.env?.VITE_OIDC_ROOT_URL,
   client_id: import.meta.env?.VITE_OIDC_CLIENT_ID,
   redirect_uri: `${window.location.origin}/post-login`,
-  post_logout_redirect_uri: `${window.location.origin}/`,
+  // We explicitly set the logout redirect to web to avoid errors with the uri since it doesn't support moz-extension:// protocols
+  post_logout_redirect_uri: `${import.meta.env?.VITE_SEND_CLIENT_URL}/logout`,
   response_type: 'code',
   scope: 'openid profile email',
   automaticSilentRenew: true,
@@ -37,13 +38,20 @@ export const useAuthStore = defineStore('auth', () => {
   /**
    * Start the OIDC login process
    */
-  async function loginToOIDC({ onSuccess }: { onSuccess?: () => void } = {}) {
+  async function loginToOIDC({
+    onSuccess,
+    isExtension,
+  }: {
+    onSuccess?: () => void;
+    isExtension: boolean;
+  }) {
     try {
       if (isExtension) {
         // For extensions, we might need to handle this differently
         // For now, use the same flow as web
         await userManager.signinRedirect({
           prompt: 'login',
+          redirect_uri: `${window.location.origin}/post-login?isExtension=${isExtension}`,
         });
       } else {
         await userManager.signinRedirect({

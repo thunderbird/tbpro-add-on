@@ -1,31 +1,41 @@
 import { expect } from "@playwright/test";
 import { credentials, PlaywrightProps } from "../send.spec";
+import { create_incognito_context } from "../testUtils";
 
-export async function oidc_login({ page }: PlaywrightProps) {
+export async function oidc_login({ page, context }: PlaywrightProps) {
   //  We can skip this test if we're not running in CI automation mode
   if (!process.env.IS_CI_AUTOMATION) {
     console.log("Skipping OIDC login test in non-CI environment.");
     return;
   }
+
+  const browser = context.browser();
+  if (!browser) {
+    throw new Error("Browser context is not available");
+  }
+  const incognitoContext = await create_incognito_context(browser);
+  const otherPage = await incognitoContext.newPage();
+
   const username = credentials.TBPRO_USERNAME as string;
   const password = credentials.TBPRO_PASSWORD as string;
 
-  await page.goto("/extension/management");
-  await page.getByTestId("login-button-tbpro").click();
+  // Navigate to the management page (that simulates extension management)
+  await otherPage.goto("/extension/management");
+  await otherPage.getByTestId("login-button-tbpro").click();
 
   // wait for navigation to auth-stage.tb.pro
-  await page.waitForURL("**/auth-stage.tb.pro/**");
-  await page.waitForLoadState("networkidle");
+  await otherPage.waitForURL("**/auth-stage.tb.pro/**");
+  await otherPage.waitForLoadState("networkidle");
 
-  // A new page will open for OIDC login, fill the form and submit
-  await page.fill("#username", username, { force: true });
-  await page.fill("#password", password, { force: true });
-  await page.click('button[type="submit"]');
+  // A new otherPage will open for OIDC login, fill the form and submit
+  await otherPage.fill("#username", username, { force: true });
+  await otherPage.fill("#password", password, { force: true });
+  await otherPage.click('button[type="submit"]');
 
-  // wait for navigation to go back to /send
-  await page.waitForURL("**/profile");
-  await expect(page).toHaveTitle(/Thunderbird Send/);
-  expect(await page.getByTestId("big-message-display").textContent()).toContain(
-    "Please write down your backup keys and click"
-  );
+  // Log out
+  await otherPage.getByTestId("log-out-button").click();
+  await otherPage.waitForLoadState("networkidle");
+
+  // Expect the logout page to be visible
+  await expect(otherPage.getByTestId("redirecting-p")).toBeVisible();
 }

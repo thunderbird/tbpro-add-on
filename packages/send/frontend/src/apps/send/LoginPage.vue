@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
 import { trpc } from '@send-frontend/lib/trpc';
@@ -8,7 +9,7 @@ import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 import { logger } from 'tbpro-shared';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FeedbackBox from '../common/FeedbackBox.vue';
 import FxaLogin from '../common/FxaLogin.vue';
@@ -27,10 +28,20 @@ const folderStore = useFolderStore();
 const { isPublicLogin } = useConfigStore();
 const { isExtension } = useConfigStore();
 const { loginToMozAccount, loginToOIDC } = useAuthStore();
+const { isRouteExtension } = useIsRouteExtension();
 
 const router = useRouter();
 
 const sessionInfo = ref(null);
+
+onMounted(async () => {
+  // We route the extension login to this page to handle the OIDC login
+  // To make this as smooth as possible, we automatically trigger the login
+  if (isRouteExtension.value) {
+    console.log('Extension mode detected, redirecting to OIDC login...');
+    await _loginToOIDC();
+  }
+});
 
 async function pingSession() {
   const session = await api.call<null | string>(`users/me`);
@@ -63,7 +74,7 @@ trpc.onLoginFinished.subscribe(
 );
 
 async function _loginToOIDC() {
-  loginToOIDC({ onSuccess });
+  loginToOIDC({ onSuccess, isExtension: isRouteExtension.value });
 }
 </script>
 <template>
