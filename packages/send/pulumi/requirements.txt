@@ -1,2 +1,5 @@
+sdks/neon
 tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@main
 pulumi_cloudflare==5.48.0
+neon-api
+boto3

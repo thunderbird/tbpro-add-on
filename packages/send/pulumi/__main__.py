@@ -1,5 +1,6 @@
 #!/bin/env python3
 
+import subprocess
 import pulumi
 import pulumi_aws as aws
 import pulumi_cloudflare as cloudflare
@@ -12,6 +13,20 @@ import tb_pulumi.network
 import tb_pulumi.rds
 import tb_pulumi.secrets
 
+# try dynamic provider
+from neonpl import NeonPrivateLinkResource
+
+# not working
+# install_neon_package = subprocess.run(
+#     ['pulumi', 'package', 'add', 'terraform-provider kislerdm/neon'],
+#     capture_output=True,
+#     text=True,
+# )
+# if install_neon_package.returncode != 0:
+#     pulumi.error(f'Failed to install neon package: {install_neon_package.stderr}')  
+
+#  This is the main Pulumi program for the Thunderbird Send project.
+              
 
 CLOUDFRONT_REWRITE_CODE_FILE = 'cloudfront-rewrite.js'
 EXCLUDE_ROUTE53_STACKS = ['prod', 'stage']  # Do not build R53 records for these environments
@@ -36,7 +51,7 @@ pulumi_sm = tb_pulumi.secrets.PulumiSecretsManager(
 vpc_opts = resources['tb:network:MultiCidrVpc']['vpc']
 vpc = tb_pulumi.network.MultiCidrVpc(name=f'{project.name_prefix}-vpc', project=project, **vpc_opts)
 
-# Build a securiyt group allowing access to the load balancer
+# # Build a securiyt group allowing access to the load balancer
 sg_lb_opts = resources['tb:network:SecurityGroupWithRules']['backend-lb']
 sg_lb = tb_pulumi.network.SecurityGroupWithRules(
     name=f'{project.name_prefix}-backend-lb-sg',
@@ -46,7 +61,7 @@ sg_lb = tb_pulumi.network.SecurityGroupWithRules(
     **sg_lb_opts,
 )
 
-# Build a security group allowing access from the load balancer to the container when we know its ID
+# # Build a security group allowing access from the load balancer to the container when we know its ID
 sg_cont_opts = resources['tb:network:SecurityGroupWithRules']['backend-container']
 sg_cont_opts['rules']['ingress'][0]['source_security_group_id'] = sg_lb.resources['sg'].id
 sg_container = tb_pulumi.network.SecurityGroupWithRules(
@@ -58,21 +73,21 @@ sg_container = tb_pulumi.network.SecurityGroupWithRules(
 )
 
 
-# Only build an RDS database cluster with a jumphost in the CI environment, so we can verify this part of our codebase
-if project.stack == 'ci':
-    db_opts = resources['tb:rds:RdsDatabaseGroup']['citest']
-    db = tb_pulumi.rds.RdsDatabaseGroup(
-        name=f'{project.name_prefix}-rds',
-        project=project,
-        db_name='dbtest',
-        subnets=vpc.resources['subnets'],
-        vpc_cidr=vpc.resources['vpc'].cidr_block,
-        vpc_id=vpc.resources['vpc'].id,
-        opts=pulumi.ResourceOptions(depends_on=[vpc]),
-        **db_opts,
-    )
+# # Only build an RDS database cluster with a jumphost in the CI environment, so we can verify this part of our codebase
+# if project.stack == 'ci':
+#     db_opts = resources['tb:rds:RdsDatabaseGroup']['citest']
+#     db = tb_pulumi.rds.RdsDatabaseGroup(
+#         name=f'{project.name_prefix}-rds',
+#         project=project,
+#         db_name='dbtest',
+#         subnets=vpc.resources['subnets'],
+#         vpc_cidr=vpc.resources['vpc'].cidr_block,
+#         vpc_id=vpc.resources['vpc'].id,
+#         opts=pulumi.ResourceOptions(depends_on=[vpc]),
+#         **db_opts,
+#     )
 
-# Create a Fargate cluster
+# # Create a Fargate cluster
 backend_fargate_opts = resources['tb:fargate:FargateClusterWithLogging']['backend']
 backend_subnets = [subnet for subnet in vpc.resources['subnets']]
 backend_fargate = tb_pulumi.fargate.FargateClusterWithLogging(
@@ -92,7 +107,7 @@ backend_fargate = tb_pulumi.fargate.FargateClusterWithLogging(
     **backend_fargate_opts,
 )
 
-# Sometimes create a DNS record pointing to the backend service
+# # Sometimes create a DNS record pointing to the backend service
 route53_backend_record = (
     aws.route53.Record(
         f'{project.name_prefix}-dns-backend',
@@ -107,7 +122,7 @@ route53_backend_record = (
     else None
 )
 
-# Special case where prod DNS is hosted at CloudFlare
+# # Special case where prod DNS is hosted at CloudFlare
 cloudflare_backend_record = (
     cloudflare.Record(
         f'{project.name_prefix}-dns-backend',
@@ -122,7 +137,7 @@ cloudflare_backend_record = (
     else None
 )
 
-# Manage the CloudFront rewrite function; the code is managed in cloudfront-rewrite.js
+# # Manage the CloudFront rewrite function; the code is managed in cloudfront-rewrite.js
 rewrite_code = None
 try:
     with open(CLOUDFRONT_REWRITE_CODE_FILE, 'r') as fh:
@@ -140,49 +155,9 @@ cf_func = aws.cloudfront.Function(
 )
 project.resources['cf_rewrite_function'] = cf_func
 
-# Use appropriate cross-origin headers
-response_headers_policy = aws.cloudfront.ResponseHeadersPolicy(
-    f'{project.name_prefix}-frontend-rhp',
-    comment=f'Response headers policy for {project.name_prefix}',
-    custom_headers_config={
-        'items': [
-            {'header': 'Cross-Origin-Embedder-Policy', 'override': True, 'value': 'require-corp'},
-            {'header': 'Cross-Origin-Opener-Policy', 'override': True, 'value': 'same-origin'},
-            {'header': 'Cross-Origin-Resource-Policy', 'override': True, 'value': 'same-origin'},
-        ]
-    },
-)
-# Deliver frontend content via CloudFront
-frontend_opts = resources['tb:cloudfront:CloudFrontS3Service']['frontend']
-if 'distribution' not in frontend_opts:
-    frontend_opts['distribution'] = {}
-if 'default_cache_behavior' not in frontend_opts['distribution']:
-    frontend_opts['distribution']['default_cache_behavior'] = {}
-frontend_opts['distribution']['default_cache_behavior']['response_headers_policy_id'] = response_headers_policy.id
-frontend = tb_pulumi.cloudfront.CloudFrontS3Service(
-    name=f'{project.name_prefix}-frontend',
-    project=project,
-    default_function_associations=[{'event_type': 'viewer-request', 'function_arn': cf_func.arn}],
-    **frontend_opts,
-    opts=pulumi.ResourceOptions(depends_on=[cf_func]),
-)
+# # Use appropriate cross-origin headers
 
-# Sometimes create a DNS record pointing to the frontend service
-route53_frontend_record = (
-    aws.route53.Record(
-        f'{project.name_prefix}-dns-frontend',
-        zone_id=route53_zone_id,
-        name=resources['domains']['frontend'],
-        type=aws.route53.RecordType.CNAME,
-        ttl=60,  # ttl units are *seconds*
-        records=[frontend.resources['cloudfront_distribution'].domain_name],
-        opts=pulumi.ResourceOptions(depends_on=[frontend.resources['cloudfront_distribution']]),
-    )
-    if project.stack not in EXCLUDE_ROUTE53_STACKS
-    else None
-)
-
-# Special case where prod DNS is hosted at CloudFlare
+# # Special case where prod DNS is hosted at CloudFlare
 cloudflare_frontend_record = (
     cloudflare.Record(
         f'{project.name_prefix}-dns-frontend',
@@ -198,7 +173,7 @@ cloudflare_frontend_record = (
 )
 
 
-# This is only managed by a single stack, so a configuration may not exist for it
+# # This is only managed by a single stack, so a configuration may not exist for it
 if 'tb:ci:AwsAutomationUser' in resources and 'ci' in resources['tb:ci:AwsAutomationUser']:
     ci_opts = resources['tb:ci:AwsAutomationUser']['ci']
     ci_iam = tb_pulumi.ci.AwsAutomationUser(name=f'{project.project}-ci', project=project, **ci_opts)
@@ -210,3 +185,67 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     notify_emails=monitoring_opts['notify_emails'],
     config=monitoring_opts,
 )
+
+## must run pulumi package add terraform-provider kislerdm/neon
+## default neon api key config NEON_API_KEY env var
+import pulumi_neon as neon
+
+# private link endpoint for Neon
+neon_service_names = [
+    "com.amazonaws.vpce.us-east-1.vpce-svc-0de57c578b0e614a9",
+    "com.amazonaws.vpce.us-east-1.vpce-svc-02a0abd91f32f1ed7"
+]
+
+neon_org_id = "org-summer-glitter-46282554"
+neon_project_id = "muddy-sunset-16626607"
+aws_region = "us-east-1"
+example_aws_vpc = vpc.resources['vpc']
+example_vpc_id = vpc.resources['vpc'].id
+example_vpc_subnets = [ subnet.id for subnet in vpc.resources['subnets'] ]
+
+
+# dynamic resource
+
+# new = NeonPrivateLinkResource(
+#     name = "send-ci-pl",
+#     project = project,
+#     aws_region = aws_region,
+#     neon_org_id = neon_org_id,
+#     neon_project_id = neon_project_id,
+#     neon_service_names = neon_service_names,
+#     aws_vpc_id = example_vpc_id,
+#     aws_vpc_subnet_ids = example_vpc_subnets,
+#     props = {},
+#     opts=pulumi.ResourceOptions(depends_on=[vpc])
+#     )
+
+neon_private_link_endpoint = aws.ec2.VpcEndpoint("send_ci_neon_private_link_endpoint",
+    service_name=neon_service_names[0],
+    subnet_ids=example_vpc_subnets,
+    vpc_endpoint_type="Interface",
+    vpc_id=example_vpc_id,
+    private_dns_enabled=True,
+    tags={
+        "Name": f"{project.name_prefix}-neon-private-link-endpoint",
+        "Project": project.name_prefix,
+        "Stack": project.stack,
+    },
+    opts=pulumi.ResourceOptions(depends_on=[vpc])
+)
+project.resources['neon_private_link_endpoint'] = neon_private_link_endpoint
+
+neon_vpc_assignment = neon.VpcEndpointAssignment("send_ci_neon_vpc_assignment",
+    org_id=neon_org_id,
+    region_id="aws-us-east-1",
+    vpc_endpoint_id=neon_private_link_endpoint.id,
+    label="send-ci",
+    opts=pulumi.ResourceOptions(depends_on=[neon_private_link_endpoint])
+)
+
+neon_vpc_endpoint_restriction = neon.VpcEndpointRestriction("send_ci_neon_vpc_endpoint_restriction",
+    project_id=neon_project_id,
+    vpc_endpoint_id=neon_private_link_endpoint.id,
+    label="send-ci",
+    opts=pulumi.ResourceOptions(depends_on=[neon_vpc_assignment])
+)
+
