@@ -1,49 +1,28 @@
 <!-- eslint-disable no-undef -->
 <script setup lang="ts">
-import { dbUserSetup } from '@send-frontend/lib/helpers';
-import init from '@send-frontend/lib/init';
-import useApiStore from '@send-frontend/stores/api-store';
-import useKeychainStore from '@send-frontend/stores/keychain-store';
-import useUserStore from '@send-frontend/stores/user-store';
-
-import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
 import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
-import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
-import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
-import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import SendDashboardView from '@send-frontend/apps/send/views/SendDashboardView.vue';
+import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { useAuth } from '@send-frontend/lib/auth';
-import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
-import { validateToken } from '@send-frontend/lib/validations';
+import AuthButtons from '@send-frontend/lib/auth/AuthButtons.vue';
 import { useConfigStore } from '@send-frontend/stores';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
-import useMetricsStore from '@send-frontend/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
-import { ref } from 'vue';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
 import LoadingComponent from '../common/LoadingComponent.vue';
 import SecureSendIcon from '../common/SecureSendIcon.vue';
 import TBBanner from '../common/TBBanner.vue';
-import { useExtensionStore } from './stores/extension-store';
-import { useStatusStore } from './stores/status-store';
 
-const userStore = useUserStore();
-const { keychain } = useKeychainStore();
-const { api } = useApiStore();
-const folderStore = useFolderStore();
-const { validators } = useStatusStore();
-const { configureExtension } = useExtensionStore();
-const { isExtension } = useConfigStore();
-const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
-const { updateMetricsIdentity } = useMetricsUpdate();
 const { isLoggedIn } = useAuth();
+const { finishLogin, loadLogin } = useSendConfig();
+const { isExtension } = useConfigStore();
+const { updateMetricsIdentity } = useMetricsUpdate();
 const authStore = useAuthStore();
 const { loginToOIDC, loginToMozAccount } = authStore;
-
-const loginFailureMessage = ref(null);
 
 const { isLoading } = useQuery({
   queryKey: ['getLoginStatus'],
@@ -53,61 +32,7 @@ const { isLoading } = useQuery({
   refetchOnReconnect: true,
 });
 
-const loadLogin = async () => {
-  // Check for data inconsistencies between local storage and api
-  const { hasForcedLogin } = await validators();
-  if (hasForcedLogin) {
-    // If we don't have a session, show the login button.
-    isLoggedIn.value = false;
-    return;
-  }
-
-  // check local storage first
-  await userStore.loadFromLocalStorage();
-
-  try {
-    // See if we already have a valid session.
-    // If so, hydrate our user using session data.
-    const didPopulate = await userStore.populateFromBackend();
-    if (!didPopulate) {
-      return;
-    }
-    // app-sepcific initialization
-    await init(userStore, keychain, folderStore);
-    await finishLogin();
-  } catch (e) {
-    console.log(e);
-  }
-
-  // Identify user for analytics
-  const uid = userStore?.user?.uniqueHash;
-  initializeClientMetrics(uid);
-  await sendMetricsToBackend(api);
-};
-
 updateMetricsIdentity();
-
-async function finishLogin() {
-  const isSessionValid = await validateToken(api);
-  if (!isSessionValid) {
-    loginFailureMessage.value = CLIENT_MESSAGES.SHOULD_LOG_IN;
-    return;
-  }
-
-  await dbUserSetup(userStore, keychain, folderStore);
-  const { isTokenValid, hasBackedUpKeys } = await validators();
-
-  if (isTokenValid && hasBackedUpKeys) {
-    try {
-      await configureExtension();
-    } catch (error) {
-      console.warn('You are running this outside TB', error);
-    }
-  }
-
-  console.log('isTokenValid', isTokenValid);
-  isLoggedIn.value = true;
-}
 
 async function _loginToOIDC() {
   loginToOIDC({ onSuccess: finishLogin, isExtension });
@@ -117,7 +42,7 @@ async function _loginToMozAccount() {
   loginToMozAccount({ onSuccess: finishLogin });
 }
 
-function openExtensionManagement() {
+function _loginToOIDCForExtension() {
   const managementUrl = `${BASE_URL}/login?isExtension=true`;
   window.open(
     managementUrl,
@@ -139,31 +64,16 @@ function openExtensionManagement() {
 
       <div v-else>
         <div v-if="isLoggedIn">
-          <UserDashboard />
-          <BackupAndRestore />
+          <SendDashboardView />
         </div>
 
         <div v-else class="flex flex-col items-start gap-4">
-          <Btn
-            primary
-            data-testid="login-button"
-            @click.prevent="_loginToMozAccount"
-            >Log into Mozilla Account</Btn
-          >
-          <Btn
-            v-if="!isExtension"
-            primary
-            data-testid="login-button-tbpro"
-            @click.prevent="_loginToOIDC"
-            >Log in using your TB Pro Account</Btn
-          >
-          <Btn
-            v-if="isExtension"
-            secondary
-            data-testid="extension-management-button"
-            @click.prevent="openExtensionManagement"
-            >Open Extension Management</Btn
-          >
+          <AuthButtons
+            :is-extension="isExtension"
+            :login-to-moz-account="_loginToMozAccount"
+            :login-to-oidc="_loginToOIDC"
+            :login-to-oidc-for-extension="_loginToOIDCForExtension"
+          />
         </div>
       </div>
 
