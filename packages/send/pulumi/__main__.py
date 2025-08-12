@@ -8,6 +8,7 @@ import tb_pulumi.ci
 import tb_pulumi.cloudfront
 import tb_pulumi.cloudwatch
 import tb_pulumi.fargate
+import tb_pulumi.iam
 import tb_pulumi.network
 import tb_pulumi.rds
 import tb_pulumi.secrets
@@ -71,6 +72,8 @@ if project.stack == 'ci':
         opts=pulumi.ResourceOptions(depends_on=[vpc]),
         **db_opts,
     )
+else:
+    db = None
 
 # Create a Fargate cluster
 backend_fargate_opts = resources['tb:fargate:FargateClusterWithLogging']['backend']
@@ -209,4 +212,30 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     project=project,
     notify_emails=monitoring_opts['notify_emails'],
     config=monitoring_opts,
+)
+
+sap_deps = [
+    pulumi_sm,
+    vpc,
+    sg_lb,
+    sg_container,
+    backend_fargate,
+    cf_func,
+    response_headers_policy,
+    frontend,
+]
+if db is not None:
+    sap_deps.append(db)
+if cloudflare_backend_record is not None:
+    sap_deps.append(cloudflare_backend_record)
+if route53_backend_record is not None:
+    sap_deps.append(route53_backend_record)
+if cloudflare_frontend_record is not None:
+    sap_deps.append(cloudflare_frontend_record)
+if route53_frontend_record is not None:
+    sap_deps.append(route53_frontend_record)
+stack_access_policies = tb_pulumi.iam.StackAccessPolicies(
+    name=f'{project.name_prefix}-sap',
+    project=project,
+    opts=pulumi.ResourceOptions(depends_on=sap_deps),
 )

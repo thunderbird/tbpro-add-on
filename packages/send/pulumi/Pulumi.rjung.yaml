@@ -1,0 +1,24 @@
+encryptionsalt: v1:W5DuE8Avoxw=:v1:QTjqYCDGMGQodTHx:bbWo2KR6uMzkKblCqMdE5jjddlAsUA==
+config:
+  send-suite:b2-application-key:
+    secure: v1:7MTe9yDlzQ/l1nei:Fi8O+oKsyfe6OOH8JRhckq0kEwRk+PoAX9MzT+MauA==
+  send-suite:b2-application-key-id:
+    secure: v1:WezQQtHYIaveUfMj:4P01luk0vmTPUFqUKjeJF8OooepxViVX4dVCtb72Sg==
+  send-suite:fxa-allow-list:
+    secure: v1:eKhUsRnro6CNZJXk:X4J9kkzZSAzg8/1Jg8zr2nxi6642JSjYQMAlg9wwyg==
+  send-suite:fxa-client-id:
+    secure: v1:g5WKKZgIlevtFIBn:rQXIuch4yITARXqx2u72CU5gt9RzA4C/A14A7ubaMA==
+  send-suite:fxa-client-secret:
+    secure: v1:AtPbXsnVUhNIJJL8:h105bmuFaHdQ+cTfN0vYmUQCesky4KE18pqS4NYvtQ==
+  send-suite:posthog-api-key:
+    secure: v1:Tshot0lU12HniDV/:8kPnhQ6Hwsiwe0vL59OWv1EDHD9LEiKlhKUG2w0pbA==
+  send-suite:sentry-auth-token:
+    secure: v1:cuX5n0717x2jc3Ft:oSdwMEbMh6j6V+dez89I74z3bLEh4srUhvCegQWTBA==
+  send-suite:jwt-access-token-secret:
+    secure: v1:KpImE5dZbttLZsgI:a47wd5C0GxKm9k3QADDdZjGOhZPB5dU4irIgDOa8wA==
+  send-suite:jwt-refresh-token-secret:
+    secure: v1:8r5mi92qttwGj5AH:I1JZplCmWYfXTFtyRFpS6ptahLv7GEzlSqbrkuTsxg==
+  send-suite:database-url:
+    secure: v1:zPtjhzyEC5lKVhlM:INZc6G5KJfVLSKk8zyuyTrwZ0Vk7T/LwzplRLjJb+A==
+  send-suite:route53_zone_id:
+    secure: v1:o8h1wlStaiqq4Z3U:iXbJEl/H91eDFyb8QQ2Apfg3ekfFmWk5uBjuMj01pxd2/iXo

@@ -1,17 +1,21 @@
 ---
+# This defines the ci environment. The ci environment is not to be considered stable, as it is used
+# to test validity of changes to Pulumi code and as a breakable/fixable ci environment.
+
 resources:
   domains:
-    backend: send-backend-stage.tb.pro
-    frontend: send-stage.tb.pro
+    backend: lockbox-rjung.thunderbird.dev
+    frontend: send-rjung.thunderbird.dev
 
   tb:network:MultiCidrVpc:
     vpc:
-      cidr_block: 10.31.0.0/16
+      cidr_block: 10.32.0.0/16 # Very roomy total of 65,536 available IPs
       subnets:
+        # Split into two subnets with exactly half the IPs (32,768) each
         us-east-1a:
-          - 10.31.0.0/17
+          - 10.32.0.0/17
         us-east-1b:
-          - 10.31.128.0/17
+          - 10.32.128.0/17
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
       enable_internet_gateway: True
@@ -55,23 +59,31 @@ resources:
 
   tb:secrets:PulumiSecretsManager:
     pulumi:
-      recovery_window_in_days: 0
       secret_names:
         - b2-application-key-id
         - b2-application-key
         - database-url
+        - jwt-access-token-secret
+        - jwt-refresh-token-secret
         - fxa-allow-list
         - fxa-client-id
         - fxa-client-secret
-        - jwt-access-token-secret
-        - jwt-refresh-token-secret
         - posthog-api-key
         - sentry-auth-token
+      recovery_window_in_days: 0
+
+  tb:rds:RdsDatabaseGroup:
+    rjung:
+      skip_final_snapshot: True
+      build_jumphost: False
+      jumphost_public_key: ""
+      jumphost_source_cidrs: []
+      secret_recovery_window_in_days: 0
 
   tb:fargate:FargateClusterWithLogging:
     backend:
-      desired_count: 1
       assign_public_ip: True
+      desired_count: 1
       ecr_resources:
         - arn:aws:ecr:us-east-1:768512802988:repository/send*
       health_check_grace_period_seconds: 60
@@ -80,24 +92,26 @@ resources:
         send-suite:
           listener_port: 443
           listener_proto: HTTPS
-          listener_cert_arn: arn:aws:acm:us-east-1:768512802988:certificate/10824889-81a4-44d8-b34a-f47d67e5c0c8
+          listener_cert_arn: arn:aws:acm:us-east-1:768512802988:certificate/11c5564d-0fb0-4ac3-b91b-c5dc6f1f817a
           container_port: 8080
           container_name: backend
           # "name" field is arbitrary, but must be unique and no longer than 32 chars
-          name: send-suite-stage-api
+          name: send-suite-rjung-api
           health_check:
             healthy_threshold: 2
             unhealthy_threshold: 5
-            interval: 30
+            interval: 15
       task_definition:
         network_mode: awsvpc
-        cpu: 1024
-        memory: 4096
+        # Adjust sizing as necessary; 256 cpu/512 ram are minimum values. Values must match listings in the table here:
+        # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size
+        cpu: 512
+        memory: 1024
         requires_compatibilities:
           - FARGATE
         container_definitions:
           backend:
-            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:a110111cc870f6e026306542667a7de0c93e756a
+            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:d9d212cf94a4135175da1e795c75e2addc66e07f
             portMappings:
               - name: send-suite
                 containerPort: 8080
@@ -113,34 +127,34 @@ resources:
               initProcessEnabled: True
             secrets:
               - name: B2_APPLICATION_KEY
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/b2-application-key-kiZKik
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/b2-application-key-W8anDq
               - name: B2_APPLICATION_KEY_ID
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/b2-application-key-id-safviQ
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/b2-application-key-id-2XaCVn
               - name: DATABASE_URL
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/database-url-NQNiWw
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/database-url-Bjb0pI
               - name: FXA_ALLOW_LIST
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/fxa-allow-list-3E2Nq6
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/fxa-allow-list-DQf2Xp
               - name: FXA_CLIENT_ID
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/fxa-client-id-rOfd3E
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/fxa-client-id-3Vpjlh
               - name: FXA_CLIENT_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/fxa-client-secret-LH2cAZ
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/fxa-client-secret-i5Z47w
               - name: POSTHOG_API_KEY
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/posthog-api-key-Lk5pT9
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/posthog-api-key-QSay4K
               - name: SENTRY_AUTH_TOKEN
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/sentry-auth-token-a1LR5x
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/sentry-auth-token-H2d0hi
               - name: ACCESS_TOKEN_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/jwt-access-token-secret-Ez9Epl
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/jwt-access-token-secret-8S81TY
               - name: REFRESH_TOKEN_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/stage/jwt-refresh-token-secret-CPuCOH
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/rjung/jwt-refresh-token-secret-FDUqZm
             environment:
               - name: B2_BUCKET_NAME
-                value: tb-send-suite-stage-object-store
+                value: tb-send-suite-rjung-object-store
               - name: B2_ENDPOINT
                 value: https://s3.us-east-005.backblazeb2.com
               - name: B2_REGION
                 value: auto
               - name: BASE_URL
-                value: https://send-backend-stage.tb.pro/
+                value: https://lockbox-rjung.thunderbird.dev/
               - name: COMBINED_LOG
                 value: logs/combined.log
               - name: DEVELOPER_TIMEZONE
@@ -158,13 +172,13 @@ resources:
               - name: FXA_MOZ_ISSUER
                 value: https://accounts.stage.mozaws.net
               - name: FXA_REDIRECT_URI
-                value: https://send-backend-stage.tb.pro/lockbox/fxa
+                value: https://lockbox-rjung.thunderbird.dev/lockbox/fxa
               - name: NODE_ENV
-                value: production
+                value: dev
               - name: POSTHOG_HOST
                 value: https://us.i.posthog.com
               - name: SEND_BACKEND_CORS_ORIGINS
-                value: https://send-stage.tb.pro
+                VALUE: https://send-rjung.thunderbird.dev
               - name: SENTRY_DSN
                 value: https://85b7b08be94b8991ed121578d807f755@o4505428107853824.ingest.us.sentry.io/4507567071232000
               - name: SENTRY_ORG
@@ -176,12 +190,13 @@ resources:
 
   tb:cloudfront:CloudFrontS3Service:
     frontend:
-      service_bucket_name: tb-send-suite-stage-frontend
-      certificate_arn: arn:aws:acm:us-east-1:768512802988:certificate/97666a05-2eb2-47cc-b1c2-22a1f3efbe31
+      forcibly_destroy_buckets: True
+      service_bucket_name: tb-send-suite-rjung-frontend
+      certificate_arn: arn:aws:acm:us-east-1:768512802988:certificate/9bfb788a-8ce9-4375-ad15-ea1e0c4b3eae
       distribution:
         aliases:
-          - send-stage.tb.pro
-        comment: send-suite stage frontend
+          - send-rjung.thunderbird.dev
+        comment: send-suite rjung frontend
         logging_config:
           include_cookies: True
 
@@ -190,34 +205,6 @@ resources:
     notify_emails:
       - rjung+cloudwatch@thunderbird.net
     # alarms:
-    #   send-suite-stage-fargate-service:
-    #     cpu_utilization:
-    #       enabled: False
-    #       threshold: 80
-
-  tb:ci:AwsAutomationUser:
-    ci:
-      additional_policies:
-        - arn:aws:iam::768512802988:policy/send-suite-ci-frontend-cache-invalidation
-        - arn:aws:iam::768512802988:policy/send-suite-stage-frontend-cache-invalidation
-        - arn:aws:iam::768512802988:policy/send-suite-prod-frontend-cache-invalidation
-      enable_ecr_image_push: true
-      ecr_repositories:
-        - send
-      enable_fargate_deployments: true
-      fargate_clusters:
-        - send-suite-ci-fargate
-        - send-suite-stage-fargate
-        - send-suite-prod-fargate
-      fargate_task_role_arns:
-        - arn:aws:iam::768512802988:role/send-suite-ci-fargate
-        - arn:aws:iam::768512802988:role/send-suite-stage-fargate
-        - arn:aws:iam::768512802988:role/send-suite-prod-fargate
-      enable_full_s3_access: true
-      s3_full_access_buckets:
-        - tb-send-suite-pulumi
-      enable_s3_bucket_upload: true
-      s3_upload_buckets:
-        - tb-send-suite-ci-frontend
-        - tb-send-suite-stage-frontend
-        - tb-send-suite-prod-frontend
+    #   send-suite-rjung-fargate-fargateservicealb-alb-send-suite:
+    #     target_5xx:
+    #       threshold: 1000
