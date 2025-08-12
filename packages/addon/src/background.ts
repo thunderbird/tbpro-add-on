@@ -29,21 +29,41 @@ console.log('hello from the background.js!', new Date().getTime());
 // ==============================================
 // Initialize the cloudFile accounts, keychain, and stores.
 (async () => {
-  const allAccounts = await browser.cloudFile.getAllAccounts();
-  if (allAccounts.length > 0) {
-    for (const { id } of allAccounts) {
-      console.log(`[background.td] passing ${id} to configureExtension()`);
-      await configureExtension(id);
+  try {
+    const allAccounts = await browser.cloudFile.getAllAccounts();
+    if (allAccounts.length > 0) {
+      for (const { id } of allAccounts) {
+        console.log(`[background.td] passing ${id} to configureExtension()`);
+        await configureExtension(id);
+      }
+    } else {
+      for (let i = 0; i < 100; i++) {
+        await configureExtension(`account${i}`);
+      }
     }
-  } else {
-    for (let i = 0; i < 100; i++) {
-      await configureExtension(`account${i}`);
-    }
+  } catch (error) {
+    console.warn('Error configuring cloudFile:', error);
   }
 
-  await restoreKeysUsingLocalStorage(keychain, api);
-  await init(userStore, keychain, folderStore);
-})();
+  try {
+    await restoreKeysUsingLocalStorage(keychain, api);
+  } catch (error) {
+    console.warn(
+      'Error restoring keys from local storage on background.js:',
+      error
+    );
+  }
+  try {
+    await init(userStore, keychain, folderStore);
+  } catch (error) {
+    console.warn(
+      'Error during initialization of userStore, keychain, folderStore:',
+      error
+    );
+  }
+})().catch((error) => {
+  console.error('Error initializing background.js', error);
+});
 
 browser.webRequest.onBeforeSendHeaders.addListener(
   (details) => {

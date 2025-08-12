@@ -1,18 +1,9 @@
 <script setup lang="ts">
-import SendManagement from 'send-frontend/src/apps/send/ManagementPage.vue';
-import logger from 'send-frontend/src/logger';
-import { logger as sharedLogger } from 'tbpro-shared';
-import { onMounted, ref } from 'vue';
+import SendDashboardView from '@send-frontend/apps/send/views/SendDashboardView.vue';
+import { ref } from 'vue';
 
 const showSend = ref(true);
 const showAssist = ref(false);
-
-onMounted(() => {
-  // check that imports from send-frontend work
-  logger.info('ManagementPage mounted logging frontend');
-  // check that imports from tbpro-shared work
-  sharedLogger.info('ManagementPage mounted logging shared');
-});
 </script>
 
 <template>
@@ -41,7 +32,7 @@ onMounted(() => {
   </div>
 
   <div v-if="showSend" data-testid="send-section">
-    <SendManagement />
+    <SendDashboardView />
   </div>
 
   <div v-if="showAssist" data-testid="assist-section">

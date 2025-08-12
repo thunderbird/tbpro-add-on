@@ -1,44 +1,61 @@
 <script setup lang="ts">
-import ButtonComponent from 'send-frontend/src/apps/send/elements/BtnComponent.vue';
-import LogOutButton from 'send-frontend/src/apps/send/elements/LogOutButton.vue';
-import { useAuth } from 'send-frontend/src/lib/auth';
+import { BASE_URL } from '@send-frontend/apps/common/constants';
+import LoadingComponent from '@send-frontend/apps/common/LoadingComponent.vue';
+import LogOutButton from '@send-frontend/apps/send/elements/LogOutButton.vue';
+import { useAuth } from '@send-frontend/lib/auth';
+import AuthButtons from '@send-frontend/lib/auth/AuthButtons.vue';
 import {
   useAuthStore,
   useUserStore as useUserStoreSend,
-} from 'send-frontend/src/stores';
+} from '@send-frontend/stores';
 import AdminPage from './AdminPage.vue';
 
 const authStore = useAuthStore();
 const { clearUserFromStorage: clearUser_send } = useUserStoreSend();
-const { isLoggedIn, refetchAuth, logOutAuth } = useAuth();
-const { loginToMozAccount } = authStore;
+const { isLoggedIn, refetchAuth, logOutAuth, isLoadingAuth } = useAuth();
+const { loginToOIDC, loginToMozAccount } = authStore;
 
 const handleLogout = async () => {
   await logOutAuth();
   await clearUser_send();
 };
 
-async function finishLogin() {
-  await refetchAuth();
+async function _loginToMozAccount() {
+  loginToMozAccount({ onSuccess: refetchAuth });
 }
 
-async function _loginToMozAccount() {
-  loginToMozAccount({ onSuccess: finishLogin });
+async function _loginToOIDC() {
+  loginToOIDC({ onSuccess: refetchAuth, isExtension: true });
+}
+
+function _loginToOIDCForExtension() {
+  const managementUrl = `${BASE_URL}/login?isExtension=true`;
+  window.open(
+    managementUrl,
+    '_blank',
+    'width=800,height=600,scrollbars=yes,resizable=yes'
+  );
 }
 </script>
 
 <template>
-  <ButtonComponent
-    v-if="!isLoggedIn"
-    primary
-    data-testid="login-button"
-    @click.prevent="_loginToMozAccount"
-    >Login</ButtonComponent
-  >
+  <div class="container">
+    <LoadingComponent v-if="isLoadingAuth" />
+    <div v-else>
+      <div v-if="!isLoggedIn">
+        <AuthButtons
+          :is-extension="true"
+          :login-to-moz-account="_loginToMozAccount"
+          :login-to-oidc="_loginToOIDC"
+          :login-to-oidc-for-extension="_loginToOIDCForExtension"
+        />
+      </div>
 
-  <log-out-button v-if="isLoggedIn" :log-out="handleLogout" />
+      <log-out-button v-if="isLoggedIn" :log-out="handleLogout" />
 
-  <AdminPage v-if="isLoggedIn" />
+      <AdminPage v-if="isLoggedIn" />
+    </div>
+  </div>
 </template>
 
 <style scoped>
