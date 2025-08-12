@@ -50,7 +50,10 @@ done
 echo "Vite dev server is ready"
 
 # Run integration tests for send-backend
-docker compose exec -T backend pnpx vitest run --config vitest.integration.config.js
+echo "Installing vitest with npm"
+docker compose exec -T backend npm install vitest
+echo "Running vitest"
+docker compose exec -T backend npx vitest run --config vitest.integration.config.js
 VITEST_EXIT_CODE=$?
 
 if [ $VITEST_EXIT_CODE -ne 0 ]; then

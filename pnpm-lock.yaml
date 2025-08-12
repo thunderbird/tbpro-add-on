@@ -146,7 +146,11 @@ importers:
         version: 6.1.1
       send-frontend:
         specifier: workspace:*
+<<<<<<< HEAD
         version: link:../send/frontend
+=======
+        version: file:packages/send/frontend(@trpc/server@11.0.1(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.8.4)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(encoding@0.1.13)(focus-trap@7.6.4)(typescript@5.8.3)
+>>>>>>> main
       tbpro-shared:
         specifier: workspace:*
         version: link:../shared
@@ -158,7 +162,11 @@ importers:
         version: 3.5.18(typescript@5.8.3)
       vue-final-modal:
         specifier: ^4.5.5
+<<<<<<< HEAD
         version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.18(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.11.0)(focus-trap@7.6.4)(vue@3.5.18(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.18(typescript@5.8.3))
+=======
+        version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.8.4)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3))
+>>>>>>> main
       vue-router:
         specifier: ^4.5.1
         version: 4.5.1(vue@3.5.18(typescript@5.8.3))
@@ -549,6 +557,9 @@ importers:
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
+      oidc-client-ts:
+        specifier: ^3.3.0
+        version: 3.3.0
       pinia:
         specifier: ^2.3.1
         version: 2.3.1(typescript@5.8.3)(vue@3.5.18(typescript@5.8.3))
@@ -569,7 +580,11 @@ importers:
         version: 3.5.18(typescript@5.8.3)
       vue-final-modal:
         specifier: ^4.5.5
+<<<<<<< HEAD
         version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.18(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.11.0)(focus-trap@7.6.4)(vue@3.5.18(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.18(typescript@5.8.3))
+=======
+        version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.8.4)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3))
+>>>>>>> main
       vue-router:
         specifier: ^4.5.1
         version: 4.5.1(vue@3.5.18(typescript@5.8.3))
@@ -4479,6 +4494,10 @@ packages:
   jws@3.2.2:
     resolution: {integrity: sha512-YHlZCB6lMTllWDtSPHz/ZXTsi8S00usEV6v1tjq8tOUZzw7DpSDWVXjXDre6ed1w/pd495ODpHZYSdkRTsa0HA==}
 
+  jwt-decode@4.0.0:
+    resolution: {integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==}
+    engines: {node: '>=18'}
+
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
@@ -5009,6 +5028,10 @@ packages:
   object-inspect@1.13.4:
     resolution: {integrity: sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==}
     engines: {node: '>= 0.4'}
+
+  oidc-client-ts@3.3.0:
+    resolution: {integrity: sha512-t13S540ZwFOEZKLYHJwSfITugupW4uYLwuQSSXyKH/wHwZ+7FvgHE7gnNJh1YQIZ1Yd1hKSRjqeXGSUtS0r9JA==}
+    engines: {node: '>=18'}
 
   oidc-token-hash@5.1.0:
     resolution: {integrity: sha512-y0W+X7Ppo7oZX6eovsRkuzcSM40Bicg2JEJkDJ4irIt1wsYAP5MLSNv+QAogO8xivMffw/9OvV3um1pxXgt1uA==}
@@ -5929,6 +5952,7 @@ packages:
   supertest@7.1.4:
     resolution: {integrity: sha512-tjLPs7dVyqgItVFirHYqe2T+MfWc2VOBQ8QFKKbWTA3PU7liZR8zoSpAi/C1k1ilm9RsXIKYf197oap9wXGVYg==}
     engines: {node: '>=14.18.0'}
+    deprecated: Please upgrade to supertest v7.1.3+, see release notes at https://github.com/forwardemail/supertest/releases/tag/v7.1.3 - maintenance is supported by Forward Email @ https://forwardemail.net
 
   supports-color@5.5.0:
     resolution: {integrity: sha512-QjVjwdXIt408MIiAqCX4oUKsgU2EqAGzs2Ppkm4aQYbjm+ZEWEcW4SfFNTr4uMNZma0ey4f5lgLrkB0aX0QMow==}
@@ -9631,7 +9655,11 @@ snapshots:
       '@vueuse/shared': 13.0.0(vue@3.5.18(typescript@5.8.3))
       vue: 3.5.18(typescript@5.8.3)
 
+<<<<<<< HEAD
   '@vueuse/integrations@13.0.0(axios@1.11.0)(focus-trap@7.6.4)(vue@3.5.18(typescript@5.8.3))':
+=======
+  '@vueuse/integrations@13.0.0(axios@1.8.4)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))':
+>>>>>>> main
     dependencies:
       '@vueuse/core': 13.0.0(vue@3.5.18(typescript@5.8.3))
       '@vueuse/shared': 13.0.0(vue@3.5.18(typescript@5.8.3))
@@ -9639,6 +9667,7 @@ snapshots:
     optionalDependencies:
       axios: 1.11.0
       focus-trap: 7.6.4
+      jwt-decode: 4.0.0
 
   '@vueuse/metadata@10.11.1': {}
 
@@ -11315,6 +11344,8 @@ snapshots:
       jwa: 1.4.2
       safe-buffer: 5.2.1
 
+  jwt-decode@4.0.0: {}
+
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
@@ -12028,6 +12059,10 @@ snapshots:
 
   object-inspect@1.13.4: {}
 
+  oidc-client-ts@3.3.0:
+    dependencies:
+      jwt-decode: 4.0.0
+
   oidc-token-hash@5.1.0: {}
 
   on-finished@2.4.1:
@@ -12674,7 +12709,47 @@ snapshots:
 
   semver@6.3.1: {}
 
+<<<<<<< HEAD
   semver@7.7.2: {}
+=======
+  semver@7.7.1: {}
+
+  send-frontend@file:packages/send/frontend(@trpc/server@11.0.1(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.8.4)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(encoding@0.1.13)(focus-trap@7.6.4)(typescript@5.8.3):
+    dependencies:
+      '@scure/bip39': 1.5.4
+      '@sentry/vite-plugin': 2.23.0(encoding@0.1.13)
+      '@sentry/vue': 8.55.0(pinia@2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3)))(vue@3.5.13(typescript@5.8.3))
+      '@tabler/icons-vue': 2.47.0(vue@3.5.13(typescript@5.8.3))
+      '@tanstack/vue-query': 5.72.1(vue@3.5.13(typescript@5.8.3))
+      '@thunderbirdops/services-ui': 0.6.9(typescript@5.8.3)
+      '@trpc/client': 11.0.1(@trpc/server@11.0.1(typescript@5.8.3))(typescript@5.8.3)
+      '@types/ua-parser-js': 0.7.39
+      dayjs: 1.11.13
+      floating-vue: 5.2.2(vue@3.5.13(typescript@5.8.3))
+      get-random-values: 3.0.0
+      install: 0.13.0
+      jszip: 3.10.1
+      pinia: 2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
+      posthog-js: 1.235.0
+      pretty-bytes: 6.1.1
+      tbpro-shared: file:packages/shared
+      ua-parser-js: 1.0.40
+      vue: 3.5.13(typescript@5.8.3)
+      vue-final-modal: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.8.4)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3))
+      vue-router: 4.5.0(vue@3.5.13(typescript@5.8.3))
+    transitivePeerDependencies:
+      - '@nuxt/kit'
+      - '@rrweb/types'
+      - '@trpc/server'
+      - '@vue/composition-api'
+      - '@vueuse/core'
+      - '@vueuse/integrations'
+      - encoding
+      - focus-trap
+      - rrweb-snapshot
+      - supports-color
+      - typescript
+>>>>>>> main
 
   send@0.19.0:
     dependencies:
@@ -13457,8 +13532,26 @@ snapshots:
 
   vue-final-modal@4.5.5(@vueuse/core@10.11.1(vue@3.5.18(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.11.0)(focus-trap@7.6.4)(vue@3.5.18(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.18(typescript@5.8.3)):
     dependencies:
+<<<<<<< HEAD
       '@vueuse/core': 10.11.1(vue@3.5.18(typescript@5.8.3))
       '@vueuse/integrations': 13.0.0(axios@1.11.0)(focus-trap@7.6.4)(vue@3.5.18(typescript@5.8.3))
+=======
+      debug: 4.4.0(supports-color@5.5.0)
+      eslint: 9.24.0(jiti@1.21.7)
+      eslint-scope: 7.2.2
+      eslint-visitor-keys: 3.4.3
+      espree: 9.6.1
+      esquery: 1.6.0
+      lodash: 4.17.21
+      semver: 7.7.1
+    transitivePeerDependencies:
+      - supports-color
+
+  vue-final-modal@4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.8.4)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3)):
+    dependencies:
+      '@vueuse/core': 10.11.1(vue@3.5.13(typescript@5.8.3))
+      '@vueuse/integrations': 13.0.0(axios@1.8.4)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))
+>>>>>>> main
       focus-trap: 7.6.4
       vue: 3.5.18(typescript@5.8.3)
 

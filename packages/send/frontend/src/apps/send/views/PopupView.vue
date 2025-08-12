@@ -62,14 +62,14 @@ async function uploadAndShare() {
   isError.value = false;
   let uploadedItems = [];
 
+  const rootFolderId = await folderStore.getDefaultFolderId();
+
   for (const file of files.value) {
     try {
       // Note: folderStore.uploadItem returns an Array
       const itemObjArray = await folderStore.uploadItem(
-        // TO-DO: We should fix this type
-        // @ts-ignore
         file.data,
-        folderStore.defaultFolder.id,
+        rootFolderId,
         api
       );
 

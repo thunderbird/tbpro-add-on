@@ -56,10 +56,6 @@ vi.mock('@send-frontend/lib/helpers', async (importOriginal) => {
 });
 // ===================================================
 
-downloadMock.mockImplementation(() => {
-  return new Blob([encryptedArrayBuffer]);
-});
-
 describe(`Filesync`, () => {
   const restHandlers = [
     http.get(`${API_URL}/uploads/${UPLOAD_ID}/metadata`, async () =>
@@ -74,80 +70,80 @@ describe(`Filesync`, () => {
     ),
   ];
 
+  const server = setupServer(...restHandlers);
+
   beforeAll(() => {
     server.listen();
   });
   afterEach(() => {
     server.resetHandlers();
+    vi.restoreAllMocks();
   });
   beforeEach(() => {
     setActivePinia(createPinia());
+    downloadMock.mockClear();
+    downloadMock.mockImplementation(({ progressTracker }) => {
+      // Simulate the download process
+      if (progressTracker) {
+        progressTracker.setProgress(100);
+      }
+      return Promise.resolve(new Blob([encryptedArrayBuffer]));
+    });
   });
   afterAll(() => {
     server.close();
   });
 
-  const server = setupServer(...restHandlers);
-
-  describe(`getBlob`, async () => {
+  describe(`getBlob`, () => {
     it(`should download and decrypt the upload`, async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch');
       const { api } = useApiStore.default();
       const progress = mockProgressTracker;
 
-      expect(async () => {
-        const result = await getBlob(
-          UPLOAD_ID,
-          metadata.size,
-          key,
-          isBucketStorage,
-          fileName,
-          metadata.type,
-          api,
-          progress
-        );
-        expect(result).toBe(undefined);
-      }).not.toThrow();
-
-      expect(fetchSpy).toBeCalledTimes(1);
-      expect(fetchSpy).toBeCalledWith(
-        `${API_URL}/download/${UPLOAD_ID}/signed`,
-        expect.objectContaining({
-          method: 'GET',
-        })
+      const result = await getBlob(
+        UPLOAD_ID,
+        metadata.size,
+        key,
+        isBucketStorage,
+        fileName,
+        metadata.type,
+        api,
+        progress
       );
+      expect(result).toBe(undefined);
+
+      // Verify the download mock was called
+      expect(downloadMock).toHaveBeenCalledTimes(1);
+      expect(downloadMock).toHaveBeenCalledWith({
+        url: bucketUrl,
+        progressTracker: progress,
+      });
     });
 
     it(`should download and decrypt the upload when no key is provided`, async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch');
       const { api } = useApiStore.default();
       const progress = mockProgressTracker;
 
-      expect(async () => {
-        const result = await getBlob(
-          UPLOAD_ID,
-          metadata.size,
-          undefined,
-          isBucketStorage,
-          fileName,
-          metadata.type,
-          api,
-          progress
-        );
-        expect(result).toBe(undefined);
-      }).not.toThrow();
-
-      expect(fetchSpy).toBeCalledTimes(1);
-      expect(fetchSpy).toBeCalledWith(
-        `${API_URL}/download/${UPLOAD_ID}/signed`,
-        expect.objectContaining({
-          method: 'GET',
-        })
+      const result = await getBlob(
+        UPLOAD_ID,
+        metadata.size,
+        undefined,
+        isBucketStorage,
+        fileName,
+        metadata.type,
+        api,
+        progress
       );
+      expect(result).toBe(undefined);
+
+      // Verify the download mock was called
+      expect(downloadMock).toHaveBeenCalledTimes(1);
+      expect(downloadMock).toHaveBeenCalledWith({
+        url: bucketUrl,
+        progressTracker: progress,
+      });
     });
 
     it(`should throw an error if the bucket url is null`, async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch');
       server.use(
         http.get(`${API_URL}/download/${UPLOAD_ID}/signed`, async () =>
           HttpResponse.json({ url: null })
@@ -156,8 +152,8 @@ describe(`Filesync`, () => {
       const { api } = useApiStore.default();
       const progress = mockProgressTracker;
 
-      expect(async () => {
-        await getBlob(
+      await expect(
+        getBlob(
           UPLOAD_ID,
           metadata.size,
           key,
@@ -166,29 +162,21 @@ describe(`Filesync`, () => {
           metadata.type,
           api,
           progress
-        );
-      }).rejects.toThrowError('BUCKET_URL_NOT_FOUND');
-
-      expect(fetchSpy).toBeCalledWith(
-        `${API_URL}/download/${UPLOAD_ID}/signed`,
-        expect.objectContaining({
-          method: 'GET',
-        })
-      );
+        )
+      ).rejects.toThrowError('BUCKET_URL_NOT_FOUND');
     });
 
-    it(`should throw an error if the bucket url is null`, async () => {
+    it(`should throw an error if the signed request fails`, async () => {
       server.use(
         http.get(`${API_URL}/download/${UPLOAD_ID}/signed`, async () =>
           HttpResponse.error()
         )
       );
-      const fetchSpy = vi.spyOn(global, 'fetch');
       const { api } = useApiStore.default();
       const progress = mockProgressTracker;
 
-      expect(async () => {
-        await getBlob(
+      await expect(
+        getBlob(
           UPLOAD_ID,
           metadata.size,
           key,
@@ -197,22 +185,14 @@ describe(`Filesync`, () => {
           metadata.type,
           api,
           progress
-        );
-      }).rejects.toThrowError('BUCKET_URL_NOT_FOUND');
-
-      expect(fetchSpy).toBeCalledWith(
-        `${API_URL}/download/${UPLOAD_ID}/signed`,
-        expect.objectContaining({
-          method: 'GET',
-        })
-      );
+        )
+      ).rejects.toThrow();
     });
 
     it(`should throw an error if the file cannot be downloaded`, async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch');
-      // Spy on XMLHttpRequest's open method
+      // Mock download to reject with an error
       downloadMock.mockImplementation(() => {
-        return Promise.reject('DOWNLOAD ERROR');
+        throw new Error('DOWNLOAD ERROR');
       });
 
       const { api } = useApiStore.default();
@@ -225,8 +205,8 @@ describe(`Filesync`, () => {
         http.get(bucketUrl, async () => HttpResponse.error())
       );
 
-      expect(async () => {
-        await getBlob(
+      await expect(
+        getBlob(
           UPLOAD_ID,
           metadata.size,
           key,
@@ -235,15 +215,8 @@ describe(`Filesync`, () => {
           metadata.type,
           api,
           progress
-        );
-      }).rejects.toThrowError('DOWNLOAD ERROR');
-
-      expect(fetchSpy).toBeCalledWith(
-        `${API_URL}/download/${UPLOAD_ID}/signed`,
-        expect.objectContaining({
-          method: 'GET',
-        })
-      );
+        )
+      ).rejects.toThrowError('DOWNLOAD ERROR');
     });
   });
 

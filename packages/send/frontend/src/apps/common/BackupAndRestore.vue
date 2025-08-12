@@ -59,12 +59,12 @@ const shouldOverrideVisibility = ref(false);
 const { mutate: resetKeys } = useMutation({
   mutationKey: ['resetKeys'],
   mutationFn: async () => {
-    await trpc.resetKeys.mutate();
+    return await trpc.resetKeys.mutate();
   },
   onSuccess: async () => {
-    await logOutAuth();
-    // Make sure we clear the user from storage
+    // We should clear local storage first and then handle logout
     await clearUserFromStorage();
+    await logOutAuth();
     window.location.reload();
   },
 });

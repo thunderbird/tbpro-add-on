@@ -7,6 +7,7 @@ import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
 import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
+import { BASE_URL } from '@send-frontend/apps/common/constants';
 import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
 import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
 import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
@@ -15,6 +16,7 @@ import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { useAuth } from '@send-frontend/lib/auth';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
 import { validateToken } from '@send-frontend/lib/validations';
+import { useConfigStore } from '@send-frontend/stores';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
@@ -34,11 +36,12 @@ const { api } = useApiStore();
 const folderStore = useFolderStore();
 const { validators } = useStatusStore();
 const { configureExtension } = useExtensionStore();
+const { isExtension } = useConfigStore();
 const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 const { isLoggedIn } = useAuth();
 const authStore = useAuthStore();
-const { loginToMozAccount } = authStore;
+const { loginToOIDC, loginToMozAccount } = authStore;
 
 const loginFailureMessage = ref(null);
 
@@ -106,8 +109,21 @@ async function finishLogin() {
   isLoggedIn.value = true;
 }
 
+async function _loginToOIDC() {
+  loginToOIDC({ onSuccess: finishLogin, isExtension });
+}
+
 async function _loginToMozAccount() {
   loginToMozAccount({ onSuccess: finishLogin });
+}
+
+function openExtensionManagement() {
+  const managementUrl = `${BASE_URL}/login?isExtension=true`;
+  window.open(
+    managementUrl,
+    '_blank',
+    'width=800,height=600,scrollbars=yes,resizable=yes'
+  );
 }
 </script>
 
@@ -127,12 +143,26 @@ async function _loginToMozAccount() {
           <BackupAndRestore />
         </div>
 
-        <div v-else>
+        <div v-else class="flex flex-col items-start gap-4">
           <Btn
             primary
             data-testid="login-button"
             @click.prevent="_loginToMozAccount"
             >Log into Mozilla Account</Btn
+          >
+          <Btn
+            v-if="!isExtension"
+            primary
+            data-testid="login-button-tbpro"
+            @click.prevent="_loginToOIDC"
+            >Log in using your TB Pro Account</Btn
+          >
+          <Btn
+            v-if="isExtension"
+            secondary
+            data-testid="extension-management-button"
+            @click.prevent="openExtensionManagement"
+            >Open Extension Management</Btn
           >
         </div>
       </div>

@@ -39,7 +39,18 @@ const clientVersion = computed(() => data?.value?.clientVersion);
     <LoadingComponent />
   </div>
 
-  <div v-else-if="error" data-testid="error">Error: {{ error }}</div>
+  <div v-else-if="error" data-testid="error">
+    <div v-if="error?.message?.includes('Failed to fetch')">
+      <p>
+        Make sure you accept the self signed cert to use this app locally. You
+        can <a href="https://localhost:8088/">do it here</a>
+      </p>
+    </div>
+
+    <div v-else>
+      {{ error }}
+    </div>
+  </div>
 
   <div
     v-else-if="compatibility === 'FORCE_UPDATE'"
