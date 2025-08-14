@@ -206,46 +206,46 @@ example_vpc_subnets = [ subnet.id for subnet in vpc.resources['subnets'] ]
 
 # dynamic resource
 
-# new = NeonPrivateLinkResource(
-#     name = "send-ci-pl",
-#     project = project,
-#     aws_region = aws_region,
-#     neon_org_id = neon_org_id,
-#     neon_project_id = neon_project_id,
-#     neon_service_names = neon_service_names,
-#     aws_vpc_id = example_vpc_id,
-#     aws_vpc_subnet_ids = example_vpc_subnets,
-#     props = {},
-#     opts=pulumi.ResourceOptions(depends_on=[vpc])
-#     )
-
-neon_private_link_endpoint = aws.ec2.VpcEndpoint("send_ci_neon_private_link_endpoint",
-    service_name=neon_service_names[0],
-    subnet_ids=example_vpc_subnets,
-    vpc_endpoint_type="Interface",
-    vpc_id=example_vpc_id,
-    private_dns_enabled=True,
-    tags={
-        "Name": f"{project.name_prefix}-neon-private-link-endpoint",
-        "Project": project.name_prefix,
-        "Stack": project.stack,
-    },
+new = NeonPrivateLinkResource(
+    name = "send-ci-pl",
+    project = project,
+    aws_region = aws_region,
+    neon_org_id = neon_org_id,
+    neon_project_id = neon_project_id,
+    neon_service_names = neon_service_names,
+    aws_vpc_id = example_vpc_id,
+    aws_vpc_subnet_ids = example_vpc_subnets,
+    props = {},
     opts=pulumi.ResourceOptions(depends_on=[vpc])
-)
-project.resources['neon_private_link_endpoint'] = neon_private_link_endpoint
+    )
 
-neon_vpc_assignment = neon.VpcEndpointAssignment("send_ci_neon_vpc_assignment",
-    org_id=neon_org_id,
-    region_id="aws-us-east-1",
-    vpc_endpoint_id=neon_private_link_endpoint.id,
-    label="send-ci",
-    opts=pulumi.ResourceOptions(depends_on=[neon_private_link_endpoint])
-)
+# neon_private_link_endpoint = aws.ec2.VpcEndpoint("send_ci_neon_private_link_endpoint",
+#     service_name=neon_service_names[0],
+#     subnet_ids=example_vpc_subnets,
+#     vpc_endpoint_type="Interface",
+#     vpc_id=example_vpc_id,
+#     private_dns_enabled=True,
+#     tags={
+#         "Name": f"{project.name_prefix}-neon-private-link-endpoint",
+#         "Project": project.name_prefix,
+#         "Stack": project.stack,
+#     },
+#     opts=pulumi.ResourceOptions(depends_on=[vpc])
+# )
+# project.resources['neon_private_link_endpoint'] = neon_private_link_endpoint
 
-neon_vpc_endpoint_restriction = neon.VpcEndpointRestriction("send_ci_neon_vpc_endpoint_restriction",
-    project_id=neon_project_id,
-    vpc_endpoint_id=neon_private_link_endpoint.id,
-    label="send-ci",
-    opts=pulumi.ResourceOptions(depends_on=[neon_vpc_assignment])
-)
+# neon_vpc_assignment = neon.VpcEndpointAssignment("send_ci_neon_vpc_assignment",
+#     org_id=neon_org_id,
+#     region_id="aws-us-east-1",
+#     vpc_endpoint_id=neon_private_link_endpoint.id,
+#     label="send-ci",
+#     opts=pulumi.ResourceOptions(depends_on=[neon_private_link_endpoint])
+# )
+
+# neon_vpc_endpoint_restriction = neon.VpcEndpointRestriction("send_ci_neon_vpc_endpoint_restriction",
+#     project_id=neon_project_id,
+#     vpc_endpoint_id=neon_private_link_endpoint.id,
+#     label="send-ci",
+#     opts=pulumi.ResourceOptions(depends_on=[neon_vpc_assignment])
+# )
 
