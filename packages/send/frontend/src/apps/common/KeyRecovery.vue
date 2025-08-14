@@ -5,6 +5,7 @@ import { CopyIcon } from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import { useModal, useModalSlot } from 'vue-final-modal';
+import { useRouter } from 'vue-router';
 import ResetConfirmation from '../send/components/ResetConfirmation.vue';
 import DownloadIcon from './DownloadIcon.vue';
 import ResetModal from './modals/ResetModal.vue';
@@ -48,6 +49,7 @@ const { open, close: closefn } = useModal({
 });
 
 const { metrics } = useMetricsStore();
+const router = useRouter();
 
 const userSetPassword = ref('');
 const words = computed(() => wordsProp);
@@ -62,6 +64,10 @@ const submit = () => {
   metrics.capture('send.restore_keys_attempt', { type: 'attempt' });
   setPassphrase(userSetPassword.value);
   restoreFromBackup();
+};
+
+const handleRestoreFromDevice = () => {
+  router.push('/prompt-verification');
 };
 </script>
 
@@ -117,6 +123,16 @@ const submit = () => {
       type="text"
       data-testid="restore-key-input"
     />
+  </div>
+
+  <div v-if="shouldRestore" class="flex">
+    <button-component
+      primary
+      data-testid="restore-from-device"
+      @click.prevent="handleRestoreFromDevice"
+    >
+      Restore from device
+    </button-component>
   </div>
 
   <button-component

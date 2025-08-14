@@ -14,6 +14,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <router-view></router-view>
   <UserDashboard />
   <BackupAndRestore />
 </template>

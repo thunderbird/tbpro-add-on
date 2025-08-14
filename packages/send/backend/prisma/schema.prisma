@@ -246,3 +246,18 @@ model Login {
   fxasession String @id
   createdAt DateTime?
 }
+
+model Verification {
+  id       String   @id @default(uuid()) @unique @db.Uuid
+  createdAt  DateTime @default(now())
+  code     String   
+}
+
+model EncryptedPassphrase {
+  id       String   @id @default(uuid()) @unique @db.Uuid
+  createdAt DateTime @default(now())
+  encryptedPassphrase String
+  wrappedEncryptionKey String
+  salt     String
+  codeSalt String
+}

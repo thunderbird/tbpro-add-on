@@ -921,3 +921,12 @@ export async function backupKeys(
   msg.value = '✅ Backup complete';
   console.log('🔒 Backup complete');
 }
+
+export const getUUID = (): string => {
+  if (typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  } else {
+    // Fallback for environments that do not support crypto.randomUUID
+    return nodeCrypto.randomUUID();
+  }
+};

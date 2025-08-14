@@ -15,7 +15,7 @@ import useKeychainStore from '@send-frontend/stores/keychain-store';
 import { IS_DEV } from '@send-frontend/lib/clientConfig';
 import { getCanRetry } from '@send-frontend/lib/validations';
 
-import { useFolderStore } from '@send-frontend/stores';
+import { useConfigStore, useFolderStore } from '@send-frontend/stores';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import NotFoundPage from '../common/NotFoundPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
@@ -24,7 +24,10 @@ import ManagementPage from './ManagementPage.vue';
 import PostLoginPage from './PostLoginPage.vue';
 import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
+import PromptVerification from './pages/PromptVerification.vue';
+import VerifyPage from './pages/VerifyPage.vue';
 import { useStatusStore } from './stores/status-store';
+import { useVerificationStore } from './stores/verification-store';
 
 enum META_OPTIONS {
   redirectOnValidSession = 'redirectOnValidSession',
@@ -33,6 +36,7 @@ enum META_OPTIONS {
   requiresBackedUpKeys = 'requiresBackedUpKeys',
   requiresRetryCountCheck = 'requiresRetryCountCheck',
   resolveDefaultFolder = 'resolveDefaultFolder',
+  isAvailableForExtension = 'isAvailableForExtension',
 }
 
 export const routes: RouteRecordRaw[] = [
@@ -52,6 +56,24 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/post-login',
     component: PostLoginPage,
+  },
+  {
+    path: '/verify',
+    component: VerifyPage,
+    meta: {
+      [META_OPTIONS.requiresValidToken]: true,
+      [META_OPTIONS.autoRestoresKeys]: true,
+      [META_OPTIONS.requiresBackedUpKeys]: true,
+      [META_OPTIONS.isAvailableForExtension]: true,
+    },
+  },
+  {
+    path: '/prompt-verification',
+    component: PromptVerification,
+    meta: {
+      [META_OPTIONS.requiresValidToken]: true,
+      [META_OPTIONS.isAvailableForExtension]: true,
+    },
   },
   {
     path: '/send',
@@ -159,6 +181,8 @@ router.beforeEach(async (to, from, next) => {
   const { api } = useApiStore();
   const { validators } = useStatusStore();
   const { metrics } = useMetricsStore();
+  useVerificationStore();
+  const { isExtension } = useConfigStore();
 
   //  redirectOnValidSession - means that if the user has a session in local storage, they will be redirected to the Send page
 
@@ -174,6 +198,16 @@ router.beforeEach(async (to, from, next) => {
     to,
     META_OPTIONS.requiresRetryCountCheck
   );
+  const isAvailableForExtension = matchMeta(
+    to,
+    META_OPTIONS.isAvailableForExtension
+  );
+
+  // First we make sure that the extension routes are available for extension (if applicable)
+  if (isExtension && !isAvailableForExtension) {
+    // this route will render empty content inside the extension
+    console.log('Extension route not available:', to.path);
+  }
 
   const { hasLocalStorageSession, isTokenValid, hasBackedUpKeys } =
     await validators();
@@ -218,6 +252,7 @@ router.beforeEach(async (to, from, next) => {
       next(`/locked/${to.params.linkId}/`);
     }
   }
+
   next();
 });
 
