@@ -133,6 +133,12 @@ resources:
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/jwt-access-token-secret-oeDqPx
               - name: REFRESH_TOKEN_SECRET
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/jwt-refresh-token-secret-c5oqtD
+              - name: OIDC_CLIENT_ID
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/oidc-client-id-OZohe6
+              - name: OIDC_CLIENT_SECRET
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/oidc-client-secret-uEhcgI
+              - name: OIDC_TOKEN_INTROSPECTION_URL
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/oidc-token-introspection-url-yLf36X
             environment:
               - name: B2_BUCKET_NAME
                 value: tb-send-suite-prod-object-store
