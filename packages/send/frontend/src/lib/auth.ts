@@ -17,9 +17,10 @@ export function useAuth() {
   const { isLoggedIn } = storeToRefs(authStore);
 
   // Set up a query to validate the session token and update login status
-  const { refetch: refetchAuth } = useQuery({
+  const { refetch: refetchAuth, isLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => {
+      isLoggedIn.value = false;
       // Check OIDC authentication status first
       try {
         const user = await authStore.checkAuthStatus();
@@ -62,5 +63,6 @@ export function useAuth() {
     isLoggedIn,
     refetchAuth,
     logOutAuth,
+    isLoadingAuth: isLoading,
   };
 }

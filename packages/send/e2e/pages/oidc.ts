@@ -27,10 +27,9 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
   await otherPage.waitForURL("**/auth-stage.tb.pro/**");
   await otherPage.waitForLoadState("networkidle");
 
-  // A new otherPage will open for OIDC login, fill the form and submit
-  await otherPage.fill("#username", username, { force: true });
-  await otherPage.fill("#password", password, { force: true });
-  await otherPage.click('button[type="submit"]');
+  await otherPage.getByTestId("username-input").fill(username, { force: true });
+  await otherPage.getByTestId("password-input").fill(password, { force: true });
+  await otherPage.getByTestId("submit-btn").click();
 
   // Log out
   await otherPage.getByTestId("log-out-button").click();
