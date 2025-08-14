@@ -1,7 +1,6 @@
 <!-- eslint-disable no-undef -->
 <script setup lang="ts">
 import { BASE_URL } from '@send-frontend/apps/common/constants';
-
 import SendDashboardView from '@send-frontend/apps/send/views/SendDashboardView.vue';
 import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { useAuth } from '@send-frontend/lib/auth';
