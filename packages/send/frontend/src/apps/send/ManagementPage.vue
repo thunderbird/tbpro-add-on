@@ -1,8 +1,7 @@
 <!-- eslint-disable no-undef -->
 <script setup lang="ts">
 import { BASE_URL } from '@send-frontend/apps/common/constants';
-import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
-import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
+
 import SendDashboardView from '@send-frontend/apps/send/views/SendDashboardView.vue';
 import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { useAuth } from '@send-frontend/lib/auth';
@@ -11,18 +10,24 @@ import { useConfigStore } from '@send-frontend/stores';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
 import { useQuery } from '@tanstack/vue-query';
 import { ModalsContainer } from 'vue-final-modal';
+import { useRouter } from 'vue-router';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
 import LoadingComponent from '../common/LoadingComponent.vue';
+import { useMetricsUpdate } from '../common/mixins/metrics';
 import SecureSendIcon from '../common/SecureSendIcon.vue';
 import TBBanner from '../common/TBBanner.vue';
+import { useVerificationStore } from './stores/verification-store';
 
 const { isLoggedIn } = useAuth();
 const { finishLogin, loadLogin } = useSendConfig();
 const { isExtension } = useConfigStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 const authStore = useAuthStore();
+
+const router = useRouter();
 const { loginToOIDC, loginToMozAccount } = authStore;
+useVerificationStore();
 
 const { isLoading } = useQuery({
   queryKey: ['getLoginStatus'],
@@ -54,6 +59,7 @@ function _loginToOIDCForExtension() {
 
 <template>
   <div id="send-page" class="container">
+    <div>{{ router.currentRoute.value.path }}</div>
     <CompatibilityBoundary>
       <CompatibilityBanner />
       <TBBanner />
@@ -77,7 +83,6 @@ function _loginToOIDCForExtension() {
         </div>
       </div>
 
-      <FeedbackBox />
       <SecureSendIcon />
       <ModalsContainer />
     </CompatibilityBoundary>

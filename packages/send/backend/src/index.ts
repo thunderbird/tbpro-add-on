@@ -23,6 +23,7 @@ import sharing from './routes/sharing';
 import tags from './routes/tags';
 import uploads from './routes/uploads';
 import users from './routes/users';
+import verifyroute from './routes/verify';
 
 import * as Sentry from '@sentry/node';
 
@@ -153,6 +154,7 @@ app.use('/api/lockbox/fxa', fxa);
 app.use('/api/auth', auth);
 app.use('/api/auth', oidcAuth);
 app.use(metricsRoute);
+app.use('/api/verify', verifyroute);
 app.use(
   '/api/docs',
   swaggerUi.serve,
