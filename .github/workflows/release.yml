@@ -162,6 +162,11 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
+      # Preparation for future steps
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Check out the code
         if: contains(github.event.release.assets.*.name, 'xpi-prod.zip')
         uses: actions/checkout@v4
