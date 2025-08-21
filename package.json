@@ -39,5 +39,13 @@
   },
   "volta": {
     "node": "22.14.0"
+  },
+  "dependencies": {
+    "pinia": "^2.3.1",
+    "vue": "^3.5.13",
+    "@tanstack/vue-query": "^5.72.1",
+    "@trpc/server": "11.0.1",
+    "@trpc/client": "11.0.1",
+    "dayjs": "^1.11.13"
   }
 }

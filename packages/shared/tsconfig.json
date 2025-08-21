@@ -3,10 +3,18 @@
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": "./",
-    "types": ["vite/client", "vitest/globals"],
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "@types/firefox-webext-browser",
+      "@trpc/server"
+    ],
     "paths": {
-      "@shared/*": ["./src/*"]
+      "@shared/*": ["./src/*"],
+      "prisma/*": ["../send/backend/node_modules/@prisma/*"],
+      "@send-backend/*": ["../send/backend/src/*"]
     }
   },
+  "include": ["src/**/*", "src/env.d.ts"],
   "exclude": ["node_modules", "dist", "build"]
 }

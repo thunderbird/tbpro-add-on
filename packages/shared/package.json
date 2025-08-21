@@ -10,7 +10,18 @@
     "test": "VITE_TESTING=true vitest run --silent",
     "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
     "test:watch": "VITE_TESTING=true vitest --watch",
+    "lint:all": "pnpx eslint . --fix --ignore-pattern 'dist/*'",
+    "prettier:all": "pnpm prettier --write .",
     "postinstall": "pnpm build"
+  },
+  "dependencies": {
+    "pinia": "*",
+    "vue": "*",
+    "oidc-client-ts": "^3.3.0",
+    "dayjs": "*",
+    "get-random-values": "^3.0.0",
+    "@tanstack/vue-query": "*",
+    "@trpc/client": "*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.3",
@@ -18,6 +29,19 @@
     "dotenv": "*",
     "typescript": "*",
     "vite": "*",
+    "@types/firefox-webext-browser": "^120.0.4",
+    "@types/thunderbird-webext-browser": "^127.0.0",
+    "@types/node": "*",
+    "@trpc/server": "*",
+    "@eslint/js": "^9.24.0",
+    "eslint": "^9.24.0",
+    "prettier": "^3.5.3",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.33.0",
+    "globals": "^15.15.0",
+    "@typescript-eslint/parser": "^8.29.1",
+    "typescript-eslint": "^8.29.1",
+    "webextension-polyfill": "^0.12.0",
     "vitest": "*"
   },
   "keywords": [],
