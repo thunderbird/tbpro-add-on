@@ -56,7 +56,8 @@ export const SUMMARY_CATEGORIES = [CATEGORY_ACTION, CATEGORY_HIGHLIGHT, CATEGORY
 export const FEEDBACK_EMAIL = import.meta.env.VITE_FEEDBACK_EMAIL as string;
 export const FEEDBACK_SUBJECT = 'Assist thread summarizer feedback';
 export const FEEDBACK_DISCLAIMER = `By clicking the feedback buttons, you consent to sharing the contents of this email with MZLA and Flower.ai solely to improve Thunderbird Assist, after which the data will be deleted.`;
-export const FI_URL = 'https://unpkg.com/@flwr/flwr@0.1.9/dist/flowerintelligence.bundled.es.js';
+export const FI_URL =
+  'https://cdn.jsdelivr.net/npm/@flwr/flwr@0.2.1/dist/flowerintelligence.bundled.es.js';
 export const FI_DEFAULT_MODEL = 'meta/llama3.2-1b/instruct-fp16';
 export const STORE_NAME_SETTINGS = 'settings';
 export const STORE_NAME_SUMMARY_CACHE = 'summary-cache';
