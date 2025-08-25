@@ -192,6 +192,8 @@ jobs:
         shell: bash
         run: |
           npm install -g pnpm
+          pnpm install --filter send-backend
+          lerna run db:generate
           pnpm install --filter tbpro-shared
 
       - name: Shared package tests and lint
