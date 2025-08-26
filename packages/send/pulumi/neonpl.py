@@ -3,11 +3,17 @@ import os
 import pulumi
 import pulumi_aws as aws
 import tb_pulumi
+import tb_pulumi.network
+import tb_pulumi.neon
 import pulumi_neon as neon
 
 from neon_api import NeonAPI
 
 import boto3
+import time
+
+from pulumi_command import local
+
 
 def enable_vpc_endpoint_private_dns(region, vpc_id):
     ec2_client = boto3.client('ec2', region_name)
@@ -26,6 +32,9 @@ from pulumi import ResourceOptions
 from pulumi.dynamic import ResourceProvider, Resource, CreateResult
 from typing import Any, Optional
 
+
+
+
 # create dynamic resource provider
 
 class NeonPrivateLinkProvider(ResourceProvider):
@@ -42,9 +51,10 @@ class NeonPrivateLinkResource(Resource):
         aws_region: str,
         neon_org_id: str,
         neon_project_id: str,
-        neon_service_names: [],
+        neon_vpces: [],
         aws_vpc_id: str,
         aws_vpc_subnet_ids: [],
+        aws_sg_ids: [],
         props: Any,
         opts: Optional[ResourceOptions] = None):
         super().__init__(
@@ -71,15 +81,26 @@ class NeonPrivateLinkResource(Resource):
                 return True
             return False
 
+        def wait_available(client, vpc_endpoint_id):
+            while not is_available(client, vpc_endpoint_id):
+                print("Waiting for VPC availability")
+                time.sleep(5)
+
         def is_dns_enabled(ec2_client, vpc_endpoint_id):
             if get_vpc_endpoint_status(ec2_client, vpc_endpoint_id)['dns_enabled']:
                 return True
             return False
 
-        def enable_vpc_endpoint_dns(ec2_client, vpc_id):
+        def wait_dns_enabled(ec2_client, vpc_endpoint_id):
+            print("Enabling DNS and waiting for it")
+            enable_vpc_endpoint_dns(ec2_client, vpc_endpoint_id)
+            while not is_dns_enabled(ec2_client, vpc_endpoint_id):
+                time.sleep(5)
+
+        def enable_vpc_endpoint_dns(ec2_client, vpc_endpoint__id):
             try:
                 response = ec2_client.modify_vpc_endpoint(
-                    VpcEndpointId = vpc_id,
+                    VpcEndpointId = vpc_endpoint_id,
                     PrivateDnsEnabled = True
                 )
                 print("Private DNS Enabled on VPC Endpoint ")
@@ -89,71 +110,84 @@ class NeonPrivateLinkResource(Resource):
                 return e
 
         count = 0
-        # print(aws_vpc_subnet_ids[count])
-        for neon_service_name in neon_service_names:
-            
-            aws_vpc_endpoint = aws.ec2.VpcEndpoint(f'{name}-neon-pl-vpc-endpoint-{count}',
-                service_name = neon_service_name,
-                subnet_ids = [aws_vpc_subnet_ids[count]],
-                vpc_endpoint_type = "Interface",
-                vpc_id = aws_vpc_id,
-                # private_dns_enabled=False,
-                tags={
-                    "Name": f"{project.name_prefix}-neon-private-link-endpoint-{count}",
-                    "Project": project.name_prefix,
-                    "Stack": project.stack,
-                }
-            )
 
-            neon_vpc_assignment = neon.VpcEndpointAssignment(f'{name}-neon-vpc-endpoint-assgnment-{count}',
+        for neon_vpce in neon_vpces:
+
+            neon_vpc_assignment = tb_pulumi.neon.NeonVpcAssignment(
+                name = f'{name}-neon-vpc-endpoint-assgnment-{count}',
+                project = project,
                 org_id = neon_org_id,
                 region_id = f'aws-{aws_region}',
-                vpc_endpoint_id = aws_vpc_endpoint.id,
-                label = name,
-                opts=pulumi.ResourceOptions(depends_on=[aws_vpc_endpoint])
+                vpc_endpoint_id = neon_vpce.id.apply(lambda id: f'{id}'),
+                # opts=pulumi.ResourceOptions(depends_on=[neon_vpce])
             )
+
+
+            # enable_vpce_dns = local.Command("enable-dns",
+            #     create = ec2_client.modify_vpc_endpoint(
+            #         VpcEndpointId =  aws_vpc_endpoint.id.apply( lambda id: f'{id}'),
+            #         PrivateDnsEnabled = True
+            #     ),
+            #     opts=pulumi.ResourceOptions(depends_on=[aws_vpc_assignment])
+            # )
+            # pulumi.export("enable-dns", enable_vpce_dns.stdout)
+
             
-            # wait for endpoint to become ready after neon assignment
-            while not aws_vpc_endpoint.id.apply(lambda id: is_available(ec2_client, id)):
 
-                print("Waiting for VPC Endpoint to be available...")
-                time.sleep(5)
+            def _debug(id):
+                pulumi.info(f'DEBUG -- id: {id}')
+                return str(id)
+            
+            def _dns_enabled(id: str):
+                return tb_pulumi.network.VpcEndpointPrivateDnsEnabled(
+                    f'{name}-neon-vpc-endpoint-dns-enabled-{count}',
+                    project = project,
+                    vpc_endpoint_id = id,
+                    # vpc_endpoint_id ="vpce-0cdccaabe03ede3f2",
+                    private_dns_enabled = bool(True),
+                    opts = pulumi.ResourceOptions(depends_on=[neon_vpc_assignment])
+                )
 
-            # wait for DNS to be enabled and after endpoint available
-            while not [
-                aws_vpc_endpoint.id.apply(lambda id: is_dns_enabled(ec2_client, id)),
-                aws_vpc_endpoint.id.apply(lambda id: is_available(ec2_client, id))
-                ]:
-                print("Enable DNS on VPC Endpoint")
-                aws_vpc_endpoint.id.apply(lambda id: enable_vpc_endpoint_dns(ec2_client, id))
-                print("Waiting for VPC Endpoint to be available...")
-                time.sleep(5)
+            def _vpc_assignment(id: str):
+                vpc_assignment =  tb_pulumi.neon.NeonVpcAssignment(
+                    name = f'{name}-neon-vpc-endpoint-assgnment-{count}',
+                    project = project,
+                    org_id = neon_org_id,
+                    region_id = f'aws-{aws_region}',
+                    vpc_endpoint_id = neon_vpce.id.apply(lambda id: f'{id}'),
+                )
 
-            neon_vpc_endpoint_restriction = neon.VpcEndpointRestriction(f'{name}-neon-vpc-endpoint-restriction-{count}',
-                project_id = neon_project_id,
-                vpc_endpoint_id = aws_vpc_endpoint.id,
-                label = name,
+                while not is_available(ec2_client, id):
+                    print("Waiting for VPC availability")
+                    time.sleep(5)
+
+                return vpc_assignment
+                # opts=pulumi.ResourceOptions(depends_on=[neon_vpce])
+              
+
+            dns_enabled = neon_vpce.id.apply(lambda id: (_vpc_assignment(id), _dns_enabled(id)))
+
+
+            # neon_vpc_dns_enabled = tb_pulumi.network.VpcEndpointPrivateDnsEnabled(
+            #     f'{name}-neon-vpc-endpoint-dns-enabled-{count}',
+            #     project = project,
+            #     vpc_endpoint_id = neon_vpce.id.apply(lambda id: _debug(id)),
+            #     # vpc_endpoint_id ="vpce-0cdccaabe03ede3f2",
+            #     private_dns_enabled = bool(True),
+            #     opts = pulumi.ResourceOptions(depends_on=[neon_vpc_assignment])
+            # )
+
+            neon_vpc_endpoint_restriction = tb_pulumi.neon.NeonVpcEndpointRestriction(
+                f'{name}-neon-vpc-endpoint-restriction-{count}',
+                project = project,
+                neon_project_id = neon_project_id,
+                vpc_endpoint_id = neon_vpce.id.apply(lambda id: f'{id}'),
                 opts = pulumi.ResourceOptions(depends_on=[neon_vpc_assignment])
             )
+
             count += 1
-
-    # def ec2_client(region):
-    #     ec2_client = boto3.client('ec2', region)
-    #     return ec2_client
-
-    # def get_vpc_endpoint_service_status(ec2_client, service_id, vpc_endpoint_id):
-    #     response = ec2_client.accept_vpc_endpoint_connections(
-    #         ServiceId=[service_id],
-    #         VpcEndpointIds=[vpc_endpoint_id]
-    #     )
-
-    # def enable_vpc_endpoint_dns(ec2_client, vpc_id):
-    #     try:
-    #         response = ec2_client.modify_vpc_endpoint(
-    #             VpcEndpointId = vpc_id,
-    #             PrivateDnsEnabled = True
-    #         )
-    #         print("Private DNS Enabled on VPC Endpoint ")
-    #     except ClientError as e:
-    #         print("Unable to enable Private DNS on VPC Endpoint")
-
+        # self.finish(
+        #     resources = {
+        #         vpcie
+        #     }
+        # )

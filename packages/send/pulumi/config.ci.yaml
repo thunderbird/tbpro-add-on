@@ -56,6 +56,18 @@ resources:
             protocol: tcp
             from_port: 0
             to_port: 65535
+    neon-privatelink-vpc-endpoints:
+      rules:
+        ingress:
+          - description: Allow postgres port inbound
+            protocol: tcp
+            from_port: 5432
+            to_port: 5432
+        egress:
+          - description: Allow postgres port Outbound
+            protocol: tcp
+            from_port: 5432
+            to_port: 5432
 
   tb:secrets:PulumiSecretsManager:
     pulumi:

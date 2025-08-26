@@ -13,6 +13,7 @@ import tb_pulumi.network
 import tb_pulumi.rds
 import tb_pulumi.secrets
 
+
 # try dynamic provider
 from neonpl import NeonPrivateLinkResource
 
@@ -51,7 +52,7 @@ pulumi_sm = tb_pulumi.secrets.PulumiSecretsManager(
 vpc_opts = resources['tb:network:MultiCidrVpc']['vpc']
 vpc = tb_pulumi.network.MultiCidrVpc(name=f'{project.name_prefix}-vpc', project=project, **vpc_opts)
 
-# # Build a securiyt group allowing access to the load balancer
+# # Build a security group allowing access to the load balancer
 sg_lb_opts = resources['tb:network:SecurityGroupWithRules']['backend-lb']
 sg_lb = tb_pulumi.network.SecurityGroupWithRules(
     name=f'{project.name_prefix}-backend-lb-sg',
@@ -71,7 +72,6 @@ sg_container = tb_pulumi.network.SecurityGroupWithRules(
     opts=pulumi.ResourceOptions(depends_on=[sg_lb, vpc]),
     **sg_cont_opts,
 )
-
 
 # # Only build an RDS database cluster with a jumphost in the CI environment, so we can verify this part of our codebase
 # if project.stack == 'ci':
@@ -187,8 +187,6 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
 )
 
 ## must run pulumi package add terraform-provider kislerdm/neon
-## default neon api key config NEON_API_KEY env var
-import pulumi_neon as neon
 
 # private link endpoint for Neon
 neon_service_names = [
@@ -204,48 +202,64 @@ example_vpc_id = vpc.resources['vpc'].id
 example_vpc_subnets = [ subnet.id for subnet in vpc.resources['subnets'] ]
 
 
-# dynamic resource
 
-new = NeonPrivateLinkResource(
+# build security group allowing access to the Neon PrivateLink vpc endpoints from our application sg
+sg_vpce_opts = resources['tb:network:SecurityGroupWithRules']['neon-privatelink-vpc-endpoints']
+sg_vpce_opts['rules']['ingress'][0]['source_security_group_id'] = sg_container.resources['sg'].id
+sg_vpce_opts['rules']['egress'][0]['source_security_group_id'] = sg_container.resources['sg'].id
+
+sg_vpce = tb_pulumi.network.SecurityGroupWithRules(
+    name=f'{project.name_prefix}-vpce-sg',
+    project=project,
+    vpc_id=vpc.resources['vpc'].id,
+    opts=pulumi.ResourceOptions(depends_on=[sg_container, vpc]),
+    **sg_vpce_opts,
+)
+
+# create VPC Endpoints for each service name using tb_pulumi provider. Iterate of the the list of subnets.
+count = 0
+vpces = {}
+
+for neon_service_name in neon_service_names:
+    vpces[count] = tb_pulumi.network.VpcEndpoint(
+        name =f'neon-endpoint-{count}',
+        project = project,
+        aws_region = aws_region,
+        service_name = neon_service_name,
+        vpc_id = example_vpc_id,
+        subnet_ids = [ example_vpc_subnets[count] ],
+        sg_ids = [ sg_vpce.resources['sg'].id ],
+        opts=pulumi.ResourceOptions(depends_on=[example_aws_vpc])
+    )
+    count += 1
+project.resources['neon_vpces'] = vpces
+# print(vpces[0].resources['aws_vpc_endpoint'].id.apply(lambda id: f'VPC Endpoint ID: {id}'))
+
+# create NeonPrivateLinkResource dynamic resource to manage neon VPC endpoint assignments
+neon_private_link = NeonPrivateLinkResource(
     name = "send-ci-pl",
     project = project,
     aws_region = aws_region,
     neon_org_id = neon_org_id,
     neon_project_id = neon_project_id,
-    neon_service_names = neon_service_names,
+    neon_vpces = [ project.resources['neon_vpces'][i].resources['aws_vpc_endpoint'] for i in project.resources['neon_vpces'] ],
     aws_vpc_id = example_vpc_id,
     aws_vpc_subnet_ids = example_vpc_subnets,
+    aws_sg_ids = [ sg_vpce.resources['sg'].id ],
     props = {},
-    opts=pulumi.ResourceOptions(depends_on=[vpc])
+    opts=pulumi.ResourceOptions(depends_on=[vpces[0], vpces[1]])
     )
 
-# neon_private_link_endpoint = aws.ec2.VpcEndpoint("send_ci_neon_private_link_endpoint",
-#     service_name=neon_service_names[0],
-#     subnet_ids=example_vpc_subnets,
-#     vpc_endpoint_type="Interface",
-#     vpc_id=example_vpc_id,
-#     private_dns_enabled=True,
-#     tags={
-#         "Name": f"{project.name_prefix}-neon-private-link-endpoint",
-#         "Project": project.name_prefix,
-#         "Stack": project.stack,
-#     },
+# neon_private_link = NeonPrivateLinkResource(
+#     name = "send-ci-pl",
+#     project = project,
+#     aws_region = aws_region,
+#     neon_org_id = neon_org_id,
+#     neon_project_id = neon_project_id,
+#     neon_service_names = neon_service_names,
+#     aws_vpc_id = example_vpc_id,
+#     aws_vpc_subnet_ids = example_vpc_subnets,
+#     aws_sg_ids = [ sg_vpce.resources['sg'].id ],
+#     props = {},
 #     opts=pulumi.ResourceOptions(depends_on=[vpc])
-# )
-# project.resources['neon_private_link_endpoint'] = neon_private_link_endpoint
-
-# neon_vpc_assignment = neon.VpcEndpointAssignment("send_ci_neon_vpc_assignment",
-#     org_id=neon_org_id,
-#     region_id="aws-us-east-1",
-#     vpc_endpoint_id=neon_private_link_endpoint.id,
-#     label="send-ci",
-#     opts=pulumi.ResourceOptions(depends_on=[neon_private_link_endpoint])
-# )
-
-# neon_vpc_endpoint_restriction = neon.VpcEndpointRestriction("send_ci_neon_vpc_endpoint_restriction",
-#     project_id=neon_project_id,
-#     vpc_endpoint_id=neon_private_link_endpoint.id,
-#     label="send-ci",
-#     opts=pulumi.ResourceOptions(depends_on=[neon_vpc_assignment])
-# )
-
+#     )
