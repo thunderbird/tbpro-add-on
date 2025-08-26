@@ -1,6 +1,4 @@
----
 # Ref: https://www.pulumi.com/docs/concepts/projects/project-file/
-
 name: send-suite
 runtime:
   name: python
@@ -12,3 +10,9 @@ config:
   pulumi:tags:
     value:
       pulumi:template: aws-python
+packages:
+  neon:
+    source: terraform-provider
+    version: 0.13.0
+    parameters:
+      - kislerdm/neon

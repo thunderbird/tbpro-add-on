@@ -45,3 +45,6 @@ lerna-debug.log*
 .nx/cache
 # This helps the cache to build faster, we'll disable it until we can test it properly on CI
 .nx/workspace-data
+
+# Don't track pulumi package sdk files
+packages/send/pulumi/sdks/*
