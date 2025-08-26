@@ -1,6 +1,5 @@
 #!/bin/env python3
 
-import subprocess
 import pulumi
 import pulumi_aws as aws
 import pulumi_cloudflare as cloudflare
@@ -24,10 +23,10 @@ from neonpl import NeonPrivateLinkResource
 #     text=True,
 # )
 # if install_neon_package.returncode != 0:
-#     pulumi.error(f'Failed to install neon package: {install_neon_package.stderr}')  
+#     pulumi.error(f'Failed to install neon package: {install_neon_package.stderr}')
 
 #  This is the main Pulumi program for the Thunderbird Send project.
-              
+
 
 CLOUDFRONT_REWRITE_CODE_FILE = 'cloudfront-rewrite.js'
 EXCLUDE_ROUTE53_STACKS = ['prod', 'stage']  # Do not build R53 records for these environments
@@ -137,7 +136,7 @@ cloudflare_backend_record = (
     else None
 )
 
-# # Manage the CloudFront rewrite function; the code is managed in cloudfront-rewrite.js
+# Manage the CloudFront rewrite function; the code is managed in cloudfront-rewrite.js
 rewrite_code = None
 try:
     with open(CLOUDFRONT_REWRITE_CODE_FILE, 'r') as fh:
@@ -190,17 +189,16 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
 
 # private link endpoint for Neon
 neon_service_names = [
-    "com.amazonaws.vpce.us-east-1.vpce-svc-0de57c578b0e614a9",
-    "com.amazonaws.vpce.us-east-1.vpce-svc-02a0abd91f32f1ed7"
+    'com.amazonaws.vpce.us-east-1.vpce-svc-0de57c578b0e614a9',
+    'com.amazonaws.vpce.us-east-1.vpce-svc-02a0abd91f32f1ed7',
 ]
 
-neon_org_id = "org-summer-glitter-46282554"
-neon_project_id = "muddy-sunset-16626607"
-aws_region = "us-east-1"
+neon_org_id = 'org-summer-glitter-46282554'
+neon_project_id = 'muddy-sunset-16626607'
+aws_region = 'us-east-1'
 example_aws_vpc = vpc.resources['vpc']
 example_vpc_id = vpc.resources['vpc'].id
-example_vpc_subnets = [ subnet.id for subnet in vpc.resources['subnets'] ]
-
+example_vpc_subnets = [subnet.id for subnet in vpc.resources['subnets']]
 
 
 # build security group allowing access to the Neon PrivateLink vpc endpoints from our application sg
@@ -222,14 +220,14 @@ vpces = {}
 
 for neon_service_name in neon_service_names:
     vpces[count] = tb_pulumi.network.VpcEndpoint(
-        name =f'neon-endpoint-{count}',
-        project = project,
-        aws_region = aws_region,
-        service_name = neon_service_name,
-        vpc_id = example_vpc_id,
-        subnet_ids = [ example_vpc_subnets[count] ],
-        sg_ids = [ sg_vpce.resources['sg'].id ],
-        opts=pulumi.ResourceOptions(depends_on=[example_aws_vpc])
+        name=f'neon-endpoint-{count}',
+        project=project,
+        aws_region=aws_region,
+        service_name=neon_service_name,
+        vpc_id=example_vpc_id,
+        subnet_ids=[example_vpc_subnets[count]],
+        sg_ids=[sg_vpce.resources['sg'].id],
+        opts=pulumi.ResourceOptions(depends_on=[example_aws_vpc]),
     )
     count += 1
 project.resources['neon_vpces'] = vpces
@@ -237,18 +235,20 @@ project.resources['neon_vpces'] = vpces
 
 # create NeonPrivateLinkResource dynamic resource to manage neon VPC endpoint assignments
 neon_private_link = NeonPrivateLinkResource(
-    name = "send-ci-pl",
-    project = project,
-    aws_region = aws_region,
-    neon_org_id = neon_org_id,
-    neon_project_id = neon_project_id,
-    neon_vpces = [ project.resources['neon_vpces'][i].resources['aws_vpc_endpoint'] for i in project.resources['neon_vpces'] ],
-    aws_vpc_id = example_vpc_id,
-    aws_vpc_subnet_ids = example_vpc_subnets,
-    aws_sg_ids = [ sg_vpce.resources['sg'].id ],
-    props = {},
-    opts=pulumi.ResourceOptions(depends_on=[vpces[0], vpces[1]])
-    )
+    name='send-ci-pl',
+    project=project,
+    aws_region=aws_region,
+    neon_org_id=neon_org_id,
+    neon_project_id=neon_project_id,
+    neon_vpces=[
+        project.resources['neon_vpces'][i].resources['aws_vpc_endpoint'] for i in project.resources['neon_vpces']
+    ],
+    aws_vpc_id=example_vpc_id,
+    aws_vpc_subnet_ids=example_vpc_subnets,
+    aws_sg_ids=[sg_vpce.resources['sg'].id],
+    props={},
+    opts=pulumi.ResourceOptions(depends_on=[vpces[0], vpces[1]]),
+)
 
 # neon_private_link = NeonPrivateLinkResource(
 #     name = "send-ci-pl",
