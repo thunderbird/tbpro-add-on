@@ -3,9 +3,9 @@
 type Logger = unknown;
 
 export const loggerPrefix = {
-  info: "LOGGER INFO",
-  error: "LOGGER ERROR",
-  warn: "LOGGER WARNING",
+  info: 'LOGGER INFO',
+  error: 'LOGGER ERROR',
+  warn: 'LOGGER WARNING',
 };
 
 const info = (message: Logger, ...optionalParams: any[]) => {

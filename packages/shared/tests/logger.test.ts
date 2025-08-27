@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import logger, { loggerPrefix } from "../src/logger";
+import { describe, expect, it, vi } from 'vitest';
+import logger, { loggerPrefix } from '../src/logger';
 
-describe("Logger module", () => {
-  it("should log info successfully", async () => {
-    const message = { content: "test message" };
-    const consoleSpy = vi.spyOn(console, "log");
+describe('Logger module', () => {
+  it('should log info successfully', async () => {
+    const message = { content: 'test message' };
+    const consoleSpy = vi.spyOn(console, 'log');
 
     logger.info(message);
 
@@ -12,18 +12,18 @@ describe("Logger module", () => {
     consoleSpy.mockRestore();
   });
 
-  it("should log log error messages", async () => {
-    const message = "A bad error occurred";
-    const consoleErrorSpy = vi.spyOn(console, "error");
+  it('should log log error messages', async () => {
+    const message = 'A bad error occurred';
+    const consoleErrorSpy = vi.spyOn(console, 'error');
 
     logger.error(message);
 
     expect(consoleErrorSpy).toBeCalledWith(`${loggerPrefix.error} ${message}`);
   });
 
-  it("should handle failure to log info", async () => {
-    const message = { content: "test message" };
-    const consoleErrorSpy = vi.spyOn(console, "error");
+  it('should handle failure to log info', async () => {
+    const message = { content: 'test message' };
+    const consoleErrorSpy = vi.spyOn(console, 'error');
 
     logger.error(message);
 
@@ -31,9 +31,9 @@ describe("Logger module", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it("should handle failure to log info", async () => {
-    const message = { content: "test message" };
-    const consoleWarnSpy = vi.spyOn(console, "warn");
+  it('should handle failure to log info', async () => {
+    const message = { content: 'test message' };
+    const consoleWarnSpy = vi.spyOn(console, 'warn');
 
     logger.warn(message);
 
