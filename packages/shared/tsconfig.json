@@ -3,10 +3,14 @@
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": "./",
-    "types": ["vite/client", "vitest/globals"],
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "allowArbitraryExtensions": true,
+    "types": ["vite/client", "vitest/globals", "@types/firefox-webext-browser"],
     "paths": {
       "@shared/*": ["./src/*"]
     }
   },
-  "exclude": ["node_modules", "dist", "build"]
+  "include": ["src/**/*", "src/env.d.ts", "tsconfig.client.base.json"],
+  "exclude": ["node_modules", "dist", "build", "**/tests/**"]
 }
