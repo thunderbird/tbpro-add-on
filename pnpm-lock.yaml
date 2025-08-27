@@ -68,7 +68,7 @@ importers:
         specifier: ^2.47.0
         version: 2.47.0(vue@3.5.13(typescript@5.8.3))
       '@tanstack/vue-query':
-        specifier: ^5.72.1
+        specifier: '*'
         version: 5.72.1(vue@3.5.13(typescript@5.8.3))
       '@thunderbirdops/services-ui':
         specifier: ^0.6.5
@@ -80,7 +80,7 @@ importers:
         specifier: ^0.7.39
         version: 0.7.39
       dayjs:
-        specifier: ^1.11.13
+        specifier: '*'
         version: 1.11.13
       floating-vue:
         specifier: ^5.2.2
