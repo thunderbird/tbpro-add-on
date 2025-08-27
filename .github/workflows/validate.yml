@@ -242,8 +242,8 @@ jobs:
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
-          pnpm install --filter addon
           pnpm install --filter send-frontend
+          pnpm install --filter addon
 
       - name: Shared package tests and lint
         id: shared-tests
