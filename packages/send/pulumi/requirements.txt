@@ -1,7 +1,8 @@
+sdks/neon
 # sdks/neon
 # pulumi-command
-# -e /home/vscode/src/tb/pulumi
+-e /home/rjung/workspace/thunderbird/pulumi
 # neon-api
-tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@rjung-test
+# tb_pulumi @ git+https://github.com/thunderbird/pulumi.git@rjung-test
 pulumi_cloudflare==5.48.0
 boto3
