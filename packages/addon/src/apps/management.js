@@ -7,4 +7,3 @@ import './style.css';
 const app = createApp(ManagementPage);
 setupApp(app);
 mountApp(app, '#management-page');
-

@@ -249,4 +249,5 @@ jobs:
         id: shared-tests
         shell: bash
         run: |
+          lerna run ci:validate --scope=addon
           lerna run test --scope=addon

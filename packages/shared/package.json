@@ -7,6 +7,7 @@
   "types": "src/index.ts",
   "scripts": {
     "build:shared": "tsc",
+    "ci:validate": "pnpm lint:all; pnpm prettier:all",
     "test": "VITE_TESTING=true vitest run --silent",
     "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
     "test:watch": "VITE_TESTING=true vitest --watch",

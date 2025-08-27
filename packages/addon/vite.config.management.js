@@ -1,10 +1,9 @@
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
-import { visualizer } from "rollup-plugin-visualizer";
+import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig, loadEnv } from 'vite';
 import { packageJson, sharedViteConfig } from './sharedViteConfig';
-
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -32,7 +31,10 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@addon': path.resolve(__dirname, 'src'),
-        '@send-frontend': path.resolve(__dirname, 'node_modules/send-frontend/src'),
+        '@send-frontend': path.resolve(
+          __dirname,
+          'node_modules/send-frontend/src'
+        ),
       },
     },
     build: {
