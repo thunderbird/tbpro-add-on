@@ -1,0 +1,71 @@
+// Import necessary stores and utilities
+
+import { useQuery } from '@tanstack/vue-query';
+import { storeToRefs } from 'pinia';
+import { validateToken } from '../lib/validations';
+import useApiStore from '../stores/api-store';
+import { useAuthStore } from '../stores/auth-store';
+
+/**
+ * useAuth is a composable that manages authentication state and actions.
+ * It returns the login status and methods to refetch and log out.
+ * It's important to note that this composable should only be used inside vue components.
+ */
+export function useAuth() {
+  // Access the API and authentication stores
+  const { api } = useApiStore();
+  const authStore = useAuthStore();
+  // Get a reactive reference to the login status
+  const { isLoggedIn } = storeToRefs(authStore);
+
+  // Set up a query to validate the session token and update login status
+  const { refetch: refetchAuth, isLoading } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => {
+      isLoggedIn.value = false;
+      // Check OIDC authentication status first
+      try {
+        const user = await authStore.checkAuthStatus();
+        if (user) {
+          isLoggedIn.value = true;
+          return true;
+        }
+      } catch (error) {
+        console.debug('OIDC auth check failed:', error);
+      }
+
+      // TODO: Uncomment when validateToken is available
+      // Fallback to legacy token validation
+      const isValid = await validateToken(api);
+      isLoggedIn.value = isValid;
+      return isValid;
+    },
+  });
+
+  // Log out by removing the auth token and updating login status
+  const logOutAuth = async () => {
+    try {
+      // OIDC logout
+      await authStore.logoutFromOIDC();
+    } catch (error) {
+      console.error('OIDC logout failed:', error);
+    }
+
+    try {
+      // FXA/JWT logout
+      await api.removeAuthToken();
+    } catch (error) {
+      console.error('Legacy (fxa) logout failed:', error);
+    }
+
+    isLoggedIn.value = false;
+  };
+
+  // Expose the login status, refetch method, and logout function
+  return {
+    isLoggedIn,
+    refetchAuth,
+    logOutAuth,
+    isLoadingAuth: isLoading,
+  };
+}

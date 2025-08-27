@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 // We should type this propery to be the same type as console.log/error
 type Logger = unknown;
 

@@ -6,10 +6,7 @@
     "allowJs": true,
     "resolveJsonModule": true,
     "allowArbitraryExtensions": true,
-    "types": ["vite/client", "vitest/globals", "@types/firefox-webext-browser"],
-    "paths": {
-      "@shared/*": ["./src/*"]
-    }
+    "types": ["vite/client", "vitest/globals", "@types/firefox-webext-browser"]
   },
   "include": ["src/**/*", "src/env.d.ts", "tsconfig.client.base.json"],
   "exclude": ["node_modules", "dist", "build", "**/tests/**"]

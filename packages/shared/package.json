@@ -2,6 +2,7 @@
   "name": "tbpro-shared",
   "version": "0.1.4",
   "private": false,
+  "type": "module",
   "description": "Shared code for tbpro add-on",
   "main": "src/index",
   "types": "src/index.ts",
