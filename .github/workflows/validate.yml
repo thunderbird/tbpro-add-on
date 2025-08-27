@@ -69,6 +69,7 @@ jobs:
         shell: bash
         run: |
           npm install -g pnpm
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           cd packages/send
           pnpm install --filter send-backend
 
@@ -146,10 +147,11 @@ jobs:
         shell: bash
         run: |
           npm install -g pnpm
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
           pnpm install --filter send-backend
           lerna run db:generate --scope=send-backend
-          pnpm install --filter tbpro-shared
 
       - name: Create .env file so tests will work
         shell: bash
@@ -192,7 +194,9 @@ jobs:
         shell: bash
         run: |
           npm install -g pnpm
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
+          pnpm install --filter send-backend
 
       - name: Shared package tests and lint
         id: shared-tests
@@ -235,10 +239,11 @@ jobs:
         shell: bash
         run: |
           npm install -g pnpm
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           # install packages that addon depends on
+          pnpm install --filter tbpro-shared
           pnpm install --filter addon
           pnpm install --filter send-frontend
-          pnpm install --filter tbpro-shared
 
       - name: Shared package tests and lint
         id: shared-tests
