@@ -1,6 +1,7 @@
 {
-  "name": "addon",
-  "version": "0.4.0",
+  "name": "tbpro-addon",
+  "version": "0.4.1",
+  "type": "module",
   "private": false,
   "description": "",
   "keywords": [],

@@ -1,38 +1,38 @@
 cd ..
 
-mkdir frontend-source
+mkdir addon-source
 
 # Get version from package.json and replace dots with hyphens
-VERSION=$(jq -r .version < frontend/package.json | sed 's/\./-/g')
+VERSION=$(jq -r .version < addon/package.json | sed 's/\./-/g')
 
 # Copy only necessary files
-cp -r frontend/src frontend-source/src
-cp -r frontend/public frontend-source/public
-cp frontend/package.json frontend-source/package.json
-cp frontend/tsconfig.json frontend-source/tsconfig.json
-cp frontend/.env frontend-source/
-cp frontend/index.extension.html frontend-source/index.extension.html
-cp frontend/index.html frontend-source/index.html
-cp frontend/index.management.html frontend-source/index.management.html
-cp frontend/vite.config.extension.js frontend-source/vite.config.extension.js
-cp frontend/vite.config.js frontend-source/vite.config.js
-cp frontend/vite.config.management.js frontend-source/vite.config.management.js
-cp frontend/tailwind.config.js frontend-source/tailwind.config.js
-cp frontend/postcss.config.js frontend-source/postcss.config.js
-cp frontend/pnpm-lock.yaml frontend-source/pnpm-lock.yaml
-cp frontend/favicon.ico frontend-source/favicon.ico
-cp frontend/README.md frontend-source/README.md
-mkdir frontend-source/scripts
-cp frontend/scripts/build.sh frontend-source/scripts/build.sh
+cp -r addon/src addon-source/src
+cp -r addon/public addon-source/public
+cp addon/package.json addon-source/package.json
+cp addon/tsconfig.json addon-source/tsconfig.json
+cp addon/.env addon-source/
+cp addon/index.extension.html addon-source/index.extension.html
+cp addon/index.html addon-source/index.html
+cp addon/index.management.html addon-source/index.management.html
+cp addon/vite.config.extension.js addon-source/vite.config.extension.js
+cp addon/vite.config.js addon-source/vite.config.js
+cp addon/vite.config.management.js addon-source/vite.config.management.js
+cp addon/tailwind.config.js addon-source/tailwind.config.js
+cp addon/postcss.config.js addon-source/postcss.config.js
+cp addon/pnpm-lock.yaml addon-source/pnpm-lock.yaml
+cp addon/favicon.ico addon-source/favicon.ico
+cp addon/README.md addon-source/README.md
+mkdir addon-source/scripts
+cp addon/scripts/build.sh addon-source/scripts/build.sh
 
 # Create zip for submission
 if [ "$IS_CI_AUTOMATION" != "yes" ]; then
     # Is *not* CI automation; is probably local dev
-    zip -r frontend-source-${VERSION}.zip frontend-source
-    rm -rf frontend-source
-    echo "Finished creating frontend-source-${VERSION}.zip!"
+    zip -r addon-source-${VERSION}.zip addon-source
+    rm -rf addon-source
+    echo "Finished creating addon-source-${VERSION}.zip!"
 else
     # *IS* CI automation
-    zip -r frontend-source.zip frontend-source
-    echo "Finished creating frontend-source.zip!"
+    zip -r addon-source.zip addon-source
+    echo "Finished creating addon-source.zip!"
 fi
