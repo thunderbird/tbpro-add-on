@@ -46,8 +46,7 @@ rm -rf dist/background
 rm -rf dist/pages
 
 cd dist
-
 # Create xpi with version number
-zip -r -FS ./tbpro-addon-${VERSION}.xpi *
+zip -r -FS ../tbpro-addon-${VERSION}.xpi *
 
 echo 'Add-on build complete 🎉'
