@@ -1,12 +1,12 @@
 {
   "name": "tbpro-addon",
   "version": "0.4.1",
-  "type": "module",
   "private": false,
   "description": "",
   "keywords": [],
   "license": "ISC",
   "author": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "build": "NODE_ENV=production ./scripts/build.sh",
