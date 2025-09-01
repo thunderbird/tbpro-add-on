@@ -5,7 +5,7 @@ import requests
 MGMT_BASE_URL = 'https://api.flower.ai/v1'
 
 
-def get_flwr_api_key(user_id_hash: str, expires_at: int | None = None) -> str:
+def get_flwr_api_key(expires_at: int | None = None) -> str:
     """Request a Flower API key.
 
     expires_at should be an integer timestamp of the date the API key will become invalid.
@@ -19,9 +19,7 @@ def get_flwr_api_key(user_id_hash: str, expires_at: int | None = None) -> str:
 
     This function only returns the `api_key`.
     """
-    payload: dict[str, str | int] = {
-        'billing_id': user_id_hash,
-    }
+    payload: dict[str, str | int] = {}
     if expires_at:
         payload['expires_at'] = expires_at
 
