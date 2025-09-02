@@ -106,12 +106,10 @@ def fxa_callback(
         expiration_in_mins = 6_00
     access_token_expires = timedelta(minutes=float(expiration_in_mins))
 
-    # Create a SHA-256 hash of the user ID
-    uid_hash = hashlib.sha256(str(uid).encode()).hexdigest()
     # Set the expiry date for 31 days
     expiration_in_days = 31
     expires_at = datetime.now() + timedelta(days=expiration_in_days)
-    flwr_api_key = get_flwr_api_key(user_id_hash=uid_hash, expires_at=int(expires_at.timestamp()))
+    flwr_api_key = get_flwr_api_key(expires_at=int(expires_at.timestamp()))
 
     token = create_access_token(
         data={'uid': uid, 'email': email, 'flwr_api_key': flwr_api_key}, expires_delta=access_token_expires
