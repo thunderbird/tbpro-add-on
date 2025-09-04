@@ -337,6 +337,11 @@ jobs:
           VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
           EOF
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
       - name: Install dependencies
         id: install-dependencies
         shell: bash
