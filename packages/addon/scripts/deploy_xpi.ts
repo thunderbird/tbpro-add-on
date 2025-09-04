@@ -71,12 +71,19 @@ function generateJwt(): string {
 }
 
 function getXpiPath(): string {
-  const xpiPath = process.argv[process.argv.length - 1];
-  if (xpiPath.endsWith('.xpi')) {
-    return xpiPath;
-  } else {
-    throw Error(`XPI Path "${xpiPath} is invalid`);
+  const addonDir = path.resolve(__dirname, '..');
+  const files = fs.readdirSync(addonDir);
+  const xpiFiles = files.filter(file => file.endsWith('.xpi'));
+  
+  if (xpiFiles.length === 0) {
+    throw Error(`No XPI file found in addon directory: ${addonDir}`);
   }
+  
+  if (xpiFiles.length > 1) {
+    throw Error(`Multiple XPI files found in addon directory: ${xpiFiles.join(', ')}. Please ensure only one XPI file exists.`);
+  }
+  
+  return path.join(addonDir, xpiFiles[0]);
 }
 
 function submitXpi(xpiPath: string, version: string, jwt: string): void {
