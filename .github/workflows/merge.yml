@@ -320,15 +320,31 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      # Production build steps
+      # Build steps
       - name: (Send) Create production .env file from secrets
         shell: bash
         run: |
           cd packages/send/frontend
           cat << EOF > .env
-          VUE_BASE_URL=https://send.tb.pro
-          VITE_SEND_SERVER_URL=https://send-backend.tb.pro
-          VITE_SEND_CLIENT_URL=https://send.tb.pro
+          VUE_BASE_URL=https://send-stage.tb.pro
+          VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
+          VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
+          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
+          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
+          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
+          EOF
+
+      - name: (Addon) Create stage .env file from secrets
+        shell: bash
+        run: |
+          cd packages/addon
+          cat << EOF > .env
+          VUE_BASE_URL=https://send-stage.tb.pro
+          VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
+          VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
           VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
           VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
           VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
@@ -360,7 +376,7 @@ jobs:
 
           cd packages/addon
 
-          mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-stage-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"          
+          mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-stage-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
 
       - name: Archive the stage XPI
         id: xpi-archive-stage
