@@ -1,25 +1,17 @@
 # Check if environment NODE_ENV has been set to production
 if [ "$NODE_ENV" = "production" ]; then
     echo 'Starting production build 🐧'
+    # Pre-build makes sure the ID and name are set on the xpi for prod/stage
+    bun run scripts/set-id.ts
 else
     echo 'Starting development build 🐣'
 fi
 
-# Pre-build makes sure the ID and name are set on the xpi for prod/stage
-# bun run scripts/set-id.ts
-
 # Get version from package.json and replace dots with hyphens
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
 
-# Copy css to backend
-# cp src/apps/send/style.css ../send/backend/public/style.css
-# sed -i.bak '1s/^/\/* WARNING THIS IS A SELF GENERATED FILE. ALL CHANGES WILL BE OVERWRITTEN ON BUILD. IF YOU WANT TO MODIFY THE ORIGINAL FILE, PLEASE MODIFY frontend\/public\/style.css *\/\n/' ../send/backend/public/style.css && rm ../send/backend/public/style.css.bak
-# Copy public folder to backend
-# cp -R public/icons ../send/backend/public
-
 # Remove old builds
-rm -rf dist && rm -rf dist-web
-rm -rf send-suite
+rm -rf dist
 
 mkdir -p dist/assets
 
@@ -54,7 +46,6 @@ rm -rf dist/background
 rm -rf dist/pages
 
 cd dist
-
 # Create xpi with version number
 zip -r -FS ../tbpro-addon-${VERSION}.xpi *
 

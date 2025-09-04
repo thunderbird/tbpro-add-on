@@ -1,11 +1,12 @@
 {
   "name": "addon",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": false,
   "description": "",
   "keywords": [],
   "license": "ISC",
   "author": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "build": "NODE_ENV=production ./scripts/build.sh",
@@ -57,6 +58,7 @@
     "@trpc/server": "11.0.1",
     "@types/eslint-config-prettier": "^6.11.3",
     "@types/firefox-webext-browser": "^120.0.4",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "*",
     "@types/thunderbird-webext-browser": "^127.0.0",
     "@types/ws": "^8.18.1",

@@ -22,6 +22,7 @@ jobs:
       backend-changed: ${{ steps.check.outputs.backend-changed }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
+      addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,6 +40,8 @@ jobs:
               - '.github/workflows/validate.yml'
             frontend-changed:
               - 'packages/send/frontend/**'
+            addon-changed:
+              - 'packages/addon/**'
 
   # When backend changes are merged in, build and push a new Docker image
   backend-merge:
@@ -301,4 +304,56 @@ jobs:
           BASE_URL: https://send-stage.tb.pro
         run: |
           cd packages/send/frontend
+          pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
+  addon-changes:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    strategy:
+      matrix:
+        node-version: ["22"]
+    if: needs.detect-changes.outputs.addon-changed == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # Production build steps
+      - name: (Send) Create production .env file from secrets
+        shell: bash
+        run: |
+          cd packages/send/frontend
+          cat << EOF > .env
+          VUE_BASE_URL=https://send.tb.pro
+          VITE_SEND_SERVER_URL=https://send-backend.tb.pro
+          VITE_SEND_CLIENT_URL=https://send.tb.pro
+          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
+          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
+          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
+          EOF
+
+      - name: Install dependencies
+        id: install-dependencies
+        shell: bash
+        run: |
+          npm install -g pnpm
+          # install packages that addon depends on
+          pnpm install --filter tbpro-shared
+          pnpm install --filter addon
+          pnpm install --filter send-frontend
+
+      - name: Deploy to ATN
+        id: xpi-deploy
+        shell: bash
+        env:
+          ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
+          ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
+          BASE_URL: https://send-stage.tb.pro
+        run: |
+          cd packages/addon
           pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
