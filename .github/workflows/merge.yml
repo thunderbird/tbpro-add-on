@@ -342,8 +342,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        id: install-dependencies
+      - name: Build the stage frontend's static assets
+        id: frontend-build-stage
+        env:
+          BASE_URL: https://send-stage.tb.pro
+          IS_CI_AUTOMATION: yes
         shell: bash
         run: |
           npm install -g pnpm
@@ -351,6 +354,20 @@ jobs:
           pnpm install --filter tbpro-shared
           pnpm install --filter addon
           pnpm install --filter send-frontend
+
+          IS_CI_AUTOMATION=yes
+          lerna run build-and-submit --scope=addon
+
+          cd packages/addon
+
+          mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-stage-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"          
+
+      - name: Archive the stage XPI
+        id: xpi-archive-stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: xpi-stage
+          path: packages/addon/tbpro-addon-stage-*.xpi
 
       - name: Deploy to ATN
         id: xpi-deploy
@@ -361,4 +378,4 @@ jobs:
           BASE_URL: https://send-stage.tb.pro
         run: |
           cd packages/addon
-          pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
+          pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
