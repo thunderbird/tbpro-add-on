@@ -196,8 +196,10 @@ jobs:
           # Initial setup of dependencies
           mv xpi-prod.zip packages/send
           npm install -g pnpm
-          cd packages/send
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter tbpro-shared
           pnpm i --filter send-frontend
+          cd packages/send
           unzip xpi-prod.zip
           rm -f xpi-prod.zip
           cd frontend

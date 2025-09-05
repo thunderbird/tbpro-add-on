@@ -9,5 +9,3 @@ initSentry(app);
 
 setupApp(app);
 mountApp(app, '#extension-page');
-
-

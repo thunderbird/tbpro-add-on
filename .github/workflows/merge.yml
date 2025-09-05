@@ -95,6 +95,7 @@ jobs:
         id: install-pnpm-build
         run: |
           npm install -g pnpm
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter send-backend
           lerna run build-image:backend --scope=send-suite
 
@@ -198,8 +199,9 @@ jobs:
           # Initial setup of dependencies
           cd packages/send/frontend
           npm install -g pnpm
-          pnpm install --filter send-frontend
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
+          pnpm install --filter send-frontend
 
           # Build static frontend assets and the .xpi
           IS_CI_AUTOMATION=yes pnpm build-and-submit
@@ -255,8 +257,9 @@ jobs:
           # Initial setup of dependencies
           cd packages/send/frontend
           npm install -g pnpm
-          pnpm install --filter send-frontend
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
+          pnpm install --filter send-frontend
 
           # Build static frontend assets and the .xpi
           IS_CI_AUTOMATION=yes pnpm build-and-submit

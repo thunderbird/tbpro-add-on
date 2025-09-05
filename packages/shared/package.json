@@ -2,15 +2,27 @@
   "name": "tbpro-shared",
   "version": "0.1.4",
   "private": false,
+  "type": "module",
   "description": "Shared code for tbpro add-on",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "src/index",
+  "types": "src/index.ts",
   "scripts": {
-    "build": "tsc",
+    "build:shared": "tsc",
+    "ci:validate": "pnpm lint:all; pnpm prettier:all",
     "test": "VITE_TESTING=true vitest run --silent",
     "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
     "test:watch": "VITE_TESTING=true vitest --watch",
-    "postinstall": "pnpm build"
+    "lint:all": "pnpx eslint . --fix --ignore-pattern 'dist/*'",
+    "prettier:all": "pnpm prettier --write .",
+    "postinstall": "pnpm build:shared"
+  },
+  "dependencies": {
+    "pinia": "*",
+    "vue": "*",
+    "oidc-client-ts": "^3.3.0",
+    "dayjs": "*",
+    "get-random-values": "^3.0.0",
+    "@tanstack/vue-query": "*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.3",
@@ -18,6 +30,18 @@
     "dotenv": "*",
     "typescript": "*",
     "vite": "*",
+    "@types/firefox-webext-browser": "^120.0.4",
+    "@types/thunderbird-webext-browser": "^127.0.0",
+    "@types/node": "*",
+    "@eslint/js": "^9.24.0",
+    "eslint": "^9.24.0",
+    "prettier": "^3.5.3",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.33.0",
+    "globals": "^15.15.0",
+    "@typescript-eslint/parser": "^8.29.1",
+    "typescript-eslint": "^8.29.1",
+    "webextension-polyfill": "^0.12.0",
     "vitest": "*"
   },
   "keywords": [],
@@ -26,9 +50,9 @@
   "packageManager": "pnpm@10.7.1",
   "exports": {
     ".": {
-      "import": "./dist/src/index.js",
-      "require": "./dist/src/index.js"
+      "import": "./src/index",
+      "require": "./src/index"
     },
-    "./tsconfig.client.base.json": "./tsconfig.client.base.json"
+    "./tsconfig.client.base.json": "./dist/tsconfig.client.base.json"
   }
 }

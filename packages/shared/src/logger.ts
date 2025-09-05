@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 // We should type this propery to be the same type as console.log/error
 type Logger = unknown;
 
 export const loggerPrefix = {
-  info: "LOGGER INFO",
-  error: "LOGGER ERROR",
-  warn: "LOGGER WARNING",
+  info: 'LOGGER INFO',
+  error: 'LOGGER ERROR',
+  warn: 'LOGGER WARNING',
 };
 
 const info = (message: Logger, ...optionalParams: any[]) => {

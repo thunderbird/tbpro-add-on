@@ -38,7 +38,7 @@ curl -fsSL https://get.pnpm.io/install.sh | sh -
 To get started, you need to install the dependencies for the monorepo. You can do this by running the following command from the root of the monorepo:
 
 ```sh
-pnpm install
+pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
 ```
 
 You can run the setup automatically with
