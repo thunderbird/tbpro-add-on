@@ -212,6 +212,17 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     config=monitoring_opts,
 )
 
+def __sap_on_apply(resources):
+    ci_user_name = f'{project.name_prefix}-ci'
+    tb_pulumi.iam.UserWithAccessKey(
+        ci_user_name,
+        project=project,
+        user_name=ci_user_name,
+        groups=[resources['admin_group']],
+        opts=pulumi.ResourceOptions(depends_on=[sap]),
+    )
+
+
 sap = tb_pulumi.iam.StackAccessPolicies(
     f'{project.name_prefix}-sap',
     project=project,
