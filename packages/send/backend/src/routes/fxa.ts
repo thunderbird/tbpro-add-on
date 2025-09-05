@@ -231,4 +231,15 @@ TODO:
   })
 );
 
+// Route for processing FXA-related requests
+router.post(
+  '/',
+  wrapAsyncHandler(async (req, res) => {
+    // Return 200 without doing anything else
+    res.status(200).json({
+      message: 'FXA process completed successfully',
+    });
+  })
+);
+
 export default router;
