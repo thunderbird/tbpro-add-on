@@ -227,4 +227,5 @@ def __sap_on_apply(resources):
 sap = tb_pulumi.iam.StackAccessPolicies(
     f'{project.name_prefix}-sap',
     project=project,
+    on_apply=__sap_on_apply,
 )
