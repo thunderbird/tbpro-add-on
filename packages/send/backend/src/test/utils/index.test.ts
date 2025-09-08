@@ -109,6 +109,7 @@ describe('addExpiryToContainer', () => {
       size: 100n,
       type: 'image/jpeg',
       part: null,
+      fileHash: '222',
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -126,6 +127,7 @@ describe('addExpiryToContainer', () => {
       size: 100n,
       type: 'image/jpeg',
       part: null,
+      fileHash: '222',
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -143,6 +145,7 @@ describe('addExpiryToContainer', () => {
       size: 100n,
       type: 'image/jpeg',
       part: null,
+      fileHash: '222',
     };
 
     const result = addExpiryToContainer(mockUpload);
@@ -182,6 +185,7 @@ describe('addExpiryToContainer', () => {
       size: 100n,
       type: 'image/jpeg',
       part: null,
+      fileHash: '222',
     };
 
     const result = addExpiryToContainer(mockUpload);
