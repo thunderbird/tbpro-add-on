@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   deploy-backend:
+    environment: send-prod
     runs-on: ubuntu-latest
     env:
       IS_CI_AUTOMATION: "yes"
@@ -126,6 +127,7 @@ jobs:
             --target-dependents
 
   deploy-frontend:
+    environment: send-prod
     runs-on: ubuntu-latest
     env:
       IS_CI_AUTOMATION: "yes"
