@@ -198,12 +198,6 @@ cloudflare_frontend_record = (
     else None
 )
 
-
-# This is only managed by a single stack, so a configuration may not exist for it
-if 'tb:ci:AwsAutomationUser' in resources and 'ci' in resources['tb:ci:AwsAutomationUser']:
-    ci_opts = resources['tb:ci:AwsAutomationUser']['ci']
-    ci_iam = tb_pulumi.ci.AwsAutomationUser(name=f'{project.project}-ci', project=project, **ci_opts)
-
 monitoring_opts = resources['tb:cloudwatch:CloudWatchMonitoringGroup']
 monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     name=f'{project.name_prefix}-monitoring',
@@ -212,20 +206,11 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     config=monitoring_opts,
 )
 
-
-def __sap_on_apply(resources):
-    ci_user_name = f'{project.name_prefix}-ci'
-    tb_pulumi.iam.UserWithAccessKey(
-        ci_user_name,
-        project=project,
-        user_name=ci_user_name,
-        groups=[resources['admin_group']],
-        opts=pulumi.ResourceOptions(depends_on=[sap]),
-    )
-
+auto_users_opts = resources.get('tb:ci:AwsAutomationUser', {})
+for user, user_opts in auto_users_opts.items():
+    tb_pulumi.ci.AwsAutomationUser(f'{project.name_prefix}-{user}', project=project, **user_opts)
 
 sap = tb_pulumi.iam.StackAccessPolicies(
     f'{project.name_prefix}-sap',
     project=project,
-    on_apply=__sap_on_apply,
 )
