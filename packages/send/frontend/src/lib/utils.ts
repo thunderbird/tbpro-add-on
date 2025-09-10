@@ -2,6 +2,23 @@ import { JsonResponse } from '@send-frontend/lib/api';
 import { NamedBlob } from '@send-frontend/types';
 import JSZip from 'jszip';
 import { MAX_FILE_SIZE } from './const';
+
+/**
+ * Generates a SHA-256 hash from a file blob.
+ *
+ * @param {Blob} fileBlob - The file blob to hash
+ * @returns {Promise<string>} - Returns a Promise that resolves to the hexadecimal hash string
+ */
+export async function generateFileHash(fileBlob: Blob): Promise<string> {
+  const fileArrayBuffer = await fileBlob.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', fileArrayBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const fileHash = hashArray
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  return fileHash;
+}
+
 /**
  * Returns a promise that resolves after an amount of time has passed.
  *

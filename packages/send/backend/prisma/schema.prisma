@@ -228,6 +228,14 @@ model Upload {
   reportedAt DateTime?
   // This helps us it helps us put together multi-part uploads
   part          Int?
+  fileHash      String?     
+}
+
+// Store hashes of files that have been reported as suspicious
+// This helps us prevent re-uploads of known bad files  
+model SuspiciousFile {
+  id        String   @id @default(uuid()) @unique @db.Uuid
+  fileHash      String   @unique
 }
 
 // A tag can be associated with items and containers
@@ -261,3 +269,4 @@ model EncryptedPassphrase {
   salt     String
   codeSalt String
 }
+

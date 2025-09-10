@@ -20,6 +20,7 @@ vi.mock('@send-frontend/lib/utils', () => ({
       Object.assign(new Blob(['part2']), { name: 'large-file.txt' }),
     ]),
   retryUntilSuccessOrTimeout: vi.fn().mockResolvedValue(undefined),
+  generateFileHash: vi.fn().mockResolvedValue('abc123def456'),
 }));
 
 describe('Uploader', () => {

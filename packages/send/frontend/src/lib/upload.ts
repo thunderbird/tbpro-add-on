@@ -10,7 +10,11 @@ import { NamedBlob, sendBlob } from '@send-frontend/lib/filesync';
 import { Keychain } from '@send-frontend/lib/keychain';
 import { UserType } from '@send-frontend/types';
 import { SPLIT_SIZE } from './const';
-import { retryUntilSuccessOrTimeout, splitIntoMultipleZips } from './utils';
+import {
+  generateFileHash,
+  retryUntilSuccessOrTimeout,
+  splitIntoMultipleZips,
+} from './utils';
 
 export default class Uploader {
   user: UserType;
@@ -111,6 +115,10 @@ export default class Uploader {
     if (!fileBlob) {
       return null;
     }
+
+    // generate a hash from the file
+    const fileHash = await generateFileHash(fileBlob);
+    console.log('File hash (SHA-256):', fileHash);
 
     // get folder key
     const wrappingKey = await this.keychain.get(containerId);
@@ -214,6 +222,7 @@ export default class Uploader {
               type: blob.type,
               containerId,
               part, // if the file was split into multiple zips, we add the part
+              fileHash,
             },
             'POST'
           );
