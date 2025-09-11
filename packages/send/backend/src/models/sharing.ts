@@ -833,3 +833,21 @@ export async function deleteAccessLink(linkId: string) {
 export async function burnEphemeralConversation(containerId: string) {
   return await burnFolder(containerId);
 }
+
+export async function checkIfAccessLinkCanBeCreated(containerId: string) {
+  const reportedUploads = await prisma.container.findUnique({
+    where: { id: containerId },
+    select: {
+      items: {
+        where: {
+          upload: {
+            is: {
+              reported: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  return reportedUploads?.items.length === 0;
+}

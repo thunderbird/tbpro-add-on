@@ -4,6 +4,7 @@ import {
   acceptAccessLink,
   acceptInvitation,
   burnEphemeralConversation,
+  checkIfAccessLinkCanBeCreated,
   createAccessLink,
   createInvitationFromAccessLink,
   getAccessLinkChallenge,
@@ -23,7 +24,10 @@ import {
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { useMetrics } from '@send-backend/metrics';
-import { addExpiryToContainer } from '@send-backend/utils';
+import {
+  addExpiryToContainer,
+  formatAccessLinkWithPasswordHash,
+} from '@send-backend/utils';
 import {
   getGroupMemberPermissions,
   requireAdminPermission,
@@ -95,6 +99,17 @@ router.post(
     if (req.body.permission) {
       permission = req.body.permission;
     }
+
+    // check if link can be created
+    const canCreateLink = await checkIfAccessLinkCanBeCreated(containerId);
+
+    if (!canCreateLink) {
+      return res.status(403).json({
+        message:
+          'Cannot create access link for this container because it contains files that have been reported for abuse.',
+      });
+    }
+
     const accessLink = await createAccessLink(
       containerId,
       senderId,
@@ -122,6 +137,20 @@ router.post(
     return res.status(200).json({
       id: accessLink.id,
       expiryDate: accessLink.expiryDate,
+    });
+  })
+);
+
+router.get(
+  '/:containerId/canCreateAccessLink',
+  requireJWT,
+  getGroupMemberPermissions,
+  requireSharePermission,
+  wrapAsyncHandler(async (req, res) => {
+    const { containerId } = req.params;
+    const canCreateLink = await checkIfAccessLinkCanBeCreated(containerId);
+    return res.status(200).json({
+      canCreateLink,
     });
   })
 );
@@ -307,10 +336,12 @@ router.get(
 
     if (type === 'file') {
       const result = await getAccessLinksByUploadIdAndWrappedKey(uploadId);
-      return res.status(200).json(result);
+      const formattedLinks = formatAccessLinkWithPasswordHash(result);
+      return res.status(200).json(formattedLinks);
     }
     const result = await getAccessLinksByUploadId(uploadId);
-    return res.status(200).json(result);
+    const formattedLinks = formatAccessLinkWithPasswordHash(result);
+    return res.status(200).json(formattedLinks);
   })
 );
 

@@ -96,6 +96,7 @@ jobs:
         id: install-pnpm-build
         run: |
           npm install -g pnpm
+          pnpm install lerna -g
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter send-backend
           lerna run build-image:backend --scope=send-suite
@@ -201,6 +202,7 @@ jobs:
           # Initial setup of dependencies
           cd packages/send/frontend
           npm install -g pnpm
+          pnpm install lerna -g
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
@@ -259,6 +261,7 @@ jobs:
           # Initial setup of dependencies
           cd packages/send/frontend
           npm install -g pnpm
+          pnpm install lerna -g          
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend

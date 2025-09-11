@@ -212,6 +212,17 @@ export default class Sharer {
     password?: string,
     expiration?: string
   ): Promise<string | null> {
+    // check if the container doesn't have reported items first
+    const canCreateLink = await this.api.call<{ canCreateLink: boolean }>(
+      `sharing/${containerId}/canCreateAccessLink`
+    );
+
+    if (!canCreateLink?.canCreateLink) {
+      throw new Error(
+        'Cannot create access link for this container because it contains files that have been reported for abuse.'
+      );
+    }
+
     // get the key (which unwraps it),
     const unwrappedKey = await this.keychain.get(containerId);
 
@@ -264,7 +275,7 @@ export default class Sharer {
       'POST'
     );
 
-    if (!resp.id) {
+    if (!resp?.id) {
       return null;
     }
 
