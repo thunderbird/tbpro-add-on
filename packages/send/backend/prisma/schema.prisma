@@ -190,6 +190,7 @@ model Container {
   children  Container[]     @relation("Nesting")
 
   tags      Tag[]
+  isDefault Boolean     @default(false) // Whether this is the user's default folder
 }
 
 enum ItemType {

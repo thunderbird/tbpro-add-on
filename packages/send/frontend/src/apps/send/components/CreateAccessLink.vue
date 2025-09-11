@@ -24,6 +24,7 @@ const tooltipText = ref('Copied to clipboard');
 const clipboard = useClipboard();
 const accessUrlInput = ref<HTMLInputElement | null>(null);
 const isLoading = ref(false);
+const errorMessage = ref('');
 
 const { mutate } = useMutation({
   mutationKey: ['getAccessLink'],
@@ -50,31 +51,39 @@ function copyToClipboard(url: string) {
 
 async function newAccessLink() {
   isLoading.value = true;
-  const url = await sharingStore.createAccessLink(
-    props.folderId,
-    password.value,
-    expiration.value
-  );
+  try {
+    const url = await sharingStore.createAccessLink(
+      props.folderId,
+      password.value,
+      expiration.value
+    );
 
-  if (!url) {
+    if (!url) {
+      emit('createAccessLinkError');
+      errorMessage.value = 'Failed to create access link. Please try again.';
+      isLoading.value = false;
+      return;
+    }
+
+    accessUrl.value = url;
+
+    if (!password.value.length) {
+      mutate();
+    }
+
+    // Copy url to clipboard
+    clipboard.copy(url);
+
+    // Focus the input
+    accessUrlInput.value?.focus();
+
+    await refreshAccessLinks();
+    isLoading.value = false;
+  } catch (error) {
     emit('createAccessLinkError');
-    return;
+    errorMessage.value = error;
+    isLoading.value = false;
   }
-
-  accessUrl.value = url;
-
-  if (!password.value.length) {
-    mutate();
-  }
-
-  // Copy url to clipboard
-  clipboard.copy(url);
-
-  // Focus the input
-  accessUrlInput.value?.focus();
-
-  await refreshAccessLinks();
-  isLoading.value = false;
 }
 
 watch(
@@ -84,6 +93,7 @@ watch(
     expiration.value = null;
     accessUrl.value = '';
     showPassword.value = false;
+    errorMessage.value = '';
   }
 );
 </script>
@@ -102,7 +112,6 @@ watch(
     </label>
     <label class="form-label">
       <span class="label-text">Link Expires</span>
-      <input v-model="expiration" type="datetime-local" />
     </label>
     <label class="form-label password-field">
       <span class="label-text">Password</span>
@@ -120,6 +129,12 @@ watch(
       </button>
     </label>
   </section>
+
+  <!-- Error message display -->
+  <div v-if="errorMessage" class="error-message" data-testid="error-message">
+    {{ errorMessage }}
+  </div>
+
   <Btn
     class="create-button"
     data-testid="create-share-link"
@@ -173,5 +188,15 @@ watch(
 
 .create-button {
   margin-bottom: 2rem;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
 }
 </style>

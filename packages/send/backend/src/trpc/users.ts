@@ -181,7 +181,6 @@ export const usersRouter = router({
     )
     .subscription(async function* (opts) {
       if (!opts.ctx?.user?.id) {
-        console.error('Verification can only be done by logged for users');
         return;
       }
       // listen for new events
@@ -203,7 +202,6 @@ export const usersRouter = router({
     )
     .subscription(async function* (opts) {
       if (!opts.ctx?.user?.id) {
-        console.error('Verification can only be done by logged for users');
         return;
       }
       // listen for new events
@@ -230,7 +228,6 @@ export const usersRouter = router({
     )
     .subscription(async function* (opts) {
       if (!opts.ctx?.user?.id) {
-        console.error('Verification can only be done by logged for users');
         return;
       }
       // listen for new events

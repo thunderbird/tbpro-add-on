@@ -6,6 +6,8 @@ import {
 import {
   getAccessLinksForContainer as getAccessLinks,
   getContainerWithoutAncestors,
+  getDefaultContainerForOwner,
+  setContainerAsDefault,
 } from '@send-backend/models/containers';
 import { getAllUserGroupContainers } from '@send-backend/models/users';
 import { addExpiryToContainer } from '@send-backend/utils';
@@ -211,9 +213,31 @@ export const containersRouter = router({
         id: '',
       };
 
+      // get the default folder for the user where the isDefault flag is true
+      const defaultFolder = await getDefaultContainerForOwner(id);
+      if (defaultFolder) {
+        response.id = defaultFolder.id;
+        return response;
+      }
+
+      // If we don't have a default folder, we need to get all the folders for the user and set oldest one as default
       try {
-        const containers = await getContainerWithoutAncestors(id);
-        response.id = containers.id;
+        const containersWithoutAncestors =
+          await getContainerWithoutAncestors(id);
+
+        // If the user has no folders at all, we just return an empty response
+        if (!containersWithoutAncestors.length) {
+          return response;
+        }
+
+        // Make sure we tag the first container (by creation date) as default so we don't have issues later
+        const sortedContainers = containersWithoutAncestors.sort((a, b) =>
+          a.createdAt > b.createdAt ? 1 : -1
+        );
+
+        await setContainerAsDefault(sortedContainers?.[0]?.id, id);
+        response.id = sortedContainers?.[0]?.id;
+
         return response;
       } catch {
         throw new TRPCError({

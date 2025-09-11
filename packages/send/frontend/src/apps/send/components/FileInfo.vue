@@ -3,7 +3,7 @@ import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
 import { trpc } from '@send-frontend/lib/trpc';
 import { useMutation } from '@tanstack/vue-query';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import FileAccessLinksList from '@send-frontend/apps/send/components/FileAccessLinksList.vue';
 import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
@@ -26,6 +26,10 @@ const tooltipText = ref('Copied to clipboard');
 const clipboard = useClipboard();
 const accessUrlInput = ref<HTMLInputElement | null>(null);
 const isLoading = ref(false);
+
+const canDisplay = computed(() => {
+  return folderStore?.selectedFile?.upload?.reported !== true;
+});
 
 const { mutate } = useMutation({
   mutationKey: ['getAccessLink'],
@@ -86,7 +90,15 @@ Note about shareOnly containers.
 </script>
 
 <template>
-  <div v-if="folderStore.selectedFile" class="flex flex-col gap-6 h-full">
+  <section v-if="!canDisplay">
+    This file has been reported for abuse. Please contact support if you believe
+    this is a mistake.
+  </section>
+
+  <div
+    v-if="folderStore.selectedFile && canDisplay"
+    class="flex flex-col gap-6 h-full"
+  >
     <!-- info -->
     <header class="flex flex-col items-center">
       <img src="@send-frontend/apps/send/assets/file.svg" class="w-20 h-20" />

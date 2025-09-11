@@ -105,13 +105,38 @@ export async function getContainerWithAncestors(id: string) {
 }
 
 export async function getContainerWithoutAncestors(userId: string) {
-  const topLevelContainers = prisma.container.findFirst({
+  const topLevelContainers = prisma.container.findMany({
     where: {
       parent: { is: null },
       owner: { id: userId },
     },
   });
   return topLevelContainers;
+}
+
+export async function setContainerAsDefault(
+  container: string,
+  ownerId: string
+) {
+  return await prisma.container.update({
+    where: {
+      id: container,
+      ownerId,
+    },
+    data: {
+      isDefault: true,
+      updatedAt: new Date(),
+    },
+  });
+}
+
+export async function getDefaultContainerForOwner(ownerId: string) {
+  return await prisma.container.findFirst({
+    where: {
+      ownerId,
+      isDefault: true,
+    },
+  });
 }
 
 export async function getAccessLinksForContainer(containerId: string) {
