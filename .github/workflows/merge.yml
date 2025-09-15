@@ -393,7 +393,7 @@ jobs:
         id: xpi-archive-stage
         uses: actions/upload-artifact@v4
         with:
-          name: xpi-stage
+          name: addon-xpi-stage
           path: packages/addon/tbpro-addon-stage-*.xpi
 
       - name: Deploy to ATN
