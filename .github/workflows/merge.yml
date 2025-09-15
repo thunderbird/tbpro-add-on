@@ -201,6 +201,7 @@ jobs:
           # Initial setup of dependencies
           cd packages/send/frontend
           npm install -g pnpm
+          npm install -g lerna
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
@@ -372,6 +373,7 @@ jobs:
         shell: bash
         run: |
           npm install -g pnpm
+          npm install -g lerna
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
           pnpm install --filter addon
