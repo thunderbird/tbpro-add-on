@@ -26,6 +26,8 @@ Install the package managers `bun` and `pnpm` globally. You can do this using np
 ```sh
 npm install -g bun
 npm install -g pnpm
+# This step is optional if you don't have lerna installed globally but it's easier to run commands that use it
+pnpm install -g lerna
 ```
 
 Or alternatively

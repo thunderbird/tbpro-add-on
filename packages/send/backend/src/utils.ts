@@ -93,3 +93,17 @@ export const addExpiryToContainer = ({ createdAt, ...upload }: Upload) => {
     expired: daysToExpiry <= 0,
   };
 };
+type Shares = {
+  id: string;
+  passwordHash: string;
+  expiryDate: Date;
+  locked: boolean;
+};
+export const formatAccessLinkWithPasswordHash = (shares: Partial<Shares>[]) => {
+  return shares.map((link) => {
+    // If there password hash is present, we add it to the id so that the full shareable link can be shown to the user
+    return link.passwordHash
+      ? { ...link, id: link.id + `#${link.passwordHash}` }
+      : link;
+  });
+};

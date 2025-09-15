@@ -159,10 +159,13 @@ describe(`Sharer`, () => {
   });
   describe(`requestAccessLink`, () => {
     it(`Returns null if unable to create a new share`, async () => {
-      const handler = http.post(`${API_URL}/sharing`, async () =>
-        HttpResponse.json({})
-      );
-      const server = setupServer(handler);
+      const handlers = [
+        http.get(`${API_URL}/sharing/1/canCreateAccessLink`, async () =>
+          HttpResponse.json({ canCreateLink: true })
+        ),
+        http.post(`${API_URL}/sharing`, async () => HttpResponse.json({})),
+      ];
+      const server = setupServer(...handlers);
       server.listen();
 
       const keychain = new Keychain();
@@ -178,12 +181,17 @@ describe(`Sharer`, () => {
       const LINK_ID = 'abcdef123456';
       const url = `${import.meta.env.VITE_SEND_CLIENT_URL}/share/${LINK_ID}`;
 
-      const handler = http.post(`${API_URL}/sharing`, async () =>
-        HttpResponse.json({
-          id: LINK_ID,
-        })
-      );
-      const server = setupServer(handler);
+      const handlers = [
+        http.get(`${API_URL}/sharing/1/canCreateAccessLink`, async () =>
+          HttpResponse.json({ canCreateLink: true })
+        ),
+        http.post(`${API_URL}/sharing`, async () =>
+          HttpResponse.json({
+            id: LINK_ID,
+          })
+        ),
+      ];
+      const server = setupServer(...handlers);
       server.listen();
 
       const keychain = new Keychain();
