@@ -200,12 +200,12 @@ jobs:
         shell: bash
         run: |
           # Initial setup of dependencies
-          cd packages/send/frontend
           npm install -g pnpm
           npm install -g lerna
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
+          cd packages/send/frontend
 
           # Build static frontend assets and the .xpi
           IS_CI_AUTOMATION=yes pnpm build-and-submit
