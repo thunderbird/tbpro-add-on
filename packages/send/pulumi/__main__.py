@@ -4,6 +4,7 @@ import pulumi
 import pulumi_aws as aws
 import pulumi_cloudflare as cloudflare
 import tb_pulumi
+import tb_pulumi.autoscale
 import tb_pulumi.ci
 import tb_pulumi.cloudfront
 import tb_pulumi.cloudwatch
@@ -73,7 +74,8 @@ if project.stack == 'ci':
         **db_opts,
     )
 
-# Create a Fargate cluster
+# Create an autoscaling Fargate cluster
+autoscaler_opts = resources['tb:autoscale:EcsServiceAutoscaler']['backend']
 backend_fargate_opts = resources['tb:fargate:FargateClusterWithLogging']['backend']
 backend_subnets = [subnet for subnet in vpc.resources['subnets']]
 backend_fargate = tb_pulumi.fargate.FargateClusterWithLogging(
@@ -91,6 +93,13 @@ backend_fargate = tb_pulumi.fargate.FargateClusterWithLogging(
         ]
     ),
     **backend_fargate_opts,
+)
+autoscaler = tb_pulumi.autoscale.EcsServiceAutoscaler(
+    f'{project.name_prefix}-autoscl-backend',
+    project=project,
+    service=backend_fargate.resources.get('service'),
+    opts=pulumi.ResourceOptions(depends_on=[backend_fargate]),
+    **autoscaler_opts
 )
 
 # Sometimes create a DNS record pointing to the backend service
