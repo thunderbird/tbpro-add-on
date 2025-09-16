@@ -99,7 +99,7 @@ autoscaler = tb_pulumi.autoscale.EcsServiceAutoscaler(
     project=project,
     service=backend_fargate.resources.get('service'),
     opts=pulumi.ResourceOptions(depends_on=[backend_fargate]),
-    **autoscaler_opts
+    **autoscaler_opts,
 )
 
 # Sometimes create a DNS record pointing to the backend service
