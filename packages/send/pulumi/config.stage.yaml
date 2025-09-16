@@ -97,7 +97,7 @@ resources:
           - FARGATE
         container_definitions:
           backend:
-            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:37239f49bb9eefd6e833a756e0513c62124744ea
+            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:164c4340928a7e7318372dc0df4b1ebb4669330d
             portMappings:
               - name: send-suite
                 containerPort: 8080
@@ -179,6 +179,16 @@ resources:
                 value: send-suite-backend
               - name: STORAGE_BACKEND
                 value: b2
+
+  tb:autoscale:EcsServiceAutoscaler:
+    backend:
+      cpu_threshold: 80
+      ram_threshold: 80
+      cooldown: 180
+      disable_scale_in: False
+      min_capacity: 2
+      max_capacity: 4
+      suspend: False
 
   tb:cloudfront:CloudFrontS3Service:
     frontend:
