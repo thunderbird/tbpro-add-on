@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import DragAndDropUpload from '@send-frontend/apps/send/components/DragAndDropUpload.vue';
+import { useFolderStore } from '@send-frontend/stores';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { currentRoute } = useRouter();
+const { rootFolderId } = useFolderStore();
+const rootFolderIdValue = computed(() =>
+  rootFolderId ? `/send/folder/${rootFolderId}` : '/send'
+);
 
 const showUploadZone = computed(() => {
   return currentRoute.value.path.includes('/folder');
@@ -49,7 +54,7 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
       <ul role="list">
         <li data-tesid="my-files-link">
           <router-link
-            to="/send"
+            :to="rootFolderIdValue"
             class="block py-2 px-3 rounded hover:bg-gray-100 focus:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             aria-describedby="my-files-desc"
           >
