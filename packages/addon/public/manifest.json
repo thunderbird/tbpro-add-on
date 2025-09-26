@@ -39,5 +39,21 @@
     "messagesRead",
     "sensitiveDataUpload",
     "https://*.backblazeb2.com/*"
-  ]
+  ],
+  "experiment_apis": {
+    "MailAccounts": {
+      "schema": "api/MailAccounts/schema.json",
+      "parent": {
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "MailAccounts"
+          ]
+        ],
+        "script": "api/MailAccounts/implementation.js"
+      }
+    }
+  }
 }
