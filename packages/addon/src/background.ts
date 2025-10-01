@@ -190,6 +190,14 @@ async function openUnifiedPopup() {
 // Handle all messages from popup.
 browser.runtime.onMessage.addListener((message) => {
   switch (message.type) {
+
+    case 'SIGN_IN':
+        console.log(`[onMessage] sounds like you want to sign in from the typescript handler`);
+        browser.tabs.create({
+            url: "index.management.html"
+        })
+        break;
+
     // Popup is ready and is requesting the file list.
     case 'POPUP_READY':
       console.log(`[onMessage] Popup is ready. Sending file list.`);
