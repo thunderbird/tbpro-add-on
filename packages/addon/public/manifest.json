@@ -41,7 +41,8 @@
     "sensitiveDataUpload",
     "tabs",
     "activeTab",
-    "https://*.backblazeb2.com/*"
+    "https://*.backblazeb2.com/*",
+    "http://localhost:5173/*"
   ],
   "browser_action": {
     "default_title": "TB Pro",
@@ -64,5 +65,13 @@
         "script": "api/MailAccounts/implementation.js"
       }
     }
-  }
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["token-bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
 }

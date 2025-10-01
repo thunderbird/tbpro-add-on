@@ -188,15 +188,27 @@ async function openUnifiedPopup() {
 }
 
 // Handle all messages from popup.
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener(async (message) => {
   switch (message.type) {
+    case 'TB/PING':
+      console.log('[background] got the ping from the bridge')
+      console.log(message);
+      break;
+
+    case 'TB/OIDC_TOKEN':
+      console.log(`I can haz OIDC TOKEN?`);
+      console.log(message);
+      // TODO: Store message.token
+      break;
+
 
     case 'SIGN_IN':
-        console.log(`[onMessage] sounds like you want to sign in from the typescript handler`);
-        browser.tabs.create({
-            url: "index.management.html"
-        })
-        break;
+      console.log(`[onMessage] sounds like you want to sign in from the typescript handler`);
+      await browser.tabs.create({
+        url: "http://localhost:5173/index.management.html"
+      })
+
+      break;
 
     // Popup is ready and is requesting the file list.
     case 'POPUP_READY':
