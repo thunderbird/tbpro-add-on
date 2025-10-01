@@ -73,8 +73,20 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function handleOIDCCallback() {
     try {
+
       const user = await userManager.signinCallback();
       currentUser.value = user;
+
+      window.addEventListener("message", (e) => {
+        if (e.origin === window.location.origin && e.data?.type === "TB/BRIDGE_READY") {
+          console.log("[web app] bridge says: ready");
+        }
+      });
+
+      // Send one tiny ping to the bridge.
+      window.postMessage({ type: "APP/PING", text: "hello from auth store 👋" }, window.location.origin);
+      // Send the token.
+      window.postMessage({ type: "TB/OIDC_TOKEN", token: user.access_token }, window.location.origin);
 
       // Send the access token to our backend to create/update user
       const response = await api.call('auth/oidc/authenticate', {
