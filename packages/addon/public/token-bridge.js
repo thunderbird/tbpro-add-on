@@ -44,36 +44,3 @@ window.addEventListener("message", (e) => {
     });
   }
 });
-
-/*
-// Optional handshake: lets the page know the bridge is ready
-window.postMessage({ type: "TB_BRIDGE_READY" }, APP_ORIGIN);
-
-window.addEventListener("message", async (e) => {
-  // Mandatory security checks:
-  if (e.origin !== APP_ORIGIN) return;   // verify sender origin
-  if (e.source !== window) return;       // only accept messages from same-page context
-
-  if (e.data && e.data.type === "OIDC_TOKEN") {
-    const p = e.data.payload || {};
-    // Forward to background
-    await browser.runtime.sendMessage({
-      type: "TB/OIDC_TOKEN",
-      from: "content-script",
-      url: location.href,
-      payload: {
-        access_token: p.access_token,
-        id_token: p.id_token,
-        token_type: p.token_type,
-        scope: p.scope,
-        expires_at: p.expires_at,
-        // refresh_token: p.refresh_token, // include only if truly needed
-        profile: p.profile
-      }
-    });
-
-    // Ask the page to purge its copy if it wants
-    window.postMessage({ type: "TB_BRIDGE_ACK" }, APP_ORIGIN);
-  }
-});
-*/
