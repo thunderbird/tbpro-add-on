@@ -38,6 +38,14 @@
     "webRequestBlocking",
     "messagesRead",
     "sensitiveDataUpload",
-    "https://*.backblazeb2.com/*"
-  ]
+    "https://*.backblazeb2.com/*",
+    "tabs",
+    "activeTab"
+  ],
+  "browser_action": {
+    "default_title": "TB Pro",
+    "default_icon": "icons/64-dev.png",
+    "allowed_spaces": [],
+    "default_popup": "tbpro-menu.html"
+  }
 }
