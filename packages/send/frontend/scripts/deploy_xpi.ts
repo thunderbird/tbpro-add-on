@@ -48,8 +48,11 @@ function generateJwtId(): string {
   const idLength = 64;
   let jwtId = '';
 
+  const randomValues = new Uint8Array(idLength);
+  crypto.getRandomValues(randomValues);
+
   for (let i = 0; i < idLength; i++) {
-    jwtId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+    jwtId += alphabet.charAt(randomValues[i] % alphabet.length);
   }
 
   return jwtId;
