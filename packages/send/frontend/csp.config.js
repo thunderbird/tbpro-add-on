@@ -116,10 +116,8 @@ export function getCspConfig(env = {}) {
             'https://*.backblazeb2.com', // Backblaze B2 storage
             ...sentryDomain(env.VITE_SENTRY_DSN), // Sentry error reporting
             'https://*.posthog.com/*', // PostHog analytics (fallback)
-            'https://accounts.stage.mozaws.net', // Mozilla accounts (staging)
             'https://us.i.posthog.com', // PostHog ingestion (fallback)
             ...envOrEmpty(env.VITE_OIDC_ROOT_URL),
-            'https://auth-stage.tb.pro' // Thunderbird Pro authentication (fallback)
         ].filter(Boolean) // Remove any undefined/null entries
     };
 }
