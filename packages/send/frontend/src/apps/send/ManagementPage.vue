@@ -9,7 +9,6 @@ import { useConfigStore } from '@send-frontend/stores';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
 import { useQuery } from '@tanstack/vue-query';
 import { ModalsContainer } from 'vue-final-modal';
-import { useRouter } from 'vue-router';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
 import LoadingComponent from '../common/LoadingComponent.vue';
@@ -24,7 +23,6 @@ const { isExtension } = useConfigStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 const authStore = useAuthStore();
 
-const router = useRouter();
 const { loginToOIDC, loginToMozAccount } = authStore;
 useVerificationStore();
 
@@ -58,7 +56,6 @@ function _loginToOIDCForExtension() {
 
 <template>
   <div id="send-page" class="container">
-    <div>{{ router.currentRoute.value.path }}</div>
     <CompatibilityBoundary>
       <CompatibilityBanner />
       <TBBanner />
