@@ -1,7 +1,7 @@
 import { JsonResponse } from '@send-frontend/lib/api';
 import { NamedBlob } from '@send-frontend/types';
 import JSZip from 'jszip';
-import { MAX_FILE_SIZE } from './const';
+import { constants } from 'tbpro-shared';
 
 /**
  * Generates a SHA-256 hash from a file blob.
@@ -347,7 +347,7 @@ export const splitIntoMultipleZips = async (
 
 export const checkBlobSize = async (blob: NamedBlob) => {
   console.log(blob);
-  if (blob.size > MAX_FILE_SIZE) {
+  if (blob.size > constants.MAX_FILE_SIZE) {
     console.warn('File too big');
     return false;
   }

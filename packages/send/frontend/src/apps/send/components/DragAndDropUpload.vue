@@ -5,7 +5,7 @@ import ImageIcon from '@send-frontend/apps/common/ImageIcon.vue';
 import RemoveIcon from '@send-frontend/apps/common/RemoveIcon.vue';
 import ErrorUploading from '@send-frontend/apps/send/components/ErrorUploading.vue';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import { MAX_FILE_SIZE } from '@send-frontend/lib/const';
+import { constants } from 'tbpro-shared';
 import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
 import { NamedBlob } from '@send-frontend/lib/filesync';
 import { useStatusStore } from '@send-frontend/stores';
@@ -49,7 +49,7 @@ function onDrop(files: File[] | null) {
 
   // Check for oversized files before processing
   const oversizedFiles = Array.from(files).filter((file) => {
-    const isOversized = file.size > MAX_FILE_SIZE;
+    const isOversized = file.size > constants.MAX_FILE_SIZE;
     return isOversized;
   });
 

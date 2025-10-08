@@ -1,4 +1,5 @@
 import prettyBytes from 'pretty-bytes';
+import { constants } from 'tbpro-shared';
 
 export const CONTAINER_TYPE = {
   CONVERSATION: 'CONVERSATION',
@@ -20,11 +21,11 @@ export const SELECTION_COMPLETE = 'SELECTION_COMPLETE';
 
 const ONE_KB_IN_BYTES = 1024;
 const ONE_MB_IN_BYTES = ONE_KB_IN_BYTES * 1024;
-const ONE_GB_IN_BYTES = ONE_MB_IN_BYTES * 1024;
 
-export const MAX_FILE_SIZE = ONE_GB_IN_BYTES * 20;
 export const DAYS_TO_EXPIRY = 15;
-export const MAX_FILE_SIZE_HUMAN_READABLE = prettyBytes(MAX_FILE_SIZE);
+export const MAX_FILE_SIZE_HUMAN_READABLE = prettyBytes(
+  constants.MAX_FILE_SIZE
+);
 
 export const MAX_ACCESS_LINK_RETRIES = 5;
 // We set the split size to 100 MB by default, but it can be overridden by an environment variable.

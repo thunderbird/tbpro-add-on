@@ -1,0 +1,10 @@
+const ONE_KB_IN_BYTES = 1024;
+const ONE_MB_IN_BYTES = ONE_KB_IN_BYTES * 1024;
+const ONE_GB_IN_BYTES = ONE_MB_IN_BYTES * 1024;
+
+// 20 GB
+const MAX_FILE_SIZE = ONE_GB_IN_BYTES * 20;
+
+export default {
+  MAX_FILE_SIZE,
+};

@@ -15,9 +15,9 @@ import {
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
   FILE_LIST,
-  MAX_FILE_SIZE,
   POPUP_READY,
 } from '@send-frontend/lib/const';
+import { constants } from 'tbpro-shared';
 import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
 import { organizeFiles } from '@send-frontend/lib/folderView';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
@@ -202,7 +202,7 @@ onMounted(async () => {
   // Using a for loop so we can return.
   for (let i = 0; i < files.value?.length; i++) {
     const file = files.value[i].data;
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > constants.MAX_FILE_SIZE) {
       progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
       console.log(`Max file size exceeded`);
       isError.value = true;
