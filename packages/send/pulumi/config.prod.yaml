@@ -71,7 +71,7 @@ resources:
 
   tb:fargate:FargateClusterWithLogging:
     backend:
-      desired_count: 1
+      desired_count: 2
       assign_public_ip: True
       ecr_resources:
         - arn:aws:ecr:us-east-1:768512802988:repository/send*
@@ -98,7 +98,7 @@ resources:
           - FARGATE
         container_definitions:
           backend:
-            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:4.4.5
+            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:4.5.0
             portMappings:
               - name: send-suite
                 containerPort: 8080
@@ -214,6 +214,8 @@ resources:
 
   tb:ci:AwsAutomationUser:
     ci:
+      access_keys: {}
+      enable_legacy_access_key: True
       additional_policies:
         - arn:aws:iam::768512802988:policy/send-suite-prod-frontend-cache-invalidation
       enable_ecr_image_push: true
