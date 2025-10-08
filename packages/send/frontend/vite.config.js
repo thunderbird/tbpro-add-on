@@ -2,6 +2,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
+import { getCSPForEnvironment } from './csp.config.js';
 import { packageJson, sharedViteConfig } from './sharedViteConfig';
 import { getEnvironmentName } from './src/lib/config';
 
@@ -42,6 +43,15 @@ export default defineConfig(({ mode }) => {
         '/login-success.html': SERVER_BASE_URL, // Using `backend` per the docker network name
         '/login-failed.html': SERVER_BASE_URL, // Using `backend` per the docker network name
       },
+      headers: {
+        // Security headers
+        'Content-Security-Policy': getCSPForEnvironment(mode, env),
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+      }
     },
     resolve: {
       alias: {
