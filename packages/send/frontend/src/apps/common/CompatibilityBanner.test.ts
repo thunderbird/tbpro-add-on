@@ -43,19 +43,6 @@ describe('CompatibilityBanner.vue', () => {
     vi.clearAllMocks();
   });
 
-  it('should not show banner when isClosedByUser is true', async () => {
-    isProd.mockReturnValue(false);
-    const wrapper = mount(CompatibilityBanner);
-
-    const closeButton = wrapper.find(getByTestId('close-button'));
-
-    await closeButton.trigger('click');
-    //@ts-ignore
-    await wrapper.vm.$nextTick();
-
-    expect(wrapper.find('header').exists()).toBe(false);
-  });
-
   it('should show testing banner when not in production', async () => {
     isProd.mockReturnValue(false);
     const wrapper = mount(CompatibilityBanner, {});

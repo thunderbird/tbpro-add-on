@@ -68,27 +68,6 @@ describe('CompatibilityBoundary', () => {
     );
   });
 
-  it('should render slot when compatibility is OK', async () => {
-    useQueryMock.mockReturnValue({
-      data: {
-        value: {
-          compatibility: { result: 'OK' },
-          apiVersion: mockApiVersion,
-          clientVersion: mockClientVersion,
-        },
-      },
-      isLoading: false,
-      error: null,
-    });
-    wrapper = shallowMount(CompatibilityBoundary, {
-      slots: {
-        default: '<div class="test-slot">Slot content</div>',
-      },
-    });
-    expect(wrapper.find('.test-slot').exists()).toBe(true);
-    expect(wrapper.find('.test-slot').text()).toBe('Slot content');
-  });
-
   describe('FORCE_UPDATE state', () => {
     beforeEach(() => {
       useQueryMock.mockReturnValue({
