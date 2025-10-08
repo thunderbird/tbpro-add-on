@@ -48,8 +48,11 @@ function generateJwtId(): string {
   const idLength = 64;
   let jwtId = '';
 
+  const randomValues = new Uint8Array(idLength);
+  crypto.getRandomValues(randomValues);
+
   for (let i = 0; i < idLength; i++) {
-    jwtId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+    jwtId += alphabet.charAt(randomValues[i] % alphabet.length);
   }
 
   return jwtId;
@@ -73,16 +76,18 @@ function generateJwt(): string {
 function getXpiPath(): string {
   const addonDir = path.resolve(__dirname, '..');
   const files = fs.readdirSync(addonDir);
-  const xpiFiles = files.filter(file => file.endsWith('.xpi'));
-  
+  const xpiFiles = files.filter((file) => file.endsWith('.xpi'));
+
   if (xpiFiles.length === 0) {
     throw Error(`No XPI file found in addon directory: ${addonDir}`);
   }
-  
+
   if (xpiFiles.length > 1) {
-    throw Error(`Multiple XPI files found in addon directory: ${xpiFiles.join(', ')}. Please ensure only one XPI file exists.`);
+    throw Error(
+      `Multiple XPI files found in addon directory: ${xpiFiles.join(', ')}. Please ensure only one XPI file exists.`
+    );
   }
-  
+
   return path.join(addonDir, xpiFiles[0]);
 }
 
