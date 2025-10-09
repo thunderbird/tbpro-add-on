@@ -335,6 +335,65 @@ router.get('/:id/parts', async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/uploads/parts:
+ *   post:
+ *     summary: Get upload parts by wrapped key
+ *     description: Retrieves all parts of uploads associated with a specific wrapped key
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               wrappedKey:
+ *                 type: string
+ *                 description: The wrapped encryption key to search for
+ *             required:
+ *               - wrappedKey
+ *           example:
+ *             wrappedKey: "encrypted_key_123"
+ *     responses:
+ *       200:
+ *         description: Upload parts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     description: The ID of the upload part
+ *                   part:
+ *                     type: integer
+ *                     description: The part number of the multipart upload
+ *                 required:
+ *                   - id
+ *                   - part
+ *             example:
+ *               - id: "upload-456-part-1"
+ *                 part: 1
+ *               - id: "upload-456-part-2"
+ *                 part: 2
+ *       500:
+ *         description: Failed to fetch upload parts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *               example:
+ *                 message: "Failed to fetch upload parts"
+ */
 router.post('/parts', requireJWT, async (req, res) => {
   const { wrappedKey } = req.body;
   try {
@@ -353,6 +412,78 @@ const partsItemsSchema = z.object({
   wrappedKey: z.string(),
 });
 
+/**
+ * @openapi
+ * /api/uploads/items:
+ *   post:
+ *     summary: Get upload items by IDs and wrapped key
+ *     description: Retrieves upload items by their upload IDs and the common wrapped key
+ *     tags: [Uploads]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *                 description: Array of upload IDs to retrieve
+ *               wrappedKey:
+ *                 type: string
+ *                 description: The wrapped encryption key associated with the uploads
+ *             required:
+ *               - ids
+ *               - wrappedKey
+ *           example:
+ *             ids: ["upload-123", "upload-456"]
+ *             wrappedKey: "encrypted_key_abc"
+ *     responses:
+ *       200:
+ *         description: Upload items retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 description: Upload item details
+ *             example:
+ *               - id: "upload-123"
+ *                 metadata: {...}
+ *               - id: "upload-456"
+ *                 metadata: {...}
+ *       400:
+ *         description: Invalid request body
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *               example:
+ *                 message: "Invalid request body"
+ *                 errors: [{"path": ["ids"], "message": "At least one ID is required"}]
+ *       500:
+ *         description: Failed to fetch upload items
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *               example:
+ *                 message: "Failed to fetch upload parts"
+ */
 // This endpoint retrieves items by their upload IDs and the common wrapped key.
 router.post('/items', async (req, res) => {
   try {
@@ -380,6 +511,55 @@ router.post('/items', async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/uploads/report:
+ *   post:
+ *     summary: Report a suspicious file
+ *     description: Reports a file upload as suspicious based on its upload ID
+ *     tags: [Uploads]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               uploadId:
+ *                 type: string
+ *                 description: The ID of the upload to report as suspicious
+ *             required:
+ *               - uploadId
+ *           example:
+ *             uploadId: "upload-suspicious-123"
+ *     responses:
+ *       200:
+ *         description: Report received successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 id:
+ *                   type: string
+ *                   description: The ID of the report created
+ *               example:
+ *                 message: "Report received"
+ *                 id: "report-789"
+ *       500:
+ *         description: Failed to process report
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *               example:
+ *                 message: "Failed to process report"
+ */
 router.post('/report', async (req, res) => {
   const { uploadId } = req.body;
   const id = await reportSuspiciousFile(uploadId);
@@ -387,6 +567,57 @@ router.post('/report', async (req, res) => {
   res.status(200).json({ message: 'Report received', id });
 });
 
+/**
+ * @openapi
+ * /api/uploads/check-hash:
+ *   post:
+ *     summary: Check if a file hash is suspicious
+ *     description: Checks whether a given file hash matches known suspicious files
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fileHash:
+ *                 type: string
+ *                 description: The hash of the file to check against the suspicious files database
+ *             required:
+ *               - fileHash
+ *           example:
+ *             fileHash: "sha256:abcdef123456789"
+ *     responses:
+ *       200:
+ *         description: Hash check completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 isSuspicious:
+ *                   type: boolean
+ *                   description: Whether the file hash matches a known suspicious file
+ *               example:
+ *                 message: "Hash checked"
+ *                 isSuspicious: false
+ *       500:
+ *         description: Failed to check hash
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *               example:
+ *                 message: "Failed to check hash"
+ */
 router.post('/check-hash', requireJWT, async (req, res) => {
   const { fileHash } = req.body;
   const isSuspicious = await checkHashAgainstSuspiciousFiles(fileHash);

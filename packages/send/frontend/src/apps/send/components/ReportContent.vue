@@ -65,7 +65,9 @@ defineProps<ReportProps>();
           class="clickable"
           @click.prevent="reportContent({ uploadId, containerId })"
           >here</span
-        ><span
+        >
+        <!--This is a temporary pre-MVP way for us to test suspicious files  -->
+        <span
           class="clickable transparent"
           @click.prevent="markAsSuspicious({ uploadId, containerId })"
           >transparent text</span
