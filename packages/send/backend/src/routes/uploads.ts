@@ -9,16 +9,19 @@ import {
 } from '../errors/routes';
 
 import {
+  checkHashAgainstSuspiciousFiles,
   createUpload,
   getItemsByUploadIdandWrappedKey,
   getUploadMetadata,
   getUploadParts,
   getUploadPartsByWrappedKey,
   getUploadSize,
+  reportSuspiciousFile,
   statUpload,
 } from '../models/uploads';
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
+import { reportUpload } from '@send-backend/models';
 import storage from '@send-backend/storage';
 import { useMetrics } from '../metrics';
 import {
@@ -375,6 +378,19 @@ router.post('/items', async (req, res) => {
     console.error('Error fetching upload parts:', error);
     res.status(500).json({ message: 'Failed to fetch upload parts' });
   }
+});
+
+router.post('/report', async (req, res) => {
+  const { uploadId } = req.body;
+  const id = await reportSuspiciousFile(uploadId);
+  await reportUpload(uploadId);
+  res.status(200).json({ message: 'Report received', id });
+});
+
+router.post('/check-hash', requireJWT, async (req, res) => {
+  const { fileHash } = req.body;
+  const isSuspicious = await checkHashAgainstSuspiciousFiles(fileHash);
+  res.status(200).json({ message: 'Hash checked', isSuspicious });
 });
 
 export default router;

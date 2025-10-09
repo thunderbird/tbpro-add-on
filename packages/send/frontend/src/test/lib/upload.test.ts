@@ -219,7 +219,117 @@ describe('Uploader', () => {
     });
   });
 
+  describe('suspicious file detection', () => {
+    it('should generate file hash and check against suspicious files', async () => {
+      const blob = new Blob(['test content'], {
+        type: 'text/plain',
+      }) as NamedBlob;
+      blob.name = 'test.txt';
+
+      mockApi.call = vi
+        .fn()
+        .mockResolvedValueOnce({ isSuspicious: false }) // check-hash response
+        .mockResolvedValueOnce({ upload: { id: 'upload1' } })
+        .mockResolvedValueOnce({ id: 'item1' });
+
+      const containerId = 'container-id';
+
+      await uploader.doUpload(blob, containerId, mockApi, mockProgressTracker);
+
+      // Verify that the API was called to check the hash
+      expect(mockApi.call).toHaveBeenCalledWith(
+        'uploads/check-hash',
+        { fileHash: 'abc123def456' },
+        'POST'
+      );
+    });
+
+    it('should block upload when file is marked as suspicious', async () => {
+      const blob = new Blob(['suspicious content'], {
+        type: 'text/plain',
+      }) as NamedBlob;
+      blob.name = 'suspicious.txt';
+
+      // Mock alert function
+      const mockAlert = vi.fn();
+      global.alert = mockAlert;
+
+      mockApi.call = vi.fn().mockResolvedValueOnce({ isSuspicious: true }); // check-hash response
+
+      const containerId = 'container-id';
+
+      const result = await uploader.doUpload(
+        blob,
+        containerId,
+        mockApi,
+        mockProgressTracker
+      );
+
+      // Verify that upload was blocked
+      expect(result).toBeNull();
+      expect(mockAlert).toHaveBeenCalledWith(
+        'Warning: This file has been reported as suspicious. You cannot upload it. If you believe this is an error, please contact support.'
+      );
+      // Verify that only the hash check API call was made
+      expect(mockApi.call).toHaveBeenCalledTimes(1);
+      expect(mockApi.call).toHaveBeenCalledWith(
+        'uploads/check-hash',
+        { fileHash: 'abc123def456' },
+        'POST'
+      );
+    });
+
+    it('should include fileHash in upload creation API call', async () => {
+      const blob = new Blob(['test content'], {
+        type: 'text/plain',
+      }) as NamedBlob;
+      blob.name = 'test.txt';
+
+      mockApi.call = vi
+        .fn()
+        .mockResolvedValueOnce({ isSuspicious: false }) // check-hash response
+        .mockResolvedValueOnce({ upload: { id: 'upload1' } })
+        .mockResolvedValueOnce({ id: 'item1' });
+
+      const containerId = 'container-id';
+
+      await uploader.doUpload(blob, containerId, mockApi, mockProgressTracker);
+
+      // Verify that fileHash was included in the upload creation call
+      expect(mockApi.call).toHaveBeenCalledWith(
+        'uploads',
+        expect.objectContaining({
+          fileHash: 'abc123def456',
+        }),
+        'POST'
+      );
+    });
+
+    it('should handle hash check API errors gracefully', async () => {
+      const blob = new Blob(['test content'], {
+        type: 'text/plain',
+      }) as NamedBlob;
+      blob.name = 'test.txt';
+
+      mockApi.call = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Hash check failed')); // check-hash error
+
+      const containerId = 'container-id';
+
+      // Should throw the error from hash check
+      await expect(
+        uploader.doUpload(blob, containerId, mockApi, mockProgressTracker)
+      ).rejects.toThrow('Hash check failed');
+    });
+  });
+
   describe('doUpload multipart logic', () => {
+    beforeEach(() => {
+      // Setup mock API call for hash checking in multipart tests
+      mockApi.call = vi.fn().mockResolvedValueOnce({ isSuspicious: false }); // Always add hash check response first
+    });
+
     it('should process multipart uploads sequentially', async () => {
       // Create a large file that would trigger multipart upload
       const largeFileSize = SPLIT_SIZE + 1000;
@@ -230,6 +340,7 @@ describe('Uploader', () => {
 
       mockApi.call = vi
         .fn()
+        .mockResolvedValueOnce({ isSuspicious: false }) // hash check response
         .mockResolvedValueOnce({ upload: { id: 'upload1' } })
         .mockResolvedValueOnce({ id: 'item1' })
         .mockResolvedValueOnce({ upload: { id: 'upload2' } })

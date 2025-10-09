@@ -120,6 +120,20 @@ export default class Uploader {
     const fileHash = await generateFileHash(fileBlob);
     console.log('File hash (SHA-256):', fileHash);
 
+    // check fileHash against suspicious files
+    const { isSuspicious } = await this.api.call<{ isSuspicious: boolean }>(
+      'uploads/check-hash',
+      { fileHash },
+      'POST'
+    );
+
+    if (isSuspicious) {
+      alert(
+        'Warning: This file has been reported as suspicious. You cannot upload it. If you believe this is an error, please contact support.'
+      );
+      return null;
+    }
+
     // get folder key
     const wrappingKey = await this.keychain.get(containerId);
     if (!wrappingKey) {
