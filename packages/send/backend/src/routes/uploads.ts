@@ -10,6 +10,7 @@ import {
 
 import {
   checkHashAgainstSuspiciousFiles,
+  checkIdAgainstSuspiciousFiles,
   createUpload,
   getItemsByUploadIdandWrappedKey,
   getUploadMetadata,
@@ -569,27 +570,18 @@ router.post('/report', async (req, res) => {
 
 /**
  * @openapi
- * /api/uploads/check-hash:
- *   post:
+ * /api/uploads/check-suspicious-hash/{hash}:
+ *   get:
  *     summary: Check if a file hash is suspicious
- *     description: Checks whether a given file hash matches known suspicious files
+ *     description: Checks if the provided file hash matches any known suspicious files
  *     tags: [Uploads]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               fileHash:
- *                 type: string
- *                 description: The hash of the file to check against the suspicious files database
- *             required:
- *               - fileHash
- *           example:
- *             fileHash: "sha256:abcdef123456789"
+ *     parameters:
+ *       - in: path
+ *         name: hash
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The file hash to check against suspicious files database
  *     responses:
  *       200:
  *         description: Hash check completed successfully
@@ -602,12 +594,36 @@ router.post('/report', async (req, res) => {
  *                   type: string
  *                 isSuspicious:
  *                   type: boolean
- *                   description: Whether the file hash matches a known suspicious file
+ *                   description: Whether the hash matches a suspicious file
  *               example:
  *                 message: "Hash checked"
  *                 isSuspicious: false
  *       500:
  *         description: Failed to check hash
+ */
+router.get('/check-suspicious-hash/:hash', async (req, res) => {
+  const { hash } = req.params;
+  const isSuspicious = await checkHashAgainstSuspiciousFiles(hash);
+  res.status(200).json({ message: 'Hash checked', isSuspicious });
+});
+
+/**
+ * @openapi
+ * /api/uploads/check-suspicious-id/{id}:
+ *   get:
+ *     summary: Check if an upload ID is suspicious
+ *     description: Checks if the provided upload ID is associated with any suspicious files
+ *     tags: [Uploads]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The upload ID to check against suspicious files database
+ *     responses:
+ *       200:
+ *         description: ID check completed successfully
  *         content:
  *           application/json:
  *             schema:
@@ -615,12 +631,18 @@ router.post('/report', async (req, res) => {
  *               properties:
  *                 message:
  *                   type: string
+ *                 isSuspicious:
+ *                   type: boolean
+ *                   description: Whether the upload ID is associated with suspicious content
  *               example:
- *                 message: "Failed to check hash"
+ *                 message: "Hash checked"
+ *                 isSuspicious: false
+ *       500:
+ *         description: Failed to check upload ID
  */
-router.post('/check-hash', requireJWT, async (req, res) => {
-  const { fileHash } = req.body;
-  const isSuspicious = await checkHashAgainstSuspiciousFiles(fileHash);
+router.get('/check-suspicious-id/:id', async (req, res) => {
+  const { id } = req.params;
+  const isSuspicious = await checkIdAgainstSuspiciousFiles(id);
   res.status(200).json({ message: 'Hash checked', isSuspicious });
 });
 

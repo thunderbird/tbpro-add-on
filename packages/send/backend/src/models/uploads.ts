@@ -189,3 +189,22 @@ export async function checkHashAgainstSuspiciousFiles(fileHash: string) {
   }
   return false;
 }
+
+export async function checkIdAgainstSuspiciousFiles(id: string) {
+  // Get the fileHash from the uploadId
+  const { fileHash } = await prisma.upload.findUnique({
+    where: { id },
+    select: { fileHash: true },
+  });
+  if (!fileHash) {
+    return false;
+  }
+  const result = await prisma.suspiciousFile.findUnique({
+    where: { fileHash },
+    select: { id: true },
+  });
+  if (result?.id) {
+    return true;
+  }
+  return false;
+}

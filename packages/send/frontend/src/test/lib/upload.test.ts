@@ -238,9 +238,7 @@ describe('Uploader', () => {
 
       // Verify that the API was called to check the hash
       expect(mockApi.call).toHaveBeenCalledWith(
-        'uploads/check-hash',
-        { fileHash: 'abc123def456' },
-        'POST'
+        'uploads/check-suspicious-hash/abc123def456'
       );
     });
 
@@ -273,9 +271,7 @@ describe('Uploader', () => {
       // Verify that only the hash check API call was made
       expect(mockApi.call).toHaveBeenCalledTimes(1);
       expect(mockApi.call).toHaveBeenCalledWith(
-        'uploads/check-hash',
-        { fileHash: 'abc123def456' },
-        'POST'
+        'uploads/check-suspicious-hash/abc123def456'
       );
     });
 
