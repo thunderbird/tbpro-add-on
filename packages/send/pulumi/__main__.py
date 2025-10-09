@@ -14,6 +14,8 @@ import tb_pulumi.network
 import tb_pulumi.rds
 import tb_pulumi.secrets
 
+from network import network
+
 
 CLOUDFRONT_REWRITE_CODE_FILE = 'cloudfront-rewrite.js'
 EXCLUDE_ROUTE53_STACKS = ['prod', 'stage']  # Do not build R53 records for these environments
@@ -34,31 +36,8 @@ pulumi_sm = tb_pulumi.secrets.PulumiSecretsManager(
     name=f'{project.name_prefix}-secrets', project=project, **pulumi_sm_opts
 )
 
-# Build the networking landscape
-vpc_opts = resources['tb:network:MultiCidrVpc']['vpc']
-vpc = tb_pulumi.network.MultiCidrVpc(name=f'{project.name_prefix}-vpc', project=project, **vpc_opts)
-
-# Build a securiyt group allowing access to the load balancer
-sg_lb_opts = resources['tb:network:SecurityGroupWithRules']['backend-lb']
-sg_lb = tb_pulumi.network.SecurityGroupWithRules(
-    name=f'{project.name_prefix}-backend-lb-sg',
-    project=project,
-    vpc_id=vpc.resources['vpc'].id,
-    opts=pulumi.ResourceOptions(depends_on=[vpc]),
-    **sg_lb_opts,
-)
-
-# Build a security group allowing access from the load balancer to the container when we know its ID
-sg_cont_opts = resources['tb:network:SecurityGroupWithRules']['backend-container']
-sg_cont_opts['rules']['ingress'][0]['source_security_group_id'] = sg_lb.resources['sg'].id
-sg_container = tb_pulumi.network.SecurityGroupWithRules(
-    name=f'{project.name_prefix}-container-sg',
-    project=project,
-    vpc_id=vpc.resources['vpc'].id,
-    opts=pulumi.ResourceOptions(depends_on=[sg_lb, vpc]),
-    **sg_cont_opts,
-)
-
+# Build basic network components
+vpc, sg_lb, sg_container = network(project=project, resources=resources)
 
 # Only build an RDS database cluster with a jumphost in the CI environment, so we can verify this part of our codebase
 if project.stack == 'ci':
