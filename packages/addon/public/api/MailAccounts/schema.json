@@ -1,0 +1,142 @@
+[
+  {
+    "namespace": "MailAccounts",
+    "functions": [
+      {
+        "name": "createAccount",
+        "type": "function",
+        "description": "Creates a subscriber's Thunderbird mail account.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "accountConfig",
+            "type": "object",
+            "description": "A configuration object holding all necessary details to create a new mail account.",
+            "properties": {
+              "displayName": {
+                "type": "string",
+                "optional": true,
+                "description": "The display name for the account in Thunderbird's folder pane."
+              },
+              "identity": {
+                "type": "object",
+                "properties": {
+                  "realname": {
+                    "type": "string",
+                    "description": "The user's full name, displayed in the 'From' field of outgoing emails."
+                  },
+                  "emailAddress": {
+                    "type": "string",
+                    "description": "The user's email address."
+                  }
+                }
+              },
+              "incoming": {
+                "type": "object",
+                "description": "Configuration for the incoming mail server (IMAP).",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["imap", "jmap"],
+                    "description": "The incoming server protocol type."
+                  },
+                  "hostname": {
+                    "type": "string",
+                    "description": "The server address, e.g., 'imap.example.com'."
+                  },
+                  "port": {
+                    "type": "integer",
+                    "description": "The server port number, e.g., 993."
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "The username for authentication."
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "The password for authentication.",
+                    "optional": true
+                  },
+                  "socketType": {
+                    "type": "integer",
+                    "description": "Connection security type. (e.g., 2 for STARTTLS, 3 for SSL/TLS)."
+                  },
+                  "auth": {
+                    "type": "integer",
+                    "description": "Authentication method. (e.g., 3 for 'passwordCleartext')."
+                  },
+                  "useGlobalPreferredServer": {
+                    "type": "boolean",
+                    "optional": true,
+                    "description": "Use existing global SMTP server"
+                  },
+                  "existingServerKey": {
+                    "type": "string",
+                    "optional": true,
+                    "description": "Key of existing SMTP server to reuse"
+                  }
+                }
+              },
+              "outgoing": {
+                "type": "object",
+                "description": "Configuration for the outgoing mail server (SMTP).",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "description": "Outgoing server type, typically 'smtp'",
+                    "optional": true
+                  },
+                  "hostname": {
+                    "type": "string",
+                    "description": "The SMTP server address, e.g., 'smtp.example.com'.",
+                    "optional": true
+                  },
+                  "port": {
+                    "type": "integer",
+                    "description": "The SMTP server port number, e.g., 465 or 587.",
+                    "optional": true
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "The username for SMTP authentication.",
+                    "optional": true
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "The password for authentication.",
+                    "optional": true
+                  },
+                  "socketType": {
+                    "type": "integer",
+                    "description": "Connection security type for the outgoing server.",
+                    "optional": true
+                  },
+                  "auth": {
+                    "type": "integer",
+                    "description": "Authentication method for the SMTP server.",
+                    "optional": true
+                  },
+                  "useGlobalPreferredServer": {
+                    "type": "boolean",
+                    "optional": true,
+                    "description": "Use existing global SMTP server"
+                  },
+                  "existingServerKey": {
+                    "type": "string",
+                    "optional": true,
+                    "description": "Key of existing SMTP server to reuse"
+                  },
+                  "addThisServer": {
+                    "type": "boolean",
+                    "optional": true,
+                    "description": "Create a new SMTP server with these settings"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
