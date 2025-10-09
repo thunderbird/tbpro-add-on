@@ -27,6 +27,16 @@ export default class Downloader {
       return false;
     }
 
+    // Check if this file has not been reported as suspicious
+    // check fileHash against suspicious files
+    const { isSuspicious } = await this.api.call<{ isSuspicious: boolean }>(
+      `uploads/check-suspicious-id/${id}`
+    );
+
+    if (isSuspicious) {
+      throw new Error('File has been reported as suspicious');
+    }
+
     const wrappingKey = await this.keychain.get(folderId);
 
     if (!wrappingKey) {

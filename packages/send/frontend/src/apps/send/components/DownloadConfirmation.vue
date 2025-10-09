@@ -31,18 +31,20 @@ const onConfirm = async () => {
   <div v-if="isError">
     <ErrorGeneric :error-message="isError" />
   </div>
-  <div v-if="isDownloading">
-    <ProgressBar />
-  </div>
   <div v-else>
-    <p>
-      {{ text }}
-    </p>
-    <div class="flex justify-center space-x-4 mt-8">
-      <BtnComponent data-testid="confirm-download" primary @click="onConfirm"
-        >Yes</BtnComponent
-      >
-      <BtnComponent @click="closefn">No</BtnComponent>
+    <div v-if="isDownloading">
+      <ProgressBar />
+    </div>
+    <div v-else>
+      <p>
+        {{ text }}
+      </p>
+      <div class="flex justify-center space-x-4 mt-8">
+        <BtnComponent data-testid="confirm-download" primary @click="onConfirm"
+          >Yes</BtnComponent
+        >
+        <BtnComponent @click="closefn">No</BtnComponent>
+      </div>
     </div>
   </div>
 </template>
