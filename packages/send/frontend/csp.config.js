@@ -1,6 +1,6 @@
 /**
  * Content Security Policy Configuration for Send Frontend
- * 
+ *
  * This file centralizes CSP configuration to make it easier to maintain
  * and understand the security requirements of the Send application.
  */
@@ -12,7 +12,7 @@
  * @returns {string[]} - Array containing the value or empty array
  */
 function envOrEmpty(value, suffix = '') {
-    return value ? [value + suffix] : [];
+  return value ? [value + suffix] : [];
 }
 
 /**
@@ -21,17 +21,17 @@ function envOrEmpty(value, suffix = '') {
  * @returns {string[]} - Array containing WebSocket URL or empty array
  */
 function toWebSocketUrl(url) {
-    if (!url) return [];
+  if (!url) return [];
 
-    if (url.startsWith('https://')) {
-        return [url.replace('https://', 'wss://')];
-    }
+  if (url.startsWith('https://')) {
+    return [url.replace('https://', 'wss://')];
+  }
 
-    if (url.startsWith('http://')) {
-        return [url.replace('http://', 'ws://')];
-    }
+  if (url.startsWith('http://')) {
+    return [url.replace('http://', 'ws://')];
+  }
 
-    return [];
+  return [];
 }
 
 /**
@@ -40,7 +40,7 @@ function toWebSocketUrl(url) {
  * @returns {string[]} - Array containing Sentry domain or empty array
  */
 function sentryDomain(dsn) {
-    return dsn ? ['https://*.sentry.io'] : [];
+  return dsn ? ['https://*.sentry.io'] : [];
 }
 
 /**
@@ -49,77 +49,74 @@ function sentryDomain(dsn) {
  * @param {Object} env - Environment variables object
  */
 export function getCspConfig(env = {}) {
-    return {
-        // Default policy for all resource types not explicitly covered by other directives
-        'default-src': [
-            "'self'" // Only allow resources from the same origin
-        ],
+  return {
+    // Default policy for all resource types not explicitly covered by other directives
+    'default-src': [
+      "'self'", // Only allow resources from the same origin
+    ],
 
-        // Controls which scripts can be executed
-        'script-src': [
-            "'self'", // Same-origin scripts
-            'blob:', // Blob URLs (needed for Web Workers and dynamic scripts)
-            'https://us-assets.i.posthog.com' // PostHog analytics scripts
-        ],
+    // Controls which scripts can be executed
+    'script-src': [
+      "'self'", // Same-origin scripts
+      'blob:', // Blob URLs (needed for Web Workers and dynamic scripts)
+      'https://us-assets.i.posthog.com', // PostHog analytics scripts
+    ],
 
-        // Controls Web Workers, Service Workers, and shared workers
-        'worker-src': [
-            "'self'", // Same-origin workers
-            'blob:' // Blob URLs for dynamically created workers
-        ],
+    // Controls Web Workers, Service Workers, and shared workers
+    'worker-src': [
+      "'self'", // Same-origin workers
+      'blob:', // Blob URLs for dynamically created workers
+    ],
 
-        // Controls stylesheets and CSS resources
-        'style-src': [
-            "'self'", // Same-origin styles
-            "'unsafe-inline'", // Inline styles (needed for dynamic styling)
-            'https://fonts.googleapis.com' // Google Fonts CSS
-        ],
+    // Controls stylesheets and CSS resources
+    'style-src': [
+      "'self'", // Same-origin styles
+      "'unsafe-inline'", // Inline styles (needed for dynamic styling)
+      'https://fonts.googleapis.com', // Google Fonts CSS
+    ],
 
-        // Controls image sources
-        'img-src': [
-            "'self'", // Same-origin images
-            'https:', // Any HTTPS image source
-            'data:', // Data URLs for inline images
-            'http://localhost:*' // Local development images
-        ],
+    // Controls image sources
+    'img-src': [
+      "'self'", // Same-origin images
+      'https:', // Any HTTPS image source
+      'data:', // Data URLs for inline images
+      'http://localhost:*', // Local development images
+    ],
 
-        // Controls font sources
-        'font-src': [
-            "'self'", // Same-origin fonts
-            'data:', // Data URLs for inline fonts
-            'https://fonts.gstatic.com' // Google Fonts resources
-        ],
+    // Controls font sources
+    'font-src': [
+      "'self'", // Same-origin fonts
+      'data:', // Data URLs for inline fonts
+      'https://fonts.gstatic.com', // Google Fonts resources
+    ],
 
-        // Controls plugin content (Flash, Java, etc.)
-        'object-src': [
-            "'none'" // Block all plugin content for security
-        ],
+    // Controls plugin content (Flash, Java, etc.)
+    'object-src': [
+      "'none'", // Block all plugin content for security
+    ],
 
-        // Controls which pages can embed this page in frames/iframes
-        'frame-ancestors': [
-            "'none'" // Prevent clickjacking by disallowing any framing
-        ],
+    // Controls which pages can embed this page in frames/iframes
+    'frame-ancestors': [
+      "'none'", // Prevent clickjacking by disallowing any framing
+    ],
 
-        // Controls network connections (XHR, WebSocket, EventSource, etc.)
-        'connect-src': [
-            "'self'", // Same-origin requests
+    // Controls network connections (XHR, WebSocket, EventSource, etc.)
+    'connect-src': [
+      "'self'", // Same-origin requests
 
-            // Backend services
-            ...envOrEmpty(env.VITE_SEND_SERVER_URL),
-            ...toWebSocketUrl(env.VITE_SEND_SERVER_URL),
-            'http://backend:8080', // Docker backend service (fallback)
-            'http://localhost:8080', // Local backend development (fallback)
-
-            // External services
-            ...envOrEmpty(env.VITE_POSTHOG_HOST, '/*'),
-            'https://us-assets.i.posthog.com', // PostHog analytics (fallback)
-            'https://*.backblazeb2.com', // Backblaze B2 storage
-            ...sentryDomain(env.VITE_SENTRY_DSN), // Sentry error reporting
-            'https://*.posthog.com/*', // PostHog analytics (fallback)
-            'https://us.i.posthog.com', // PostHog ingestion (fallback)
-            ...envOrEmpty(env.VITE_OIDC_ROOT_URL),
-        ].filter(Boolean) // Remove any undefined/null entries
-    };
+      // Backend services
+      ...envOrEmpty(env.VITE_SEND_SERVER_URL),
+      ...toWebSocketUrl(env.VITE_SEND_SERVER_URL),
+      // External services
+      ...envOrEmpty(env.VITE_POSTHOG_HOST, '/*'),
+      'https://us-assets.i.posthog.com', // PostHog analytics (fallback)
+      'https://*.backblazeb2.com', // Backblaze B2 storage
+      ...sentryDomain(env.VITE_SENTRY_DSN), // Sentry error reporting
+      'https://*.posthog.com/*', // PostHog analytics (fallback)
+      'https://us.i.posthog.com', // PostHog ingestion (fallback)
+      ...envOrEmpty(env.VITE_OIDC_ROOT_URL),
+    ].filter(Boolean), // Remove any undefined/null entries
+  };
 }
 
 /**
@@ -128,9 +125,9 @@ export function getCspConfig(env = {}) {
  * @returns {string} - CSP header value
  */
 export function buildCSP(config) {
-    return Object.entries(config)
-        .map(([directive, sources]) => `${directive} ${sources.join(' ')}`)
-        .join('; ');
+  return Object.entries(config)
+    .map(([directive, sources]) => `${directive} ${sources.join(' ')}`)
+    .join('; ');
 }
 
 /**
@@ -140,37 +137,39 @@ export function buildCSP(config) {
  * @returns {Object} - CSP configuration object for the environment
  */
 export function getEnvironmentConfig(mode = 'development', env = {}) {
-    const baseConfig = getCspConfig(env);
+  const baseConfig = getCspConfig(env);
 
-    if (mode === 'development') {
-        return {
-            ...baseConfig,
-            // Development might need additional localhost sources
-            'connect-src': [
-                ...baseConfig['connect-src'],
-                'http://localhost:*', // Allow any localhost port in development
-                'ws://localhost:*' // Allow WebSocket connections to any localhost port
-            ]
-        };
-    }
+  if (mode === 'development') {
+    return {
+      ...baseConfig,
+      // Development might need additional localhost sources
+      'connect-src': [
+        ...baseConfig['connect-src'],
+        'http://backend:8080', // Docker backend service (fallback)
+        'http://localhost:8080', // Local backend development (fallback)
+        'http://localhost:*', // Allow any localhost port in development
+        'ws://localhost:*', // Allow WebSocket connections to any localhost port
+      ],
+    };
+  }
 
-    if (mode === 'production') {
-        return {
-            ...baseConfig,
-            // Production should filter out development-specific localhost sources
-            // but keep WebSocket URLs for production server
-            'connect-src': baseConfig['connect-src'].filter(src => {
-                // Keep WebSocket URLs (wss:// and ws://) for production
-                if (src.startsWith('wss://') || src.startsWith('ws://')) {
-                    return true;
-                }
-                // Filter out localhost and docker backend sources
-                return !src.includes('localhost:') && !src.includes('backend:8080');
-            })
-        };
-    }
+  if (mode === 'production') {
+    return {
+      ...baseConfig,
+      // Production should filter out development-specific localhost sources
+      // but keep WebSocket URLs for production server
+      'connect-src': baseConfig['connect-src'].filter((src) => {
+        // Keep WebSocket URLs (wss:// and ws://) for production
+        if (src.startsWith('wss://') || src.startsWith('ws://')) {
+          return true;
+        }
+        // Filter out localhost and docker backend sources
+        return !src.includes('localhost:') && !src.includes('backend:8080');
+      }),
+    };
+  }
 
-    return baseConfig;
+  return baseConfig;
 }
 
 /**
@@ -180,12 +179,6 @@ export function getEnvironmentConfig(mode = 'development', env = {}) {
  * @returns {string} - CSP header value for the environment
  */
 export function getCSPForEnvironment(mode = 'development', env = {}) {
-    const config = getEnvironmentConfig(mode, env);
-    return buildCSP(config);
+  const config = getEnvironmentConfig(mode, env);
+  return buildCSP(config);
 }
-
-/**
- * Default CSP configuration for backward compatibility
- * @deprecated Use getCspConfig() function instead
- */
-export const cspConfig = getCspConfig();
