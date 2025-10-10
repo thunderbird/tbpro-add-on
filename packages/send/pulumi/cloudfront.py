@@ -3,11 +3,7 @@ import pulumi_aws as aws
 import pulumi_cloudflare as cloudflare
 import tb_pulumi
 
-from tb_pulumi.constants import (
-    CLOUDFRONT_CACHE_POLICY_ID_DISABLED,
-    CLOUDFRONT_CACHE_POLICY_ID_OPTIMIZED,
-    CLOUDFRONT_ORIGIN_REQUEST_POLICY_ID_ALLVIEWER,
-)
+from tb_pulumi.constants import CLOUDFRONT_CACHE_POLICY_ID_OPTIMIZED
 
 
 def cloudfront(

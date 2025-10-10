@@ -1,8 +1,5 @@
 #!/bin/env python3
 
-import pulumi
-import pulumi_aws as aws
-import pulumi_cloudflare as cloudflare
 import tb_pulumi
 import tb_pulumi.autoscale
 import tb_pulumi.ci

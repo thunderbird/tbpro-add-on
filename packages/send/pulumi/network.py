@@ -1,6 +1,7 @@
 import pulumi
 import tb_pulumi
 
+
 def network(project, resources):
     # Build the networking landscape
     vpc_opts = resources['tb:network:MultiCidrVpc']['vpc']
