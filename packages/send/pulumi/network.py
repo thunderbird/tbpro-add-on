@@ -27,4 +27,4 @@ def network(project, resources):
         **sg_cont_opts,
     )
 
-    return vpc, sg_lb, sg_container
+    return sg_container, sg_lb, vpc

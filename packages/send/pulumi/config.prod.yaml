@@ -5,6 +5,9 @@ resources:
     backend: send-backend
     frontend: send
 
+  vars:
+    frontend-csp-header: "default-src 'self'; script-src 'self' blob: https://us-assets.i.posthog.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: http://localhost:*; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; connect-src 'self' https://send-backend.tb.pro wss://send-backend.tb.pro http://backend:8080 http://localhost:8080 https://us.i.posthog.com/* https://us-assets.i.posthog.com https://*.backblazeb2.com https://*.sentry.io https://*.posthog.com/* https://us.i.posthog.com https://auth.tb.pro/realms/tbpro-dev/ http://localhost:* ws://localhost:*"
+
   tb:network:MultiCidrVpc:
     vpc:
       cidr_block: 10.30.0.0/16 # Very roomy total of 65,536 available IPs

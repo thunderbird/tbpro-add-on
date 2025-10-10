@@ -72,14 +72,6 @@ resources:
         - sentry-auth-token
       recovery_window_in_days: 0
 
-  tb:rds:RdsDatabaseGroup:
-    citest:
-      skip_final_snapshot: True
-      build_jumphost: False
-      jumphost_public_key: ""
-      jumphost_source_cidrs: []
-      secret_recovery_window_in_days: 0
-
   tb:fargate:FargateClusterWithLogging:
     backend:
       assign_public_ip: True
