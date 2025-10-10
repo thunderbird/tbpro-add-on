@@ -199,6 +199,7 @@ jobs:
           BASE_URL: https://send-stage.tb.pro
         shell: bash
         run: |
+          set -x
           # Initial setup of dependencies
           npm install -g pnpm
           npm install -g lerna

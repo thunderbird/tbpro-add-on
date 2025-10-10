@@ -1,8 +1,5 @@
 #!/bin/env python3
 
-import pulumi
-import pulumi_aws as aws
-import pulumi_cloudflare as cloudflare
 import tb_pulumi
 import tb_pulumi.autoscale
 import tb_pulumi.ci
@@ -11,8 +8,11 @@ import tb_pulumi.cloudwatch
 import tb_pulumi.fargate
 import tb_pulumi.iam
 import tb_pulumi.network
-import tb_pulumi.rds
 import tb_pulumi.secrets
+
+from cloudfront import cloudfront
+from fargate import fargate
+from network import network
 
 
 CLOUDFRONT_REWRITE_CODE_FILE = 'cloudfront-rewrite.js'
@@ -21,6 +21,8 @@ INCLUDE_CLOUDFLARE_STACKS = ['prod', 'stage']  # Do build CloudFlare records for
 
 project = tb_pulumi.ThunderbirdPulumiProject()
 resources = project.config.get('resources')
+
+# Get zone IDs for DNS records
 cloudflare_zone_id = (
     project.pulumi_config.require_secret('cloudflare_zone_id') if project.stack in INCLUDE_CLOUDFLARE_STACKS else None
 )
@@ -34,179 +36,37 @@ pulumi_sm = tb_pulumi.secrets.PulumiSecretsManager(
     name=f'{project.name_prefix}-secrets', project=project, **pulumi_sm_opts
 )
 
-# Build the networking landscape
-vpc_opts = resources['tb:network:MultiCidrVpc']['vpc']
-vpc = tb_pulumi.network.MultiCidrVpc(name=f'{project.name_prefix}-vpc', project=project, **vpc_opts)
-
-# Build a securiyt group allowing access to the load balancer
-sg_lb_opts = resources['tb:network:SecurityGroupWithRules']['backend-lb']
-sg_lb = tb_pulumi.network.SecurityGroupWithRules(
-    name=f'{project.name_prefix}-backend-lb-sg',
-    project=project,
-    vpc_id=vpc.resources['vpc'].id,
-    opts=pulumi.ResourceOptions(depends_on=[vpc]),
-    **sg_lb_opts,
-)
-
-# Build a security group allowing access from the load balancer to the container when we know its ID
-sg_cont_opts = resources['tb:network:SecurityGroupWithRules']['backend-container']
-sg_cont_opts['rules']['ingress'][0]['source_security_group_id'] = sg_lb.resources['sg'].id
-sg_container = tb_pulumi.network.SecurityGroupWithRules(
-    name=f'{project.name_prefix}-container-sg',
-    project=project,
-    vpc_id=vpc.resources['vpc'].id,
-    opts=pulumi.ResourceOptions(depends_on=[sg_lb, vpc]),
-    **sg_cont_opts,
-)
-
-
-# Only build an RDS database cluster with a jumphost in the CI environment, so we can verify this part of our codebase
-if project.stack == 'ci':
-    db_opts = resources['tb:rds:RdsDatabaseGroup']['citest']
-    db = tb_pulumi.rds.RdsDatabaseGroup(
-        name=f'{project.name_prefix}-rds',
-        project=project,
-        db_name='dbtest',
-        subnets=vpc.resources['subnets'],
-        vpc_cidr=vpc.resources['vpc'].cidr_block,
-        vpc_id=vpc.resources['vpc'].id,
-        opts=pulumi.ResourceOptions(depends_on=[vpc]),
-        **db_opts,
-    )
+# Build basic network components
+sg_container, sg_lb, vpc = network(project, resources)
 
 # Create an autoscaling Fargate cluster
-autoscaler_opts = resources['tb:autoscale:EcsServiceAutoscaler']['backend']
-backend_fargate_opts = resources['tb:fargate:FargateClusterWithLogging']['backend']
-backend_subnets = [subnet for subnet in vpc.resources['subnets']]
-backend_fargate = tb_pulumi.fargate.FargateClusterWithLogging(
-    name=f'{project.name_prefix}-fargate',
-    project=project,
-    subnets=backend_subnets,
-    container_security_groups=[sg_container.resources['sg'].id],
-    load_balancer_security_groups=[sg_lb.resources['sg'].id],
-    opts=pulumi.ResourceOptions(
-        depends_on=[
-            *vpc.resources['subnets'],
-            sg_container,
-            sg_lb,
-            pulumi_sm,
-        ]
-    ),
-    **backend_fargate_opts,
-)
-autoscaler = tb_pulumi.autoscale.EcsServiceAutoscaler(
-    f'{project.name_prefix}-autoscl-backend',
-    project=project,
-    service=backend_fargate.resources.get('service'),
-    opts=pulumi.ResourceOptions(depends_on=[backend_fargate]),
-    **autoscaler_opts,
+autoscaler, backend_fargate, cloudflare_backend_record, route53_backend_record = fargate(
+    project,
+    resources,
+    cloudflare_zone_id,
+    EXCLUDE_ROUTE53_STACKS,
+    INCLUDE_CLOUDFLARE_STACKS,
+    pulumi_sm,
+    route53_zone_id,
+    sg_container,
+    sg_lb,
+    vpc,
 )
 
-# Sometimes create a DNS record pointing to the backend service
-route53_backend_record = (
-    aws.route53.Record(
-        f'{project.name_prefix}-dns-backend',
-        zone_id=route53_zone_id,
-        name=resources['domains']['backend'],
-        type=aws.route53.RecordType.CNAME,
-        ttl=60,  # ttl units are *seconds*
-        records=[backend_fargate.resources['fargate_service_alb'].resources['albs']['send-suite'].dns_name],
-        opts=pulumi.ResourceOptions(depends_on=[backend_fargate]),
-    )
-    if project.stack not in EXCLUDE_ROUTE53_STACKS
-    else None
+# Create a CloudFront Distribution to serve the frontend
+cf_func, cloudflare_frontend_record, frontend, response_headers_policy, route53_frontend_record = cloudfront(
+    project,
+    resources,
+    backend_fargate,
+    CLOUDFRONT_REWRITE_CODE_FILE,
+    cloudflare_zone_id,
+    resources.get('vars', {}).get('frontend-csp-header', ''),
+    EXCLUDE_ROUTE53_STACKS,
+    INCLUDE_CLOUDFLARE_STACKS,
+    route53_zone_id,
 )
 
-# Special case where prod DNS is hosted at CloudFlare
-cloudflare_backend_record = (
-    cloudflare.Record(
-        f'{project.name_prefix}-dns-backend',
-        zone_id=cloudflare_zone_id,
-        name=resources['domains']['backend'],
-        type='CNAME',
-        content=backend_fargate.resources['fargate_service_alb'].resources['albs']['send-suite'].dns_name,
-        proxied=False,
-        ttl=1,  # ttl units are *minutes*
-    )
-    if project.stack in INCLUDE_CLOUDFLARE_STACKS
-    else None
-)
-
-# Manage the CloudFront rewrite function; the code is managed in cloudfront-rewrite.js
-rewrite_code = None
-try:
-    with open(CLOUDFRONT_REWRITE_CODE_FILE, 'r') as fh:
-        rewrite_code = fh.read()
-except IOError:
-    pulumi.error(f'Could not read file {CLOUDFRONT_REWRITE_CODE_FILE}')
-
-cf_func = aws.cloudfront.Function(
-    f'{project.name_prefix}-func-rewrite',
-    code=rewrite_code,
-    comment='Rewrites inbound requests to direct them to the send-suite backend API',
-    name=f'{project.name_prefix}-rewrite',
-    publish=True,
-    runtime='cloudfront-js-2.0',
-)
-project.resources['cf_rewrite_function'] = cf_func
-
-# Use appropriate cross-origin headers
-response_headers_policy = aws.cloudfront.ResponseHeadersPolicy(
-    f'{project.name_prefix}-frontend-rhp',
-    comment=f'Response headers policy for {project.name_prefix}',
-    custom_headers_config={
-        'items': [
-            {'header': 'Cross-Origin-Embedder-Policy', 'override': True, 'value': 'require-corp'},
-            {'header': 'Cross-Origin-Opener-Policy', 'override': True, 'value': 'same-origin'},
-            {'header': 'Cross-Origin-Resource-Policy', 'override': True, 'value': 'same-origin'},
-        ]
-    },
-)
-# Deliver frontend content via CloudFront
-frontend_opts = resources['tb:cloudfront:CloudFrontS3Service']['frontend']
-if 'distribution' not in frontend_opts:
-    frontend_opts['distribution'] = {}
-if 'default_cache_behavior' not in frontend_opts['distribution']:
-    frontend_opts['distribution']['default_cache_behavior'] = {}
-frontend_opts['distribution']['default_cache_behavior']['response_headers_policy_id'] = response_headers_policy.id
-frontend = tb_pulumi.cloudfront.CloudFrontS3Service(
-    name=f'{project.name_prefix}-frontend',
-    project=project,
-    default_function_associations=[{'event_type': 'viewer-request', 'function_arn': cf_func.arn}],
-    **frontend_opts,
-    opts=pulumi.ResourceOptions(depends_on=[cf_func]),
-)
-
-# Sometimes create a DNS record pointing to the frontend service
-route53_frontend_record = (
-    aws.route53.Record(
-        f'{project.name_prefix}-dns-frontend',
-        zone_id=route53_zone_id,
-        name=resources['domains']['frontend'],
-        type=aws.route53.RecordType.CNAME,
-        ttl=60,  # ttl units are *seconds*
-        records=[frontend.resources['cloudfront_distribution'].domain_name],
-        opts=pulumi.ResourceOptions(depends_on=[frontend.resources['cloudfront_distribution']]),
-    )
-    if project.stack not in EXCLUDE_ROUTE53_STACKS
-    else None
-)
-
-# Special case where prod DNS is hosted at CloudFlare
-cloudflare_frontend_record = (
-    cloudflare.Record(
-        f'{project.name_prefix}-dns-frontend',
-        zone_id=cloudflare_zone_id,
-        name=resources['domains']['frontend'],
-        type='CNAME',
-        content=frontend.resources['cloudfront_distribution'].domain_name,
-        proxied=False,
-        ttl=1,  # ttl units are *minutes*
-    )
-    if project.stack in INCLUDE_CLOUDFLARE_STACKS
-    else None
-)
-
+# After all other resources are created, let's build the monitoring system
 monitoring_opts = resources['tb:cloudwatch:CloudWatchMonitoringGroup']
 monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     name=f'{project.name_prefix}-monitoring',
@@ -215,10 +75,12 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     config=monitoring_opts,
 )
 
+# Set up an IAM user for automation purposes
 auto_users_opts = resources.get('tb:ci:AwsAutomationUser', {})
 for user, user_opts in auto_users_opts.items():
     tb_pulumi.ci.AwsAutomationUser(f'{project.name_prefix}-{user}', project=project, **user_opts)
 
+# Set up IAM policies and groups to grant environment-bounded access to these resources
 sap = tb_pulumi.iam.StackAccessPolicies(
     f'{project.name_prefix}-sap',
     project=project,
