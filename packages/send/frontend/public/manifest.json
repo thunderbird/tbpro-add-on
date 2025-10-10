@@ -2,11 +2,11 @@
   "manifest_version": 2,
   "version": "4.5.1",
   "author": "Thunderbird Team",
-  "name": "Thunderbird Send [STAGE]",
+  "name": "Thunderbird Send",
   "description": "Thunderbird and friends",
   "browser_specific_settings": {
     "gecko": {
-     "id": "tb-send@thunderbird.net",
+      "id": "send@thunderbird.net",
       "strict_min_version": "128.0"
     }
   },
@@ -26,7 +26,7 @@
     "reuse_uploads": false
   },
   "icons": {
-    "64": "icons/64-dev.png"
+    "64": "icons/64.png"
   },
   "permissions": [
     "storage",
