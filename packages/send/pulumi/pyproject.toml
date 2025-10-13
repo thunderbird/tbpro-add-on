@@ -16,3 +16,8 @@ dependencies = { file = ["requirements.txt"] }
 dev = [
     "ruff"
 ]
+
+# This helps Setuptools understand that each .py file here isn't a separately installable module
+[tool.setuptools.packages.find]
+where = ["./"]
+include = ["__main__"]
