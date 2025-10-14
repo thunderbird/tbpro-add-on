@@ -47,7 +47,6 @@ services:
       dockerfile: ./dockerfiles/Dockerfile-frontend
       args:
         BUILD_ENV: ${BUILD_ENV:-development}
-    env_file: ./packages/send/frontend/.env
     ports:
       - "5173:5173"
     volumes:
