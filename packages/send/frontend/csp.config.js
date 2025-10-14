@@ -48,7 +48,7 @@ function sentryDomain(dsn) {
  * Each directive controls which resources can be loaded from specific sources
  * @param {Object} env - Environment variables object
  */
-export function getCspConfig(env = {}) {
+export function getCspConfig(mode = 'development', env = {}) {
   return {
     // Default policy for all resource types not explicitly covered by other directives
     'default-src': [
@@ -80,8 +80,8 @@ export function getCspConfig(env = {}) {
       "'self'", // Same-origin images
       'https:', // Any HTTPS image source
       'data:', // Data URLs for inline images
-      'http://localhost:*', // Local development images
-    ],
+      mode === 'development' ? 'http://localhost:*' : null, // Local development images
+    ].filter(n => n),
 
     // Controls font sources
     'font-src': [
@@ -137,7 +137,7 @@ export function buildCSP(config) {
  * @returns {Object} - CSP configuration object for the environment
  */
 export function getEnvironmentConfig(mode = 'development', env = {}) {
-  const baseConfig = getCspConfig(env);
+  const baseConfig = getCspConfig(mode, env);
 
   if (mode === 'development') {
     return {
