@@ -51,9 +51,7 @@ def cloudfront(
                 'content_security_policy': content_security_policy,
                 'override': True,
             },
-            'content_type_options': {
-                'override': True
-            },
+            'content_type_options': {'override': True},
             'frame_options': {
                 'frame_option': 'DENY',
                 'override': True,
