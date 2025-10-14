@@ -50,7 +50,21 @@ def cloudfront(
             'content_security_policy': {
                 'content_security_policy': content_security_policy,
                 'override': True,
-            }
+            },
+            'content_type_options': {'override': True},
+            'frame_options': {
+                'frame_option': 'DENY',
+                'override': True,
+            },
+            'referrer_policy': {
+                'override': True,
+                'referrer_policy': 'strict-origin-when-cross-origin',
+            },
+            'strict_transport_security': {
+                'access_control_max_age_sec': 31536000,
+                'include_subdomains': True,
+                'override': True,
+            },
         },
     )
 
