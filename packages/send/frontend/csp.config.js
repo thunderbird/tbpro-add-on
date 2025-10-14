@@ -48,7 +48,7 @@ function sentryDomain(dsn) {
  * Each directive controls which resources can be loaded from specific sources
  * @param {Object} env - Environment variables object
  */
-export function getCspConfig(mode = 'development', env = {}) {
+export function getCspConfig(env = {}) {
   return {
     // Default policy for all resource types not explicitly covered by other directives
     'default-src': [
@@ -80,8 +80,7 @@ export function getCspConfig(mode = 'development', env = {}) {
       "'self'", // Same-origin images
       'https:', // Any HTTPS image source
       'data:', // Data URLs for inline images
-      mode === 'development' ? 'http://localhost:*' : null, // Local development images
-    ].filter(n => n),
+    ].filter((n) => n),
 
     // Controls font sources
     'font-src': [
@@ -137,7 +136,7 @@ export function buildCSP(config) {
  * @returns {Object} - CSP configuration object for the environment
  */
 export function getEnvironmentConfig(mode = 'development', env = {}) {
-  const baseConfig = getCspConfig(mode, env);
+  const baseConfig = getCspConfig(env);
 
   if (mode === 'development') {
     return {
@@ -146,9 +145,10 @@ export function getEnvironmentConfig(mode = 'development', env = {}) {
       'connect-src': [
         ...baseConfig['connect-src'],
         'http://backend:8080', // Docker backend service (fallback)
-        'http://localhost:8080', // Local backend development (fallback)
         'http://localhost:*', // Allow any localhost port in development
+        'https://localhost:*', // Allow any localhost port in development
         'ws://localhost:*', // Allow WebSocket connections to any localhost port
+        'wss://localhost:*', // Allow WebSocket connections to any localhost port
       ],
     };
   }
@@ -181,4 +181,15 @@ export function getEnvironmentConfig(mode = 'development', env = {}) {
 export function getCSPForEnvironment(mode = 'development', env = {}) {
   const config = getEnvironmentConfig(mode, env);
   return buildCSP(config);
+}
+
+export function getHeadersForEnvironment(mode = 'development', env = {}) {
+  return {
+    // Security headers
+    'Content-Security-Policy': getCSPForEnvironment(mode, env),
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+  };
 }
