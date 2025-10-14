@@ -80,7 +80,7 @@ export function getCspConfig(env = {}) {
       "'self'", // Same-origin images
       'https:', // Any HTTPS image source
       'data:', // Data URLs for inline images
-    ].filter((n) => n),
+    ],
 
     // Controls font sources
     'font-src': [
