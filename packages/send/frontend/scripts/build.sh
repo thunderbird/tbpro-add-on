@@ -25,7 +25,9 @@ mkdir -p dist/assets
 ### this should get copied automatically when compiling a page
 cp -R public/* dist/
 # Generate headers json
+echo 'Generating security headers 🔒'
 bun run scripts/headers.ts
+echo 'Headers generation complete 🎉'
 
 echo "================================================================"
 echo "=============== background.js =================================="
@@ -63,5 +65,4 @@ echo 'Building web app 🏭'
 pnpm exec vite build
 echo 'Web app build complete 🎉'
 
-echo 'Generating security headers 🔒'
-echo 'Headers generation complete 🎉'
+
