@@ -25,7 +25,7 @@ RUN pnpm install --filter send-frontend
 
 # runtime production
 FROM base AS runtime_production
-# Set environment vartiable for runtime container user name
+# Set environment variable for runtime container user name
 ENV runtime_user=frontend
 # Add runtime user
 ONBUILD RUN echo "Add runtime user"

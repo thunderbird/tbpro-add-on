@@ -3,6 +3,9 @@ resources:
   domains:
     backend: send-backend-stage.tb.pro
     frontend: send-stage.tb.pro
+  
+  vars:
+    frontend-csp-header: "default-src 'self'; script-src 'self' blob: https://us-assets.i.posthog.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data:; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; connect-src 'self' https://send-backend-stage.tb.pro/ wss://send-backend-stage.tb.pro/ https://us-assets.i.posthog.com https://*.backblazeb2.com https://*.sentry.io https://*.posthog.com/* https://us.i.posthog.com"
 
   tb:network:MultiCidrVpc:
     vpc:
