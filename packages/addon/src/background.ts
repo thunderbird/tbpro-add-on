@@ -7,6 +7,7 @@ import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
+import { BASE_URL } from '@send-frontend/apps/common/constants';
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
@@ -191,7 +192,7 @@ async function openUnifiedPopup() {
 browser.runtime.onMessage.addListener(async (message) => {
   switch (message.type) {
     case 'TB/PING':
-      console.log('[background] got the ping from the bridge')
+      console.log('[background] got the ping from the bridge');
       console.log(message);
       break;
 
@@ -201,12 +202,13 @@ browser.runtime.onMessage.addListener(async (message) => {
       // TODO: Store message.token
       break;
 
-
     case 'SIGN_IN':
-      console.log(`[onMessage] sounds like you want to sign in from the typescript handler`);
+      console.log(
+        `[onMessage] sounds like you want to sign in from the typescript handler`
+      );
       await browser.tabs.create({
-        url: "http://localhost:5173/index.management.html"
-      })
+        url: `${BASE_URL}/login?isExtension=true`,
+      });
 
       break;
 
