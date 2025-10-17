@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
 import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
-import { useExtensionStore } from '@send-frontend/stores';
-import { logger } from 'tbpro-shared';
-import { onMounted } from 'vue';
+import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 
-const { configureExtension } = useExtensionStore();
+const { useLoginQuery } = useSendConfig();
 
-onMounted(() => {
-  logger.info('Configuring extension for send');
-  configureExtension();
-});
+useLoginQuery();
 </script>
 
 <template>
