@@ -7,7 +7,6 @@ import { useAuth } from '@send-frontend/lib/auth';
 import AuthButtons from '@send-frontend/lib/auth/AuthButtons.vue';
 import { useConfigStore } from '@send-frontend/stores';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
-import { useQuery } from '@tanstack/vue-query';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
@@ -18,7 +17,7 @@ import TBBanner from '../common/TBBanner.vue';
 import { useVerificationStore } from './stores/verification-store';
 
 const { isLoggedIn } = useAuth();
-const { finishLogin, loadLogin } = useSendConfig();
+const { finishLogin, useLoginQuery } = useSendConfig();
 const { isExtension } = useConfigStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 const authStore = useAuthStore();
@@ -26,14 +25,7 @@ const authStore = useAuthStore();
 const { loginToOIDC, loginToMozAccount } = authStore;
 useVerificationStore();
 
-const { isLoading } = useQuery({
-  queryKey: ['getLoginStatus'],
-  queryFn: async () => await loadLogin(),
-  refetchOnWindowFocus: 'always',
-  refetchOnMount: true,
-  refetchOnReconnect: true,
-});
-
+const { isLoading } = useLoginQuery();
 updateMetricsIdentity();
 
 async function _loginToOIDC() {
