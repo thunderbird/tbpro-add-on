@@ -8,7 +8,7 @@
     "gecko": {
       "id": "tbpro-addon@thunderbird.net",
       "strict_min_version": "128.0",
-      "strict_max_version": "146.*"
+      "strict_max_version": "144.*"
     }
   },
   "background": {
