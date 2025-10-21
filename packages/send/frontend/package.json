@@ -79,7 +79,7 @@
     "eslint-plugin-vue": "^9.33.0",
     "form-data": ">=4.0.4",
     "globals": "^15.15.0",
-    "happy-dom": "^15.11.7",
+    "happy-dom": "^20.0.2",
     "jsonwebtoken": "9.0.2",
     "lint-staged": "^15.5.0",
     "mock-socket": "^9.3.1",
