@@ -2,10 +2,13 @@
 import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
 import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
 import { useSendConfig } from '@send-frontend/composables/useSendConfig';
+import { onMounted } from 'vue';
 
 const { useLoginQuery } = useSendConfig();
 
-useLoginQuery();
+onMounted(() => {
+  useLoginQuery();
+});
 </script>
 
 <template>
