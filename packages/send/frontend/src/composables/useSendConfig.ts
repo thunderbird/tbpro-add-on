@@ -20,7 +20,7 @@ export function useSendConfig() {
   const folderStore = useFolderStore();
   const { validators } = useStatusStore();
   const { configureExtension } = useExtensionStore();
-  const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
+  const { initializeClientMetrics } = useMetricsStore();
   const { isLoggedIn } = useAuth();
 
   const loadLogin = async () => {
@@ -52,7 +52,6 @@ export function useSendConfig() {
     // Identify user for analytics
     const uid = userStore?.user?.uniqueHash;
     initializeClientMetrics(uid);
-    await sendMetricsToBackend(api);
   };
 
   async function finishLogin() {
@@ -81,9 +80,10 @@ export function useSendConfig() {
     return useQuery({
       queryKey: ['getLoginStatus'],
       queryFn: async () => await loadLogin(),
-      refetchOnWindowFocus: 'always',
+      // refetchOnWindowFocus: 'always',
       refetchOnMount: true,
-      refetchOnReconnect: true,
+      // refetchOnReconnect: true,
+      retry: 1,
     });
   };
 

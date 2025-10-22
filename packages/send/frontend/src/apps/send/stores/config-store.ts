@@ -12,6 +12,10 @@ export const useConfigStore = defineStore('config', () => {
     return location.href.includes('moz-extension:');
   });
 
+  const isTbproExtension = computed(() => {
+    return __APP_NAME__ === 'tbpro';
+  });
+
   const _serverUrl = ref(import.meta.env.VITE_SEND_SERVER_URL);
   const _isPublicLogin = ref(
     import.meta.env.VITE_ALLOW_PUBLIC_LOGIN === 'true'
@@ -36,6 +40,7 @@ export const useConfigStore = defineStore('config', () => {
 
     // Extension
     isExtension,
+    isTbproExtension,
   };
 });
 

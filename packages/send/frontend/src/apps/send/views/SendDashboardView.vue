@@ -4,10 +4,16 @@ import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
 import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { onMounted } from 'vue';
 
+const { isTbproExtension } = defineProps<{
+  isTbproExtension: boolean;
+}>();
+
 const { useLoginQuery } = useSendConfig();
 
 onMounted(() => {
-  useLoginQuery();
+  if (isTbproExtension) {
+    useLoginQuery();
+  }
 });
 </script>
 
