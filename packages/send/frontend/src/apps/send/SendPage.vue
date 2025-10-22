@@ -2,7 +2,6 @@
 import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import init from '@send-frontend/lib/init';
-import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import useUserStore from '@send-frontend/stores/user-store';
@@ -16,8 +15,7 @@ import { INIT_ERRORS } from './const';
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
-const { api } = useApiStore();
-const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
+const { initializeClientMetrics } = useMetricsStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 
 onMounted(async () => {
@@ -33,13 +31,10 @@ onMounted(async () => {
     }
     await init(userStore, keychain, folderStore);
     userStore.store();
-
-    await sendMetricsToBackend(api);
   }
   // Identify user for analytics
   const uid = userStore.user.uniqueHash;
   initializeClientMetrics(uid);
-  await sendMetricsToBackend(api);
 });
 
 updateMetricsIdentity();

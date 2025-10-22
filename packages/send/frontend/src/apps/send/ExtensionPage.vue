@@ -7,7 +7,6 @@ import useUserStore from '@send-frontend/stores/user-store';
 import { onMounted } from 'vue';
 
 import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
-import useApiStore from '@send-frontend/stores/api-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
@@ -20,15 +19,13 @@ import PopupView from './views/PopupView.vue';
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
-const { api } = useApiStore();
-const { initializeClientMetrics, sendMetricsToBackend } = useMetricsStore();
+const { initializeClientMetrics } = useMetricsStore();
 
 onMounted(async () => {
   await init(userStore, keychain, folderStore);
   // Identify user for analytics
   const uid = userStore.user.uniqueHash;
   initializeClientMetrics(uid);
-  await sendMetricsToBackend(api);
 });
 
 useMetricsUpdate();

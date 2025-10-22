@@ -1,5 +1,11 @@
 // Test setup file for addon tests
 
+// Define global variables for tests
+Object.assign(globalThis, {
+  __APP_NAME__: 'addon',
+  __APP_VERSION__: '0.8.0',
+});
+
 // Mock the TRPC client to avoid network calls during testing
 vi.mock('send-frontend/src/lib/trpc', () => ({
   trpc: {

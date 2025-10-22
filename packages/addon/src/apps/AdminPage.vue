@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import SendDashboardView from '@send-frontend/apps/send/views/SendDashboardView.vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const showSend = ref(true);
 const showAssist = ref(false);
+const isTbproExtension = computed(() => __APP_NAME__ === 'addon');
+console.log('isTbproExtension', isTbproExtension.value);
 </script>
 
 <template>
@@ -32,7 +34,7 @@ const showAssist = ref(false);
   </div>
 
   <div v-if="showSend" data-testid="send-section">
-    <SendDashboardView />
+    <SendDashboardView :is-tbpro-extension="isTbproExtension" />
   </div>
 
   <div v-if="showAssist" data-testid="assist-section">
