@@ -1,11 +1,13 @@
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig } from 'vite';
+import { sharedViteConfig } from './sharedViteConfig';
 import viteConfig from './vite.config.management';
 
 export default defineConfig({
   plugins: [vue()],
   viteConfig,
+  ...sharedViteConfig,
   resolve: {
     alias: {
       '@addon': path.resolve(__dirname, 'src'),
