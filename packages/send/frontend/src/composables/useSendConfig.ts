@@ -80,10 +80,9 @@ export function useSendConfig() {
     return useQuery({
       queryKey: ['getLoginStatus'],
       queryFn: async () => await loadLogin(),
-      // refetchOnWindowFocus: 'always',
+      refetchOnWindowFocus: 'always',
       refetchOnMount: true,
-      // refetchOnReconnect: true,
-      retry: 1,
+      refetchOnReconnect: true,
     });
   };
 
