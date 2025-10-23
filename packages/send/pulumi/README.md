@@ -13,7 +13,7 @@ Herein lies the Pulumi program which manages the infrastructure for Send Suite.
 
 ```
 export AWS_DEFAULT_REGION=us-east-1
-pulumi login s3://tb-send-suite-pulumi
+pulumi login
 pulumi stack select $ENV
 ```
 
