@@ -1,8 +1,8 @@
 import { UserTier } from '@prisma/client';
 
-const ONE_KB_IN_BYTES = 1024;
-const ONE_MB_IN_BYTES = ONE_KB_IN_BYTES * 1024;
-const ONE_GB_IN_BYTES = ONE_MB_IN_BYTES * 1024;
+const ONE_KB_IN_BYTES = 1000;
+const ONE_MB_IN_BYTES = ONE_KB_IN_BYTES * 1000;
+const ONE_GB_IN_BYTES = ONE_MB_IN_BYTES * 1000;
 
 const LIMITS = {
   // We default to free tier unless specified otherwise
