@@ -60,7 +60,10 @@ const hasLimitedStorage = computed(() => {
 });
 
 const activeText = computed(() => {
-  return `${prettyBytes(size.value.active)} of ${prettyBytes(size.value.limit)}`;
+  const activeText = prettyBytes(size.value.active);
+  const limitText = prettyBytes(size.value.limit);
+
+  return `${activeText} of ${limitText}`;
 });
 
 const percentageUsed = computed(() => {

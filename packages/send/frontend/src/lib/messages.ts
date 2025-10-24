@@ -9,4 +9,5 @@ export const CLIENT_MESSAGES = {
   SHOULD_LOG_IN: `You need to log into your mozilla account. Make sure you're in the allow list for alpha access.`,
   FILE_TOO_BIG: `Your file size is not supported, please try with files smaller than ${MAX_FILE_SIZE_HUMAN_READABLE}`,
   UPLOAD_FAILED: `Upload failed. Please try again.`,
+  STORAGE_LIMIT_EXCEEDED: `Uploading this file would exceed your storage limit. Please delete some files and try again.`,
 };
