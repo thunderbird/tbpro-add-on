@@ -30,7 +30,7 @@ export default class Downloader {
     // Check if this file has not been reported as suspicious
     // check fileHash against suspicious files
     const { isSuspicious } = await this.api.call<{ isSuspicious: boolean }>(
-      `uploads/check-suspicious-id/${id}`
+      `download/check-upload-id/${id}`
     );
 
     if (isSuspicious) {

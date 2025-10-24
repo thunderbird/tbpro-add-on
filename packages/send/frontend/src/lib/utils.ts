@@ -2,6 +2,7 @@ import { JsonResponse } from '@send-frontend/lib/api';
 import { NamedBlob } from '@send-frontend/types';
 import JSZip from 'jszip';
 import { MAX_FILE_SIZE } from './const';
+import { trpc } from './trpc';
 
 /**
  * Generates a SHA-256 hash from a file blob.
@@ -17,6 +18,19 @@ export async function generateFileHash(fileBlob: Blob): Promise<string> {
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
   return fileHash;
+}
+
+/*
+ * Checks if user can continue uploading based on current storage usage and limit
+ * @param {number} currentUploadSize - Size of the upload in bytes
+ * @returns {boolean} - Returns true if user can upload, false otherwise
+ */
+export async function canUserUpload(
+  currentUploadSize: number
+): Promise<boolean> {
+  // check if user would exceed storage limit with this upload
+  const { active, limit } = await trpc.getTotalUsedStorage.query();
+  return active + currentUploadSize >= limit;
 }
 
 /**

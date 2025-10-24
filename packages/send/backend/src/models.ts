@@ -1,4 +1,4 @@
-import { ItemType, PrismaClient } from '@prisma/client';
+import { ContainerType, ItemType, PrismaClient } from '@prisma/client';
 import {
   ACCESSLINK_NOT_UPDATED,
   BaseError,
@@ -24,7 +24,9 @@ import {
   UPLOAD_NOT_REPORTED,
 } from './errors/models';
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
+import { getAllUserGroupContainers } from './models/users';
 import { PermissionType } from './types/custom';
+import { addExpiryToContainer } from './utils';
 const prisma = new PrismaClient();
 
 export async function getSharesForContainer(containerId: string) {
@@ -634,17 +636,16 @@ export async function findOrphans(): Promise<{ uploadIds: string[] }> {
   const uploadsWithoutItem = await prisma.upload.findMany({
     where: {
       items: {
-        none: {}
-      }
+        none: {},
+      },
     },
     select: {
-      id: true
-    }
+      id: true,
+    },
   });
 
-
   return {
-    uploadIds: [...uploadsWithoutItem.map(({id}) => id)],
+    uploadIds: [...uploadsWithoutItem.map(({ id }) => id)],
   };
 }
 
@@ -652,7 +653,7 @@ export async function deleteOrphans() {
   const { uploadIds } = await findOrphans();
   const errorUploadIds = [];
 
-  for (let id of uploadIds) {
+  for (const id of uploadIds) {
     try {
       await deleteUpload(id);
     } catch (e) {
@@ -665,5 +666,54 @@ export async function deleteOrphans() {
   return {
     errorUploadIds,
   };
-
 }
+
+export const getUsedStorage = async (
+  userId: string,
+  hasLimitedStorage = false
+) => {
+  const folders = await getAllUserGroupContainers(userId, ContainerType.FOLDER);
+
+  // If the user has a limited storage, we need to calculate the total size of the active uploads and the expired uploads
+  if (hasLimitedStorage) {
+    // Get the total size of all the uploads that haven't expired
+    const expired = folders
+      .flatMap((folder) =>
+        folder.items
+          // Add expiry information to each upload
+          .map((item) => addExpiryToContainer(item.upload))
+          // Filter out the expired uploads
+          .filter((item) => item.expired === true)
+          // Get the size of each upload
+          .map((item) => item.size)
+      )
+      // Make a sum of all the sizes that have expired
+      .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
+
+    const active = folders
+      .flatMap((folder) =>
+        folder.items
+          // Add expiry information to each upload
+          .map((item) => addExpiryToContainer(item.upload))
+          // Filter out the expired uploads
+          .filter((item) => item.expired === false)
+          // Get the size of each upload
+          .map((item) => item.size)
+      )
+      // Make a sum of all the sizes that haven't expired
+      .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
+    return {
+      active,
+      expired,
+    };
+  }
+  const active = folders
+    // Make a sum of all the sizes that haven't expired
+    .flatMap((folder) => folder.items.map((item) => item.upload.size))
+    .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
+
+  return {
+    active,
+    expired: 0,
+  };
+};

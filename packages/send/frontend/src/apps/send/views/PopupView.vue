@@ -21,8 +21,10 @@ import {
 import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
 import { organizeFiles } from '@send-frontend/lib/folderView';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
+import { canUploadQuery } from '@send-frontend/lib/queries';
 import useApiStore from '@send-frontend/stores/api-store';
 import { IconEye, IconEyeClosed } from '@tabler/icons-vue';
+import { useQuery } from '@tanstack/vue-query';
 import ProgressBar from '../components/ProgressBar.vue';
 import { default as Btn } from '../elements/BtnComponent.vue';
 import { useStatusStore } from '../stores/status-store';
@@ -163,6 +165,12 @@ function indicatorForFile(fileId: number) {
   return uploadMap.value.get(fileId) ? `✅` : `⏳`;
 }
 
+const { error: cannotUpload } = useQuery({
+  queryKey: ['can-upload'],
+  queryFn: canUploadQuery,
+  retry: false,
+});
+
 onMounted(async () => {
   try {
     await restoreKeysUsingLocalStorage(keychain, api);
@@ -221,7 +229,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="isAllowed">
+  <!-- We only show the error message when storage limit has been exceeded -->
+  <h1 v-if="cannotUpload">{{ cannotUpload }}</h1>
+
+  <div v-if="isAllowed && !cannotUpload">
     <div v-if="isError">
       <ErrorUploading />
     </div>

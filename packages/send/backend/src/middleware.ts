@@ -5,6 +5,7 @@ import { getDataFromAuthenticatedRequest } from './auth/client';
 import { validateJWT } from './auth/jwt';
 import { extractBearerToken, validateOIDCToken } from './auth/oidc';
 import { VERSION } from './config';
+import { getUsedStorage } from './models';
 import { fromPrismaV2 } from './models/prisma-helper';
 import { getUserByOIDCSubject } from './models/users';
 import {
@@ -15,6 +16,7 @@ import {
   hasWrite,
 } from './types/custom';
 import { getCookie } from './utils';
+import { getStorageLimitForTier } from './utils/storageLimits';
 
 // Extended request interface to include authentication info
 interface AuthenticatedRequest extends Request {
@@ -359,4 +361,26 @@ export function addVersionHeader(
 ) {
   res.setHeader('x-tbsend', VERSION);
   next();
+}
+
+export async function checkStorageLimit(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  // Check if the body has the size property
+  const size = req?.body?.size || 0;
+
+  const { tier, id } = getDataFromAuthenticatedRequest(req);
+  const limit = getStorageLimitForTier(tier);
+
+  const { active } = await getUsedStorage(id);
+
+  if (active + size >= limit) {
+    return res.status(403).json({
+      message: `Storage limit exceeded. Please remove files to continue uploading.`,
+    });
+  }
+
+  return next();
 }
