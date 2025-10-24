@@ -93,7 +93,7 @@ describe('Downloader', () => {
 
       expect(result).toBe(true);
       expect(mockApi.call).toHaveBeenCalledWith(
-        `uploads/check-suspicious-id/${testParams.id}`
+        `download/check-upload-id/${testParams.id}`
       );
       expect(mockApi.call).toHaveBeenCalledWith(
         `uploads/${testParams.id}/metadata`
@@ -153,7 +153,7 @@ describe('Downloader', () => {
       ).rejects.toThrow('File has been reported as suspicious');
 
       expect(mockApi.call).toHaveBeenCalledWith(
-        `uploads/check-suspicious-id/${testParams.id}`
+        `download/check-upload-id/${testParams.id}`
       );
       expect(mockApi.call).toHaveBeenCalledTimes(1);
     });

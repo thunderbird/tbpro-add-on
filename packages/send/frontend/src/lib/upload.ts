@@ -122,7 +122,7 @@ export default class Uploader {
 
     // check fileHash against suspicious files
     const { isSuspicious } = await this.api.call<{ isSuspicious: boolean }>(
-      `uploads/check-suspicious-hash/${fileHash}`
+      `uploads/check-upload-hash/${fileHash}`
     );
 
     if (isSuspicious) {

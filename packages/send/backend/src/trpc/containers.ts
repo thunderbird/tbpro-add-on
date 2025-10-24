@@ -1,16 +1,12 @@
-import { ContainerType } from '@prisma/client';
-import {
-  IS_USING_BUCKET_STORAGE,
-  TOTAL_STORAGE_LIMIT,
-} from '@send-backend/config';
+import { IS_USING_BUCKET_STORAGE } from '@send-backend/config';
+import { getUsedStorage } from '@send-backend/models';
 import {
   getAccessLinksForContainer as getAccessLinks,
   getContainerWithoutAncestors,
   getDefaultContainerForOwner,
   setContainerAsDefault,
 } from '@send-backend/models/containers';
-import { getAllUserGroupContainers } from '@send-backend/models/users';
-import { addExpiryToContainer } from '@send-backend/utils';
+import { getStorageLimitForTier } from '@send-backend/utils/storageLimits';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { router, publicProcedure as t } from '../trpc';
@@ -49,55 +45,17 @@ export const containersRouter = router({
     const response = {
       expired: 0,
       active: 0,
-      limit: TOTAL_STORAGE_LIMIT,
+      limit: getStorageLimitForTier(ctx.user.tier),
     };
 
     try {
       const userId = ctx.user.id;
-      const folders = await getAllUserGroupContainers(
+      const { active, expired } = await getUsedStorage(
         userId,
-        ContainerType.FOLDER
+        ctx.user.hasLimitedStorage
       );
-
-      // If the user has a limited storage, we need to calculate the total size of the active uploads and the expired uploads
-      if (ctx.user.hasLimitedStorage) {
-        // Get the total size of all the uploads that haven't expired
-        const expired = folders
-          .flatMap((folder) =>
-            folder.items
-              // Add expiry information to each upload
-              .map((item) => addExpiryToContainer(item.upload))
-              // Filter out the expired uploads
-              .filter((item) => item.expired === true)
-              // Get the size of each upload
-              .map((item) => item.size)
-          )
-          // Make a sum of all the sizes that have expired
-          .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
-
-        const active = folders
-          .flatMap((folder) =>
-            folder.items
-              // Add expiry information to each upload
-              .map((item) => addExpiryToContainer(item.upload))
-              // Filter out the expired uploads
-              .filter((item) => item.expired === false)
-              // Get the size of each upload
-              .map((item) => item.size)
-          )
-          // Make a sum of all the sizes that haven't expired
-          .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
-
-        response.active = active;
-        response.expired = expired;
-      }
-      const active = folders
-        // Make a sum of all the sizes that haven't expired
-        .flatMap((folder) => folder.items.map((item) => item.upload.size))
-        .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
-
       response.active = active;
-      response.expired = 0;
+      response.expired = expired;
     } catch {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
