@@ -60,10 +60,8 @@ const hasLimitedStorage = computed(() => {
 });
 
 const activeText = computed(() => {
-  const activeText = prettyBytes(size.value.active, {
-    maximumFractionDigits: 0,
-  });
-  const limitText = prettyBytes(size.value.limit, { maximumFractionDigits: 0 });
+  const activeText = prettyBytes(size.value.active);
+  const limitText = prettyBytes(size.value.limit);
 
   return `${activeText} of ${limitText}`;
 });
