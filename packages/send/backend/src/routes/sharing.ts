@@ -100,6 +100,8 @@ router.post(
       permission = req.body.permission;
     }
 
+    const { id: useridfromtoken } = getDataFromAuthenticatedRequest(req);
+
     // check if link can be created
     const canCreateLink = await checkIfAccessLinkCanBeCreated(containerId);
 
@@ -110,34 +112,39 @@ router.post(
       });
     }
 
-    const accessLink = await createAccessLink(
-      containerId,
-      senderId,
-      wrappedKey,
-      salt,
-      challengeKey,
-      challengeSalt,
-      challengeCiphertext,
-      challengePlaintext,
-      parseInt(permission),
-      expiration
-    );
+    try {
+      const accessLink = await createAccessLink(
+        containerId,
+        senderId || useridfromtoken,
+        wrappedKey,
+        salt,
+        challengeKey,
+        challengeSalt,
+        challengeCiphertext,
+        challengePlaintext,
+        parseInt(permission),
+        expiration
+      );
 
-    Metrics.capture({
-      event: 'accessLink.created',
-      distinctId: uniqueHash,
-      properties: {
+      Metrics.capture({
+        event: 'accessLink.created',
+        distinctId: uniqueHash,
+        properties: {
+          id: accessLink.id,
+          expiration,
+        },
+      });
+
+      await Metrics.shutdown();
+
+      return res.status(200).json({
         id: accessLink.id,
-        expiration,
-      },
-    });
-
-    await Metrics.shutdown();
-
-    return res.status(200).json({
-      id: accessLink.id,
-      expiryDate: accessLink.expiryDate,
-    });
+        expiryDate: accessLink.expiryDate,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(400).json({ message: 'Could not create access link' });
+    }
   })
 );
 
