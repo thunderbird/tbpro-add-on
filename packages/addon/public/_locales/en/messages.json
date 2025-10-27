@@ -1,0 +1,17 @@
+{
+  "signin": {
+    "message": "Sign in to "
+  },
+  "title": {
+    "message": " Thunderbird Pro"
+  },
+  "back": {
+    "message": "back"
+  },
+  "manage": {
+    "message": "Manage Services"
+  },
+  "signout": {
+    "message": "Sign out"
+  }
+}
