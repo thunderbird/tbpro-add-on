@@ -229,9 +229,7 @@ resources:
         - send-suite-prod-fargate
       fargate_task_role_arns:
         - arn:aws:iam::768512802988:role/send-suite-prod-fargate
-      enable_full_s3_access: true
-      s3_full_access_buckets:
-        - tb-send-suite-pulumi
+      enable_full_s3_access: false
       enable_s3_bucket_upload: true
       s3_upload_buckets:
         - tb-send-suite-prod-frontend
