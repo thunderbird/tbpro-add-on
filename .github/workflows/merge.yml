@@ -408,3 +408,47 @@ jobs:
         run: |
           cd packages/addon
           pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
+
+      - name: (Addon) Create prod .env file from secrets
+        shell: bash
+        run: |
+          cd packages/addon
+          cat << EOF > .env
+          VUE_BASE_URL=https://send.tb.pro
+          VITE_SEND_SERVER_URL=https://send-backend.tb.pro
+          VITE_SEND_CLIENT_URL=https://send.tb.pro
+          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
+          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
+          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                  
+          EOF
+
+      - name: Build the stage frontend's static assets
+        id: frontend-build-prod
+        env:
+          BASE_URL: https://send.tb.pro
+          IS_CI_AUTOMATION: yes
+        shell: bash
+        run: |
+          npm install -g pnpm
+          npm install -g lerna
+          # install packages that addon depends on
+          pnpm install --filter tbpro-shared
+          pnpm install --filter addon
+          pnpm install --filter send-frontend
+
+          IS_CI_AUTOMATION=yes
+          lerna run build-and-submit --scope=addon
+
+          cd packages/addon
+
+          mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-prod-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
+
+      - name: Archive the prod XPI
+        id: xpi-archive-prod
+        uses: actions/upload-artifact@v4
+        with:
+          name: addon-xpi-prod
+          path: packages/addon/tbpro-addon-prod-*.xpi
