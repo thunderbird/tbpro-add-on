@@ -92,6 +92,8 @@ jobs:
 
       - name: Deploy version-tagged image to prod
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
+        env:
+          PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
         shell: bash
         run: |
           # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
@@ -119,7 +121,7 @@ jobs:
 
           # Set up the Pulumi environment and update the service
           source ./venv/bin/activate
-          pulumi login s3://tb-send-suite-pulumi
+          pulumi login
           pulumi stack select prod
           TBPULUMI_DISABLE_PROTECTION=True \
             pulumi up -y --diff --target \
