@@ -11,9 +11,9 @@ resources:
     vpc:
       cidr_block: 10.31.0.0/16
       subnets:
-        us-east-1a:
+        eu-central-1a:
           - 10.31.0.0/17
-        us-east-1b:
+        eu-central-1b:
           - 10.31.128.0/17
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
@@ -83,7 +83,7 @@ resources:
         send-suite:
           listener_port: 443
           listener_proto: HTTPS
-          listener_cert_arn: arn:aws:acm:us-east-1:768512802988:certificate/10824889-81a4-44d8-b34a-f47d67e5c0c8
+          listener_cert_arn: arn:aws:acm:eu-central-1:768512802988:certificate/871e3f03-e3f8-4503-b6cc-1e4884e44285
           container_port: 8080
           container_name: backend
           # "name" field is arbitrary, but must be unique and no longer than 32 chars
@@ -197,12 +197,13 @@ resources:
     frontend:
       service_bucket_name: tb-send-suite-stage-frontend
       certificate_arn: arn:aws:acm:us-east-1:768512802988:certificate/97666a05-2eb2-47cc-b1c2-22a1f3efbe31
+      enable_logging: False
       distribution:
         aliases:
           - send-stage.tb.pro
         comment: send-suite stage frontend
-        logging_config:
-          include_cookies: True
+        # logging_config:
+        #   include_cookies: True
 
   tb:cloudwatch:CloudWatchMonitoringGroup:
     alarms: {}
@@ -218,8 +219,8 @@ resources:
     ci:
       access_keys: {}
       enable_legacy_access_key: True
-      additional_policies:
-        - arn:aws:iam::768512802988:policy/send-suite-stage-frontend-cache-invalidation
+      # additional_policies:
+      #   - arn:aws:iam::768512802988:policy/send-suite-stage-frontend-cache-invalidation
       enable_ecr_image_push: true
       ecr_repositories:
         - send
