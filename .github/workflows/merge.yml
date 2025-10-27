@@ -425,7 +425,7 @@ jobs:
           VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                  
           EOF
 
-      - name: Build the stage frontend's static assets
+      - name: Build the prod frontend's static assets
         id: frontend-build-prod
         env:
           BASE_URL: https://send.tb.pro
