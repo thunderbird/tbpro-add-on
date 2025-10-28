@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const ID_FOR_PROD = `"id": "tbpro-addon@thunderbird.net"`;
+export const ID_FOR_PROD = `"id": "tbpro-add-on@thunderbird.net"`;
 export const ID_FOR_STAGE = ` "id": "tbpro-addon-stage@thunderbird.net"`;
 
 export const NAME_FOR_PROD = `"name": "Tbpro Addon"`;
