@@ -200,6 +200,21 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log(`I can haz OIDC TOKEN?`);
       console.log(message);
       // TODO: Store message.token
+      // Call experiment function that runs the following:
+
+      /*
+      Based on https://searchfox.org/comm-central/source/mailnews/base/src/OAuth2Module.sys.mjs#198-202
+
+      const login = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(
+        Ci.nsILoginInfo
+      );
+      login.init(this._loginOrigin, null, scope, this._username, token, "", "");
+      await Services.logins.addLoginAsync(login);
+
+      but with arguments like
+      "oauth://auth.tb.pro", null, "openid email offline_access profile", "geoff@thundermail.com", "abcde12345", "", ""
+       */
+
       break;
 
     case 'SIGN_IN':
