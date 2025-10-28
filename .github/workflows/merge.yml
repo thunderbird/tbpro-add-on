@@ -443,7 +443,8 @@ jobs:
           lerna run build-and-submit --scope=addon
 
           cd packages/addon
-
+          # Delete any existing stage XPI to avoid confusion
+          rm -f tbpro-addon-stage-*.xpi
           mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-prod-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
 
       - name: Archive the prod XPI
