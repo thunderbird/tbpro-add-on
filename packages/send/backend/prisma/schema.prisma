@@ -1,11 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
-  // output = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -13,14 +8,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserTier {
-  PRO
-  EPHEMERAL
-  FREE
-}
-
 model User {
-  id                  String               @id @default(uuid()) @unique @db.Uuid
+  id                  String       @id @unique @default(uuid()) @db.Uuid
   email               String?
   publicKey           String?
   tier                UserTier
@@ -28,80 +17,171 @@ model User {
   updatedAt           DateTime?
   activatedAt         DateTime?
   uniqueHash          String?
-  // we only store hashed passwords when environment variable ALLOW_PUBLIC_LOGIN is set to true
-  hashedPassword      String?  
-  // OIDC subject identifier for stateless authentication
-  oidcSubject         String?              @unique
-
-  profile             Profile?
-
-  uploads             Upload[]
-  groups              Membership[]
-  containers          Container[]
-
-  // Shares created by this user
-  shares              Share[]              @relation("Sender")
-
-  // Invitations sent to this user
-  invitations         Invitation[]         @relation("Recipient")
-
+  hashedPassword      String?
+  oidcSubject         String?      @unique
   backupKeypair       String?
   backupContainerKeys String?
   backupKeystring     String?
   backupSalt          String?
+  containers          Container[]
+  invitations         Invitation[] @relation("Recipient")
+  groups              Membership[]
+  profile             Profile?
+  shares              Share[]      @relation("Sender")
+  uploads             Upload[]
 }
 
 model Profile {
-  // These are sourced from the Mozilla Account
-  mozid         String  @unique
-  avatar        String?
-
-  // 1-1 relationship with User
-  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String @id @default(uuid()) @unique @db.Uuid
-
-  accessToken   String?
-  refreshToken  String?
+  mozid        String  @unique
+  avatar       String?
+  userId       String  @id @unique @default(uuid()) @db.Uuid
+  accessToken  String?
+  refreshToken String?
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model Group {
-  id          Int     @id @default(autoincrement())
-  members     Membership[]
-  container   Container?
+  id        Int          @id @default(autoincrement())
+  container Container?
+  members   Membership[]
 }
 
 model Membership {
-  groupId     Int
-  group       Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  userId      String @db.Uuid
-  user        User  @relation(fields: [userId], references: [id]) 
-  permission  Int   @default(0)
-                    // Modeled as a bitfield, i.e., 0b00000110
-                    // See src/types/custom.ts for values
-                    // Prisma's enums don't allow specify values.
-                    // Need an expandable way to represent permissions.
-                    // Postgres (for example) gives us a 32 bit Int.
+  groupId    Int
+  userId     String @db.Uuid
+  permission Int    @default(0)
+  group      Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user       User   @relation(fields: [userId], references: [id])
 
   @@id([groupId, userId])
 }
 
-// Any user with sufficient permissions can create a Share
-// for a Container.
-// See the PermissionType enum in src/types/custom.ts
 model Share {
-  id              Int       @id @default(autoincrement())
-  containerId     String    @db.Uuid
-  container       Container @relation("SharedFolder", fields: [containerId], references: [id], onDelete: Cascade)
+  id          Int          @id @default(autoincrement())
+  containerId String       @db.Uuid
+  senderId    String       @db.Uuid
+  accessLinks AccessLink[]
+  invitations Invitation[]
+  container   Container    @relation("SharedFolder", fields: [containerId], references: [id], onDelete: Cascade)
+  sender      User         @relation("Sender", fields: [senderId], references: [id])
+}
 
-  senderId        String    @db.Uuid
-  sender          User      @relation("Sender", fields: [senderId], references: [id])
+model Invitation {
+  id          Int              @id @default(autoincrement())
+  shareId     Int
+  wrappedKey  String
+  recipientId String           @db.Uuid
+  status      InvitationStatus @default(PENDING)
+  permission  Int              @default(0)
+  recipient   User             @relation("Recipient", fields: [recipientId], references: [id])
+  share       Share            @relation(fields: [shareId], references: [id], onDelete: Cascade)
+}
 
-  // There are two ways to access a Share.
-  // A User can accept an Invitation.
-  // A non-user uses an AccessLink.
-  invitations     Invitation[]
-  accessLinks     AccessLink[]
+model AccessLink {
+  id                  String    @unique
+  shareId             Int
+  wrappedKey          String
+  salt                String
+  challengeKey        String
+  challengeSalt       String
+  challengeCiphertext String
+  challengePlaintext  String
+  permission          Int       @default(0)
+  expiryDate          DateTime?
+  passwordHash        String?
+  retryCount          Int       @default(0)
+  locked              Boolean   @default(false)
+  share               Share     @relation(fields: [shareId], references: [id], onDelete: Cascade)
+}
+
+model Container {
+  id         String        @id @unique @default(uuid()) @db.Uuid
+  name       String
+  createdAt  DateTime?
+  updatedAt  DateTime?
+  type       ContainerType
+  shareOnly  Boolean       @default(false)
+  ownerId    String        @db.Uuid
+  groupId    Int           @unique
+  wrappedKey String?
+  parentId   String?       @db.Uuid
+  isDefault  Boolean       @default(false)
+  group      Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  owner      User          @relation(fields: [ownerId], references: [id])
+  parent     Container?    @relation("Nesting", fields: [parentId], references: [id])
+  children   Container[]   @relation("Nesting")
+  items      Item[]
+  shares     Share[]       @relation("SharedFolder")
+  tags       Tag[]         @relation("ContainerToTag")
+}
+
+model Item {
+  id          Int       @id @default(autoincrement())
+  name        String
+  wrappedKey  String
+  containerId String    @db.Uuid
+  uploadId    String    @db.Uuid
+  type        ItemType
+  multipart   Boolean   @default(false)
+  totalSize   BigInt?
+  createdAt   DateTime?
+  updatedAt   DateTime?
+  container   Container @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  upload      Upload    @relation(fields: [uploadId], references: [id])
+  tags        Tag[]     @relation("ItemToTag")
+}
+
+model Upload {
+  id         String    @id @default(uuid()) @db.Uuid
+  size       BigInt
+  ownerId    String    @db.Uuid
+  type       String
+  createdAt  DateTime?
+  reported   Boolean   @default(false)
+  reportedAt DateTime?
+  part       Int?
+  fileHash   String?
+  items      Item[]
+  owner      User      @relation(fields: [ownerId], references: [id])
+}
+
+model SuspiciousFile {
+  id       String @id @unique @default(uuid()) @db.Uuid
+  fileHash String @unique
+}
+
+model Tag {
+  id         Int         @id @default(autoincrement())
+  name       String      @unique
+  color      String
+  containers Container[] @relation("ContainerToTag")
+  items      Item[]      @relation("ItemToTag")
+}
+
+model Login {
+  fxasession String    @id
+  createdAt  DateTime?
+}
+
+model Verification {
+  id        String   @id @unique @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  code      String
+}
+
+model EncryptedPassphrase {
+  id                   String   @id @unique @default(uuid()) @db.Uuid
+  createdAt            DateTime @default(now())
+  encryptedPassphrase  String
+  wrappedEncryptionKey String
+  salt                 String
+  codeSalt             String
+}
+
+enum UserTier {
+  PRO
+  EPHEMERAL
+  FREE
 }
 
 enum InvitationStatus {
@@ -111,163 +191,12 @@ enum InvitationStatus {
   DECLINED
 }
 
-// Invitations are from user-to-user.
-model Invitation {
-  id            Int     @id @default(autoincrement())
-  shareId       Int
-  share         Share   @relation(fields: [shareId], references: [id], onDelete: Cascade)
-  wrappedKey    String  // Container key wrapped with recipient publicKey
-
-  recipientId   String  @db.Uuid
-  recipient     User    @relation("Recipient", fields: [recipientId], references: [id])
-  status        InvitationStatus @default(PENDING)
-
-  // Will be copied over to the resulting Membership
-  permission  Int   @default(0)
-  // Modeled as a bitfield, i.e., 0b00000110
-  // See src/types/custom.ts for values
-  // Prisma's enums don't allow specify values.
-  // Need an expandable way to represent permissions.
-  // Postgres (for example) gives us a 32 bit Int.
-}
-
-// AccessLink can be sent to non-users or users.
-// For non-users, it gives them one-time access to a Share.
-// For users, it gives them Membership to the Shared Container
-model AccessLink {
-  id                  String @unique
-  shareId             Int
-  share               Share   @relation(fields: [shareId], references: [id], onDelete: Cascade)
-  wrappedKey          String  // Container key wrapped with password
-
-  // Confirms that password can unwrap challenge key without
-  // storing the password in the database.
-  // Password + salt + key can decrypt ciphertext to plaintext.
-  salt                String
-  challengeKey        String
-  challengeSalt       String
-  challengeCiphertext String
-  challengePlaintext  String
-
-  permission          Int     @default(0)
-  // Modeled as a bitfield, i.e., 0b00000110
-  // See src/types/custom.ts for values
-  // Prisma's enums don't allow specify values.
-  // Need an expandable way to represent permissions.
-  // Postgres (for example) gives us a 32 bit Int.
-
-  expiryDate        DateTime?
-  // If a link is not password protected, we store the generated random password hash
-  passwordHash      String?
-  retryCount        Int     @default(0)
-  locked            Boolean @default(false)
-}
-
-
 enum ContainerType {
   CONVERSATION
   FOLDER
-}
-
-model Container {
-  id        String            @id @default(uuid()) @unique @db.Uuid
-  name      String
-  createdAt DateTime?
-  updatedAt DateTime?
-
-  type      ContainerType
-  shareOnly Boolean         @default(false)
-  shares    Share[]         @relation("SharedFolder")
-
-  ownerId   String          @db.Uuid
-  owner     User            @relation(fields: [ownerId], references: [id])
-  groupId   Int             @unique
-  group     Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  items     Item[]
-  wrappedKey  String? // this container's key, wrapped using the parent's key
-  parentId  String?         @db.Uuid
-  parent    Container?      @relation("Nesting", fields: [parentId], references: [id])
-  children  Container[]     @relation("Nesting")
-
-  tags      Tag[]
-  isDefault Boolean     @default(false) // Whether this is the user's default folder
 }
 
 enum ItemType {
   MESSAGE
   FILE
 }
-
-model Item {
-  id            Int           @id @default(autoincrement())
-  name          String
-  wrappedKey    String
-  containerId   String        @db.Uuid
-  container     Container     @relation(fields: [containerId], references: [id], onDelete: Cascade)
-  uploadId      String        @db.Uuid
-  // Do not cascade, since uploads can exist in different Containers as
-  // different Items
-  upload        Upload        @relation(fields: [uploadId], references: [id] )
-  type          ItemType
-  multipart     Boolean      @default(false) // Whether the file is split into multiple uploads
-  totalSize     BigInt? // Total size of all multi-part items
-  createdAt     DateTime?
-  updatedAt     DateTime? 
-
-  tags      Tag[]
-}
-
-model Upload {
-  id        String        @id @default(uuid()) @db.Uuid
-  size      BigInt        // Size of the upload in bytes
-  ownerId   String        @db.Uuid
-  owner     User          @relation(fields: [ownerId], references: [id])
-  items     Item[]        // A single Upload may back multiple Items
-  type      String        // mime type
-  createdAt DateTime?
-  reported  Boolean       @default(false)
-  reportedAt DateTime?
-  // This helps us it helps us put together multi-part uploads
-  part          Int?
-  fileHash      String?     
-}
-
-// Store hashes of files that have been reported as suspicious
-// This helps us prevent re-uploads of known bad files  
-model SuspiciousFile {
-  id        String   @id @default(uuid()) @unique @db.Uuid
-  fileHash      String   @unique
-}
-
-// A tag can be associated with items and containers
-// The tags will be visible by anyone with access to those
-// items and containers.
-model Tag {
-  id          Int         @id @default(autoincrement())
-  name        String      @unique
-  color       String      // Color values defined in front-end for flexibility
-  items       Item[]
-  containers  Container[]
-}
-
-// This table stores login attempts to compare agains fxa logins
-model Login {
-  fxasession String @id
-  createdAt DateTime?
-}
-
-model Verification {
-  id       String   @id @default(uuid()) @unique @db.Uuid
-  createdAt  DateTime @default(now())
-  code     String   
-}
-
-model EncryptedPassphrase {
-  id       String   @id @default(uuid()) @unique @db.Uuid
-  createdAt DateTime @default(now())
-  encryptedPassphrase String
-  wrappedEncryptionKey String
-  salt     String
-  codeSalt String
-}
-
