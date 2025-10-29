@@ -197,23 +197,24 @@ browser.runtime.onMessage.addListener(async (message) => {
       break;
 
     case 'TB/OIDC_TOKEN':
-      console.log(`I can haz OIDC TOKEN?`);
-      console.log(message);
-      // TODO: Store message.token
-      // Call experiment function that runs the following:
+      const { email, preferred_username, token } = message;
 
-      /*
-      Based on https://searchfox.org/comm-central/source/mailnews/base/src/OAuth2Module.sys.mjs#198-202
+      if (!email && !token) {
+        console.log(`Did not get info back from login`);
+        return;
+      }
 
-      const login = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(
-        Ci.nsILoginInfo
-      );
-      login.init(this._loginOrigin, null, scope, this._username, token, "", "");
-      await Services.logins.addLoginAsync(login);
+      try {
+        await createThundermailAccount(email, preferred_username)
+      } catch (e) {
+        console.log(e);
+      }
 
-      but with arguments like
-      "oauth://auth.tb.pro", null, "openid email offline_access profile", "geoff@thundermail.com", "abcde12345", "", ""
-       */
+      try {
+        await addThundermailToken(token, email);
+      } catch (e) {
+        console.log(e);
+      }
 
       break;
 
@@ -312,4 +313,126 @@ function rejectAllInQueue(reason: Error) {
   }
   // Also clear any remaining items in the queue.
   uploadInfoQueue = [];
+}
+
+
+async function createThundermailAccount(email, preferred_username) {
+
+  const alreadyExists = await doesAccountExist(email);
+  if (alreadyExists) {
+    const message = `Account for ${email} already exists. Skipping creation.`
+    return {
+      success: false,
+      message,
+    }
+  }
+
+  const config = {
+    incoming: {
+      type: "imap",
+      hostname: "mail.thundermail.com",
+      port: 993,
+      username: email,
+      password: "",
+      socketType: 3, // SSL
+      auth: 10 // OAuth2 (or use 3 for plain text if using App Password)
+    },
+    outgoing: {
+      type: "smtp",
+      hostname: "mail.thundermail.com",
+      port: 587,
+      username: email,
+      password: "",
+      socketType: 2, // STARTTLS
+      auth: 10, // OAuth2 (or use 3 for plain text if using App Password)
+      addThisServer: true // Required: tells TB to create a new SMTP server
+    },
+    identity: {
+      realname: preferred_username,
+      emailAddress: email,
+    },
+    displayName: "Thundermail"
+  };
+
+  try {
+    const result = await browser.MailAccounts.createAccount(config);
+
+    if (result) {
+      return {
+        success: true,
+        message: `Account created successfully`,
+      }
+    } else {
+      return {
+        success: false,
+        message: `Creation failed (Experiment API returned false)`,
+      }
+    }
+
+  } catch (e) {
+    return {
+      success: false,
+      message: `Creation failed with error ${e.message}`,
+    }
+  }
+
+}
+
+
+async function addThundermailToken(token, email) {
+  console.log(`to be implemented`);
+
+  // Call experiment function that runs the following:
+
+  /*
+  Based on https://searchfox.org/comm-central/source/mailnews/base/src/OAuth2Module.sys.mjs#198-202
+
+      const login = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(
+      Ci.nsILoginInfo
+      );
+      login.init(this._loginOrigin, null, scope, this._username, token, "", "");
+      await Services.logins.addLoginAsync(login);
+
+      but with arguments like
+      "oauth://auth.tb.pro", null, "openid email offline_access profile", "geoff@thundermail.com", "abcde12345", "", ""
+   */
+
+
+}
+
+
+async function doesAccountExist(email) {
+  if (!email) {
+    console.warn("accountExists: No email address provided for check.");
+    return false;
+  }
+
+  const normalizedEmail = email.toLowerCase();
+
+  try {
+    const accounts = await messenger.accounts.list();
+
+    // Check if an identity from any account already has this email address.
+    for (const account of accounts) {
+      if (account.identities && Array.isArray(account.identities)) {
+        for (const identity of account.identities) {
+          console.log(`...✔️ identity email ${identity.email}`);
+          if (identity.email && identity.email.toLowerCase() === normalizedEmail) {
+            console.log(`Found existing account for ${email} (Account: ${account.name}, ID: ${account.id})`);
+            return true;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error checking for existing accounts:", e);
+    // You might want to "fail safe" and return true here to prevent
+    // attempting to create a duplicate if the list() call fails.
+    // For this example, we'll return false and let the creation attempt proceed.
+    return false;
+  }
+
+  // If the loop completes without finding a match
+  console.log(`No existing account found for ${email}.`);
+  return false;
 }

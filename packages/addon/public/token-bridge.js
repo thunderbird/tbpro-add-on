@@ -33,7 +33,9 @@ window.addEventListener("message", (e) => {
     // Forward to the background script
     browser.runtime.sendMessage({
       type: "TB/OIDC_TOKEN",
-      token: String(e.data.token ?? "")
+      token: String(e.data.token ?? ""),
+      email: String(e.data.email ?? ""),
+      preferred_username: String(e.data.preferred_username ?? ""),
     });
   }
 

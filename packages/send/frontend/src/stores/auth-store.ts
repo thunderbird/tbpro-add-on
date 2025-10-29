@@ -86,7 +86,12 @@ export const useAuthStore = defineStore('auth', () => {
       // Send one tiny ping to the bridge.
       window.postMessage({ type: "APP/PING", text: "hello from auth store 👋" }, window.location.origin);
       // Send the token.
-      window.postMessage({ type: "TB/OIDC_TOKEN", token: user.access_token }, window.location.origin);
+      window.postMessage({
+        type: "TB/OIDC_TOKEN",
+        token: user.access_token,
+        email: user.profile.email,
+        preferred_username: user.profile.preferred_username,
+      }, window.location.origin);
 
       // Send the access token to our backend to create/update user
       const response = await api.call('auth/oidc/authenticate', {

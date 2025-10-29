@@ -32,6 +32,7 @@
     "64": "icons/64.png"
   },
   "permissions": [
+    "accountsRead",
     "storage",
     "compose",
     "notifications",
