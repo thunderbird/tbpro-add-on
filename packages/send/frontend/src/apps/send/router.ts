@@ -10,9 +10,20 @@ import Share from '@send-frontend/apps/send/pages/SharePage.vue';
 import { matchMeta } from '@send-frontend/lib/helpers';
 
 import { IS_DEV } from '@send-frontend/lib/clientConfig';
-import { getCanRetry } from '@send-frontend/lib/validations';
+import {
+  getCanRetry,
+  validateBackedUpKeys,
+  validateLocalStorageSession,
+  validateToken,
+} from '@send-frontend/lib/validations';
 
-import { useConfigStore, useFolderStore } from '@send-frontend/stores';
+import {
+  useApiStore,
+  useConfigStore,
+  useFolderStore,
+  useKeychainStore,
+  useUserStore,
+} from '@send-frontend/stores';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { storeToRefs } from 'pinia';
 import NotFoundPage from '../common/NotFoundPage.vue';
@@ -172,7 +183,9 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const folderStore = useFolderStore();
   const statusStore = useStatusStore();
-  const { validators } = statusStore;
+  const { api } = useApiStore();
+  const { keychain } = useKeychainStore();
+  const userStore = useUserStore();
   const { isRouterLoading } = storeToRefs(statusStore);
   const { metrics } = useMetricsStore();
   useVerificationStore();
@@ -206,22 +219,31 @@ router.beforeEach(async (to, from, next) => {
     console.log('Extension route not available:', to.path);
   }
 
-  const { hasLocalStorageSession, isTokenValid, hasBackedUpKeys } =
-    await validators();
+  const hasLocalStorageSession = validateLocalStorageSession(userStore);
 
-  if (requiresValidToken && !isTokenValid) {
-    metrics.capture('send.invalid.token');
+  if (requiresValidToken) {
+    const isTokenValid = await validateToken(api);
+    if (!isTokenValid) {
+      metrics.capture('send.invalid.token');
 
-    return next('/login');
+      return next('/login');
+    }
   }
 
-  if (redirectOnValidSession && hasLocalStorageSession && isTokenValid) {
-    return next('/send/profile');
+  if (redirectOnValidSession && hasLocalStorageSession) {
+    const isTokenValid = await validateToken(api);
+    if (isTokenValid) return next('/send/profile');
   }
 
-  if (requiresBackedUpKeys && !hasBackedUpKeys) {
-    next('/send/profile');
-    return;
+  if (requiresBackedUpKeys) {
+    const hasBackedUpKeys = await validateBackedUpKeys(
+      userStore.getBackup,
+      keychain
+    );
+    if (!hasBackedUpKeys) {
+      next('/send/profile');
+      return;
+    }
   }
 
   if (to.path === '/send/folder/null') {
