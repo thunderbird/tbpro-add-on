@@ -32,6 +32,7 @@ import helmet from 'helmet';
 import { TRPC_WS_PATH } from './config';
 import { errorHandler } from './errors/routes';
 import { addVersionHeader } from './middleware';
+import { performanceLogger } from './middleware/performance';
 import { originsHandler } from './origins';
 import metricsRoute from './routes/metrics';
 import { openapiSpecification } from './swagger';
@@ -131,6 +132,14 @@ process.on('SIGTERM', () => {
   trpcWebsocket.broadcastReconnectNotification();
   wss.close();
 });
+
+// Performance logging middleware with color-coded output
+app.use(
+  performanceLogger({
+    fast: 100, // Green for < 100ms (not logged)
+    slow: 300, // Yellow for 100-300ms, Red for >300ms
+  })
+);
 
 app.use(
   '/trpc',

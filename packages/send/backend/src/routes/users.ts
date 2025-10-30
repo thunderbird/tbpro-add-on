@@ -17,12 +17,12 @@ import {
 
 import {
   getAllUserGroupContainers,
-  getBackup,
+  getBackupCached,
   getRecentActivity,
   getUserByEmail,
   getUserById,
   getUserPublicKey,
-  setBackup,
+  setBackupCached,
   updateUserPublicKey,
 } from '../models/users';
 
@@ -511,7 +511,7 @@ router.post(
     const { id } = req.params;
     const { keys, keypair, keystring, salt } = req.body;
     // We're not using the return value, but we want to make sure the backup runs
-    await setBackup(id, keys, keypair, keystring, salt);
+    await setBackupCached(id, keys, keypair, keystring, salt);
     res.status(200).json({
       message: 'backup complete',
     });
@@ -557,7 +557,7 @@ router.post(
     const { id } = getDataFromAuthenticatedRequest(req);
     const { keys, keypair, keystring, salt } = req.body;
     // We're not using the return value, but we want to make sure the backup runs
-    await setBackup(id, keys, keypair, keystring, salt);
+    await setBackupCached(id, keys, keypair, keystring, salt);
     res.status(200).json({
       message: 'backup complete',
     });
@@ -586,7 +586,7 @@ router.get(
   wrapAsyncHandler(async (req, res) => {
     try {
       const { id } = getDataFromAuthenticatedRequest(req);
-      const backup = await getBackup(id);
+      const backup = await getBackupCached(id);
       res.status(200).json(backup);
     } catch {
       res.status(USER_ERRORS.BACKUP_NOT_FOUND.statusCode).json({
@@ -625,7 +625,7 @@ router.get(
   wrapAsyncHandler(async (req, res) => {
     try {
       const { id } = getDataFromAuthenticatedRequest(req);
-      const backup = await getBackup(id);
+      const backup = await getBackupCached(id);
       res.status(200).json(backup);
     } catch {
       return res.status(USER_ERRORS.BACKUP_NOT_FOUND.statusCode).json({

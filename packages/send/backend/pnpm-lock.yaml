@@ -65,6 +65,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
+      lru-cache:
+        specifier: ^11.2.2
+        version: 11.2.2
       openid-client:
         specifier: ^5.7.1
         version: 5.7.1
