@@ -26,6 +26,7 @@ import { reportUpload } from '@send-backend/models';
 import storage from '@send-backend/storage';
 import { useMetrics } from '../metrics';
 import {
+  checkStorageLimit,
   getGroupMemberPermissions,
   requireJWT,
   requireWritePermission,
@@ -70,6 +71,7 @@ router.post(
   requireJWT,
   getGroupMemberPermissions,
   requireWritePermission,
+  checkStorageLimit,
   addErrorHandling(UPLOAD_ERRORS.NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     const { id, size, ownerId, type, part, fileHash } = req.body;
@@ -143,6 +145,7 @@ router.post(
 router.post(
   '/signed',
   requireJWT,
+  checkStorageLimit,
   addErrorHandling(UPLOAD_ERRORS.NO_BUCKET),
   wrapAsyncHandler(async (req, res) => {
     const uploadId = uuidv4();
@@ -570,7 +573,7 @@ router.post('/report', async (req, res) => {
 
 /**
  * @openapi
- * /api/uploads/check-suspicious-hash/{hash}:
+ * /api/uploads/check-upload-hash/{hash}:
  *   get:
  *     summary: Check if a file hash is suspicious
  *     description: Checks if the provided file hash matches any known suspicious files
@@ -601,15 +604,20 @@ router.post('/report', async (req, res) => {
  *       500:
  *         description: Failed to check hash
  */
-router.get('/check-suspicious-hash/:hash', async (req, res) => {
-  const { hash } = req.params;
-  const isSuspicious = await checkHashAgainstSuspiciousFiles(hash);
-  res.status(200).json({ message: 'Hash checked', isSuspicious });
-});
+router.get(
+  '/check-upload-hash/:hash',
+  requireJWT,
+  checkStorageLimit,
+  async (req, res) => {
+    const { hash } = req.params;
+    const isSuspicious = await checkHashAgainstSuspiciousFiles(hash);
+    res.status(200).json({ message: 'Hash checked', isSuspicious });
+  }
+);
 
 /**
  * @openapi
- * /api/uploads/check-suspicious-id/{id}:
+ * /api/uploads/check-upload-id/{id}:
  *   get:
  *     summary: Check if an upload ID is suspicious
  *     description: Checks if the provided upload ID is associated with any suspicious files
@@ -640,10 +648,24 @@ router.get('/check-suspicious-hash/:hash', async (req, res) => {
  *       500:
  *         description: Failed to check upload ID
  */
-router.get('/check-suspicious-id/:id', async (req, res) => {
-  const { id } = req.params;
-  const isSuspicious = await checkIdAgainstSuspiciousFiles(id);
-  res.status(200).json({ message: 'Hash checked', isSuspicious });
+router.get(
+  '/check-upload-id/:id',
+  requireJWT,
+  checkStorageLimit,
+  async (req, res) => {
+    const { id } = req.params;
+
+    const isSuspicious = await checkIdAgainstSuspiciousFiles(id);
+    res.status(200).json({ message: 'Hash checked', isSuspicious });
+  }
+);
+
+/* 
+This route checks if the user can upload files
+It's a good way to run a quick check with our middlewares before we start any uploads
+ */
+router.get('/can-upload', checkStorageLimit, requireJWT, (req, res) => {
+  res.status(200).json({ message: 'Good to go' });
 });
 
 export default router;

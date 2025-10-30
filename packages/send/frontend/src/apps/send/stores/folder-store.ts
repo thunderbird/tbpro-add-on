@@ -21,6 +21,7 @@ import { NamedBlob } from '@send-frontend/lib/filesync';
 import { backupKeys } from '@send-frontend/lib/keychain';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
 import {
+  canUserUpload,
   checkBlobSize,
   formatBlob,
   unzipMultipartPiece,
@@ -246,6 +247,15 @@ const useFolderStore = defineStore('folderManager', () => {
     progress.error = '';
 
     const canUpload = await checkBlobSize(fileBlob);
+
+    const uploadExceedsLimit = await canUserUpload(fileBlob.size);
+    if (uploadExceedsLimit) {
+      progress.error = CLIENT_MESSAGES.STORAGE_LIMIT_EXCEEDED;
+      alert(
+        `Error uploading ${fileBlob.name}; ${CLIENT_MESSAGES.STORAGE_LIMIT_EXCEEDED}`
+      );
+      throw new Error('Uploading this file would exceed your storage limit.');
+    }
 
     if (!canUpload) {
       progress.error = CLIENT_MESSAGES.FILE_TOO_BIG;
