@@ -77,7 +77,8 @@ router.post(
     const { id, size, ownerId, type, part, fileHash } = req.body;
     const Metrics = useMetrics();
 
-    const { uniqueHash } = getDataFromAuthenticatedRequest(req);
+    const { uniqueHash, id: useridfromtoken } =
+      getDataFromAuthenticatedRequest(req);
 
     const distinctId = uniqueHash;
 
@@ -85,7 +86,7 @@ router.post(
       const upload = await createUpload(
         id,
         size,
-        ownerId,
+        ownerId || useridfromtoken,
         type,
         part,
         fileHash
