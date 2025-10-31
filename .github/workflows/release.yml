@@ -35,7 +35,7 @@ jobs:
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: eu-central-1
+          aws-region: us-east-1
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
@@ -80,6 +80,14 @@ jobs:
           cd packages/send/pulumi
           virtualenv ./venv
 
+      - name: Configure AWS credentials
+        if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: eu-central-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
       - name: Set up Pulumi environment
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         id: pulumi-env
@@ -89,6 +97,8 @@ jobs:
           source ./venv/bin/activate
           curl -fsSL https://get.pulumi.com | sh
           pip install -Ur requirements.txt
+
+
 
       - name: Deploy version-tagged image to prod
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
