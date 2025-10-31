@@ -6,6 +6,7 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
   //  We can skip this test if we're not running in CI automation mode
   if (!process.env.IS_CI_AUTOMATION) {
     console.log("Skipping OIDC login test in non-CI environment.");
+    await context.close();
     return;
   }
 

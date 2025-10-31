@@ -29,7 +29,7 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
 
   const passPhrase = await passphraseInput.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");
-  shareLinks.push(passPhrase!);
+  playwrightConfig.passphrase = passPhrase;
 
   await backupKeysButton.click();
 
@@ -38,9 +38,13 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
   await profileButton.click();
 
   await saveStorage(context);
+  // context.close();
 }
 
-export async function log_out_restore_keys({ page }: PlaywrightProps) {
+export async function log_out_restore_keys() {
+  // Log in with a new page to simulate a new session
+  const { page } = await setup_browser({ usesEmptyStorage: true });
+  const secondPage = page;
   const {
     emailField,
     passwordField,
@@ -51,9 +55,11 @@ export async function log_out_restore_keys({ page }: PlaywrightProps) {
   } = dashboardLocators(page);
   const { folderRowSelector, folderRowTestID } = fileLocators(page);
 
-  await logOutButton.click();
+  secondPage.on("dialog", (dialog) => dialog.accept());
 
-  const { page: secondPage } = await setup_browser();
+  await secondPage.goto("/send/profile");
+  // wait for network idle
+  await secondPage.waitForLoadState("networkidle");
 
   // log back in
   await emailField.fill(email);
@@ -61,9 +67,10 @@ export async function log_out_restore_keys({ page }: PlaywrightProps) {
   await submitLogin.click();
 
   // restore keys
-  secondPage.on("dialog", (dialog) => dialog.accept());
-  const passphrase = shareLinks.shift();
-  await secondPage.goto("/send/profile");
+
+  const passphrase = playwrightConfig.passphrase;
+  // await secondPage.goto("/send/profile");
+  await secondPage.waitForLoadState("networkidle");
   await restorekeyInput.fill(passphrase!);
   await restoreKeysButton.click();
 
@@ -108,6 +115,9 @@ export async function reset_keys({ page }: PlaywrightProps) {
   await keyRestoreButton.click();
   await confirmButton.click();
 
+  await page.waitForLoadState("networkidle");
+  await page.goto("/send/profile");
+
   // Log back in
   await emailField.fill(email);
   await passwordField.fill(password);
@@ -121,7 +131,7 @@ export async function reset_keys({ page }: PlaywrightProps) {
   // Back up keys
   const passPhrase = await passphraseInput.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");
-  shareLinks.push(passPhrase!);
+  playwrightConfig.recoveredPassphrase = passPhrase!;
   await backupKeysButton.click();
 
   // Navigate to files

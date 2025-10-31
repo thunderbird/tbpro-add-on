@@ -7,6 +7,7 @@ const THREE_MINUTES = 3 * 60 * 1000;
  */
 export default defineConfig({
   testDir: "./e2e",
+
   globalTimeout: THREE_MINUTES,
   timeout: THREE_MINUTES,
   /* Run tests in files in parallel */
@@ -55,8 +56,18 @@ export default defineConfig({
             "dom.push.enabled": false,
             "dom.webnotifications.enabled": false,
             "privacy.trackingprotection.enabled": false,
+            "dom.events.asyncClipboard.readText": true,
+            "dom.events.testing.asyncClipboard": true,
           },
         },
+      },
+    },
+    {
+      name: "Google Chrome",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        permissions: ["geolocation", "clipboard-read", "clipboard-write"],
       },
     },
 

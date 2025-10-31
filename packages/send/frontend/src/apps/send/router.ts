@@ -17,6 +17,7 @@ import {
   validateToken,
 } from '@send-frontend/lib/validations';
 
+import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import {
   useApiStore,
   useConfigStore,
@@ -41,6 +42,7 @@ import { useVerificationStore } from './stores/verification-store';
 enum META_OPTIONS {
   redirectOnValidSession = 'redirectOnValidSession',
   requiresValidToken = 'requiresValidToken',
+  autoRestoresKeys = 'autoRestoresKeys',
   requiresBackedUpKeys = 'requiresBackedUpKeys',
   requiresRetryCountCheck = 'requiresRetryCountCheck',
   resolveDefaultFolder = 'resolveDefaultFolder',
@@ -74,6 +76,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       [META_OPTIONS.requiresValidToken]: true,
       [META_OPTIONS.requiresBackedUpKeys]: true,
+      [META_OPTIONS.autoRestoresKeys]: true,
       [META_OPTIONS.isAvailableForExtension]: true,
     },
   },
@@ -94,6 +97,7 @@ export const routes: RouteRecordRaw[] = [
         redirect: '/send/folder/root',
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
+          [META_OPTIONS.autoRestoresKeys]: true,
           [META_OPTIONS.requiresBackedUpKeys]: true,
         },
       },
@@ -103,6 +107,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.requiresBackedUpKeys]: true,
+          [META_OPTIONS.autoRestoresKeys]: true,
           [META_OPTIONS.resolveDefaultFolder]: true,
         },
       },
@@ -111,6 +116,7 @@ export const routes: RouteRecordRaw[] = [
         component: ProfileView,
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
+          [META_OPTIONS.autoRestoresKeys]: true,
         },
       },
       {
@@ -118,6 +124,7 @@ export const routes: RouteRecordRaw[] = [
         component: Sent,
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
+          [META_OPTIONS.autoRestoresKeys]: true,
         },
       },
       {
@@ -134,6 +141,7 @@ export const routes: RouteRecordRaw[] = [
         name: 'folder',
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
+          [META_OPTIONS.autoRestoresKeys]: true,
           [META_OPTIONS.requiresBackedUpKeys]: true,
         },
       },
@@ -183,10 +191,10 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const folderStore = useFolderStore();
   const statusStore = useStatusStore();
+  const { isRouterLoading } = storeToRefs(statusStore);
   const { api } = useApiStore();
   const { keychain } = useKeychainStore();
   const userStore = useUserStore();
-  const { isRouterLoading } = storeToRefs(statusStore);
   const { metrics } = useMetricsStore();
   useVerificationStore();
   const { isExtension } = useConfigStore();
@@ -203,6 +211,7 @@ router.beforeEach(async (to, from, next) => {
   );
   const resolveDefaultFolder = matchMeta(to, META_OPTIONS.resolveDefaultFolder);
   const requiresValidToken = matchMeta(to, META_OPTIONS.requiresValidToken);
+  const autoRestoresKeys = matchMeta(to, META_OPTIONS.autoRestoresKeys);
   const requiresBackedUpKeys = matchMeta(to, META_OPTIONS.requiresBackedUpKeys);
   const requiresRetryCountCheck = matchMeta(
     to,
@@ -244,6 +253,18 @@ router.beforeEach(async (to, from, next) => {
       next('/send/profile');
       return;
     }
+  }
+
+  if (autoRestoresKeys) {
+    await restoreKeysUsingLocalStorage(keychain, api);
+    // This was meant to avoid restoring keys on every route change, but it causes issues when navigating between routes that require keys
+    // if (from.path !== to.path) {
+    //   try {
+    //     await restoreKeysUsingLocalStorage(keychain, api);
+    //   } catch (error) {
+    //     console.error('Error restoring keys', error);
+    //   }
+    // }
   }
 
   if (to.path === '/send/folder/null') {

@@ -34,9 +34,9 @@ export const wsHandler = (server) => {
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit('connection', ws, req);
         wss.on('connection', (ws) => {
-          logger.log(`➕➕ Connection (${wss.clients.size})`);
+          // logger.log(`➕➕ Connection (${wss.clients.size})`);
           ws.once('close', () => {
-            logger.log(`➖➖ Connection (${wss.clients.size})`);
+            // logger.log(`➖➖ Connection (${wss.clients.size})`);
           });
         });
       });

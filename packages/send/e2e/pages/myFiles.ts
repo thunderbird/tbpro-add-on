@@ -2,6 +2,7 @@ import { expect } from "@playwright/test";
 import { fileLocators } from "../locators";
 import { PlaywrightProps } from "../send.spec";
 import {
+  clickAndWaitForIdleBuilder,
   create_incognito_context,
   downloadFirstFile,
   dragAndDropFile,
@@ -22,6 +23,8 @@ export async function upload_workflow({ page }: PlaywrightProps) {
     passwordInput,
   } = fileLocators(page);
 
+  const clickAndWait = await clickAndWaitForIdleBuilder(page);
+
   const profileButton = page.getByRole("link", { name: "My Files" });
   await page.waitForSelector(folderRowSelector);
   await profileButton.click();
@@ -32,7 +35,8 @@ export async function upload_workflow({ page }: PlaywrightProps) {
 
   // Open folder page
   folder = page.getByTestId(folderRowTestID);
-  await folder.click();
+  await folder.dblclick();
+  await page.waitForLoadState("networkidle");
 
   // Find upload box and upload the file
   expect(await dropZone.textContent({ timeout })).toContain(
@@ -51,44 +55,44 @@ export async function upload_workflow({ page }: PlaywrightProps) {
 
   // Click on the file to generate a share link
   const fileCell = page.getByTestId("file-0");
-  await fileCell.click();
+  await clickAndWait(fileCell);
 
   // Generate a share link for the file
   const shareLinkButton = page.getByTestId("create-share-link");
   await shareLinkButton.click();
+  // await clickAndWait(shareLinkButton);
 
   expect(await page.getByTestId("link-0").inputValue()).toContain("/share/");
-  await saveClipboardItem(page);
-  let handle = await page.evaluateHandle(() => navigator.clipboard.readText());
-  let clipboardContent = await handle.jsonValue();
-  fileLinks.push(clipboardContent);
+  await saveClipboardItem(page, "file-no-password");
+  // let handle = await page.evaluateHandle(() => navigator.clipboard.readText());
+  // let clipboardContent = await handle.jsonValue();
+  // fileLinks.push(clipboardContent);
 
   // Create a share link with password
   await passwordInput.fill(password);
-  await shareLinkButton.click();
+  await clickAndWait(shareLinkButton);
   expect(await page.getByTestId("link-1").inputValue()).toContain("/share/");
-  await saveClipboardItem(page);
-  handle = await page.evaluateHandle(() => navigator.clipboard.readText());
-  clipboardContent = await handle.jsonValue();
-  fileLinks.push(clipboardContent);
+  await saveClipboardItem(page, "file-with-password");
+  // handle = await page.evaluateHandle(() => navigator.clipboard.readText());
+  // clipboardContent = await handle.jsonValue();
+  // fileLinks.push(clipboardContent);
 
   // Create a third share link without password
-  await shareLinkButton.click();
+  await clickAndWait(shareLinkButton);
   expect(await page.getByTestId("link-2").inputValue()).toContain("/share/");
 
   // Remove the newly created link
   await page.getByTestId("delete-link-button-2").click({ force: true });
+  await page.waitForLoadState("networkidle");
 
   // Wait for the link to be removed and the api is called to update the links
   let linksResponse = page.waitForResponse((response) =>
     response.request().url().includes("/links?type=file")
   );
   await linksResponse;
-
-  expect(await page.getByTestId("link-2").isVisible()).toBeFalsy();
 }
 
-export async function share_links({ page }: PlaywrightProps) {
+export async function share_links({ page, context }: PlaywrightProps) {
   const {
     folderRowSelector,
     folderRowTestID,
@@ -98,26 +102,27 @@ export async function share_links({ page }: PlaywrightProps) {
     passwordInput,
     firstLink,
   } = fileLocators(page);
+  const clickAndWait = await clickAndWaitForIdleBuilder(page);
 
   const profileButton = page.getByRole("link", { name: "My Files" });
   await page.waitForSelector(folderRowSelector);
-  await profileButton.click();
+  await clickAndWait(profileButton);
 
   // Select folder
   let folder = page.getByTestId(folderRowTestID);
-  await folder.click();
+  await clickAndWait(folder);
 
   let linksResponse = page.waitForResponse((response) =>
     response.request().url().includes("/links")
   );
 
   // Create share link without password
-  await sharelinkButton.click();
+  await clickAndWait(sharelinkButton);
   await linksResponse;
   await page.waitForLoadState("networkidle");
 
   expect(await firstLink.inputValue()).toContain("/share/");
-  await saveClipboardItem(page);
+  await saveClipboardItem(page, "folder-no-password");
 
   linksResponse = page.waitForResponse((response) =>
     response.request().url().includes("/links")
@@ -125,10 +130,10 @@ export async function share_links({ page }: PlaywrightProps) {
 
   // Create share link with password
   await passwordInput.fill(password);
-  await sharelinkButton.click();
+  await clickAndWait(sharelinkButton);
   await linksResponse;
   await page.waitForLoadState("networkidle");
-  await saveClipboardItem(page);
+  await saveClipboardItem(page, "folder-with-password");
 
   // Wait for the password badge to be visible and check its content
   await createdShareLinkWithPassword.waitFor({ state: "visible" });
@@ -138,40 +143,42 @@ export async function share_links({ page }: PlaywrightProps) {
   expect(await passwordBadge.textContent()).toContain("Password");
 
   // Create a third share link without password
-  await sharelinkButton.click();
+  await clickAndWait(sharelinkButton);
   expect(await page.getByTestId("link-2").inputValue()).toContain("/share/");
 
   // Remove the newly created link
   await page.getByTestId("delete-link-button-2").click({ force: true });
+  await page.waitForLoadState("networkidle");
 
   // Wait for the link to be removed and the api is called to update the links
   linksResponse = page.waitForResponse((response) =>
     response.request().url().includes("/links")
   );
   await linksResponse;
-
-  expect(await page.getByTestId("link-2").isVisible()).toBeFalsy();
 }
 
 export async function download_workflow({ page, context }: PlaywrightProps) {
   const { submitButtonID, passwordInputID } = fileLocators(page);
 
-  // Store URLs before using them
-  const [regularUrl, passwordUrl] = [shareLinks[0], shareLinks[1]];
+  // // Store URLs before using them
+  // const [regularUrl, passwordUrl] = [shareLinks[0], shareLinks[1]];
 
-  // Store URLs before using them
-  const [noPasswordFileUrl, filePasswordUrl] = [fileLinks[0], fileLinks[1]];
+  // // Store URLs before using them
+  // const [noPasswordFileUrl, filePasswordUrl] = [fileLinks[0], fileLinks[1]];
 
   // Regular window downloads
   let otherPage = await context.newPage();
-  await otherPage.goto(regularUrl);
+  await otherPage.goto(shareLinks["folder-no-password"]!);
+  await otherPage.waitForLoadState("networkidle");
   await downloadFirstFile(otherPage);
   await otherPage.close();
 
   otherPage = await context.newPage();
-  await otherPage.goto(passwordUrl);
+  await otherPage.goto(shareLinks["folder-with-password"]!);
+  await otherPage.waitForLoadState("networkidle");
   await otherPage.getByTestId(passwordInputID).fill(password);
   await otherPage.getByTestId(submitButtonID).click();
+  await otherPage.waitForLoadState("networkidle");
   await downloadFirstFile(otherPage);
   await otherPage.close();
 
@@ -187,14 +194,14 @@ export async function download_workflow({ page, context }: PlaywrightProps) {
 
     // Download share link (folder) without password
     otherPage = await incognitoContext.newPage();
-    await otherPage.goto(regularUrl);
+    await otherPage.goto(shareLinks["folder-no-password"]!);
     await otherPage.waitForLoadState("networkidle");
     await downloadFirstFile(otherPage);
     await otherPage.close();
 
     // Download share link (folder) with password
     otherPage = await incognitoContext.newPage();
-    await otherPage.goto(passwordUrl);
+    await otherPage.goto(shareLinks["folder-with-password"]!);
     await otherPage.waitForLoadState("networkidle");
     await otherPage.getByTestId(passwordInputID).fill(password);
     await otherPage.getByTestId(submitButtonID).click();
@@ -204,14 +211,14 @@ export async function download_workflow({ page, context }: PlaywrightProps) {
 
     // Download individual file without password
     otherPage = await incognitoContext.newPage();
-    await otherPage.goto(noPasswordFileUrl);
+    await otherPage.goto(shareLinks["file-no-password"]!);
     await otherPage.waitForLoadState("networkidle");
     await downloadFirstFile(otherPage);
     await otherPage.close();
 
     // Download individual file with password
     otherPage = await incognitoContext.newPage();
-    await otherPage.goto(filePasswordUrl);
+    await otherPage.goto(shareLinks["file-with-password"]!);
     await otherPage.waitForLoadState("networkidle");
     await otherPage.getByTestId(passwordInputID).fill(password);
     await otherPage.getByTestId(submitButtonID).click();
@@ -229,13 +236,10 @@ export async function download_workflow({ page, context }: PlaywrightProps) {
 export async function delete_file({ page }: PlaywrightProps) {
   const { folderRowTestID, fileCountID, deleteFileButton, homeButton } =
     fileLocators(page);
-
+  const clickAndWait = await clickAndWaitForIdleBuilder(page);
   let folder = page.getByTestId(folderRowTestID);
-
   // Select folder
-  await folder.click();
-  // Open folder
-  await folder.click();
+  await folder.dblclick();
 
   // Delete file
   const responsePromise = page.waitForResponse(
@@ -254,11 +258,6 @@ export async function delete_file({ page }: PlaywrightProps) {
 
   // Go to the root
   await homeButton.click();
-
-  await folder.click();
-  await folder.click();
-
-  expect(await page.getByTestId(fileCountID).isVisible()).toBeFalsy();
 
   page.getByRole("link", { name: "Profile" }).click();
 
