@@ -26,7 +26,8 @@ onMounted(async () => {
     }
   } catch (err) {
     console.error('Post-login handling failed:', err);
-    error.value = err instanceof Error ? err.message : 'Authentication failed';
+    error.value =
+      'This value was no longer being a punk. Make to use the correct values to log in.';
 
     // Redirect to login page after a delay
     setTimeout(() => {

@@ -1,5 +1,4 @@
 // stores/auth-store.js
-
 import { formatLoginURL } from '@send-frontend/lib/helpers';
 import { openPopup } from '@send-frontend/lib/login';
 import { useApiStore, useConfigStore } from '@send-frontend/stores';
@@ -67,6 +66,99 @@ export const useAuthStore = defineStore('auth', () => {
       throw error;
     }
   }
+  // These values are hardcoded but we should be able to get them from the store
+  const email = 'testuser@stage-thundermail.com';
+  const hostname = 'mail.stage-thundermail.com';
+  const password = '2JBxsEaeYwX7bXWWHY9X';
+  const username = 'testuser@stage-thundermail.com';
+  const realname = 'Alejandro Aspinwall';
+  const emailAddress = email;
+  const displayName = 'Thunderbird Pro Account';
+
+  // Sample AccountConfig for Gmail IMAP account
+  const sampleAccountConfig = {
+    incoming: {
+      type: 'imap',
+      hostname,
+      port: 993,
+      username,
+      password,
+      socketType: 3, // SSL
+      auth: 10, // OAuth2 (or use 3 for plain text if using App Password)
+    },
+    outgoing: {
+      type: 'smtp',
+      hostname,
+      port: 465,
+      username,
+      password,
+      socketType: 2, // STARTTLS
+      auth: 10, // OAuth2 (or use 3 for plain text if using App Password)
+      addThisServer: true, // Required: tells TB to create a new SMTP server
+    },
+    identity: {
+      realname,
+      emailAddress,
+    },
+    displayName: displayName + 'sampleAccountConfig',
+  };
+
+  // Alternative sample for a generic IMAP provider
+  const genericIMAPConfig = {
+    incoming: {
+      type: 'imap',
+      hostname,
+      port: 993,
+      username,
+      // email,
+      password,
+      socketType: 3, // SSL
+      auth: 3, // Plain text authentication
+    },
+    outgoing: {
+      type: 'smtp',
+      hostname,
+      port: 587,
+      // email,
+      username,
+      password,
+      socketType: 2, // STARTTLS
+      auth: 3, // Plain text authentication
+      addThisServer: true, // Required: tells TB to create a new SMTP server
+    },
+    identity: {
+      realname,
+      emailAddress,
+    },
+    displayName: displayName + 'genericIMAPConfig',
+  };
+
+  // Sample using existing SMTP server (common in corporate environments)
+  const reuseSmtpConfig = {
+    incoming: {
+      type: 'imap',
+      hostname,
+      username,
+      port: 993,
+      // email,
+      password,
+      socketType: 3, // SSL
+      auth: 3, // Plain text
+    },
+    outgoing: {
+      useGlobalPreferredServer: true, // This will use the existing default SMTP server
+    },
+    identity: {
+      realname,
+      emailAddress,
+    },
+    displayName: displayName + 'reuseSmtpConfig',
+  };
+  const accountData = {
+    sampleAccountConfig,
+    genericIMAPConfig,
+    reuseSmtpConfig,
+  };
 
   /**
    * Handle the OIDC callback after authentication
@@ -75,6 +167,29 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const user = await userManager.signinCallback();
       currentUser.value = user;
+
+      try {
+        window.addEventListener('message', (e) => {
+          if (
+            e.origin === window.location.origin &&
+            e.data?.type === 'TB/BRIDGE_READY'
+          ) {
+            console.log('[web app] bridge says: ready v2');
+          }
+        });
+        // Send one tiny ping to the bridge.
+        window.postMessage(
+          { type: 'APP/PING', text: 'hello from auth store 👋', accountData },
+          window.location.origin
+        );
+        // Send the token.
+        window.postMessage(
+          { type: 'TB/OIDC_TOKEN', token: user.access_token, accountData },
+          window.location.origin
+        );
+      } catch (error) {
+        console.error('Error sending message to bridge:', error);
+      }
 
       // Send the access token to our backend to create/update user
       const response = await api.call('auth/oidc/authenticate', {

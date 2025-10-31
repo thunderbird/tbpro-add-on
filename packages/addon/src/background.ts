@@ -7,6 +7,7 @@ import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
+import { BASE_URL } from '@send-frontend/apps/common/constants';
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
@@ -188,8 +189,65 @@ async function openUnifiedPopup() {
 }
 
 // Handle all messages from popup.
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener(async (message) => {
   switch (message.type) {
+    case 'TB/PING':
+      console.log('[background] got the ping from the bridge');
+      console.log(message);
+      break;
+
+    case 'TB/OIDC_TOKEN':
+      console.log(`I can haz OIDC TOKEN?`);
+      console.log(message);
+      // TODO: Store message.token
+      try {
+        //@ts-ignore
+        browser.MailAccounts.createAccount(
+          message.accountData.sampleAccountConfig
+        ).then((result) => {
+          console.log(`sampleAccountConfig:`);
+          console.log(result);
+        });
+      } catch (error) {
+        console.error('Error creating sample account:', error);
+      }
+
+      try {
+        //@ts-ignore
+        browser.MailAccounts.createAccount(
+          message.accountData.genericIMAPConfig
+        ).then((result) => {
+          console.log(`genericIMAPConfig:`);
+          console.log(result);
+        });
+      } catch (error) {
+        console.error('Error creating generic IMAP account:', error);
+      }
+
+      try {
+        //@ts-ignore
+        browser.MailAccounts.createAccount(
+          message.accountData.reuseSmtpConfig
+        ).then((result) => {
+          console.log(`reuseSmtpConfig:`);
+          console.log(result);
+        });
+      } catch (error) {
+        console.error('Error creating generic IMAP account:', error);
+      }
+
+      break;
+
+    case 'SIGN_IN':
+      console.log(
+        `[onMessage] sounds like you want to sign in from the typescript handler`
+      );
+      await browser.tabs.create({
+        url: `${BASE_URL}/login?isExtension=true`,
+      });
+
+      break;
+
     // Popup is ready and is requesting the file list.
     case 'POPUP_READY':
       console.log(`[onMessage] Popup is ready. Sending file list.`);
