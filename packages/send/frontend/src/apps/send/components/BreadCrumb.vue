@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { ref, watchEffect } from 'vue';
-import { useRouter } from 'vue-router';
 const folderStore = useFolderStore();
 
 const path = ref([]);
-const router = useRouter();
 
 watchEffect(() => {
   path.value = [folderStore.rootFolder];
@@ -30,17 +28,18 @@ watchEffect(() => {
           <span class="breadcrumb-separator" aria-hidden="true">{{
             index !== 0 ? '&gt;' : ''
           }}</span>
-          <button
-            :aria-label="`Go to ${folder.name} folder`"
+
+          <router-link
             :aria-current="index === path.length - 1 ? 'page' : undefined"
+            :aria-label="`Go to ${folder.name} folder`"
             class="breadcrumb-button"
             :data-testid="index !== 0 ? 'breadcrumb-item' : 'home-button'"
-            @click.prevent="
-              router.push({ name: 'folder', params: { id: folder.id } })
-            "
+            :to="`/send/folder/${folder.id}`"
           >
-            {{ folder.id === folderStore.rootFolderId ? '🏠' : folder.name }}
-          </button>
+            {{
+              folder.id === folderStore.rootFolderId ? '🏠' : folder.name
+            }}</router-link
+          >
         </li>
       </template>
     </ol>

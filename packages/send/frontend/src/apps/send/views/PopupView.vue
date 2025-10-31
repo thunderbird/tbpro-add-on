@@ -14,6 +14,7 @@ import ShieldIcon from '@send-frontend/apps/common/ShieldIcon.vue';
 import {
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
+  FIFTEEN_MINUTES,
   FILE_LIST,
   MAX_FILE_SIZE,
   POPUP_READY,
@@ -169,6 +170,7 @@ const { error: cannotUpload } = useQuery({
   queryKey: ['can-upload'],
   queryFn: canUploadQuery,
   retry: false,
+  staleTime: FIFTEEN_MINUTES,
 });
 
 onMounted(async () => {

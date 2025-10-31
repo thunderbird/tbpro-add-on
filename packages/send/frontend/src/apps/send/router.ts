@@ -8,15 +8,25 @@ import Send from '@send-frontend/apps/send/pages/WebPage.vue';
 
 import Share from '@send-frontend/apps/send/pages/SharePage.vue';
 import { matchMeta } from '@send-frontend/lib/helpers';
-import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
-import useApiStore from '@send-frontend/stores/api-store';
-import useKeychainStore from '@send-frontend/stores/keychain-store';
 
 import { IS_DEV } from '@send-frontend/lib/clientConfig';
-import { getCanRetry } from '@send-frontend/lib/validations';
+import {
+  getCanRetry,
+  validateBackedUpKeys,
+  validateLocalStorageSession,
+  validateToken,
+} from '@send-frontend/lib/validations';
 
-import { useConfigStore, useFolderStore } from '@send-frontend/stores';
+import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
+import {
+  useApiStore,
+  useConfigStore,
+  useFolderStore,
+  useKeychainStore,
+  useUserStore,
+} from '@send-frontend/stores';
 import useMetricsStore from '@send-frontend/stores/metrics';
+import { storeToRefs } from 'pinia';
 import NotFoundPage from '../common/NotFoundPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
@@ -47,7 +57,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/login',
     component: LoginPage,
-    meta: { [META_OPTIONS.redirectOnValidSession]: true },
+    meta: {
+      [META_OPTIONS.redirectOnValidSession]: true,
+      [META_OPTIONS.isAvailableForExtension]: true,
+    },
   },
   {
     path: '/logout',
@@ -62,8 +75,8 @@ export const routes: RouteRecordRaw[] = [
     component: VerifyPage,
     meta: {
       [META_OPTIONS.requiresValidToken]: true,
-      [META_OPTIONS.autoRestoresKeys]: true,
       [META_OPTIONS.requiresBackedUpKeys]: true,
+      [META_OPTIONS.autoRestoresKeys]: true,
       [META_OPTIONS.isAvailableForExtension]: true,
     },
   },
@@ -93,8 +106,8 @@ export const routes: RouteRecordRaw[] = [
         component: FolderView,
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
-          [META_OPTIONS.autoRestoresKeys]: true,
           [META_OPTIONS.requiresBackedUpKeys]: true,
+          [META_OPTIONS.autoRestoresKeys]: true,
           [META_OPTIONS.resolveDefaultFolder]: true,
         },
       },
@@ -111,6 +124,7 @@ export const routes: RouteRecordRaw[] = [
         component: Sent,
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
+          [META_OPTIONS.autoRestoresKeys]: true,
         },
       },
       {
@@ -176,16 +190,21 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const folderStore = useFolderStore();
-
-  const { keychain } = useKeychainStore();
+  const statusStore = useStatusStore();
+  const { isRouterLoading } = storeToRefs(statusStore);
   const { api } = useApiStore();
-  const { validators } = useStatusStore();
+  const { keychain } = useKeychainStore();
+  const userStore = useUserStore();
   const { metrics } = useMetricsStore();
   useVerificationStore();
   const { isExtension } = useConfigStore();
 
-  //  redirectOnValidSession - means that if the user has a session in local storage, they will be redirected to the Send page
+  // We want to show the loading state when navigating to folder routes (on web)
+  if (to.path.includes('/folder')) {
+    isRouterLoading.value = true;
+  }
 
+  //  redirectOnValidSession - means that if the user has a session in local storage, they will be redirected to the Send page
   const redirectOnValidSession = matchMeta(
     to,
     META_OPTIONS.redirectOnValidSession
@@ -209,34 +228,49 @@ router.beforeEach(async (to, from, next) => {
     console.log('Extension route not available:', to.path);
   }
 
-  const { hasLocalStorageSession, isTokenValid, hasBackedUpKeys } =
-    await validators();
+  const hasLocalStorageSession = validateLocalStorageSession(userStore);
 
-  if (requiresValidToken && !isTokenValid) {
-    metrics.capture('send.invalid.token');
-    return next('/login');
+  if (requiresValidToken) {
+    const isTokenValid = await validateToken(api);
+    if (!isTokenValid) {
+      metrics.capture('send.invalid.token');
+
+      return next('/login');
+    }
   }
 
-  if (redirectOnValidSession && hasLocalStorageSession && isTokenValid) {
-    return next('/send/profile');
+  if (redirectOnValidSession && hasLocalStorageSession) {
+    const isTokenValid = await validateToken(api);
+    if (isTokenValid) return next('/send/profile');
   }
 
-  if (requiresBackedUpKeys && !hasBackedUpKeys) {
-    next('/send/profile');
-    return;
+  if (requiresBackedUpKeys) {
+    const hasBackedUpKeys = await validateBackedUpKeys(
+      userStore.getBackup,
+      keychain
+    );
+    if (!hasBackedUpKeys) {
+      next('/send/profile');
+      return;
+    }
   }
 
   if (autoRestoresKeys) {
-    try {
-      await restoreKeysUsingLocalStorage(keychain, api);
-    } catch (error) {
-      console.error('Error restoring keys', error);
-    }
+    await restoreKeysUsingLocalStorage(keychain, api);
+    // This was meant to avoid restoring keys on every route change, but it causes issues when navigating between routes that require keys
+    // if (from.path !== to.path) {
+    //   try {
+    //     await restoreKeysUsingLocalStorage(keychain, api);
+    //   } catch (error) {
+    //     console.error('Error restoring keys', error);
+    //   }
+    // }
   }
 
   if (to.path === '/send/folder/null') {
     // If the user tries to access the folder with id 'null', we redirect them to the root folder
     const rootFolderId = await folderStore.getDefaultFolderId();
+
     return next(`/send/folder/${rootFolderId}`);
   }
 
@@ -250,6 +284,7 @@ router.beforeEach(async (to, from, next) => {
     const canRetry = await getCanRetry(to.params.linkId as string);
     if (!canRetry) {
       next(`/locked/${to.params.linkId}/`);
+      return;
     }
   }
 

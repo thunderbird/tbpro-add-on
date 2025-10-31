@@ -30,3 +30,7 @@ export const MAX_ACCESS_LINK_RETRIES = 5;
 // We set the split size to 100 MB by default, but it can be overridden by an environment variable.
 const SPLIT_SIZE_IN_MB: number = import.meta.env.VITE_SPLIT_SIZE_IN_MB || 100; // Default to 100 MB if not set
 export const SPLIT_SIZE = SPLIT_SIZE_IN_MB * ONE_MB_IN_BYTES;
+
+// Cache durations
+const ONE_MINUTE_IN_MILLISECONDS = 60 * 1000;
+export const FIFTEEN_MINUTES = 15 * ONE_MINUTE_IN_MILLISECONDS; // 15 minutes in milliseconds

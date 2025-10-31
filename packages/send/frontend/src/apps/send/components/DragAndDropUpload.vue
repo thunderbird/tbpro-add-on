@@ -5,7 +5,7 @@ import ImageIcon from '@send-frontend/apps/common/ImageIcon.vue';
 import RemoveIcon from '@send-frontend/apps/common/RemoveIcon.vue';
 import ErrorUploading from '@send-frontend/apps/send/components/ErrorUploading.vue';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import { MAX_FILE_SIZE } from '@send-frontend/lib/const';
+import { FIFTEEN_MINUTES, MAX_FILE_SIZE } from '@send-frontend/lib/const';
 import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
 import { NamedBlob } from '@send-frontend/lib/filesync';
 import { canUploadQuery } from '@send-frontend/lib/queries';
@@ -88,6 +88,7 @@ const { error: cannotUpload } = useQuery({
   queryKey: ['can-upload'],
   queryFn: canUploadQuery,
   retry: false,
+  staleTime: FIFTEEN_MINUTES,
 });
 
 function removeFile(index: number, isCompleted = false) {

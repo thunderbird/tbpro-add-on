@@ -129,6 +129,10 @@ export const validator = async ({
   const userIDFromBackend = userResponse?.user?.id;
   const userIDFromStore = userStore?.user?.id;
 
+  /* 
+    =========== HAPPY PATH STARTS 🚴🏼‍♂️ 🛣️ ===========
+  */
+
   // Check that the passphrase in local storage is set correctly
   // If not done correctly, the user can lose access to their encrypted items
   // This can happen if a user restores their account while another client is logged in.
@@ -142,6 +146,9 @@ export const validator = async ({
     logger.error('Incorrect passphrase. Removing local storage data.');
   }
 
+  /* 
+    =========== DETECT DATA INCONSISTENCIES ===========
+  */
   if (
     userIDFromStore &&
     userIDFromBackend &&
@@ -151,6 +158,9 @@ export const validator = async ({
     logger.error('User ID mismatch. Removing local storage data.');
     shouldClearSessionAndStorage = true;
   } else {
+    /* 
+    =========== HAPPY PATH CONTINUES 🛣️ ===========
+    */
     validations.hasLocalStorageSession = validateLocalStorageSession(userStore);
     validations.isTokenValid = await validateToken(api);
     validations.hasBackedUpKeys = await validateBackedUpKeys(

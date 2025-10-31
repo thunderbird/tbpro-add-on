@@ -5,8 +5,10 @@ import { computed, inject, onBeforeMount, ref, watch } from 'vue';
 
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { useStatusStore } from '@send-frontend/apps/send/stores/status-store';
+import { useFolderQuery } from '@send-frontend/lib/queries/folderQueries';
 import '@thunderbirdops/services-ui/style.css';
 
+import LoadingComponent from '@send-frontend/apps/common/LoadingComponent.vue';
 import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
 import DownloadModal from '@send-frontend/apps/common/modals/DownloadModal.vue';
 import BreadCrumb from '@send-frontend/apps/send/components/BreadCrumb.vue';
@@ -20,6 +22,7 @@ import { useApiStore, useKeychainStore } from '@send-frontend/stores';
 import { IconDotsVertical, IconDownload, IconTrash } from '@tabler/icons-vue';
 import { ExpiryBadge, ExpiryUnitTypes } from '@thunderbirdops/services-ui';
 import { useDebounceFn } from '@vueuse/core';
+import { storeToRefs } from 'pinia';
 import { useModal, useModalSlot } from 'vue-final-modal';
 import { useRoute, useRouter } from 'vue-router';
 import { ItemResponse } from '../stores/folder-store.types';
@@ -28,6 +31,7 @@ import DownloadConfirmation from './DownloadConfirmation.vue';
 
 const folderStore = useFolderStore();
 const statusStore = useStatusStore();
+const { isRouterLoading } = storeToRefs(statusStore);
 const { api } = useApiStore();
 const { keychain } = useKeychainStore();
 
@@ -137,14 +141,21 @@ const openDeleteConfirmation = (
   openDeleteModal();
 };
 
-const gotoRoute = useDebounceFn(() => {
+// Use reactive folder ID for the query
+const folderId = computed(() => {
   const id = route.params.id as string;
-  if (!!id) {
-    folderStore.goToRootFolder(id);
-    return;
-  }
-  folderStore.goToRootFolder(null);
-}, 1);
+  return id || null;
+});
+
+// Use the cached folder query
+const folderQuery = useFolderQuery(folderId);
+
+const gotoRoute = useDebounceFn(async () => {
+  isRouterLoading.value = true;
+  // Refetch the query which will use cached data if available
+  await folderQuery.refetch();
+  isRouterLoading.value = false;
+}, 250);
 
 onBeforeMount(() => {
   gotoRoute();
@@ -163,7 +174,7 @@ watch(
 // the number of files in the folder changes.
 watch(filesInFolder, (newValues, OldValues) => {
   if (newValues?.length !== OldValues?.length) {
-    gotoRoute();
+    // gotoRoute();
   }
 });
 
@@ -173,7 +184,7 @@ function handleFileClick(id: number) {
 
 function handleFolderClick(uuid: string) {
   if (selectedFolder.value === uuid) {
-    router.push({ name: 'folder', params: { id: uuid } });
+    // router.push({ name: 'folder', params: { id: uuid } });
     selectedFolder.value = null;
     return;
   }
@@ -196,115 +207,77 @@ function handleFolderClick(uuid: string) {
       >This is an empty folder</span
     >
     <BreadCrumb />
-    <table class="w-full border-separate border-spacing-x-0 border-spacing-y-1">
-      <thead>
-        <tr>
-          <th class="border-r border-b border-gray-300"></th>
-          <th class="border-r border-b border-gray-300">Name</th>
-          <th class="border-b border-gray-300"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- FOLDERS -->
-        <tr
-          v-for="folder in folderStore.visibleFolders"
-          :key="folder.id"
-          class="group"
-          data-testid="folder-row"
-          @click="handleFolderClick(folder.id)"
-          @dblclick="router.push({ name: 'folder', params: { id: folder.id } })"
-        >
-          <FolderTableRowCell
-            :selected="folder.id === folderStore.selectedFolder?.id"
-          >
-            <img
-              src="@send-frontend/apps/send/assets/folder.svg"
-              class="w-8 h-8"
-            />
-          </FolderTableRowCell>
-          <FolderTableRowCell
-            :selected="folder.id === folderStore.selectedFolder?.id"
-          >
-            <div class="cursor-pointer">
-              {{ folder.name }}
-            </div>
-            <div class="text-sm">
-              Last modified {{ dayjs().to(dayjs(folder.updatedAt)) }}
-            </div>
-          </FolderTableRowCell>
-          <FolderTableRowCell
-            :selected="folder.id === folderStore.selectedFolder?.id"
-          >
-            <div class="flex justify-between">
-              <div
-                class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
-                :class="{
-                  '!opacity-100': folder.id === folderStore.selectedFolder?.id,
-                }"
-              >
-                <Btn
-                  danger
-                  @click.stop="
-                    openDeleteConfirmation(folder.id, folder.name, 'folder')
-                  "
-                >
-                  <IconTrash class="w-4 h-4" />
-                </Btn>
-              </div>
-              <Btn class="ml-auto">
-                <IconDotsVertical class="w-4 h-4" />
-              </Btn>
-            </div>
-          </FolderTableRowCell>
-        </tr>
-        <!-- FILES -->
-        <template v-if="folderStore.rootFolder">
+    <div
+      v-if="isRouterLoading || folderQuery.isLoading.value"
+      class="inset-0 bg-white/80 z-50 flex items-center justify-center"
+    >
+      <LoadingComponent />
+    </div>
+    <div v-else-if="folderQuery.isError.value" class="p-4 text-red-600">
+      Error loading folder: {{ folderQuery.error.value?.message }}
+      <button
+        class="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
+        @click="folderQuery.refetch()"
+      >
+        Retry
+      </button>
+    </div>
+    <div v-else>
+      <table
+        class="w-full border-separate border-spacing-x-0 border-spacing-y-1"
+      >
+        <thead>
+          <tr>
+            <th class="border-r border-b border-gray-300"></th>
+            <th class="border-r border-b border-gray-300">Name</th>
+            <th class="border-b border-gray-300"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- FOLDERS -->
           <tr
-            v-for="(item, index) in folderStore.rootFolder.items"
-            :key="item.id"
-            class="group cursor-pointer"
-            :data-testid="'file-' + index"
-            @click="handleFileClick(item.id)"
+            v-for="folder in folderStore.visibleFolders"
+            :key="folder.id"
+            class="group"
+            data-testid="folder-row"
+            @click="handleFolderClick(folder.id)"
+            @dblclick="
+              router.push({ name: 'folder', params: { id: folder.id } })
+            "
           >
-            <FolderTableRowCell>
-              <div class="flex justify-end">
-                <img
-                  src="@send-frontend/apps/send/assets/file.svg"
-                  class="w-8 h-8"
-                />
-              </div>
-            </FolderTableRowCell>
-            <FolderTableRowCell>
-              <div>{{ item.name }}</div>
-              <div class="text-sm">
-                Last modified {{ dayjs().to(dayjs(item.updatedAt)) }}
-              </div>
-              <ExpiryBadge
-                v-if="item.upload.daysToExpiry !== undefined"
-                :time-remaining="item.upload.daysToExpiry"
-                :warning-threshold="10"
-                :time-unit="ExpiryUnitTypes.Days"
-                class="my-2"
+            <FolderTableRowCell
+              :selected="folder.id === folderStore.selectedFolder?.id"
+            >
+              <img
+                src="@send-frontend/apps/send/assets/folder.svg"
+                class="w-8 h-8"
               />
             </FolderTableRowCell>
-            <FolderTableRowCell>
+            <FolderTableRowCell
+              :selected="folder.id === folderStore.selectedFolder?.id"
+            >
+              <router-link :to="`/send/folder/${folder.id}`">
+                {{ folder.name }}</router-link
+              >
+              <div class="text-sm">
+                Last modified {{ dayjs().to(dayjs(folder.updatedAt)) }}
+              </div>
+            </FolderTableRowCell>
+            <FolderTableRowCell
+              :selected="folder.id === folderStore.selectedFolder?.id"
+            >
               <div class="flex justify-between">
                 <div
                   class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
+                  :class="{
+                    '!opacity-100':
+                      folder.id === folderStore.selectedFolder?.id,
+                  }"
                 >
                   <Btn
-                    v-if="!item.upload.expired"
-                    secondary
-                    @click="openModal(item)"
-                  >
-                    <IconDownload class="w-4 h-4" />
-                  </Btn>
-                  <Btn
-                    v-if="!item.upload.expired"
-                    data-testid="delete-file"
                     danger
                     @click.stop="
-                      openDeleteConfirmation(item.id, item.name, 'file')
+                      openDeleteConfirmation(folder.id, folder.name, 'folder')
                     "
                   >
                     <IconTrash class="w-4 h-4" />
@@ -316,8 +289,68 @@ function handleFolderClick(uuid: string) {
               </div>
             </FolderTableRowCell>
           </tr>
-        </template>
-      </tbody>
-    </table>
+          <!-- FILES -->
+          <template v-if="folderStore.rootFolder">
+            <tr
+              v-for="(item, index) in folderStore.rootFolder.items"
+              :key="item.id"
+              class="group cursor-pointer"
+              :data-testid="'file-' + index"
+              @click="handleFileClick(item.id)"
+            >
+              <FolderTableRowCell>
+                <div class="flex justify-end">
+                  <img
+                    src="@send-frontend/apps/send/assets/file.svg"
+                    class="w-8 h-8"
+                  />
+                </div>
+              </FolderTableRowCell>
+              <FolderTableRowCell>
+                <div>{{ item.name }}</div>
+                <div class="text-sm">
+                  Last modified {{ dayjs().to(dayjs(item.updatedAt)) }}
+                </div>
+                <ExpiryBadge
+                  v-if="item.upload.daysToExpiry !== undefined"
+                  :time-remaining="item.upload.daysToExpiry"
+                  :warning-threshold="10"
+                  :time-unit="ExpiryUnitTypes.Days"
+                  class="my-2"
+                />
+              </FolderTableRowCell>
+              <FolderTableRowCell>
+                <div class="flex justify-between">
+                  <div
+                    class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
+                  >
+                    <Btn
+                      v-if="!item.upload.expired"
+                      secondary
+                      @click="openModal(item)"
+                    >
+                      <IconDownload class="w-4 h-4" />
+                    </Btn>
+                    <Btn
+                      v-if="!item.upload.expired"
+                      data-testid="delete-file"
+                      danger
+                      @click.stop="
+                        openDeleteConfirmation(item.id, item.name, 'file')
+                      "
+                    >
+                      <IconTrash class="w-4 h-4" />
+                    </Btn>
+                  </div>
+                  <Btn class="ml-auto">
+                    <IconDotsVertical class="w-4 h-4" />
+                  </Btn>
+                </div>
+              </FolderTableRowCell>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>

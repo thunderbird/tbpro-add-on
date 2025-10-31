@@ -34,6 +34,11 @@ export const storageStatePath = path.resolve(
   __dirname,
   "../data/lockboxstate.json"
 );
+
+export const emptystatePath = path.resolve(
+  __dirname,
+  "../data/emptystate.json"
+);
 const emptyState = {
   cookies: [],
   origins: [],
@@ -80,6 +85,7 @@ test.describe("Authentication", () => {
       const { context, page } = await setup_browser();
       await page.goto(path);
       await action({ context, page });
+      await context.close();
     });
   });
 });
@@ -103,7 +109,10 @@ test.describe("File workflows", () => {
   ];
 
   workflows.forEach(({ title, action }) => {
-    test(title, async () => await action({ page, context }));
+    test(title, async () => {
+      await action({ page, context });
+      await context.close();
+    });
   });
 });
 

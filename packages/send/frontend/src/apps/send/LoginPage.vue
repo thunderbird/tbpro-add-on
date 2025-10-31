@@ -79,6 +79,10 @@ async function _loginToOIDC() {
 </script>
 <template>
   <main class="container">
+    <div v-if="isRouteExtension">
+      <p>Redirecting to TB Pro login...</p>
+    </div>
+
     <TBBanner />
     <FxaLogin v-if="!isPublicLogin" :id="user.id">
       <Btn primary data-testid="login-button" @click.prevent="mozAcctLogin"
