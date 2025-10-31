@@ -13,9 +13,9 @@ resources:
       cidr_block: 10.30.0.0/16 # Very roomy total of 65,536 available IPs
       subnets:
         # Split into two subnets with exactly half the IPs (32,768) each
-        us-east-1a:
+        eu-central-1a:
           - 10.30.0.0/17
-        us-east-1b:
+        eu-central-1b:
           - 10.30.128.0/17
       egress_via_internet_gateway: True
       enable_dns_hostnames: True
@@ -84,7 +84,7 @@ resources:
         send-suite:
           listener_port: 443
           listener_proto: HTTPS
-          listener_cert_arn: arn:aws:acm:us-east-1:768512802988:certificate/bb9b7bf5-a7e1-4156-9caa-10af86af5da5
+          listener_cert_arn: arn:aws:acm:eu-central-1:768512802988:certificate/66f96bed-d587-467e-bbe3-56d3d2a8606c
           container_port: 8080
           container_name: backend
           # "name" field is arbitrary, but must be unique and no longer than 32 chars
@@ -101,7 +101,7 @@ resources:
           - FARGATE
         container_definitions:
           backend:
-            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:4.5.0
+            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:5.0.3
             portMappings:
               - name: send-suite
                 containerPort: 8080
@@ -117,31 +117,31 @@ resources:
               initProcessEnabled: True
             secrets:
               - name: B2_APPLICATION_KEY
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/b2-application-key-v9ZNC4
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/b2-application-key-eYorqq
               - name: B2_APPLICATION_KEY_ID
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/b2-application-key-id-dDIEel
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/b2-application-key-id-IQl58V
               - name: DATABASE_URL
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/database-url-982JJ2
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/database-url-a53Vqt
               - name: FXA_ALLOW_LIST
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/fxa-allow-list-F99h1B
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/fxa-allow-list-THXxQZ
               - name: FXA_CLIENT_ID
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/fxa-client-id-7fcXj9
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/fxa-client-id-vAhXfg
               - name: FXA_CLIENT_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/fxa-client-secret-pTRedr
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/fxa-client-secret-KI0EPu
               - name: POSTHOG_API_KEY
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/posthog-api-key-kZnbXG
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/posthog-api-key-lVtOJy
               - name: SENTRY_AUTH_TOKEN
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/sentry-auth-token-5GrIxf
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/sentry-auth-token-ve7NNe
               - name: ACCESS_TOKEN_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/jwt-access-token-secret-oeDqPx
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/jwt-access-token-secret-CKmhxv
               - name: REFRESH_TOKEN_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/jwt-refresh-token-secret-c5oqtD
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/jwt-refresh-token-secret-y5R79H
               - name: OIDC_CLIENT_ID
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/oidc-client-id-OZohe6
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/stage/oidc-client-id-fsMQLV
               - name: OIDC_CLIENT_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/oidc-client-secret-uEhcgI
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/stage/oidc-client-secret-rujh0o
               - name: OIDC_TOKEN_INTROSPECTION_URL
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/prod/oidc-token-introspection-url-yLf36X
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/stage/oidc-token-introspection-url-iOzT8B
             environment:
               - name: B2_BUCKET_NAME
                 value: tb-send-suite-prod-object-store
