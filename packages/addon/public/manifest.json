@@ -39,8 +39,17 @@
     "webRequestBlocking",
     "messagesRead",
     "sensitiveDataUpload",
-    "https://*.backblazeb2.com/*"
+    "tabs",
+    "activeTab",
+    "https://*.backblazeb2.com/*",
+    "http://localhost:5173/*"
   ],
+  "browser_action": {
+    "default_title": "TB Pro",
+    "default_icon": "icons/64-dev.png",
+    "allowed_spaces": [],
+    "default_popup": "tbpro-menu.html"
+  },
   "experiment_apis": {
     "MailAccounts": {
       "schema": "api/MailAccounts/schema.json",
@@ -56,5 +65,13 @@
         "script": "api/MailAccounts/implementation.js"
       }
     }
-  }
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["token-bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
 }
