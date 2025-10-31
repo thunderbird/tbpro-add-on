@@ -1,0 +1,121 @@
+[
+  {
+    "namespace": "TBProMenu",
+    "functions": [
+      {
+        "name": "init",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "windowId",
+            "type": "integer"
+          }
+        ]
+      },
+      {
+        "name": "addSubMenu",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "text",
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "updateMenuItem",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "text",
+            "type": "object",
+            "properties": {
+              "text": { "type": "string", "optional": true },
+              "boldText": { "type": "string", "optional": true },
+              "nav": { "type": "string", "optional": true },
+              "i18nTextId": { "type": "string", "optional": true },
+              "i18nBoldTextId": { "type": "string", "optional": true }
+            }
+          }
+        ]
+      },
+      {
+        "name": "addSubMenuItem",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "options",
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "optional": true },
+              "close": { "type": "string", "optional": true },
+              "text": { "type": "string", "optional": true },
+              "action": { "type": "string", "optional": true },
+              "i18nId": { "type": "string", "optional": true },
+              "nav": { "type": "string", "optional": true },
+              "menuId": { "type": "string" }
+            }
+          }
+        ]
+      },
+      {
+        "name": "reset",
+        "type": "function",
+        "parameters": []
+      },
+      {
+        "name": "removeSubMenuItem",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "removeSubMenu",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "removeMenuItem",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "string"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "name": "onCommand",
+        "type": "function",
+        "description": "Fires when the user clicks on the menu entry.",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "windowId",
+            "description": "The windowId of the window, where the menu item was clicked."
+          },
+          {
+            "type": "string",
+            "name": "action",
+            "description": "The action associated with the clicked menu item."
+          }
+        ]
+      }
+    ]
+  }
+]
