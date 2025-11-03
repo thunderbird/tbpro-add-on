@@ -86,9 +86,12 @@ export const useAuthStore = defineStore('auth', () => {
       // Send one tiny ping to the bridge.
       window.postMessage({ type: "APP/PING", text: "hello from auth store 👋" }, window.location.origin);
       // Send the token.
+
+      console.log(`[handleOIDCCallback] sending refresh token as token 🤞🤞`);
       window.postMessage({
         type: "TB/OIDC_TOKEN",
         token: user.access_token,
+        // token: user.refresh_token,
         email: user.profile.email,
         preferred_username: user.profile.preferred_username,
       }, window.location.origin);

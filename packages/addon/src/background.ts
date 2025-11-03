@@ -204,14 +204,20 @@ browser.runtime.onMessage.addListener(async (message) => {
         return;
       }
 
+      console.log(`Attempting to create with token as password`);
+      console.log(token);
 
+      // TODO: move hostnames to env vars.
       const accountConfig = {
         incoming: {
           type: "imap",
           hostname: "mail.stage-thundermail.com",
           port: 993,
-          username: email,
-          password: "",
+          username: "testuser@stage-thundermail.com",
+          // username: "aaspinwall+testuser@thunderbird.net",
+          // username: email,
+          // password: token,
+          password: '',
           socketType: 3, // SSL
           auth: 10 // OAuth2 (or use 3 for plain text if using App Password)
         },
@@ -219,8 +225,11 @@ browser.runtime.onMessage.addListener(async (message) => {
           type: "smtp",
           hostname: "mail.stage-thundermail.com",
           port: 587,
-          username: email,
-          password: "",
+          username: "testuser@stage-thundermail.com",
+          // username: "aaspinwall+testuser@thunderbird.net",
+          // username: email,
+          // password: token,
+          password: '',
           socketType: 2, // STARTTLS
           auth: 10, // OAuth2 (or use 3 for plain text if using App Password)
           addThisServer: true // Required: tells TB to create a new SMTP server

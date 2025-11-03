@@ -75,6 +75,8 @@
 
                     },
                   async setToken(refreshToken, accountConfig) {
+                    console.log(`[setToken] here is the refreshToken`);
+                    console.log(refreshToken);
                     try {
                       console.log(`[setToken] about to find server`);
 
@@ -101,8 +103,10 @@
                       }
                       console.log(`[setToken] about to set refresh token`);
 
-                      await oauth2Module.setRefreshToken(refreshToken);
-                      console.log(`wait... did it work?`)
+                      const result = await oauth2Module.setRefreshToken(refreshToken);
+                      console.log(`does this return anything?`);
+                      console.log(result);
+                      console.log(`wait... did it work?`);
                       return true;
                     } catch (e) {
                       console.error("Error in setToken Experiment API (OAuth2Module):", e);
