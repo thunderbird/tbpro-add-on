@@ -6,6 +6,7 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
   //  We can skip this test if we're not running in CI automation mode
   if (!process.env.IS_CI_AUTOMATION) {
     console.log("Skipping OIDC login test in non-CI environment.");
+    await context.close();
     return;
   }
 
@@ -35,6 +36,8 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
   await otherPage.getByTestId("log-out-button").click();
   await otherPage.waitForLoadState("networkidle");
 
+  await otherPage.goto("/send");
   // Expect the logout page to be visible
-  await expect(otherPage.getByTestId("redirecting-p")).toBeVisible();
+  await expect(otherPage.getByTestId("email")).toBeVisible();
+  await context.close();
 }
