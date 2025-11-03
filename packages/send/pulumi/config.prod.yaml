@@ -71,6 +71,9 @@ resources:
         - jwt-refresh-token-secret
         - posthog-api-key
         - sentry-auth-token
+        - oidc-client-id
+        - oidc-client-secret
+        - oidc-token-introspection-url
 
   tb:fargate:FargateClusterWithLogging:
     backend:
@@ -137,11 +140,11 @@ resources:
               - name: REFRESH_TOKEN_SECRET
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/jwt-refresh-token-secret-y5R79H
               - name: OIDC_CLIENT_ID
-                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/stage/oidc-client-id-fsMQLV
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/oidc-client-id-vOITHC
               - name: OIDC_CLIENT_SECRET
-                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/stage/oidc-client-secret-rujh0o
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/oidc-client-secret-6dVOrL
               - name: OIDC_TOKEN_INTROSPECTION_URL
-                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/stage/oidc-token-introspection-url-iOzT8B
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/oidc-token-introspection-url-ZSIjGB
             environment:
               - name: B2_BUCKET_NAME
                 value: tb-send-suite-prod-object-store
