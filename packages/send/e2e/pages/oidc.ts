@@ -36,6 +36,8 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
   await otherPage.getByTestId("log-out-button").click();
   await otherPage.waitForLoadState("networkidle");
 
+  await otherPage.goto("/send");
   // Expect the logout page to be visible
-  await expect(otherPage.getByTestId("redirecting-p")).toBeVisible();
+  await expect(otherPage.getByTestId("email")).toBeVisible();
+  await context.close();
 }

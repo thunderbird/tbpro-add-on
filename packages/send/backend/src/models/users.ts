@@ -427,11 +427,16 @@ export async function getBackupCached(id: string) {
   // Try to get from cache first
   const cachedBackup = await cacheService.get(cacheKey);
   if (cachedBackup) {
-    return cachedBackup;
+    // return cachedBackup;
   }
 
   // If not in cache, get from database
   const backup = await getBackup(id);
+
+  console.log('comparing cache vs db backup', {
+    cachedBackup: JSON.stringify(cachedBackup).length,
+    backup: JSON.stringify(backup).length,
+  });
 
   // Cache the result for 15 minutes
   if (backup) {
