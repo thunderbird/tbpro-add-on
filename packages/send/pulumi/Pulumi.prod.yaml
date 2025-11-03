@@ -1,11 +1,11 @@
 encryptionsalt: v1:seY7tKNLBmE=:v1:wJ9SGUeu2BoLr/8c:880dpePAXi9dU6BCbiq3xNc//gUswA==
 config:
   send-suite:b2-application-key-id:
-    secure: v1:9gM4PEbC9731FkzH:V7EoXSmq00rCOnJOOP/uwsscEnI/Hx/6n4qDz0cjPePugDHOKbo94ts=
+    secure: v1:Ucgpjf9CyAjUhGxd:PHuX08a17E74YXuEpV5QQgV7KxF3jPv4bp26F68e14VQkgWyOxz00Lk=
   send-suite:b2-application-key:
-    secure: v1:bPY/WJIq+i7y3GKI:Kq+NjJVfTkPOH7QqAz80kaMuHqts+ZxkGxh6jJ5JkMnsSpzVk5IW0WPAMmR5eik=
+    secure: v1:Doq1OWDnSEbiy3X+:LP7S6SoTTLuoeX5jYPAARdmiwbLXqKu2SL8MRrH+cHCcKRsQ6h5QJX2vYHuwa6g=
   send-suite:database-url:
-    secure: v1:JEyZ/HkE+ybWFbF7:UmSS1QPoHTSJODyxQ0F+1y2/At0b8vOwWvSn9Zhwy+JhMBb/d5788pY4ia4mEShHl7EixwgMkWxbDrEMgknUYhyTfj50yH9FZv8Y5lk3OLH31DgIYpRr3Dz70krbpio8QwKPoQG+1+qyKxihsof30JrcfVB1Lai7tgLKntRxKM0=
+    secure: v1:CVyXHY2+QxcyNPe1:WLlLcd62+7Us+MzFbLavWH6oV7zPJ2EH/UnHQ0jDrjsgckZX3KlogLclktHQBFlbtSajwuerAvUjHRlUmF9soev4mSVFXpGjTgwak9BKAet2gw/4f+Lwb8lh4+ofwrysHmpHWvlYZ+dkSwGJBKcvpGdbIBUIBCgEv4JIpsFCY2F0IweE7OXq3CFrvd4AMwl56g==
   send-suite:fxa-allow-list:
     secure: v1:zh2awlDg3/zntRBc:JUHPT5lNHVceLQxl3ocjTuFT/g==
   send-suite:fxa-client-id:
