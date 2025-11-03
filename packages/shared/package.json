@@ -1,6 +1,6 @@
 {
   "name": "tbpro-shared",
-  "version": "0.2.4",
+  "version": "0.3.1",
   "private": false,
   "type": "module",
   "description": "Shared code for tbpro add-on",
