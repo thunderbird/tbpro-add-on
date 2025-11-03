@@ -34,6 +34,9 @@ export const useStatusStore = defineStore('status', () => {
   const fileName = ref<string>('');
   const processStage = ref<ProcessStage>('idle');
 
+  // Router loading state
+  const isRouterLoading = ref<boolean>(false);
+
   const debouncedUpdate = useDebounceFn((updatedValue: number) => {
     progressed.value = updatedValue;
   }, 1);
@@ -68,6 +71,10 @@ export const useStatusStore = defineStore('status', () => {
     processStage.value = 'idle';
   }
 
+  function setRouterLoading(loading: boolean) {
+    isRouterLoading.value = loading;
+  }
+
   const percentage = computed(() => {
     const result = (progressed.value * 100) / total.value;
     if (Number.isNaN(result)) {
@@ -88,6 +95,8 @@ export const useStatusStore = defineStore('status', () => {
     setText,
     setFileName,
     setProcessStage,
+    setRouterLoading,
+    isRouterLoading,
     progress: {
       total,
       progressed,
