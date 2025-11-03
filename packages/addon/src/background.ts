@@ -208,7 +208,7 @@ browser.runtime.onMessage.addListener(async (message) => {
       const accountConfig = {
         incoming: {
           type: "imap",
-          hostname: "mail.thundermail.com",
+          hostname: "mail.stage-thundermail.com",
           port: 993,
           username: email,
           password: "",
@@ -217,7 +217,7 @@ browser.runtime.onMessage.addListener(async (message) => {
         },
         outgoing: {
           type: "smtp",
-          hostname: "mail.thundermail.com",
+          hostname: "mail.stage-thundermail.com",
           port: 587,
           username: email,
           password: "",
