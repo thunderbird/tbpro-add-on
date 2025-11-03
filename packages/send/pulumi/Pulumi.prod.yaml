@@ -24,3 +24,9 @@ config:
     secure: v1:ILxVN9y3R+krEhiH:Oc2h1mkyaBIUWwZC+2vGSh9wzBWZ8Pv4vMBOi5A8KmHLfWuELCDp51wcDhy4yT21
   cloudflare:apiToken:
     secure: v1:/i/PRTJT4/TjZaLr:WYSaS07MmlpcIOFD+x757p+PPewWoBDdpYp1hrFHq+J5GQAdsIx+EmGi2b+TCzbCrl3kx0JZMng=
+  send-suite:oidc-client-id:
+    secure: v1:QbQSpqCCHsdtf6o1:tjZDsh64mWpD/Kw9cHJMLHpTQZyfvBHi4+PeL11tRMhG+OVQTJ2MpQ==
+  send-suite:oidc-client-secret:
+    secure: v1:NYWfW6ajibivFFlu:YvNF4+//tffl/bX6ayi53BQm/MAB/k+J6wFH5G5HooeCrdqbRGI6rs/xZDkgvs6t
+  send-suite:oidc-token-introspection-url:
+    secure: v1:HmD9ELBROcMog7G+:3U08ZEm/yZ7HOdrFTZulL4M4RLxVuYt3fOYG65+3LPyOHJe5naysKlHteInwdaxiVtpfPNVFjoPkBTsGJzAVjbrHs9H0wnKKtlbI2e2E8KBZuHMvNGli4+k=
