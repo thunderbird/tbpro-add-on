@@ -380,7 +380,27 @@ async function createThundermailAccount(email, preferred_username) {
 
 
 async function addThundermailToken(token, email) {
-  console.log(`to be implemented`);
+  try {
+    const result = await browser.MailAccounts.setToken(token, email);
+
+    if (result) {
+      return {
+        success: true,
+        message: `Token saved successfully`,
+      }
+    } else {
+      return {
+        success: false,
+        message: `Saving token failed (Experiment API returned false)`,
+      }
+    }
+
+  } catch (e) {
+    return {
+      success: false,
+      message: `Saving token failed with error ${e.message}`,
+    }
+  }
 
   // Call experiment function that runs the following:
 

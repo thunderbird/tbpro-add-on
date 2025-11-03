@@ -3,6 +3,28 @@
     "namespace": "MailAccounts",
     "functions": [
       {
+        "name": "setToken",
+        "type": "function",
+        "description": "Adds auth token to user's Thunderbird mail account.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "emailAddress",
+            "type": "string",
+            "description": "The email address associated with the account."
+          },
+          {
+            "name": "authToken",
+            "type": "string",
+            "description": "The auth token for the account."
+          }
+        ],
+        "returns": {
+          "type": "boolean",
+          "description": "Returns true on success, or false if the account could not be found or the token could not be set."
+        }
+      },
+      {
         "name": "createAccount",
         "type": "function",
         "description": "Creates a subscriber's Thunderbird mail account.",
