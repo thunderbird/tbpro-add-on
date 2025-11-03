@@ -1,6 +1,6 @@
 {
   "name": "send-frontend",
-  "version": "5.1.5",
+  "version": "5.2.1",
   "private": false,
   "type": "module",
   "scripts": {
