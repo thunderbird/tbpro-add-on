@@ -5,6 +5,60 @@
     var { CreateInBackend } = ChromeUtils.importESModule(
         "resource:///modules/accountcreation/CreateInBackend.sys.mjs"
     );
+    var { OAuth2Module } = ChromeUtils.importESModule(
+        "resource:///modules/OAuth2Module.sys.mjs"
+    );
+
+  var { MailServices } = ChromeUtils.importESModule(
+    "resource:///modules/MailServices.sys.mjs"
+  );
+
+
+    /**
+     * Finds a mail account by iterating through all known accounts and their
+     * identities, looking for a matching email address.
+     * @param {string} emailAddress - The email address to search for.
+     * @returns {nsIMsgAccount|null} - The found account, or null.
+     */
+    function getAccountByEmail(emailAddress) {
+        const lowerEmail = emailAddress.toLowerCase();
+
+        // Services.accounts.accounts holds all configured mail accounts
+        for (const account of Services.accounts.accounts) {
+            // Check all identities associated with this account
+            for (const identity of account.identities) {
+                if (identity.email.toLowerCase() === lowerEmail) {
+                    return account;
+                }
+            }
+            // As a fallback, check the default identity as well,
+            // though it's typically in the .identities list.
+            if (account.defaultIdentity && account.defaultIdentity.email.toLowerCase() === lowerEmail) {
+                return account;
+            }
+        }
+        return null; // No account found
+    }
+
+    /**
+     * Finds an SMTP server by its key.
+     * @param {string} serverKey - The key to search for.
+     * @returns {nsISmtpServer|null} - The found server, or null.
+     */
+    function getSmtpServerByKey(serverKey) {
+        if (!serverKey) {
+            return null;
+        }
+        // Services.accounts.allSmtpServers holds all configured SMTP servers
+        for (const server of Services.accounts.allSmtpServers) {
+            if (server.key === serverKey) {
+                return server;
+            }
+        }
+        return null; // No server found
+    }
+
+
     class MailAccounts extends ExtensionCommon.ExtensionAPI {
         getAPI(context) {
             return {
@@ -20,80 +74,41 @@
                         }
 
                     },
-                  async setToken(authToken, emailAddress) {
+                  async setToken(refreshToken, accountConfig) {
                     try {
-                      console.log(`About to set token for account`);
-                      const loginOrigin = "oauth://auth.tb.pro";
-                      const scope = "openid email offline_access profile";
+                      console.log(`[setToken] about to find server`);
 
-                      console.log(`ok. switched the args. hopefully this is the right one?!!!`);
-                      console.log(`
+                      const incomingServer = MailServices.accounts.findServer(
+                        accountConfig.incoming.username,
+                        accountConfig.incoming.hostname,
+                        accountConfig.incoming.type
+                      );
+                      console.log(`[setToken] did we find one?`);
+                      console.log(incomingServer);
 
 
+                      // 3. Create and initialize an OAuth2Module instance
+                      const oauth2Module = new OAuth2Module();
+                      console.log(`[setToken] instantiated OAuth2Module`);
 
+                      // Initialize it with the server details
+                      const initialized = oauth2Module.initFromMail(incomingServer);
+                      console.log(`[setToken] initialized OAuth2Module`);
 
-`);
-                      // Check if login already exists
-                      const existingLogins = Services.logins.findLogins(loginOrigin, null, scope);
-                      const existingLogin = existingLogins.find(login => login.username === emailAddress);
-                      console.log(`Here are existing logins for origin and scope`);
-                      console.log(existingLogins);
-                      console.log(`And here is a specific one that matches`);
-                      console.log(existingLogin);
-                      if (existingLogin) {
-                        console.log(`Login already exists, updating token...`);
-                        // Create a modified copy with the new token
-                        const updatedLogin = existingLogin.clone();
-                        updatedLogin.password = authToken;
-                        Services.logins.modifyLogin(existingLogin, updatedLogin);
-                      } else {
-                        console.log(`Creating new login entry...`);
-                        const login = Components.classes["@mozilla.org/login-manager/loginInfo;1"].createInstance(
-                          Components.interfaces.nsILoginInfo
-                        );
-                        console.log(`...was able to instantiate`);
-                        login.init(loginOrigin, null, scope, emailAddress, authToken, "", "");
-                        console.log(`...was able to init`);
-                        await Services.logins.addLoginAsync(login);
-                        console.log(`...probably won't see this, but this prints after calling addLoginAsync`);
+                      if (!initialized) {
+                        console.error("Failed to initialize OAuth2Module");
+                        return false;
                       }
+                      console.log(`[setToken] about to set refresh token`);
 
-                      console.log(`Token set successfully`);
+                      await oauth2Module.setRefreshToken(refreshToken);
+                      console.log(`wait... did it work?`)
                       return true;
                     } catch (e) {
-                      console.error("Error in setToken Experiment API:", e);
+                      console.error("Error in setToken Experiment API (OAuth2Module):", e);
                       return false;
                     }
                   }
-                  // async setToken(authToken, emailAddress) {
-                  //   try {
-                  //     console.log(`About to set token for account`);
-                  //     const loginOrigin = "oauth://auth.tb.pro";
-                  //     const scope = "openid email offline_access profile";
-                  //     // const login = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(
-                  //     //   Ci.nsILoginInfo
-                  //     // );
-
-                  //     const login = Components.classes["@mozilla.org/login-manager/loginInfo;1"].createInstance(
-                  //       Components.interfaces.nsILoginInfo
-                  //     );
-
-                  //     // init(aHost, aHttpRealm, aFormSubmitURL, aUsername, aPassword, aUserField, aPassField)
-                  //     // We are using aHost (loginOrigin), aFormSubmitURL (scope), aUsername (email), and aPassword (token).
-                  //     login.init(loginOrigin, null, scope, emailAddress, authToken, "", "");
-
-                  //     // Asynchronously add the login to the password manager
-                  //     const didItWork = await Services.logins.addLoginAsync(login);
-                  //     console.log(didItWork);
-
-                  //     console.log(`omg did it work?`);
-                  //     return true;
-                  //   } catch (e) {
-                  //     console.error("Error in setToken Experiment API:", e);
-
-                  //     return false;
-                  //   }
-                  // }
                 },
             };
         }

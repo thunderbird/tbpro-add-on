@@ -204,14 +204,44 @@ browser.runtime.onMessage.addListener(async (message) => {
         return;
       }
 
+
+      const accountConfig = {
+        incoming: {
+          type: "imap",
+          hostname: "mail.thundermail.com",
+          port: 993,
+          username: email,
+          password: "",
+          socketType: 3, // SSL
+          auth: 10 // OAuth2 (or use 3 for plain text if using App Password)
+        },
+        outgoing: {
+          type: "smtp",
+          hostname: "mail.thundermail.com",
+          port: 587,
+          username: email,
+          password: "",
+          socketType: 2, // STARTTLS
+          auth: 10, // OAuth2 (or use 3 for plain text if using App Password)
+          addThisServer: true // Required: tells TB to create a new SMTP server
+        },
+        identity: {
+          realname: preferred_username,
+          emailAddress: email,
+        },
+        displayName: "Thundermail"
+      };
+
+
+
       try {
-        await createThundermailAccount(email, preferred_username)
+        await createThundermailAccount(accountConfig)
       } catch (e) {
         console.log(e);
       }
 
       try {
-        await addThundermailToken(token, email);
+        await addThundermailToken(token, accountConfig);
       } catch (e) {
         console.log(e);
       }
@@ -316,7 +346,9 @@ function rejectAllInQueue(reason: Error) {
 }
 
 
-async function createThundermailAccount(email, preferred_username) {
+async function createThundermailAccount(accountConfig) {
+
+  const email = accountConfig.identity.emailAddress;
 
   const alreadyExists = await doesAccountExist(email);
   if (alreadyExists) {
@@ -327,35 +359,8 @@ async function createThundermailAccount(email, preferred_username) {
     }
   }
 
-  const config = {
-    incoming: {
-      type: "imap",
-      hostname: "mail.thundermail.com",
-      port: 993,
-      username: email,
-      password: "",
-      socketType: 3, // SSL
-      auth: 10 // OAuth2 (or use 3 for plain text if using App Password)
-    },
-    outgoing: {
-      type: "smtp",
-      hostname: "mail.thundermail.com",
-      port: 587,
-      username: email,
-      password: "",
-      socketType: 2, // STARTTLS
-      auth: 10, // OAuth2 (or use 3 for plain text if using App Password)
-      addThisServer: true // Required: tells TB to create a new SMTP server
-    },
-    identity: {
-      realname: preferred_username,
-      emailAddress: email,
-    },
-    displayName: "Thundermail"
-  };
-
   try {
-    const result = await browser.MailAccounts.createAccount(config);
+    const result = await browser.MailAccounts.createAccount(accountConfig);
 
     if (result) {
       return {
@@ -379,9 +384,15 @@ async function createThundermailAccount(email, preferred_username) {
 }
 
 
-async function addThundermailToken(token, email) {
+async function addThundermailToken(token, accountConfig) {
+  console.log(`[addThundermailToken] at the top of the function`);
+
+  const email = accountConfig.identity.emailAddress;
+
+
   try {
-    const result = await browser.MailAccounts.setToken(token, email);
+    console.log(`[addThundermailToken] did we get this far?`);
+    const result = await browser.MailAccounts.setToken(token, accountConfig);
 
     if (result) {
       return {
@@ -396,27 +407,13 @@ async function addThundermailToken(token, email) {
     }
 
   } catch (e) {
+    console.log(`[addThundermailToken] caught an error`);
+    console.log(e);
     return {
       success: false,
       message: `Saving token failed with error ${e.message}`,
     }
   }
-
-  // Call experiment function that runs the following:
-
-  /*
-  Based on https://searchfox.org/comm-central/source/mailnews/base/src/OAuth2Module.sys.mjs#198-202
-
-      const login = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(
-      Ci.nsILoginInfo
-      );
-      login.init(this._loginOrigin, null, scope, this._username, token, "", "");
-      await Services.logins.addLoginAsync(login);
-
-      but with arguments like
-      "oauth://auth.tb.pro", null, "openid email offline_access profile", "geoff@thundermail.com", "abcde12345", "", ""
-   */
-
 
 }
 
