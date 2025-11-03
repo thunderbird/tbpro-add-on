@@ -29,7 +29,7 @@ import * as Sentry from '@sentry/node';
 
 import events from 'events';
 import helmet from 'helmet';
-import { TRPC_WS_PATH } from './config';
+import { IS_ENV_DEV, TRPC_WS_PATH } from './config';
 import { errorHandler } from './errors/routes';
 import { addVersionHeader } from './middleware';
 import { performanceLogger } from './middleware/performance';
@@ -133,13 +133,15 @@ process.on('SIGTERM', () => {
   wss.close();
 });
 
-// Performance logging middleware with color-coded output
-app.use(
-  performanceLogger({
-    fast: 100, // Green for < 100ms (not logged)
-    slow: 300, // Yellow for 100-300ms, Red for >300ms
-  })
-);
+if (IS_ENV_DEV) {
+  // Performance logging middleware with color-coded output
+  app.use(
+    performanceLogger({
+      fast: 100, // Green for < 100ms (not logged)
+      slow: 300, // Yellow for 100-300ms, Red for >300ms
+    })
+  );
+}
 
 app.use(
   '/trpc',
