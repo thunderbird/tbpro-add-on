@@ -188,6 +188,11 @@ async function openUnifiedPopup() {
   }
 }
 
+// TODO: move these to env vars.
+const THUNDERMAIL_HOST = "mail.stage-thundermail.com";
+const THUNDERMAIL_DISPLAY_NAME = "Thundermail";
+
+
 // Handle all messages from popup.
 browser.runtime.onMessage.addListener(async (message) => {
   switch (message.type) {
@@ -207,50 +212,14 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log(`Attempting to create with token as password`);
       console.log(token);
 
-      // TODO: move hostnames to env vars.
-      const accountConfig = {
-        incoming: {
-          type: "imap",
-          hostname: "mail.stage-thundermail.com",
-          port: 993,
-          username: "testuser@stage-thundermail.com",
-          // username: "aaspinwall+testuser@thunderbird.net",
-          // username: email,
-          // password: token,
-          password: '',
-          socketType: 3, // SSL
-          auth: 10 // OAuth2 (or use 3 for plain text if using App Password)
-        },
-        outgoing: {
-          type: "smtp",
-          hostname: "mail.stage-thundermail.com",
-          port: 587,
-          username: "testuser@stage-thundermail.com",
-          // username: "aaspinwall+testuser@thunderbird.net",
-          // username: email,
-          // password: token,
-          password: '',
-          socketType: 2, // STARTTLS
-          auth: 10, // OAuth2 (or use 3 for plain text if using App Password)
-          addThisServer: true // Required: tells TB to create a new SMTP server
-        },
-        identity: {
-          realname: preferred_username,
-          emailAddress: email,
-        },
-        displayName: "Thundermail"
-      };
-
-
-
       try {
-        await createThundermailAccount(accountConfig)
+        await createThundermailAccount(email, preferred_username, THUNDERMAIL_HOST, THUNDERMAIL_DISPLAY_NAME);
       } catch (e) {
         console.log(e);
       }
 
       try {
-        await addThundermailToken(token, accountConfig);
+        await addThundermailToken(token, email, THUNDERMAIL_HOST);
       } catch (e) {
         console.log(e);
       }
@@ -354,111 +323,73 @@ function rejectAllInQueue(reason: Error) {
   uploadInfoQueue = [];
 }
 
-
-async function createThundermailAccount(accountConfig) {
-
-  const email = accountConfig.identity.emailAddress;
-
-  const alreadyExists = await doesAccountExist(email);
-  if (alreadyExists) {
-    const message = `Account for ${email} already exists. Skipping creation.`
-    return {
-      success: false,
-      message,
-    }
-  }
-
+async function createThundermailAccount(email: string, realname: string, hostname: string, displayName: string) {
   try {
-    const result = await browser.MailAccounts.createAccount(accountConfig);
+    const result = await browser.MailAccounts.createAccount(
+      email,
+      realname,
+      hostname,
+      displayName
+    );
 
-    if (result) {
-      return {
-        success: true,
-        message: `Account created successfully`,
+    if (result.success) {
+      if (result.alreadyExists) {
+        return {
+          success: true,
+          message: `Account already exists for ${email}`,
+          alreadyExists: true,
+        };
+      } else {
+        return {
+          success: true,
+          message: `Account created successfully for ${email}`,
+          alreadyExists: false,
+        };
       }
     } else {
       return {
         success: false,
-        message: `Creation failed (Experiment API returned false)`,
-      }
+        message: `Creation failed: ${result.error || 'Unknown error'}`,
+      };
     }
 
   } catch (e) {
     return {
       success: false,
-      message: `Creation failed with error ${e.message}`,
-    }
+      message: `Creation failed with error: ${e.message}`,
+    };
   }
-
 }
 
 
-async function addThundermailToken(token, accountConfig) {
-  console.log(`[addThundermailToken] at the top of the function`);
-
-  const email = accountConfig.identity.emailAddress;
-
+async function addThundermailToken(token: string, email: string, hostname: string) {
+  console.log(`[addThundermailToken] Setting token for ${email}`);
 
   try {
-    console.log(`[addThundermailToken] did we get this far?`);
-    const result = await browser.MailAccounts.setToken(token, accountConfig);
+    console.log(`[addThundermailToken] Calling setToken API`);
+    const result = await browser.MailAccounts.setToken(
+      token,
+      email,
+      hostname
+    );
 
-    if (result) {
+    if (result.success) {
       return {
         success: true,
-        message: `Token saved successfully`,
-      }
+        message: `Token saved successfully for ${email}`,
+      };
     } else {
       return {
         success: false,
-        message: `Saving token failed (Experiment API returned false)`,
-      }
+        message: `Saving token failed: ${result.error || 'Unknown error'}`,
+      };
     }
 
   } catch (e) {
-    console.log(`[addThundermailToken] caught an error`);
-    console.log(e);
+    console.log(`[addThundermailToken] Caught an error:`, e);
     return {
       success: false,
-      message: `Saving token failed with error ${e.message}`,
-    }
+      message: `Saving token failed with error: ${e.message}`,
+    };
   }
-
-}
-
-
-async function doesAccountExist(email) {
-  if (!email) {
-    console.warn("accountExists: No email address provided for check.");
-    return false;
-  }
-
-  const normalizedEmail = email.toLowerCase();
-
-  try {
-    const accounts = await messenger.accounts.list();
-
-    // Check if an identity from any account already has this email address.
-    for (const account of accounts) {
-      if (account.identities && Array.isArray(account.identities)) {
-        for (const identity of account.identities) {
-          console.log(`...✔️ identity email ${identity.email}`);
-          if (identity.email && identity.email.toLowerCase() === normalizedEmail) {
-            console.log(`Found existing account for ${email} (Account: ${account.name}, ID: ${account.id})`);
-            return true;
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Error checking for existing accounts:", e);
-    // You might want to "fail safe" and return true here to prevent
-    // attempting to create a duplicate if the list() call fails.
-    // For this example, we'll return false and let the creation attempt proceed.
-    return false;
-  }
-
-  // If the loop completes without finding a match
-  console.log(`No existing account found for ${email}.`);
-  return false;
 }
