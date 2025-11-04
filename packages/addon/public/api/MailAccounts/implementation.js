@@ -9,55 +9,9 @@
         "resource:///modules/OAuth2Module.sys.mjs"
     );
 
-  var { MailServices } = ChromeUtils.importESModule(
-    "resource:///modules/MailServices.sys.mjs"
-  );
-
-
-    /**
-     * Finds a mail account by iterating through all known accounts and their
-     * identities, looking for a matching email address.
-     * @param {string} emailAddress - The email address to search for.
-     * @returns {nsIMsgAccount|null} - The found account, or null.
-     */
-    function getAccountByEmail(emailAddress) {
-        const lowerEmail = emailAddress.toLowerCase();
-
-        // Services.accounts.accounts holds all configured mail accounts
-        for (const account of Services.accounts.accounts) {
-            // Check all identities associated with this account
-            for (const identity of account.identities) {
-                if (identity.email.toLowerCase() === lowerEmail) {
-                    return account;
-                }
-            }
-            // As a fallback, check the default identity as well,
-            // though it's typically in the .identities list.
-            if (account.defaultIdentity && account.defaultIdentity.email.toLowerCase() === lowerEmail) {
-                return account;
-            }
-        }
-        return null; // No account found
-    }
-
-    /**
-     * Finds an SMTP server by its key.
-     * @param {string} serverKey - The key to search for.
-     * @returns {nsISmtpServer|null} - The found server, or null.
-     */
-    function getSmtpServerByKey(serverKey) {
-        if (!serverKey) {
-            return null;
-        }
-        // Services.accounts.allSmtpServers holds all configured SMTP servers
-        for (const server of Services.accounts.allSmtpServers) {
-            if (server.key === serverKey) {
-                return server;
-            }
-        }
-        return null; // No server found
-    }
-
+    var { MailServices } = ChromeUtils.importESModule(
+      "resource:///modules/MailServices.sys.mjs"
+    );
 
     class MailAccounts extends ExtensionCommon.ExtensionAPI {
         getAPI(context) {
