@@ -7,6 +7,7 @@ import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
+import { BASE_URL } from '@send-frontend/apps/common/constants';
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
@@ -187,9 +188,54 @@ async function openUnifiedPopup() {
   }
 }
 
+// TODO: move these to env vars.
+const THUNDERMAIL_HOST = "mail.stage-thundermail.com";
+const THUNDERMAIL_DISPLAY_NAME = "Thundermail";
+
+
 // Handle all messages from popup.
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener(async (message) => {
   switch (message.type) {
+    case 'TB/PING':
+      console.log('[background] got the ping from the bridge');
+      console.log(message);
+      break;
+
+    case 'TB/OIDC_TOKEN':
+      const { email, preferred_username, token } = message;
+
+      if (!email && !token) {
+        console.log(`Did not get info back from login`);
+        return;
+      }
+
+      console.log(`Attempting to create with token as password`);
+      console.log(token);
+
+      try {
+        await createThundermailAccount(email, preferred_username, THUNDERMAIL_HOST, THUNDERMAIL_DISPLAY_NAME);
+      } catch (e) {
+        console.log(e);
+      }
+
+      try {
+        await addThundermailToken(token, email, THUNDERMAIL_HOST);
+      } catch (e) {
+        console.log(e);
+      }
+
+      break;
+
+    case 'SIGN_IN':
+      console.log(
+        `[onMessage] sounds like you want to sign in from the typescript handler`
+      );
+      await browser.tabs.create({
+        url: `${BASE_URL}/login?isExtension=true`,
+      });
+
+      break;
+
     // Popup is ready and is requesting the file list.
     case 'POPUP_READY':
       console.log(`[onMessage] Popup is ready. Sending file list.`);
@@ -275,4 +321,75 @@ function rejectAllInQueue(reason: Error) {
   }
   // Also clear any remaining items in the queue.
   uploadInfoQueue = [];
+}
+
+async function createThundermailAccount(email: string, realname: string, hostname: string, displayName: string) {
+  try {
+    const result = await browser.MailAccounts.createAccount(
+      email,
+      realname,
+      hostname,
+      displayName
+    );
+
+    if (result.success) {
+      if (result.alreadyExists) {
+        return {
+          success: true,
+          message: `Account already exists for ${email}`,
+          alreadyExists: true,
+        };
+      } else {
+        return {
+          success: true,
+          message: `Account created successfully for ${email}`,
+          alreadyExists: false,
+        };
+      }
+    } else {
+      return {
+        success: false,
+        message: `Creation failed: ${result.error || 'Unknown error'}`,
+      };
+    }
+
+  } catch (e) {
+    return {
+      success: false,
+      message: `Creation failed with error: ${e.message}`,
+    };
+  }
+}
+
+
+async function addThundermailToken(token: string, email: string, hostname: string) {
+  console.log(`[addThundermailToken] Setting token for ${email}`);
+
+  try {
+    console.log(`[addThundermailToken] Calling setToken API`);
+    const result = await browser.MailAccounts.setToken(
+      token,
+      email,
+      hostname
+    );
+
+    if (result.success) {
+      return {
+        success: true,
+        message: `Token saved successfully for ${email}`,
+      };
+    } else {
+      return {
+        success: false,
+        message: `Saving token failed: ${result.error || 'Unknown error'}`,
+      };
+    }
+
+  } catch (e) {
+    console.log(`[addThundermailToken] Caught an error:`, e);
+    return {
+      success: false,
+      message: `Saving token failed with error: ${e.message}`,
+    };
+  }
 }

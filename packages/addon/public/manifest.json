@@ -6,9 +6,9 @@
   "description": "Thunderbird and friends",
   "browser_specific_settings": {
     "gecko": {
-      "id": "tbpro-add-on@thunderbird.net",
+      "id": "tbpro-addon-stage@thunderbird.net",
       "strict_min_version": "128.0",
-      "strict_max_version": "144.*"
+      "strict_max_version": "146.*"
     }
   },
   "background": {
@@ -32,6 +32,7 @@
     "64": "icons/64.png"
   },
   "permissions": [
+    "accountsRead",
     "storage",
     "compose",
     "notifications",
@@ -39,8 +40,17 @@
     "webRequestBlocking",
     "messagesRead",
     "sensitiveDataUpload",
-    "https://*.backblazeb2.com/*"
+    "tabs",
+    "activeTab",
+    "https://*.backblazeb2.com/*",
+    "http://localhost:5173/*"
   ],
+  "browser_action": {
+    "default_title": "TB Pro",
+    "default_icon": "icons/64-dev.png",
+    "allowed_spaces": [],
+    "default_popup": "tbpro-menu.html"
+  },
   "experiment_apis": {
     "MailAccounts": {
       "schema": "api/MailAccounts/schema.json",
@@ -56,5 +66,13 @@
         "script": "api/MailAccounts/implementation.js"
       }
     }
-  }
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["token-bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
 }
