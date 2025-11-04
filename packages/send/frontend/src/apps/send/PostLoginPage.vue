@@ -25,14 +25,12 @@ onMounted(async () => {
       throw new Error('Authentication failed');
     }
   } catch (err) {
-    console.error('Post-login handling failed:', err);
-    //    error.value = err instanceof Error ? err.message : 'Authentication failed';
-    error.value = 'it is being a punk. Make sure to uncomment the redirect after debugging.';
+    error.value = err instanceof Error ? err.message : 'Authentication failed';
 
     // Redirect to login page after a delay
-    // setTimeout(() => {
-      // router.push('/login');
-    // }, 3000);
+    setTimeout(() => {
+      router.push('/login');
+    }, 3000);
   } finally {
     isLoading.value = false;
   }
