@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "0.8.6",
+  "version": "0.10.0",
   "author": "Thunderbird Team",
   "name": "Tbpro Addon",
   "description": "Thunderbird and friends",
@@ -67,11 +67,14 @@
       }
     }
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["token-bridge.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "token-bridge.js"
+      ],
       "run_at": "document_start"
     }
   ]
