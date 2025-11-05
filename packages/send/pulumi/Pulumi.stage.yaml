@@ -1,9 +1,9 @@
 encryptionsalt: v1:d0r3xcOdlcg=:v1:h32s5jmwpOkoXvOJ:rB2v23zF1oN3BX/C8u2XG6Ig0O+uQw==
 config:
   send-suite:b2-application-key:
-    secure: v1:INQh1HmnOh6A9dfs:Qmg+UQdDB9QR4cRfTY4tPbf8Wviz0n/moOJqM5C12Y2D4A8lNdIt3I98PgpCch4=
+    secure: v1:rTaO55QK3vgyrBvw:ZSPzQUoIgvHM8DU2F+X/mvtPnGNk8bBX6/qBHh3tWxSPeDO5soY6n+38VK/1O10=
   send-suite:b2-application-key-id:
-    secure: v1:zZiVkeLYhk8rievS:YIBmoSGYTu8pGk6y4C+ps4UvF3LYZPSE0u0WhM7EqW9dkQ3DxYrGixQ=
+    secure: v1:Fknv3Rj69h2T4tMz:B2Jom820OmeL23gl4M3r/9ZmO5fI7CS1rP/9kdub40lwjNJmelTM/Bo=
   send-suite:fxa-allow-list:
     secure: v1:1KAEqdoSTad9Q/Ow:Cg9NaRxoSOUCPEZWsNJMRmN5+qbwWkPazDuIc+ycr/93hoS8IUB7YDwhnuK9oaTVfs2ojjWzDQrJF658QM3t1pJ6BR/evtLzhwlb0oPc7UFDL5QobixJ35Q5T5I/DR1+TRsBRgNvzA8MsjVdChw1jOvn3a+jtvMC9O8O3YeoSixUmN/g+oYtMQKeyynCtdyf1/jfZkS4LI6BsupaFqjXKLY1LUqa27Ej65oIMEy6e349NK3YwXaJbvLSjbj4Hx9OhyJ7WSjZHgbwOCiuMBgB17xdfhXRbmKFNpu8O4kp
   send-suite:fxa-client-id:
@@ -19,7 +19,7 @@ config:
   send-suite:jwt-refresh-token-secret:
     secure: v1:93Lg1vCPTFiPsH81:mhrg+6JJ+w28NC/qTxA+Uyl5/TOcVF05qCUwkdQsCYrEAdFnZueW+9MFuukCYltxTHbAJw0q4BJl0KAT6AWxBIbmXQ5xGjqUI9h8sdmzgEJPecASDELRVzaYd3dATvBxWyXNnA==
   send-suite:database-url:
-    secure: v1:e0M3NWfdpS7plI1b:9WktOvp+U203GSsD+hQl9fa0+MuwLIk82kghZ6LblmGilRMSfPaZpsZgq8sKO4q9ZD6m4SKf6kGxS0wNiggtSvuisLkZmlzRocIyln00j5+AmmAKvhiFQe+fseTBBXQMt72SND7Thd8mklGMqyUO2guRUswIUf45uA2xIPZiAgK4gvs=
+    secure: v1:VWqIwDWETFYMAHZi:+PzGVZ4GfBzXtdTO7t7iPKhJZn114UGM/1JZ2D0Pw38tx3YxmqtlxzDUlI8Kc5bILuQyQUJGkwsoo4y+6OxHZv0PWAfBOb9QZc5KR748WVk2MCwBJIjxb6eLfK6u/082UQ3Q4Muzk2eTnSmw6l7648vBb3wEzI1qncVF1d4x/5ViLp62FgUjajt5
   send-suite:route53_zone_id:
     secure: v1:7DgM6+BsjhMbav2f:Jt+3WNYiWq4n60SfBP79SgdYq7ImS3ioGTVwSFRKBJos/18V
   send-suite:cloudflare_zone_id:
