@@ -171,11 +171,19 @@ export const containersRouter = router({
         id: '',
       };
 
-      // get the default folder for the user where the isDefault flag is true
-      const defaultFolder = await getDefaultContainerForOwner(id);
-      if (defaultFolder) {
-        response.id = defaultFolder.id;
-        return response;
+      try {
+        // get the default folder for the user where the isDefault flag is true
+        const defaultFolder = await getDefaultContainerForOwner(id);
+        if (defaultFolder) {
+          response.id = defaultFolder.id;
+          return response;
+        }
+      } catch (error) {
+        console.error('Error fetching default folder:', error);
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'An error occurred while fetching the default folder',
+        });
       }
 
       // If we don't have a default folder, we need to get all the folders for the user and set oldest one as default
