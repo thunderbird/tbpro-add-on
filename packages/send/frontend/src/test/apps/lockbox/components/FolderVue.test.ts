@@ -4,13 +4,38 @@ import { DayJsKey } from '@send-frontend/types';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 let router;
 let wrapper;
 
-const { goToRootFolderSpy } = vi.hoisted(() => {
-  return { goToRootFolderSpy: vi.fn() };
+// Use a simpler approach without ref in the hoisted function
+const { refetchSpy, mockQueryData } = vi.hoisted(() => {
+  return {
+    refetchSpy: vi.fn(),
+    mockQueryData: {
+      value: {
+        type: 'subtree',
+        data: { id: 'test', name: 'Test Folder', items: [] },
+        folders: [],
+      },
+    },
+  };
+});
+
+// Mock the folder queries
+vi.mock('@send-frontend/lib/queries/folderQueries', () => {
+  return {
+    useFolderQuery: vi.fn(() => ({
+      data: ref(mockQueryData.value),
+      isLoading: ref(false),
+      isError: ref(false),
+      error: ref(null),
+      isSuccess: ref(true),
+      refetch: refetchSpy,
+    })),
+  };
 });
 
 // Setup testing environment
@@ -18,7 +43,12 @@ vi.mock('@send-frontend/apps/send/stores/folder-store', () => {
   return {
     esmodule: true,
     default: vi.fn(() => ({
-      goToRootFolder: goToRootFolderSpy,
+      rootFolder: { items: [], id: 'test', name: 'Test Folder' },
+      visibleFolders: [],
+      selectedFolder: null,
+      selectedFile: null,
+      setSelectedFile: vi.fn(),
+      setSelectedFolder: vi.fn(),
     })),
   };
 });
@@ -41,6 +71,15 @@ vi.mock('@send-frontend/stores/keychain-store', () => {
       keychain: {
         // Mock keychain methods as needed
       },
+    })),
+  };
+});
+
+vi.mock('@send-frontend/apps/send/stores/status-store', () => {
+  return {
+    useStatusStore: vi.fn(() => ({
+      isRouterLoading: ref(false),
+      progress: {},
     })),
   };
 });
@@ -83,13 +122,14 @@ describe('FolderView', () => {
     // This is VERY IMPORTANT to make sure the debounced function is called
     vi.runAllTimers();
 
-    // Check if goToRootFolder was called with new id
-    expect(goToRootFolderSpy).toBeCalledWith('0');
+    // Check if query refetch was called (which is the new cached approach)
+    expect(refetchSpy).toHaveBeenCalled();
 
     await router.push({ name: 'folder', params: { id: '123' } });
     await wrapper.vm.$nextTick();
     vi.runAllTimers();
 
-    expect(goToRootFolderSpy).toBeCalledWith('123');
+    // Should have been called again for the new route
+    expect(refetchSpy).toHaveBeenCalledTimes(2);
   });
 });
