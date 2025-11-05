@@ -43,48 +43,80 @@ defineProps<ReportProps>();
 </script>
 
 <template>
-  <div v-if="hasReported">
-    <p>Thank you for your report!</p>
-  </div>
-  <div v-else>
-    <div v-if="!hasClicked" class="report">
-      <p>
-        Is this content harmful?
-        <span
-          class="clickable"
-          @click.prevent="handleClickReport({ uploadId, containerId })"
-        >
-          Report it</span
-        ><span class="transparent">transparent text</span>
-      </p>
+  <div class="report-section">
+    <div v-if="hasReported" class="report-message">
+      <p>Thank you for your report!</p>
     </div>
-    <div v-else class="report">
-      <p>
-        Please confirm your report
-        <span
-          class="clickable"
-          @click.prevent="reportContent({ uploadId, containerId })"
-          >here</span
-        >
-        <!--This is a temporary pre-MVP way for us to test suspicious files  -->
-        <span
-          class="clickable transparent"
-          @click.prevent="markAsSuspicious({ uploadId, containerId })"
-          >transparent text</span
-        >
-      </p>
+    <div v-else>
+      <div v-if="!hasClicked" class="report-content">
+        <p class="report-text">
+          Is this content harmful?
+          <a
+            class="link"
+            @click.prevent="handleClickReport({ uploadId, containerId })"
+          >
+            Report it</a
+          ><span class="transparent">transparent text</span>
+        </p>
+      </div>
+      <div v-else class="report-content">
+        <p class="report-text">
+          Please confirm your report
+          <a
+            class="link"
+            @click.prevent="reportContent({ uploadId, containerId })"
+          >
+            here</a
+          >
+          <!--This is a temporary pre-MVP way for us to test suspicious files  -->
+          <span
+            class="link transparent"
+            @click.prevent="markAsSuspicious({ uploadId, containerId })"
+          >
+            transparent text</span
+          >
+        </p>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.report {
+.report-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e5e5;
+}
+
+.report-message {
+  color: #333;
+  font-size: 0.9375rem;
+}
+
+.report-message p {
+  margin: 0;
+}
+
+.report-content {
   display: flex;
 }
-.clickable {
-  cursor: pointer;
-  color: blue;
+
+.report-text {
+  color: #666;
+  font-size: 0.9375rem;
+  margin: 0;
 }
+
+.link {
+  color: #0066cc;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
 .transparent {
   color: transparent;
 }

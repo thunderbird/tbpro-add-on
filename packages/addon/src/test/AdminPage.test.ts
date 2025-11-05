@@ -13,7 +13,7 @@ describe('AdminPage', () => {
   it('renders TB Pro heading and Send toggle', () => {
     const wrapper = mountWithPlugins(AdminPage);
     expect(wrapper.get('[data-testid="tbpro-heading"]').text()).toContain(
-      'TB Pro Services'
+      'Your Services'
     );
     expect(wrapper.get('[data-testid="label-send"]').text()).toBe('Send');
     expect(wrapper.find('[data-testid="toggle-send"]').exists()).toBe(true);

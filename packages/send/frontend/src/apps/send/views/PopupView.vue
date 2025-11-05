@@ -251,13 +251,13 @@ onMounted(async () => {
       </ul>
     </div>
     <form v-if="!isError" @submit.prevent="uploadAndShare">
-      <div class="flex items-center gap-x-2">
+      <div class="checkbox-container">
         <input
           type="checkbox"
           :disabled="isUploading"
           @click="togglePasswordField"
         />
-        <h3 class="font-semibold">Require password</h3>
+        <h3 class="checkbox-label">Require password</h3>
       </div>
 
       <div v-if="isPasswordProtected" class="password">
@@ -265,7 +265,7 @@ onMounted(async () => {
           v-model="password"
           :type="passwordFieldType"
           :disabled="isUploading"
-          class="w-full"
+          class="password-input"
         />
         <button @click.prevent="togglePasswordVisibility">
           <IconEye v-if="!isPasswordVisible" />
@@ -273,12 +273,12 @@ onMounted(async () => {
         </button>
       </div>
 
-      <p class="mb-6">
+      <p class="password-note">
         The recipient will need this password to access this file.
       </p>
 
-      <div class="flex justify-center">
-        <Btn primary class="max-w-md">
+      <div class="submit-container">
+        <Btn primary class="submit-button">
           <ShieldIcon />
           <input
             type="submit"
@@ -311,13 +311,41 @@ form {
   margin-bottom: 2rem;
 }
 
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-label {
+  font-weight: 600;
+}
+
 .password {
   position: relative;
 }
+
+.password-input {
+  width: 100%;
+}
+
 .password button {
   position: absolute;
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+.password-note {
+  margin-bottom: 1.5rem;
+}
+
+.submit-container {
+  display: flex;
+  justify-content: center;
+}
+
+.submit-button {
+  max-width: 28rem;
 }
 </style>

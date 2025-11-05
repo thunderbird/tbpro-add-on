@@ -1,8 +1,6 @@
 // stores/auth-store.js
 
-import { formatLoginURL } from '@send-frontend/lib/helpers';
-import { openPopup } from '@send-frontend/lib/login';
-import { useApiStore, useConfigStore } from '@send-frontend/stores';
+import { useApiStore } from '@send-frontend/stores';
 import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
@@ -24,7 +22,6 @@ const userManager = new UserManager(settings);
 
 export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
-  const { isExtension } = useConfigStore();
 
   const isLoggedIn = ref(false);
   const currentUser = ref<User | null>(null);
@@ -73,28 +70,36 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function handleOIDCCallback() {
     try {
-
       const user = await userManager.signinCallback();
       currentUser.value = user;
 
-      window.addEventListener("message", (e) => {
-        if (e.origin === window.location.origin && e.data?.type === "TB/BRIDGE_READY") {
-          console.log("[web app] bridge says: ready");
+      window.addEventListener('message', (e) => {
+        if (
+          e.origin === window.location.origin &&
+          e.data?.type === 'TB/BRIDGE_READY'
+        ) {
+          console.log('[web app] bridge says: ready');
         }
       });
 
       // Send one tiny ping to the bridge.
-      window.postMessage({ type: "APP/PING", text: "hello from auth store 👋" }, window.location.origin);
+      window.postMessage(
+        { type: 'APP/PING', text: 'hello from auth store 👋' },
+        window.location.origin
+      );
       // Send the token.
 
       console.log(`[handleOIDCCallback] sending refresh token as token 🤞🤞`);
-      window.postMessage({
-        type: "TB/OIDC_TOKEN",
-        token: user.access_token,
-        // token: user.refresh_token,
-        email: user.profile.email,
-        preferred_username: user.profile.preferred_username,
-      }, window.location.origin);
+      window.postMessage(
+        {
+          type: 'TB/OIDC_TOKEN',
+          token: user.access_token,
+          // token: user.refresh_token,
+          email: user.profile.email,
+          preferred_username: user.profile.preferred_username,
+        },
+        window.location.origin
+      );
 
       // Send the access token to our backend to create/update user
       const response = await api.call('auth/oidc/authenticate', {
@@ -196,27 +201,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ------- Legacy Mozilla Account Support (for backward compatibility) ------- //
-
-  async function loginToMozAccount({
-    onSuccess,
-  }: { onSuccess?: () => void } = {}) {
-    const resp = await api.call(`lockbox/fxa/login`);
-    const formattedUrl = formatLoginURL(resp.url);
-
-    if (!resp.url) {
-      console.error('No URL returned from login endpoint');
-      return;
-    }
-
-    if (!isExtension && window) {
-      window.open(formattedUrl);
-      if (onSuccess) onSuccess();
-    } else {
-      await openPopup(formattedUrl, onSuccess);
-    }
-  }
-
   // Legacy alias for backward compatibility
   const loginToKeyCloak = loginToOIDC;
 
@@ -233,9 +217,6 @@ export const useAuthStore = defineStore('auth', () => {
     getAccessToken,
     logoutFromOIDC,
     refreshToken,
-
-    // Legacy Methods
-    loginToMozAccount,
     loginToKeyCloak, // Alias for loginToOIDC
   };
 });

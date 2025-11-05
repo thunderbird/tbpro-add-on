@@ -238,40 +238,43 @@ export async function acceptAccessLink(
 }
 
 export async function getContainerForAccessLink(linkId: string) {
-  const query = {
-    where: {
-      id: linkId,
-    },
-    select: {
-      share: {
-        select: {
-          container: {
-            include: {
-              items: {
-                where: {
-                  upload: {
-                    isNot: {
-                      reported: true,
-                    },
+  try {
+    const result = await prisma.accessLink.findUniqueOrThrow({
+      where: {
+        id: linkId,
+      },
+      select: {
+        share: {
+          select: {
+            container: {
+              include: {
+                owner: {
+                  select: {
+                    email: true,
                   },
                 },
-                include: {
-                  upload: true,
+                items: {
+                  where: {
+                    upload: {
+                      isNot: {
+                        reported: true,
+                      },
+                    },
+                  },
+                  include: {
+                    upload: true,
+                  },
                 },
               },
             },
           },
         },
       },
-    },
-  };
-
-  const result = await fromPrismaV2(
-    prisma.accessLink.findUniqueOrThrow,
-    query,
-    ACCESSLINK_NOT_FOUND
-  );
-  return result?.share.container;
+    });
+    return result?.share.container;
+  } catch (error) {
+    throw new Error(ACCESSLINK_NOT_FOUND);
+  }
 }
 
 /**

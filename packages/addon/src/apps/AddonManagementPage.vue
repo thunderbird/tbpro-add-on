@@ -1,28 +1,16 @@
 <script setup lang="ts">
+import TbproLogo from '@addon/assets/TbproLogo.vue';
+import WithLoader from '@addon/assets/WithLoader.vue';
 import { BASE_URL } from '@send-frontend/apps/common/constants';
-import LoadingComponent from '@send-frontend/apps/common/LoadingComponent.vue';
-import LogOutButton from '@send-frontend/apps/send/elements/LogOutButton.vue';
 import { useAuth } from '@send-frontend/lib/auth';
 import AuthButtons from '@send-frontend/lib/auth/AuthButtons.vue';
-import {
-  useAuthStore,
-  useUserStore as useUserStoreSend,
-} from '@send-frontend/stores';
+import { useAuthStore } from '@send-frontend/stores';
 import AdminPage from './AdminPage.vue';
 
 const authStore = useAuthStore();
-const { clearUserFromStorage: clearUser_send } = useUserStoreSend();
-const { isLoggedIn, refetchAuth, logOutAuth, isLoadingAuth } = useAuth();
-const { loginToOIDC, loginToMozAccount } = authStore;
 
-const handleLogout = async () => {
-  await logOutAuth();
-  await clearUser_send();
-};
-
-async function _loginToMozAccount() {
-  loginToMozAccount({ onSuccess: refetchAuth });
-}
+const { isLoggedIn, refetchAuth, isLoadingAuth } = useAuth();
+const { loginToOIDC } = authStore;
 
 async function _loginToOIDC() {
   loginToOIDC({ onSuccess: refetchAuth, isExtension: true });
@@ -39,22 +27,22 @@ function _loginToOIDCForExtension() {
 </script>
 
 <template>
-  <div class="container">
-    <LoadingComponent v-if="isLoadingAuth" />
-    <div v-else>
-      <div v-if="!isLoggedIn">
+  <div class="content">
+    <TbproLogo />
+    <WithLoader :is-loading="isLoadingAuth">
+      <div v-if="!isLoggedIn" class="login-section">
+        <p class="description">
+          Sign in with Thunderbird Pro to use Send or restore access to your
+          encrypted files.
+        </p>
         <AuthButtons
           :is-extension="true"
-          :login-to-moz-account="_loginToMozAccount"
           :login-to-oidc="_loginToOIDC"
           :login-to-oidc-for-extension="_loginToOIDCForExtension"
         />
       </div>
-
-      <log-out-button v-if="isLoggedIn" :log-out="handleLogout" />
-
-      <AdminPage v-if="isLoggedIn" />
-    </div>
+      <AdminPage v-else />
+    </WithLoader>
   </div>
 </template>
 
@@ -64,14 +52,32 @@ function _loginToOIDCForExtension() {
   flex-direction: column;
   align-items: start;
   justify-content: center;
-  gap: 1rem 0;
-  margin-top: 2rem;
+  padding: 2rem;
+  max-width: 700px;
+  margin: 0 auto;
 }
-p {
-  color: #000;
-  font-size: 13px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
+
+.content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 38rem;
+}
+
+.login-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.header-section {
+  margin-bottom: 0.5rem;
+}
+
+.description {
+  color: #333;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 1rem 0 0 0;
 }
 </style>

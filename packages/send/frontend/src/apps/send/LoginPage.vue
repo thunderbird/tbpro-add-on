@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
@@ -8,11 +7,12 @@ import { useAuthStore } from '@send-frontend/stores';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
-import { logger } from 'tbpro-shared';
+import { PrimaryButton } from '@thunderbirdops/services-ui';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FeedbackBox from '../common/FeedbackBox.vue';
-import FxaLogin from '../common/FxaLogin.vue';
+
+import LoginIndicator from '../common/LoginIndicator.vue';
 import PublicLogin from '../common/PublicLogin.vue';
 import SecureSendIcon from '../common/SecureSendIcon.vue';
 import StatusBar from '../common/StatusBar.vue';
@@ -27,7 +27,7 @@ const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
 const { isPublicLogin } = useConfigStore();
 const { isExtension } = useConfigStore();
-const { loginToMozAccount, loginToOIDC } = useAuthStore();
+const { loginToOIDC } = useAuthStore();
 const { isRouteExtension } = useIsRouteExtension();
 
 const router = useRouter();
@@ -53,14 +53,6 @@ async function pingSession() {
   }
 }
 
-async function mozAcctLogin() {
-  loginToMozAccount({
-    onSuccess: () => {
-      logger.info('Login successful');
-    },
-  });
-}
-
 async function onSuccess() {
   await dbUserSetup(userStore, keychain, folderStore);
   await pingSession();
@@ -82,24 +74,22 @@ async function _loginToOIDC() {
     <div v-if="isRouteExtension">
       <p>Redirecting to TB Pro login...</p>
     </div>
-
-    <TBBanner />
-    <FxaLogin v-if="!isPublicLogin" :id="user.id">
-      <Btn primary data-testid="login-button" @click.prevent="mozAcctLogin"
-        >Login to Mozilla Account</Btn
-      >
-      <Btn
-        v-if="!isExtension"
-        primary
-        data-testid="login-button-tbpro"
-        @click.prevent="_loginToOIDC"
-        >Log in using your TB Pro Account</Btn
-      >
-    </FxaLogin>
-    <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />
-    <FeedbackBox />
-    <SecureSendIcon />
-    <StatusBar />
+    <div v-else>
+      <TBBanner />
+      <LoginIndicator v-if="!isPublicLogin" :id="user.id">
+        <PrimaryButton
+          v-if="!isExtension"
+          primary
+          data-testid="login-button-tbpro"
+          @click.capture="_loginToOIDC"
+          >Log in using your TB Pro Account</PrimaryButton
+        >
+      </LoginIndicator>
+      <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />
+      <FeedbackBox />
+      <SecureSendIcon />
+      <StatusBar />
+    </div>
   </main>
 </template>
 

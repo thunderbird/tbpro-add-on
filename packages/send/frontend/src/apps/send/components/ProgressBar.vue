@@ -9,32 +9,55 @@ onUnmounted(() => {
 });
 </script>
 <template>
-  <div>
-    <p>{{ progress.text }}</p>
-  </div>
-  <div>
+  <div class="progress-content">
+    <h2 class="title">{{ progress.text }}</h2>
     <div class="progress-bar-container">
       <div
         class="progress-bar"
         :style="{ width: progress.percentage + '%' }"
       ></div>
     </div>
-    <span>{{ progress.percentage }} %</span>
+    <span class="progress-percentage">{{ progress.percentage }}%</span>
   </div>
 </template>
 
 <style scoped>
+.progress-content {
+  position: relative;
+  max-width: 600px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #4285f4;
+  margin: 0 0 1.5rem 0;
+}
+
+.progress-text {
+  color: #333;
+  margin: 0 0 1rem 0;
+}
+
 .progress-bar-container {
   width: 100%;
-  height: 20px;
-  background-color: #e0e0e0;
-  border-radius: 10px;
+  height: 8px;
+  background-color: #e5e5e5;
+  border-radius: 4px;
   overflow: hidden;
+  margin-bottom: 0.5rem;
 }
 
 .progress-bar {
   height: 100%;
-  background-color: #4caf50;
+  background-color: #4285f4;
   transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.progress-percentage {
+  color: #666;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 </style>

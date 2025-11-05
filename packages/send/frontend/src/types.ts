@@ -135,6 +135,7 @@ export interface Upload {
   daysToExpiry?: number;
   part?: number; // true if the file was split into multiple zips
   reported?: boolean; // true if the upload was reported for abuse
+  fileHash?: string;
 }
 
 export interface Backup {
