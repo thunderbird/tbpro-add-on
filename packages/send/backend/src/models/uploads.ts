@@ -46,8 +46,8 @@ export async function createUpload(
         fileHash,
       },
     });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
+    console.error('ERROR creating upload:', error);
     throw new BaseError(UPLOAD_NOT_CREATED);
   }
 }
