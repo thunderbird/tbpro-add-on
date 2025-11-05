@@ -193,7 +193,7 @@ watch(
 .error-message {
   background-color: #fee2e2;
   border: 1px solid #fecaca;
-  color: #dc2626;
+  color: var(--critical);
   padding: 0.75rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;

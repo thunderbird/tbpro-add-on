@@ -1,30 +1,34 @@
 <script setup lang="ts">
-import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import { PrimaryButton } from '@thunderbirdops/services-ui';
+import { ref } from 'vue';
+
 type ReturnType = Promise<void> | void;
 defineProps<{
   isExtension: boolean;
-  loginToMozAccount: () => ReturnType;
   loginToOidc: () => ReturnType;
   loginToOidcForExtension: () => ReturnType;
 }>();
+
+const loginText = ref('Log in using your TB Pro Account');
 </script>
 
-<template>
-  <Btn primary data-testid="login-button" @click.prevent="loginToMozAccount"
-    >Log into Mozilla Account</Btn
-  >
-  <Btn
+<template class="auth-buttons">
+  <PrimaryButton
     v-if="!isExtension"
-    primary
     data-testid="login-button-tbpro"
-    @click.prevent="loginToOidc"
-    >Log in using your TB Pro Account</Btn
+    @click.capture="loginToOidc"
+    >{{ loginText }}</PrimaryButton
   >
-  <Btn
+  <PrimaryButton
     v-if="isExtension"
-    secondary
     data-testid="extension-management-button"
-    @click.prevent="loginToOidcForExtension"
-    >Log in using your TB Pro Account</Btn
+    @click.capture="loginToOidcForExtension"
+    >{{ loginText }}</PrimaryButton
   >
 </template>
+
+<style scoped>
+.auth-buttons {
+  margin: 1rem;
+}
+</style>

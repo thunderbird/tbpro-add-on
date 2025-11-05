@@ -6,6 +6,7 @@ import logger from '@send-frontend/logger';
 import { Container } from '@send-frontend/types';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import DownloadTemplate from './DownloadTemplate.vue';
 
 const route = useRoute();
 const sharingStore = useSharingStore();
@@ -25,7 +26,8 @@ onMounted(async () => {
 </script>
 <template>
   <div v-if="folder?.id">
-    <h1>Shared files for folder id: {{ containerId }}</h1>
-    <FolderTree :folder="folder" :container-id="containerId" />
+    <DownloadTemplate>
+      <FolderTree :folder="folder" :container-id="containerId" />
+    </DownloadTemplate>
   </div>
 </template>

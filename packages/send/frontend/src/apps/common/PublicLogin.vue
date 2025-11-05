@@ -15,7 +15,6 @@ function toggleForm() {
 </script>
 
 <template>
-  <p>You’ll need to login to your Mozilla account to use Thunderbird Send</p>
   <div>
     <div v-if="isLoggingIn">
       <LoginForm :on-success="onSuccess" />

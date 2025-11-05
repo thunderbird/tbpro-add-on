@@ -5,7 +5,7 @@ import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { onMounted } from 'vue';
 
 const { isTbproExtension } = defineProps<{
-  isTbproExtension: boolean;
+  isTbproExtension?: boolean;
 }>();
 
 const { useLoginQuery } = useSendConfig();

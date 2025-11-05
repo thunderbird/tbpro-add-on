@@ -91,9 +91,6 @@ const onDeleteConfirm = async () => {
 
 const { open, close: closefn } = useModal({
   component: DownloadModal,
-  attrs: {
-    title: 'Download File?',
-  },
   slots: {
     default: useModalSlot({
       component: DownloadConfirmation,

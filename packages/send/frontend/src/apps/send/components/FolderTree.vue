@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import DownloadModal from '@send-frontend/apps/common/modals/DownloadModal.vue';
-import ReportContent from '@send-frontend/apps/send/components/ReportContent.vue';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { useStatusStore } from '@send-frontend/apps/send/stores/status-store';
 import {
@@ -8,10 +7,10 @@ import {
   handleMultipartDownload,
 } from '@send-frontend/lib/folderView';
 import { useApiStore, useKeychainStore } from '@send-frontend/stores';
-import prettyBytes from 'pretty-bytes';
 import { computed, ref } from 'vue';
 import { useModal, useModalSlot } from 'vue-final-modal';
 import { FolderResponse, Item } from '../stores/folder-store.types';
+import DownloadInfo from '../views/DownloadInfo.vue';
 import DownloadConfirmation from './DownloadConfirmation.vue';
 const folderStore = useFolderStore();
 const statusStore = useStatusStore();
@@ -57,9 +56,6 @@ const onDownloadConfirm = () => {
 
 const { open, close: closefn } = useModal({
   component: DownloadModal,
-  attrs: {
-    title: 'Download File?',
-  },
   slots: {
     default: useModalSlot({
       component: DownloadConfirmation,
@@ -69,7 +65,6 @@ const { open, close: closefn } = useModal({
           return closefn();
         },
         confirm: onDownloadConfirm,
-        text: `Please note that you are downloading a file shared via Send. Send does not scan files for viruses, malware, or other harmful content. We recommend that you only download files from trusted sources and use your own virus protection software. Send is not responsible for any issues that may arise from this download.`,
       },
     }),
   },
@@ -80,38 +75,32 @@ async function setDownload(item: Item) {
 }
 </script>
 <template>
-  <ul v-if="folder">
-    <div v-if="!folder?.items?.length">
-      <p>This folder is empty or the files uploaded to it have expired</p>
-    </div>
-    <li v-for="(item, i) of filesInFolder" :key="item.uploadId">
-      <div class="flex justify-between">
-        <div>
-          id: {{ item.uploadId }}<br />
-          file name: {{ item.name }}<br />
-          size: {{ prettyBytes(item.upload.size) }}<br />
-          mime type: {{ item.upload.type }}<br />
-        </div>
-        <button
-          type="submit"
-          class="inline-flex items-center justify-center rounded-lg px-4 py-3 transition duration-500 ease-in-out text-white bg-blue-500 hover:bg-blue-400 focus:outline-none: disabled:bg-gray-400"
-          @click.prevent="
-            () => {
-              open();
-              setDownload(item);
-            }
-          "
-        >
-          <span :data-testid="`download-button-${i}`" class="font-bold"
-            >Download</span
-          >
-        </button>
-      </div>
-      <div>
-        <ReportContent :upload-id="item.uploadId" :container-id="containerId" />
-      </div>
-    </li>
-  </ul>
+  <div v-for="(item, i) in filesInFolder" :key="item.uploadId">
+    <DownloadInfo
+      :id="item?.upload?.id"
+      :index="i"
+      :sender="folder?.owner?.email"
+      :filename="item?.name"
+      :filesize="item?.upload?.size"
+      :days-to-expiry="item?.upload?.daysToExpiry"
+      :created-at="item?.createdAt"
+      :hash="item?.upload?.fileHash"
+      :container-id="containerId"
+      :handle-download="
+        () => {
+          open();
+          setDownload(item);
+        }
+      "
+    ></DownloadInfo>
+  </div>
+
+  <div v-if="!folder?.items?.length">
+    <p>
+      This link is no longer active. Please reach out to the sender for a new
+      download link.
+    </p>
+  </div>
 </template>
 
 <style scoped>

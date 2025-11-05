@@ -2,8 +2,6 @@ import { RouteRecordRaw, createRouter, createWebHistory } from 'vue-router';
 
 import FolderView from '@send-frontend/apps/send/components/FolderView.vue';
 import ProfileView from '@send-frontend/apps/send/components/ProfileView.vue';
-import Received from '@send-frontend/apps/send/components/Received.vue';
-import Sent from '@send-frontend/apps/send/components/Sent.vue';
 import Send from '@send-frontend/apps/send/pages/WebPage.vue';
 
 import Share from '@send-frontend/apps/send/pages/SharePage.vue';
@@ -17,6 +15,7 @@ import {
   validateToken,
 } from '@send-frontend/lib/validations';
 
+import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import {
   useApiStore,
@@ -47,6 +46,7 @@ enum META_OPTIONS {
   requiresRetryCountCheck = 'requiresRetryCountCheck',
   resolveDefaultFolder = 'resolveDefaultFolder',
   isAvailableForExtension = 'isAvailableForExtension',
+  closeOnExtension = 'closeOnExtension',
 }
 
 export const routes: RouteRecordRaw[] = [
@@ -117,21 +117,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.autoRestoresKeys]: true,
-        },
-      },
-      {
-        path: 'sent',
-        component: Sent,
-        meta: {
-          [META_OPTIONS.requiresValidToken]: true,
-          [META_OPTIONS.autoRestoresKeys]: true,
-        },
-      },
-      {
-        path: 'received',
-        component: Received,
-        meta: {
-          [META_OPTIONS.requiresValidToken]: true,
+          [META_OPTIONS.closeOnExtension]: true,
         },
       },
       {
@@ -189,6 +175,7 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+  const { isRouteExtension } = useIsRouteExtension();
   const folderStore = useFolderStore();
   const statusStore = useStatusStore();
   const { isRouterLoading } = storeToRefs(statusStore);
@@ -211,6 +198,7 @@ router.beforeEach(async (to, from, next) => {
   );
   const resolveDefaultFolder = matchMeta(to, META_OPTIONS.resolveDefaultFolder);
   const requiresValidToken = matchMeta(to, META_OPTIONS.requiresValidToken);
+  const closeOnExtension = matchMeta(to, META_OPTIONS.closeOnExtension);
   const autoRestoresKeys = matchMeta(to, META_OPTIONS.autoRestoresKeys);
   const requiresBackedUpKeys = matchMeta(to, META_OPTIONS.requiresBackedUpKeys);
   const requiresRetryCountCheck = matchMeta(
@@ -237,6 +225,12 @@ router.beforeEach(async (to, from, next) => {
 
       return next('/login');
     }
+  }
+
+  // We don't want users to navigate the web application from the extension, just log in
+  // So if they're logged in, this window will close
+  if (closeOnExtension && isRouteExtension.value) {
+    window.close();
   }
 
   if (redirectOnValidSession && hasLocalStorageSession) {

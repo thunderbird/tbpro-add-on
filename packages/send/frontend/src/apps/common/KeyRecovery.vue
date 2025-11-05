@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import ButtonComponent from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import useMetricsStore from '@send-frontend/stores/metrics';
-import { CopyIcon } from '@thunderbirdops/services-ui';
+import { BaseButton, CopyIcon } from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import { useModal, useModalSlot } from 'vue-final-modal';
-import { useRouter } from 'vue-router';
 import ResetConfirmation from '../send/components/ResetConfirmation.vue';
 import DownloadIcon from './DownloadIcon.vue';
 import ResetModal from './modals/ResetModal.vue';
@@ -49,7 +48,6 @@ const { open, close: closefn } = useModal({
 });
 
 const { metrics } = useMetricsStore();
-const router = useRouter();
 
 const userSetPassword = ref('');
 const words = computed(() => wordsProp);
@@ -66,9 +64,10 @@ const submit = () => {
   restoreFromBackup();
 };
 
-const handleRestoreFromDevice = () => {
-  router.push('/prompt-verification');
-};
+// Temporarily disabled feature
+// const handleRestoreFromDevice = () => {
+//   router.push('/prompt-verification');
+// };
 </script>
 
 <template>
@@ -101,12 +100,12 @@ const handleRestoreFromDevice = () => {
   <div v-if="shouldBackup || overrideVisibility" class="container">
     <input
       data-testid="passphrase-input"
-      class="w-full"
+      class="passphrase-inputs"
       type="text"
       :value="words.join(' - ')"
       disabled
     />
-    <div class="flex button_box">
+    <div class="button_box">
       <button @click.prevent="onCopy(words.join(' - '))">
         <CopyIcon />
       </button>
@@ -116,16 +115,17 @@ const handleRestoreFromDevice = () => {
     </div>
   </div>
 
-  <div v-if="shouldRestore" class="flex">
+  <div v-if="shouldRestore" class="restore-container">
     <input
       v-model="userSetPassword"
-      class="w-full"
+      class="restore-input"
       type="text"
       data-testid="restore-key-input"
     />
   </div>
 
-  <div v-if="shouldRestore" class="flex">
+  <!-- This feature will be revamped and it's disabled for the time being -->
+  <!-- <div v-if="shouldRestore" class="flex">
     <button-component
       primary
       data-testid="restore-from-device"
@@ -133,7 +133,7 @@ const handleRestoreFromDevice = () => {
     >
       Restore from device
     </button-component>
-  </div>
+  </div> -->
 
   <button-component
     v-if="shouldBackup"
@@ -142,15 +142,15 @@ const handleRestoreFromDevice = () => {
     @click.prevent="makeBackup"
     >Encrypt and backup keys</button-component
   >
-  <button-component
+  <BaseButton
     v-if="shouldRestore"
     primary
     data-testid="restore-keys-button"
     @click.prevent="submit"
-    >Restore keys from backup</button-component
+    >Restore keys from backup</BaseButton
   >
 
-  <div v-if="overrideVisibility" class="mt-4">
+  <div v-if="overrideVisibility" class="reset-section">
     <p>
       <strong>Note:</strong> If you lose this key, you will not be able to
       access your files. We do not store your key on our servers and cannot
@@ -164,7 +164,7 @@ const handleRestoreFromDevice = () => {
     <button-component
       data-testid="restore-keys"
       danger
-      class="mt-4"
+      class="reset-button"
       @click.prevent="open"
       >Reset keys and lose access to previously created files</button-component
     >
@@ -177,7 +177,29 @@ const handleRestoreFromDevice = () => {
   grid-template-columns: 3fr 1fr;
   gap: 0.5rem;
 }
+
+.passphrase-inputs,
+.restore-input {
+  width: 100%;
+}
+
+.button_box {
+  display: flex;
+}
+
 .button_box button {
   width: 31px;
+}
+
+.restore-container {
+  display: flex;
+}
+
+.reset-section {
+  margin-top: 1rem;
+}
+
+.reset-button {
+  margin-top: 1rem;
 }
 </style>

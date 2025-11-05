@@ -53,6 +53,7 @@
     --colour-ti-success: #1d783b;
     --colour-accent-teal: #25a6a0;
     --colour-accent-blue: #58c9ff;
+    --accents-blue: #37adf9;
     --colour-accent-purple: #ae55f7;
     --colour-accent-orange: #ea7308;
     --colour-accent-pink: #e247c4;
@@ -72,6 +73,9 @@
     --colour-send-primary-accent-1: #1f8ddb;
     --colour-send-primary-accent-2: #1f8ddb;
     --surface-border: #e4e4e7;
+    --color-send-muted: #737584;
+    --critical: #dc2626;
+    --text-icon-secondary: #4c4d58;
   }
 }
 
@@ -90,4 +94,22 @@ html,
 body,
 #app {
   font-family: 'Inter', sans-serif;
+  background-color: #f5f5f5;
+}
+
+.btn-primary {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12);
+  background-image: linear-gradient(
+    to bottom,
+    var(--accents-blue),
+    var(--primary-default) 40%,
+    var(--primary-hover)
+  );
 }
