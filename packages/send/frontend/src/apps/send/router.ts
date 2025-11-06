@@ -31,7 +31,6 @@ import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
 import ManagementPage from './ManagementPage.vue';
 import PostLoginPage from './PostLoginPage.vue';
-import ExtensionPagev2 from './pages/ExtensionPage.vue';
 import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
 import PromptVerification from './pages/PromptVerification.vue';
@@ -152,7 +151,6 @@ export const routes: RouteRecordRaw[] = [
     children: IS_DEV
       ? [
           { path: 'popup', component: ExtensionPage },
-          { path: 'popupv2', component: ExtensionPagev2 },
           {
             path: 'management',
             component: ManagementPage,
