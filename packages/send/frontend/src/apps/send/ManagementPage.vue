@@ -22,7 +22,7 @@ const { isExtension } = useConfigStore();
 const { updateMetricsIdentity } = useMetricsUpdate();
 const authStore = useAuthStore();
 
-const { loginToOIDC, loginToMozAccount } = authStore;
+const { loginToOIDC } = authStore;
 useVerificationStore();
 
 const { isLoading } = useLoginQuery();
@@ -30,10 +30,6 @@ updateMetricsIdentity();
 
 async function _loginToOIDC() {
   loginToOIDC({ onSuccess: finishLogin, isExtension });
-}
-
-async function _loginToMozAccount() {
-  loginToMozAccount({ onSuccess: finishLogin });
 }
 
 function _loginToOIDCForExtension() {
@@ -64,7 +60,6 @@ function _loginToOIDCForExtension() {
         <div v-else class="flex flex-col items-start gap-4">
           <AuthButtons
             :is-extension="isExtension"
-            :login-to-moz-account="_loginToMozAccount"
             :login-to-oidc="_loginToOIDC"
             :login-to-oidc-for-extension="_loginToOIDCForExtension"
           />

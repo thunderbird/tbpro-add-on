@@ -29,7 +29,7 @@ export function useSendConfig() {
     if (hasForcedLogin) {
       // If we don't have a session, show the login button.
       isLoggedIn.value = false;
-      return;
+      return false;
     }
 
     // check local storage first
@@ -40,7 +40,7 @@ export function useSendConfig() {
       // If so, hydrate our user using session data.
       const didPopulate = await userStore.populateFromBackend();
       if (!didPopulate) {
-        return;
+        return false;
       }
       // app-sepcific initialization
       await init(userStore, keychain, folderStore);
@@ -52,6 +52,7 @@ export function useSendConfig() {
     // Identify user for analytics
     const uid = userStore?.user?.uniqueHash;
     initializeClientMetrics(uid);
+    return true;
   };
 
   async function finishLogin() {

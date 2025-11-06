@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
-import { onMounted, ref } from 'vue';
+import { useQuery } from '@tanstack/vue-query';
+import { computed, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import LoadingComponent from '../common/LoadingComponent.vue';
 
@@ -9,11 +10,9 @@ const authStore = useAuthStore();
 const router = useRouter();
 const { isRouteExtension } = useIsRouteExtension();
 
-const isLoading = ref(true);
-const error = ref<string | null>(null);
-
-onMounted(async () => {
-  try {
+const { error: queryError, isLoading } = useQuery({
+  queryKey: ['oidc-callback'],
+  queryFn: async () => {
     // Handle the OIDC callback
     const user = await authStore.handleOIDCCallback();
 
@@ -21,18 +20,28 @@ onMounted(async () => {
       // Authentication successful, redirect to main app
       // We add the isExtension query parameter to the URL so that the extension will close the web version and open the extension
       router.push(`/send/profile?isExtension=${isRouteExtension.value}`);
+      return user;
     } else {
       throw new Error('Authentication failed');
     }
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Authentication failed';
+  },
+  retry: 3,
+});
 
-    // Redirect to login page after a delay
+const error = computed(() =>
+  queryError.value instanceof Error
+    ? queryError.value.message
+    : queryError.value
+      ? 'Authentication failed'
+      : null
+);
+
+// Redirect to login page on error
+watchEffect(() => {
+  if (queryError.value) {
     setTimeout(() => {
       router.push('/login');
     }, 3000);
-  } finally {
-    isLoading.value = false;
   }
 });
 </script>

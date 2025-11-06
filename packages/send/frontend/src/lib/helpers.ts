@@ -233,7 +233,7 @@ export async function dbUserSetup(
     return;
   }
   // Store the user we got by populating from session.
-  userStore.store();
+  await userStore.store();
 
   // Check if the user has a public key.
   // If not, this is almost certainly a new user.
