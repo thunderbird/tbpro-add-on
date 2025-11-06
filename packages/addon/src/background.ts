@@ -227,11 +227,50 @@ browser.runtime.onMessage.addListener(async (message) => {
       break;
 
     case 'SIGN_IN':
+      // Open login page in new window.
+      // Inject script only into that page.
+      // The "<all_urls>" permission is necessary because matching localhost
+      // addresses isn't working.
+
       console.log(
         `[onMessage] sounds like you want to sign in from the typescript handler`
       );
-      await browser.tabs.create({
+
+
+      const newWindow = await browser.windows.create({
         url: `${BASE_URL}/login?isExtension=true`,
+        allowScriptsToClose: true,
+        type: 'popup',
+        height: 700,
+        width: 1100,
+      });
+
+      if (!newWindow.tabs || newWindow.tabs.length === 0) {
+        break;
+      }
+
+      const tabId = newWindow.tabs[0].id;
+
+      // The login flow follows at least one redirect.
+      // Inject into any page loaded into the newly created window.
+      const listener = async (updatedTabId, changeInfo) => {
+        if (updatedTabId === tabId && changeInfo.status === 'complete') {
+          try {
+            await browser.tabs.executeScript(tabId, {
+              file: "token-bridge.js"
+            });
+          } catch (error) {
+            console.error('Failed to inject script:', error);
+          }
+        }
+      };
+      browser.tabs.onUpdated.addListener(listener);
+
+      // Clean up.
+      browser.tabs.onRemoved.addListener((removedTabId) => {
+        if (removedTabId === tabId) {
+          browser.tabs.onUpdated.removeListener(listener);
+        }
       });
 
       break;
