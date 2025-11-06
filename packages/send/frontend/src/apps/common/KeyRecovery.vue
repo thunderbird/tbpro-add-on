@@ -58,7 +58,7 @@ const onCopy = (text: string) => {
   copy(text);
 };
 
-const submit = () => {
+const submit = async () => {
   metrics.capture('send.restore_keys_attempt', { type: 'attempt' });
   setPassphrase(userSetPassword.value);
   restoreFromBackup();

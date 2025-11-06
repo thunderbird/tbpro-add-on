@@ -30,7 +30,7 @@ onMounted(async () => {
       return;
     }
     await init(userStore, keychain, folderStore);
-    userStore.store();
+    await userStore.store();
   }
   // Identify user for analytics
   const uid = userStore.user.uniqueHash;

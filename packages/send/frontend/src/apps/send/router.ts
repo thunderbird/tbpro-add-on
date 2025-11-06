@@ -59,7 +59,6 @@ export const routes: RouteRecordRaw[] = [
     component: LoginPage,
     meta: {
       [META_OPTIONS.redirectOnValidSession]: true,
-      [META_OPTIONS.isAvailableForExtension]: true,
     },
   },
   {
@@ -77,7 +76,6 @@ export const routes: RouteRecordRaw[] = [
       [META_OPTIONS.requiresValidToken]: true,
       [META_OPTIONS.requiresBackedUpKeys]: true,
       [META_OPTIONS.autoRestoresKeys]: true,
-      [META_OPTIONS.isAvailableForExtension]: true,
     },
   },
   {
@@ -85,7 +83,6 @@ export const routes: RouteRecordRaw[] = [
     component: PromptVerification,
     meta: {
       [META_OPTIONS.requiresValidToken]: true,
-      [META_OPTIONS.isAvailableForExtension]: true,
     },
   },
   {
@@ -184,7 +181,7 @@ router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore();
   const { metrics } = useMetricsStore();
   useVerificationStore();
-  const { isExtension } = useConfigStore();
+  const { isThunderbirdHost } = useConfigStore();
 
   // We want to show the loading state when navigating to folder routes (on web)
   if (to.path.includes('/folder')) {
@@ -205,16 +202,6 @@ router.beforeEach(async (to, from, next) => {
     to,
     META_OPTIONS.requiresRetryCountCheck
   );
-  const isAvailableForExtension = matchMeta(
-    to,
-    META_OPTIONS.isAvailableForExtension
-  );
-
-  // First we make sure that the extension routes are available for extension (if applicable)
-  if (isExtension && !isAvailableForExtension) {
-    // this route will render empty content inside the extension
-    console.log('Extension route not available:', to.path);
-  }
 
   const hasLocalStorageSession = validateLocalStorageSession(userStore);
 
@@ -222,14 +209,13 @@ router.beforeEach(async (to, from, next) => {
     const isTokenValid = await validateToken(api);
     if (!isTokenValid) {
       metrics.capture('send.invalid.token');
-
       return next('/login');
     }
   }
 
   // We don't want users to navigate the web application from the extension, just log in
   // So if they're logged in, this window will close
-  if (closeOnExtension && isRouteExtension.value) {
+  if (closeOnExtension && (isRouteExtension.value || isThunderbirdHost)) {
     window.close();
   }
 
@@ -250,7 +236,14 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (autoRestoresKeys) {
-    await restoreKeysUsingLocalStorage(keychain, api);
+    try {
+      await restoreKeysUsingLocalStorage(keychain, api);
+      if (!userStore?.user?.email) {
+        await userStore.populateFromBackend();
+      }
+    } catch (error) {
+      console.error('Error restoring keys', error);
+    }
     // This was meant to avoid restoring keys on every route change, but it causes issues when navigating between routes that require keys
     // if (from.path !== to.path) {
     //   try {
@@ -264,7 +257,6 @@ router.beforeEach(async (to, from, next) => {
   if (to.path === '/send/folder/null') {
     // If the user tries to access the folder with id 'null', we redirect them to the root folder
     const rootFolderId = await folderStore.getDefaultFolderId();
-
     return next(`/send/folder/${rootFolderId}`);
   }
 

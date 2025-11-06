@@ -8,6 +8,14 @@ export const useConfigStore = defineStore('config', () => {
   const isStaging = environmentName === 'staging';
   const isDev = environmentName === 'development';
 
+  const isThunderbirdHost = computed(() => {
+    // Theck if the User-Agent
+    return navigator.userAgent.includes('Thunderbird');
+  });
+
+  /**
+   * @deprecated Use isThunderbirdHost instead
+   */
   const isExtension = computed(() => {
     return location.href.includes('moz-extension:');
   });
@@ -41,6 +49,7 @@ export const useConfigStore = defineStore('config', () => {
     // Extension
     isExtension,
     isTbproExtension,
+    isThunderbirdHost,
   };
 });
 
