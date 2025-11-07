@@ -315,6 +315,7 @@ jobs:
           aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
       - name: Deploy to ATN
+        continue-on-error: true
         id: xpi-deploy
         shell: bash
         env:
