@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import init from '@send-frontend/lib/init';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
@@ -8,12 +7,6 @@ import { onMounted } from 'vue';
 
 import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
 import useMetricsStore from '@send-frontend/stores/metrics';
-import { ModalsContainer } from 'vue-final-modal';
-import CompatibilityBanner from '../common/CompatibilityBanner.vue';
-import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
-import SecureSendIcon from '../common/SecureSendIcon.vue';
-import StatusBar from '../common/StatusBar.vue';
-import TBBanner from '../common/TBBanner.vue';
 import PopupView from './views/PopupView.vue';
 
 const userStore = useUserStore();
@@ -33,15 +26,7 @@ useMetricsUpdate();
 
 <template>
   <div id="send-page" class="container">
-    <CompatibilityBoundary>
-      <CompatibilityBanner />
-      <TBBanner />
-      <PopupView />
-      <SecureSendIcon />
-      <FeedbackBox />
-      <StatusBar />
-      <ModalsContainer />
-    </CompatibilityBoundary>
+    <PopupView />
   </div>
 </template>
 

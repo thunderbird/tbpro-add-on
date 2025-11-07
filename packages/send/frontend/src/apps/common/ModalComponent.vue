@@ -27,7 +27,6 @@ export default {
   margin: 10% auto;
   padding: 20px;
   background: #fff;
-  width: 50%;
 }
 .modal-close {
   position: absolute;
