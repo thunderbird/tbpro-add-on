@@ -31,6 +31,7 @@ import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
 import ManagementPage from './ManagementPage.vue';
 import PostLoginPage from './PostLoginPage.vue';
+import ClosePage from './pages/ClosePage.vue';
 import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
 import PromptVerification from './pages/PromptVerification.vue';
@@ -64,6 +65,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/logout',
     component: LogOutPage,
+  },
+  {
+    path: '/close',
+    component: ClosePage,
   },
   {
     path: '/post-login',
