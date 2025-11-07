@@ -58,7 +58,8 @@ async function shareIndividualFile() {
   isLoading.value = true;
   const url = await sharingStore.shareItems(
     [folderStore.selectedFile],
-    password.value
+    password.value,
+    expiration.value
   );
 
   if (!url) {

@@ -1,7 +1,6 @@
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
-import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig, loadEnv } from 'vite';
 import { packageJson, sharedViteConfig } from './sharedViteConfig';
 
@@ -22,7 +21,6 @@ export default defineConfig(({ mode }) => {
           appHost: 'management',
         },
       }),
-      visualizer(),
     ],
     test: {
       include: ['**/*.test.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
