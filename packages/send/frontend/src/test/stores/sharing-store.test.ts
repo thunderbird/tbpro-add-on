@@ -51,7 +51,8 @@ describe(`Sharing Store`, () => {
 
       expect(mockShareItemsWithPassword).toHaveBeenCalledWith(
         itemsArray,
-        expectedPasswordHash
+        expectedPasswordHash,
+        undefined
       );
       expect(result).toBe(`${URL}#${expectedPasswordHash}`);
     });
@@ -73,7 +74,8 @@ describe(`Sharing Store`, () => {
 
       expect(mockShareItemsWithPassword).toHaveBeenCalledWith(
         itemsArray,
-        password
+        password,
+        undefined
       );
       expect(result).toBe(`${URL}`);
     });
@@ -96,7 +98,8 @@ describe(`Sharing Store`, () => {
 
       expect(mockShareItemsWithPassword).toHaveBeenCalledWith(
         itemsArray,
-        password
+        password,
+        undefined
       );
       expect(result).toBeNull();
     });

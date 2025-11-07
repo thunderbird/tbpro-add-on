@@ -118,7 +118,8 @@ const useSharingStore = defineStore('sharingManager', () => {
 
   async function shareItems(
     itemsArray: Item[],
-    password: string
+    password: string,
+    expiration?: string
   ): Promise<string | null> {
     let shouldAddPasswordAsHash = false;
 
@@ -127,7 +128,11 @@ const useSharingStore = defineStore('sharingManager', () => {
       shouldAddPasswordAsHash = true;
     }
 
-    let url = await sharer.shareItemsWithPassword(itemsArray, password);
+    let url = await sharer.shareItemsWithPassword(
+      itemsArray,
+      password,
+      expiration
+    );
 
     if (!url) {
       return null;

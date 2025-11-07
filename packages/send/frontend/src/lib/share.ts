@@ -40,7 +40,11 @@ export default class Sharer {
   }
 
   // Creates AccessLink
-  async shareItemsWithPassword(items: Item[], password: string) {
+  async shareItemsWithPassword(
+    items: Item[],
+    password: string,
+    expiration?: string
+  ) {
     const __items: Item[] = [];
     // Loop through the items
     // Multipart items should be handled by `handleMultipartItems`
@@ -54,7 +58,7 @@ export default class Sharer {
     }
 
     const containerId = await this.createShareOnlyContainer(__items, null);
-    return await this.requestAccessLink(containerId, password);
+    return await this.requestAccessLink(containerId, password, expiration);
   }
 
   // Creates Invitation

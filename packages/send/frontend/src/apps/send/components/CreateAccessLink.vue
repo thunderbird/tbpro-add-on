@@ -112,6 +112,7 @@ watch(
     </label>
     <label class="form-label">
       <span class="label-text">Link Expires</span>
+      <input v-model="expiration" type="datetime-local" />
     </label>
     <label class="form-label password-field">
       <span class="label-text">Password</span>
