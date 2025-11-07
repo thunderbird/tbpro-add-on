@@ -51,9 +51,9 @@ function updatePassword(value: string) {
   emit('update:password', value);
 }
 
-function updatePasswordHint(value: string) {
-  emit('update:passwordHint', value);
-}
+// function updatePasswordHint(value: string) {
+//   emit('update:passwordHint', value);
+// }
 </script>
 
 <template>
@@ -125,8 +125,8 @@ function updatePasswordHint(value: string) {
         </p>
       </div>
 
-      <!-- Password Hint -->
-      <div class="field-group">
+      <!-- Password Hint (coming soon) -->
+      <!-- <div class="field-group">
         <label for="password-hint" class="field-label">Password Hint</label>
         <input
           id="password-hint"
@@ -141,7 +141,7 @@ function updatePasswordHint(value: string) {
           first ten letters of your last name and all four letters of your phone
           number"
         </p>
-      </div>
+      </div> -->
     </div>
   </FileUploadTemplate>
 </template>

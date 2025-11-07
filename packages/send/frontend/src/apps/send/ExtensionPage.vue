@@ -37,7 +37,6 @@ useMetricsUpdate();
   align-items: center;
   justify-content: center;
   gap: 1rem 0;
-  margin-top: 2rem;
 }
 p {
   color: #000;
