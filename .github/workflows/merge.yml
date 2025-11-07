@@ -408,6 +408,7 @@ jobs:
           path: packages/addon/tbpro-addon-stage-*.xpi
 
       - name: Deploy to ATN
+        continue-on-error: true
         id: xpi-deploy
         shell: bash
         env:
