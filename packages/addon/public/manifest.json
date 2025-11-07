@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "0.10.3",
+  "version": "0.11.0",
   "author": "Thunderbird Team",
   "name": "Thunderbird Pro",
   "description": "Thunderbird and friends",
@@ -8,7 +8,7 @@
     "gecko": {
       "id": "tbpro-addon-stage@thunderbird.net",
       "strict_min_version": "128.0",
-      "strict_max_version": "144.*"
+      "strict_max_version": "146.*"
     }
   },
   "background": {

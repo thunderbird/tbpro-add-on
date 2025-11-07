@@ -31,6 +31,7 @@ export async function updateManifestConfig(): Promise<void> {
     if (isProd) {
       // Replace the id in the image line
       manifestContent = manifestContent.replace(ID_FOR_STAGE, ID_FOR_PROD);
+      manifestContent = manifestContent.replace(NAME_FOR_STAGE, NAME_FOR_PROD);
     } else {
       // Replace name to tag stage
       manifestContent = manifestContent.replace(NAME_FOR_PROD, NAME_FOR_STAGE);
