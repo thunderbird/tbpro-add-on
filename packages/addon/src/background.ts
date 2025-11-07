@@ -230,10 +230,14 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log(
         `[onMessage] sounds like you want to sign in from the typescript handler`
       );
-      await browser.tabs.create({
+      await browser.windows.create({
         url: `${BASE_URL}/login?isExtension=true`,
+        type: "popup",
+        allowScriptsToClose: true,
+        height: 750,
+        width: 980,
+        linkHandler: "relaxed",
       });
-
       break;
 
     // Popup is ready and is requesting the file list.
