@@ -80,22 +80,25 @@ const useSharingStore = defineStore('sharingManager', () => {
 
     // Check for existence of link.
     const { unwrappedKey, containerId } = containerKey;
+    await keychain.rsa.generateKeyPair();
 
-    if (user.id) {
-      // // Use the AccessLink to make the User a member of the shared folder.
-      // const acceptAccessLinkResp = await api.call(
-      //   `sharing/${linkId}/member/accept`,
-      //   {},
-      //   'POST'
-      // );
-      // if (!acceptAccessLinkResp) {
-      //   return false;
-      // }
-    } else {
-      // TODO: consider switching to sessionStorage.
-      // Generate a temporary keypair for encrypting containerKey in keychain.
-      await keychain.rsa.generateKeyPair();
-    }
+    // This block is not used currently, it's meant to make the user a member of the shared container
+    // if (user.id) {
+    //   // // Use the AccessLink to make the User a member of the shared folder.
+    //   // const acceptAccessLinkResp = await api.call(
+    //   //   `sharing/${linkId}/member/accept`,
+    //   //   {},
+    //   //   'POST'
+    //   // );
+    //   // if (!acceptAccessLinkResp) {
+    //   //   return false;
+    //   // }
+    // } else {
+    //   // TODO: consider switching to sessionStorage.
+    //   // Generate a temporary keypair for encrypting containerKey in keychain.
+    //   // await keychain.rsa.generateKeyPair();
+    // }
+
     await keychain.add(containerId, unwrappedKey);
     await keychain.store();
     return true;
