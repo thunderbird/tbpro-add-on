@@ -356,6 +356,5 @@ useMetricsUpdate();
   align-items: center;
   justify-content: center;
   gap: 1rem 0;
-  margin-top: 2rem;
 }
 </style>

@@ -38,107 +38,68 @@ const stepText = computed(() => {
 </script>
 
 <template>
-  <div class="modal-overlay">
-    <div class="modal-container">
-      <!-- Header -->
-      <div class="modal-header">
-        <div class="header-content">
-          <div class="header-left">
-            <div v-if="showStepIndicator" class="step-indicator">
-              {{ stepText }}
-            </div>
-            <h2 class="modal-title">
-              {{ step?.title || '' }}
-            </h2>
+  <div class="modal-container">
+    <!-- Header -->
+    <div class="modal-header">
+      <div class="header-content">
+        <div class="header-left">
+          <div v-if="showStepIndicator" class="step-indicator">
+            {{ stepText }}
           </div>
-          <button
-            v-if="showCloseButton"
-            class="close-button"
-            data-test="close-button"
-            aria-label="Close"
-            @click="emit('close')"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+          <h2 class="modal-title">
+            {{ step?.title || '' }}
+          </h2>
         </div>
       </div>
+    </div>
 
-      <!-- Content Area -->
-      <div class="modal-content">
-        <!-- Error Message -->
-        <div v-if="errorMessage" class="error-banner">
-          <span class="error-text">{{ errorMessage }}</span>
-        </div>
-
-        <!-- Main Content Slot -->
-        <slot></slot>
+    <!-- Content Area -->
+    <div class="modal-content">
+      <!-- Error Message -->
+      <div v-if="errorMessage" class="error-banner">
+        <span class="error-text">{{ errorMessage }}</span>
       </div>
 
-      <!-- Footer with Action Buttons -->
-      <div class="modal-footer">
-        <button
-          v-if="showBackButton"
-          class="button button-secondary"
-          data-test="back-button"
-          @click="emit('back')"
-        >
-          {{ secondaryButtonText || 'Back' }}
-        </button>
+      <!-- Main Content Slot -->
+      <slot></slot>
+    </div>
 
-        <button
-          v-if="showSecondaryButton && !showBackButton"
-          class="button button-secondary"
-          data-test="secondary-button"
-          @click="emit('secondary')"
-        >
-          {{ secondaryButtonText || 'Cancel' }}
-        </button>
+    <!-- Footer with Action Buttons -->
+    <div class="modal-footer">
+      <button
+        v-if="showBackButton"
+        class="button button-secondary"
+        data-test="back-button"
+        @click="emit('back')"
+      >
+        {{ secondaryButtonText || 'Back' }}
+      </button>
 
-        <button
-          v-if="showPrimaryButton"
-          class="button button-primary"
-          data-test="primary-button"
-          :disabled="primaryButtonDisabled || isLoading"
-          @click="emit('primary')"
-        >
-          <span v-if="isLoading" class="loading-spinner"></span>
-          <span>{{ primaryButtonText || 'Next' }}</span>
-        </button>
-      </div>
+      <button
+        v-if="showSecondaryButton && !showBackButton"
+        class="button button-secondary"
+        data-test="secondary-button"
+        @click="emit('secondary')"
+      >
+        {{ secondaryButtonText || 'Cancel' }}
+      </button>
+
+      <button
+        v-if="showPrimaryButton"
+        class="button button-primary"
+        data-test="primary-button"
+        :disabled="primaryButtonDisabled || isLoading"
+        @click="emit('primary')"
+      >
+        <span v-if="isLoading" class="loading-spinner"></span>
+        <span>{{ primaryButtonText || 'Next' }}</span>
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-  padding: 1rem;
-}
-
 .modal-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 100%;
   max-width: 580px;
   display: flex;
@@ -180,29 +141,8 @@ const stepText = computed(() => {
   margin: 0;
 }
 
-.close-button {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  margin: -0.5rem -0.5rem 0 0;
-  flex-shrink: 0;
-}
-
-.close-button:hover {
-  background: #f3f4f6;
-  color: #4b5563;
-}
-
 .modal-content {
   padding: 1.5rem 2rem;
-  overflow-y: auto;
   flex: 1;
 }
 
