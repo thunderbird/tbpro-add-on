@@ -13,6 +13,6 @@ Build the addon
 lerna run build:dev --scope=addon
 ```
 
-This outputs an xpi file at `packages/addon`, you should see something like `tbpro-add-on-0.1.22.xpi`.
+This outputs an xpi file at `packages/addon`, you should see something like `tbpro-add-on-0.1.23.xpi`.
 
 You can use this xpi file to install the addon in your Thunderbird for testing.
