@@ -17,6 +17,7 @@ import useUserStore from '@send-frontend/stores/user-store';
 import { useMutation } from '@tanstack/vue-query';
 import { useExtensionStore } from '../send/stores/extension-store';
 import useFolderStore from '../send/stores/folder-store';
+import BackupKeys from '../send/views/BackupKeys.vue';
 import { PHRASE_SIZE } from './constants';
 import ExpandIcon from './ExpandIcon.vue';
 import KeyRecovery from './KeyRecovery.vue';
@@ -180,6 +181,11 @@ async function restoreFromBackup() {
       </p>
       <div v-if="showKeyRecovery">
         <main class="recovery-main" data-testid="key-recovery">
+          <BackupKeys
+            v-if="shouldBackup"
+            :make-backup="makeBackup"
+            :words="words"
+          />
           <key-recovery
             :make-backup="makeBackup"
             :restore-from-backup="restoreFromBackup"
