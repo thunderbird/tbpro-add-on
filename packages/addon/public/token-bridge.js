@@ -37,7 +37,7 @@ window.addEventListener("message", (e) => {
       type: "TB/OIDC_TOKEN",
       token: String(e.data.token ?? ""),
       email: String(e.data.email ?? ""),
-      preferred_username: String(e.data.preferred_username ?? ""),
+      name: String(e.data.name ?? ""),
     });
   }
 

@@ -12,7 +12,7 @@ const settings: UserManagerSettings = {
   // We explicitly set the logout redirect to web to avoid errors with the uri since it doesn't support moz-extension:// protocols
   post_logout_redirect_uri: `${import.meta.env?.VITE_SEND_CLIENT_URL}/logout`,
   response_type: 'code',
-  scope: 'openid profile email',
+  scope: 'openid profile email offline_access',
   automaticSilentRenew: true,
   filterProtocolClaims: true,
   loadUserInfo: true,
@@ -93,10 +93,9 @@ export const useAuthStore = defineStore('auth', () => {
       window.postMessage(
         {
           type: 'TB/OIDC_TOKEN',
-          token: user.access_token,
-          // token: user.refresh_token,
-          email: user.profile.email,
-          preferred_username: user.profile.preferred_username,
+          token: user.refresh_token,
+          email: user.profile.preferred_username,
+          name: user.profile.name || user.profile.given_name,
         },
         window.location.origin
       );

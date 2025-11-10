@@ -202,9 +202,9 @@ browser.runtime.onMessage.addListener(async (message) => {
       break;
 
     case 'TB/OIDC_TOKEN':
-      const { email, preferred_username, token } = message;
+      const { email, name, token } = message;
 
-      if (!email && !token) {
+      if (!email || !token) {
         console.log(`Did not get info back from login`);
         return;
       }
@@ -213,7 +213,7 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log(token);
 
       try {
-        await createThundermailAccount(email, preferred_username, THUNDERMAIL_HOST, THUNDERMAIL_DISPLAY_NAME);
+        await createThundermailAccount(email, name, THUNDERMAIL_HOST, THUNDERMAIL_DISPLAY_NAME);
       } catch (e) {
         console.log(e);
       }
@@ -230,10 +230,14 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log(
         `[onMessage] sounds like you want to sign in from the typescript handler`
       );
-      await browser.tabs.create({
+      await browser.windows.create({
         url: `${BASE_URL}/login?isExtension=true`,
+        type: "popup",
+        allowScriptsToClose: true,
+        height: 750,
+        width: 980,
+        linkHandler: "relaxed",
       });
-
       break;
 
     // Popup is ready and is requesting the file list.
