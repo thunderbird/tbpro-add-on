@@ -14,7 +14,7 @@
     "setup": "./scripts/setup.sh",
     "setup:local": "./scripts/setup.sh && bun run scripts/local.ts",
     "sort-package-json": "sort-package-json",
-    "test:e2e": "pnpm exec playwright test",
+    "test:e2e": "pnpm exec playwright test --headed",
     "test:e2e:ui": "pnpm exec playwright test --ui"
   },
   "devDependencies": {
