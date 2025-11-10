@@ -382,3 +382,43 @@ export const getAccessLinkWithoutPasswordHash = (link: string): string => {
   }
   return link;
 };
+
+export type ExpirationOption =
+  | 'never'
+  | '24hours'
+  | '14days'
+  | '30days'
+  | 'custom';
+
+export function getExpirationDate(
+  selectedExpiration: ExpirationOption,
+  customDateTime: string
+): string | undefined {
+  const now = new Date();
+
+  switch (selectedExpiration) {
+    case 'never':
+      return undefined;
+    case '24hours':
+      now.setHours(now.getHours() + 24);
+      return now.toISOString();
+    case '14days':
+      now.setDate(now.getDate() + 14);
+      return now.toISOString();
+    case '30days':
+      now.setDate(now.getDate() + 30);
+      return now.toISOString();
+    case 'custom':
+      // datetime-local input provides value in format: YYYY-MM-DDTHH:mm
+      if (!customDateTime) return undefined;
+      try {
+        const date = new Date(customDateTime);
+        return date.toISOString();
+      } catch (error) {
+        console.error('Failed to parse custom date/time:', error);
+        return undefined;
+      }
+    default:
+      return undefined;
+  }
+}
