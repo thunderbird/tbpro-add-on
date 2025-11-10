@@ -111,6 +111,7 @@ export async function validateOIDCToken(token: string): Promise<{
     sub: string;
     email?: string;
     username?: string;
+    thundermailEmail?: string;
   };
 }> {
   try {

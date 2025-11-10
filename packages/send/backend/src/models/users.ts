@@ -400,6 +400,7 @@ export async function getUserByOIDCSubject(oidcSubject: string) {
       oidcSubject: true,
       createdAt: true,
       updatedAt: true,
+      thundermailEmail: true,
     },
   });
 }
@@ -407,19 +408,21 @@ export async function getUserByOIDCSubject(oidcSubject: string) {
 export async function findOrCreateUserByOIDC({
   oidcSubject,
   email,
+  thundermailEmail,
 }: {
   oidcSubject: string;
   email: string;
+  thundermailEmail?: string;
 }) {
   // First try to find existing user by OIDC subject
-  let user = await getUserByOIDCSubject(oidcSubject);
+  const userFromPrisma = await getUserByOIDCSubject(oidcSubject);
 
-  if (user) {
-    // Update user info if email has changed
-    if (user.email !== email) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { email },
+  if (userFromPrisma) {
+    // Update entry with thundermailEmail if it's missing
+    if (!userFromPrisma?.thundermailEmail && thundermailEmail) {
+      const updatedUser = await prisma.user.update({
+        where: { id: userFromPrisma.id },
+        data: { thundermailEmail },
         select: {
           id: true,
           email: true,
@@ -428,31 +431,15 @@ export async function findOrCreateUserByOIDC({
           oidcSubject: true,
           createdAt: true,
           updatedAt: true,
+          thundermailEmail: true,
         },
       });
+      return updatedUser;
     }
-    return user;
+    return userFromPrisma;
   }
 
-  // Try to find by email and update with OIDC subject if exists
-  const existingUser = await getUserByEmailV2(email);
-  if (existingUser && !existingUser.oidcSubject) {
-    return await prisma.user.update({
-      where: { id: existingUser.id },
-      data: { oidcSubject },
-      select: {
-        id: true,
-        email: true,
-        uniqueHash: true,
-        tier: true,
-        oidcSubject: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-  }
-
-  // Create new user
+  // If the user doesn't exist, we create one
   const newUser = await prisma.user.create({
     data: {
       email,
@@ -460,6 +447,7 @@ export async function findOrCreateUserByOIDC({
       tier: UserTier.FREE,
       createdAt: new Date(),
       updatedAt: new Date(),
+      thundermailEmail,
     },
     select: {
       id: true,

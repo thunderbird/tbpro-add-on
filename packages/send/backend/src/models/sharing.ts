@@ -250,7 +250,7 @@ export async function getContainerForAccessLink(linkId: string) {
               include: {
                 owner: {
                   select: {
-                    email: true,
+                    thundermailEmail: true,
                   },
                 },
                 items: {
