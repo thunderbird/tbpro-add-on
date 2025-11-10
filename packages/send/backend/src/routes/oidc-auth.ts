@@ -35,13 +35,14 @@ router.get(
       });
     }
 
-    const { sub, email } = req.oidcUser;
+    const { sub, email, username } = req.oidcUser;
 
     try {
       // Find or create user based on OIDC subject
       const user = await findOrCreateUserByOIDC({
         oidcSubject: sub,
         email: email || '',
+        thundermailEmail: username || '',
       });
 
       const uniqueHash = createHash('sha256').update(sub).digest('hex');

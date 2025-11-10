@@ -79,7 +79,7 @@ async function setDownload(item: Item) {
     <DownloadInfo
       :id="item?.upload?.id"
       :index="i"
-      :sender="folder?.owner?.email"
+      :sender="folder?.owner?.thundermailEmail"
       :filename="item?.name"
       :filesize="item?.upload?.size"
       :days-to-expiry="item?.upload?.daysToExpiry"
