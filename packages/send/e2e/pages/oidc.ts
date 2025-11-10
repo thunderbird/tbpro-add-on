@@ -33,7 +33,7 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
   await otherPage.getByTestId("submit-btn").click();
 
   // Log out
-  await otherPage.getByTestId("log-out-button").click();
+  await otherPage.getByTestId("log-out-button-overlay").click();
   await otherPage.waitForLoadState("networkidle");
 
   await otherPage.goto("/send");

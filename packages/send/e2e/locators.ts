@@ -54,8 +54,14 @@ export const dashboardLocators = (page: Page) => {
   const logOutButton = page.getByTestId("log-out-button");
   const submitLogin = page.getByTestId("login-submit-button");
   const backupKeysButton = page.getByTestId("encrypt-keys-button");
+  const backupKeysButtonOverlay = page.getByTestId(
+    "encrypt-keys-button-overlay"
+  );
   const restoreKeysButton = page.getByTestId("restore-keys-button");
-  const passphraseInput = page.getByTestId("passphrase-input");
+  const passphraseInput = page.getByTestId("backup-keys-passphrase-input");
+  const passphraseInputOverlay = page.getByTestId(
+    "backup-keys-passphrase-input-overlay"
+  );
   const restorekeyInput = page.getByTestId("restore-key-input");
 
   const keyRecoveryButton = page.getByTestId("toggle-key-recovery");
@@ -73,6 +79,8 @@ export const dashboardLocators = (page: Page) => {
     backupKeysButton,
     restoreKeysButton,
     passphraseInput,
+    passphraseInputOverlay,
+    backupKeysButtonOverlay,
     restorekeyInput,
     keyRecoveryButton,
     keyRestoreButton,

@@ -73,7 +73,7 @@ const percentageUsed = computed(() => {
 <template>
   <section class="min-w-72">
     <p v-if="error">{{ error.message }}</p>
-    <h2 class="email">{{ user.email }}</h2>
+    <h2 class="email">{{ user.thundermailEmail || user.email }}</h2>
 
     <LoadingComponent v-if="isLoading" />
 
