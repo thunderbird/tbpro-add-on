@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "0.11.0",
+  "version": "0.12.0",
   "author": "Thunderbird Team",
   "name": "__MSG_thunderbirdPro__",
   "description": "__MSG_extensionDescription__",
@@ -12,7 +12,9 @@
     }
   },
   "background": {
-    "scripts": ["background.js"],
+    "scripts": [
+      "background.js"
+    ],
     "type": "module"
   },
   "default_locale": "en",
@@ -48,27 +50,49 @@
     "MailAccounts": {
       "schema": "api/MailAccounts/schema.json",
       "parent": {
-        "scopes": ["addon_parent"],
-        "paths": [["MailAccounts"]],
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "MailAccounts"
+          ]
+        ],
         "script": "api/MailAccounts/implementation.js"
       }
     },
     "TBProMenu": {
       "schema": "api/TBProMenu/schema.json",
       "parent": {
-        "scopes": ["addon_parent"],
-        "paths": [["TBProMenu"]],
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "TBProMenu"
+          ]
+        ],
         "script": "api/TBProMenu/implementation.js",
-        "events": ["startup"]
+        "events": [
+          "startup"
+        ]
       }
     },
     "ProTweaks": {
       "schema": "api/ProTweaks/schema.json",
       "parent": {
-        "scopes": ["addon_parent"],
-        "paths": [["ProTweaks"]],
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "ProTweaks"
+          ]
+        ],
         "script": "api/ProTweaks/implementation.js",
-        "events": ["startup"]
+        "events": [
+          "startup"
+        ]
       }
     }
   },
