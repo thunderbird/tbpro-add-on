@@ -72,7 +72,6 @@ watchEffect(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
   padding: 2rem;
   text-align: center;
 }

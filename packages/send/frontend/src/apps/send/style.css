@@ -113,3 +113,7 @@ body,
     var(--primary-hover)
   );
 }
+
+main {
+  min-height: calc(100vh - 250px - 60px);
+}

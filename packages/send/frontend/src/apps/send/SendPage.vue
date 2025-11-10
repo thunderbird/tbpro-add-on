@@ -11,6 +11,7 @@ import CompatibilityBanner from '../common/CompatibilityBanner.vue';
 import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
 import ErrorBoundary from '../common/ErrorBoundary.vue';
 import { INIT_ERRORS } from './const';
+import SendTemplate from './views/SendTemplate.vue';
 
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
@@ -44,7 +45,9 @@ updateMetricsIdentity();
   <ErrorBoundary>
     <CompatibilityBoundary>
       <CompatibilityBanner />
-      <router-view></router-view>
+      <SendTemplate>
+        <router-view></router-view>
+      </SendTemplate>
       <ModalsContainer />
     </CompatibilityBoundary>
   </ErrorBoundary>
