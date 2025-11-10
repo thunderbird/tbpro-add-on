@@ -9,20 +9,36 @@
     "resource:///modules/cloudFileAccounts.sys.mjs"
   );
 
-  var { setTimeout } = ChromeUtils.importESModule(
-    "resource://gre/modules/Timer.sys.mjs"
-  );
-
   exports.ProTweaks = class extends ExtensionCommon.ExtensionAPI {
 
     // Work around https://bugzilla.mozilla.org/show_bug.cgi?id=1999233
-    async _initProviderIcon(retries=5) {
+
+    _cloudProviderRegistered(providerType) {
+      if (providerType != "ext-" + this.extension.id) {
+        return;
+      }
+
       let provider = cloudFileAccounts.getProviderForType("ext-" + this.extension.id);
       if (!provider) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        return this._initProviderIcon(retries - 1);
+        return;
       }
+
       Object.defineProperty(provider, "iconURL", {
+        configurable: true,
+        enumerable: true,
+        get: () => {
+          return this.extension.getURL("icons/send-glyph.svg");
+        }
+      });
+
+    }
+
+    _cloudAccountAdded(event, account) {
+      if (account.type != "ext-" + this.extension.id) {
+        return;
+      }
+
+      Object.defineProperty(account, "iconURL", {
         configurable: true,
         enumerable: true,
         get: () => {
@@ -32,7 +48,23 @@
     }
 
     onStartup() {
-      this._initProviderIcon();
+      this._cloudProviderRegistered = this._cloudProviderRegistered.bind(this);
+      cloudFileAccounts.on("providerRegistered", this._cloudProviderRegistered);
+      this._cloudProviderRegistered("ext-" + this.extension.id);
+
+      this._cloudAccountAdded = this._cloudAccountAdded.bind(this);
+      cloudFileAccounts.on("accountAdded", this._cloudAccountAdded);
+      cloudFileAccounts.accounts.forEach((account) => this._cloudAccountAdded(null, account));
+    }
+
+    onShutdown(isAppShutdown) {
+      if (isAppShutdown) {
+        return;
+      }
+
+      cloudFileAccounts.off("providerRegistered", this._cloudProviderRegistered)
+      cloudFileAccounts.off("accountAdded", this._cloudAccountAdded)
+
     }
 
     getAPI(_context) {
