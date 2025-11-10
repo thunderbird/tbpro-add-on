@@ -11,11 +11,11 @@ import { computed, ref } from 'vue';
 type Props = {
   words?: string[];
   makeBackup?: () => void;
-  onClose?: () => void;
 };
 
-const { makeBackup, onClose, words } = defineProps<Props>();
+const { makeBackup, words } = defineProps<Props>();
 
+const onClose = () => {};
 const localWords = ref(words);
 const isVisible = ref(true);
 
@@ -94,7 +94,7 @@ const handleDownloadAndContinue = async () => {
               type="text"
               class="passphrase-input"
               readonly
-              data-testid="encryption-key-input"
+              data-testid="backup-keys-passphrase-input-overlay"
             />
             <div class="input-actions">
               <button
@@ -129,6 +129,7 @@ const handleDownloadAndContinue = async () => {
         <button
           type="button"
           class="download-button"
+          data-testid="encrypt-keys-button-overlay"
           @click="handleDownloadAndContinue"
         >
           <DownloadIcon class="button-icon" />

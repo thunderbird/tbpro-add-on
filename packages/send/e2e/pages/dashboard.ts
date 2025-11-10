@@ -14,6 +14,8 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
     submitButton,
     backupKeysButton,
     passphraseInput,
+    passphraseInputOverlay,
+    backupKeysButtonOverlay,
   } = dashboardLocators(page);
 
   const { folderRowSelector, folderRowTestID } = fileLocators(page);
@@ -27,11 +29,11 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
 
   page.on("dialog", (dialog) => dialog.accept());
 
-  const passPhrase = await passphraseInput.inputValue();
+  const passPhrase = await passphraseInputOverlay.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");
   playwrightConfig.passphrase = passPhrase;
 
-  await backupKeysButton.click();
+  await backupKeysButtonOverlay.click();
 
   // look for folder
   const profileButton = page.getByRole("link", { name: "My Files" });
