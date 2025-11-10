@@ -2,8 +2,8 @@
   "manifest_version": 2,
   "version": "0.11.0",
   "author": "Thunderbird Team",
-  "name": "Thunderbird Pro",
-  "description": "Thunderbird and friends",
+  "name": "__MSG_thunderbirdPro__",
+  "description": "__MSG_extensionDescription__",
   "browser_specific_settings": {
     "gecko": {
       "id": "tbpro-addon-stage@thunderbird.net",
@@ -22,7 +22,7 @@
     "browser_style": true
   },
   "cloud_file": {
-    "name": "Thunderbird Pro",
+    "name": "__MSG_thunderbirdSend__",
     "management_url": "index.management.html",
     "browser_style": true,
     "reuse_uploads": false
@@ -59,6 +59,15 @@
         "scopes": ["addon_parent"],
         "paths": [["TBProMenu"]],
         "script": "api/TBProMenu/implementation.js",
+        "events": ["startup"]
+      }
+    },
+    "ProTweaks": {
+      "schema": "api/ProTweaks/schema.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["ProTweaks"]],
+        "script": "api/ProTweaks/implementation.js",
         "events": ["startup"]
       }
     }
