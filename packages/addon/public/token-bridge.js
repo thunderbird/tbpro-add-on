@@ -17,7 +17,7 @@ Object.assign(tag.style, {
   padding: "6px 10px", background: "lime", color: "black",
   fontFamily: "monospace", boxShadow: "0 2px 8px rgba(0,0,0,.25)"
 });
-document.documentElement.appendChild(tag);
+// document.documentElement.appendChild(tag);
 
 // Initial message to the background
 browser.runtime.sendMessage({
