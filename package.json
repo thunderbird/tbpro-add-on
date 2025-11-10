@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "",
   "keywords": [],
-  "license": "ISC",
+  "license": "MPL-2.0",
   "author": "",
   "main": "index.js",
   "scripts": {

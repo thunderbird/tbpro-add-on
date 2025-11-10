@@ -3,7 +3,7 @@
   "version": "6.0.2",
   "description": "",
   "keywords": [],
-  "license": "ISC",
+  "license": "MPL-2.0",
   "author": "Thunderbird",
   "main": "index.js",
   "scripts": {
