@@ -50,14 +50,14 @@
         "imap"
       );
       return !!server;
-    } catch (e) {
+    } catch {
       // findServer throws if not found
       return false;
     }
   }
 
   class MailAccounts extends ExtensionCommon.ExtensionAPI {
-    getAPI(context) {
+    getAPI(_context) {
       return {
         MailAccounts: {
           async createAccount(email, realname, hostname, displayName) {

@@ -32,6 +32,30 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-extra-boolean-cast': 'off',
       'vue/no-use-v-if-with-v-for': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        "error",
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ]
     },
+  },
+  {
+    files: ["public/api/**/*.js"],
+    languageOptions: {
+      globals: {
+        Cr: true,
+        Ci: true,
+        Cu: true,
+        Cc: true,
+        Components: true,
+        ChromeUtils: true,
+        Services: true,
+        console: true,
+        fetch: true,
+        atob: true,
+        URL: true,
+        URLSearchParams: true,
+        ExtensionCommon: true,
+      }
+    }
   },
 ];

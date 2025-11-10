@@ -44,12 +44,6 @@
     "https://*.backblazeb2.com/*",
     "http://localhost:5173/*"
   ],
-  "browser_action": {
-    "default_title": "TB Pro",
-    "default_icon": "icons/64-dev.png",
-    "allowed_spaces": [],
-    "default_popup": "tbpro-menu.html"
-  },
   "experiment_apis": {
     "MailAccounts": {
       "schema": "api/MailAccounts/schema.json",

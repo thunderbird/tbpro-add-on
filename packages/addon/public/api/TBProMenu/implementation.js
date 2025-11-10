@@ -1,7 +1,6 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
-/* globals ExtensionCommon, Services */
 
 'use strict';
 
@@ -40,6 +39,10 @@
       & image {
         margin-left: 4rem;
       }
+    }
+
+    .tbpro-menu-item-text:not(:empty) + .tbpro-menu-item-bold-text:not(:empty)::before {
+      content: " ";
     }
 
     .tbpro-panel-header {
@@ -92,7 +95,7 @@
         'subviewbutton-iconic',
         'tbpro-header-button',
       ],
-      attributes: { closemenu: 'none' },
+      attributes: { closemenu: '' },
       xul: true,
     });
 
@@ -107,7 +110,7 @@
     toolbarButton.appendChild(wrapper);
     toolbarButton.appendChild(divider);
 
-    toolbarButton.addEventListener('click', (e) => {
+    toolbarButton.addEventListener('click', () => {
       if (!toolbarButton.classList.contains('subviewbutton-nav')) {
         extension.emit('menu-item-clicked', itemId);
       }
@@ -160,6 +163,7 @@
         submenu = _addSubMenu(window, extension, parentText, 'appMenu-tbpro-submenu-' + parentId);
         parentToolbarItem.setAttribute('oncommand', `PanelUI.showSubView('appMenu-tbpro-submenu-${parentId}', this)`);
         parentToolbarItem.classList.add('subviewbutton-nav');
+        parentToolbarItem.setAttribute('closemenu', 'none');
       } else {
         submenu = document.getElementById('appMenu-tbpro-submenu-' + parentId);
       }
@@ -171,13 +175,14 @@
           id: 'tbpro-menu-id-' + id,
           menuId: submenu.id,
           tooltip: tooltip,
+          close: '',
         });
       }
     } else {
       const menuItem = _getRootButton(window, extension, id);
       menuItem.querySelector('.tbpro-menu-item-text').textContent = title;
       menuItem.querySelector('.tbpro-menu-item-bold-text').textContent = secondaryTitle;
-      menuItem.setAttribute('tooltiptext', tooltip || "");
+      menuItem.setAttribute('tooltiptext', tooltip || '');
     }
   }
 
@@ -197,7 +202,7 @@
         throw new ExtensionError('Could not find item ' + id);
       }
 
-      if (menuItem.classList.contains("tbpro-header-button")) {
+      if (menuItem.classList.contains('tbpro-header-button')) {
         if (title !== null) {
           menuItem.querySelector('.tbpro-menu-item-text').textContent = title;
         }
@@ -207,10 +212,10 @@
         }
       } else  {
         if (title !== null) {
-          menuItem.setAttribute("label", title);
+          menuItem.setAttribute('label', title);
         }
       }
-      menuItem.setAttribute("tooltiptext", tooltip || "");
+      menuItem.setAttribute('tooltiptext', tooltip || '');
   }
 
   /**
@@ -355,7 +360,7 @@
     });
 
     if (action) {
-      button.addEventListener('click', (e) => {
+      button.addEventListener('click', () => {
         extension.emit('menu-item-clicked', action);
       });
     }
@@ -412,7 +417,7 @@
 
   var TBProMenu = class extends ExtensionCommon.ExtensionAPI {
 
-    _loadWindow(window, document) {
+    _loadWindow(window) {
       const stylesheet = _createElement(window, this.extension, {
         type: 'style',
         text: styleSheetContent,
@@ -474,7 +479,7 @@
               throw new ExtensionError(`Menu item ${id} already exists`)
             }
             if (createProps.parentId && !(createProps.parentId in gMenuItems)) {
-              throw new ExtensionError('Could not find parent ' + parentId);
+              throw new ExtensionError('Could not find parent ' + createProps.parentId);
             }
 
             if (!createProps.parentId) {
@@ -493,7 +498,7 @@
               gMenuItems[createProps.parentId].children.push(createProps);
             }
 
-            _applyForWindows((window, document) => {
+            _applyForWindows((window) => {
               _createMenuItem(window, context.extension, id, createProps);
             });
           },
@@ -506,7 +511,7 @@
             Object.assign(gMenuItems[id], updateProps);
 
 
-            _applyForWindows((window, document) => {
+            _applyForWindows((window) => {
               _updateMenuItem(window, id, updateProps);
             });
           },
@@ -539,6 +544,7 @@
                 const parentId = subview?.id.substring(22);
                 const parentButton = document.getElementById('tbpro-menu-id-' + parentId);
                 parentButton.classList.remove('subviewbutton-nav');
+                parentButton.setAttribute('closemenu', '');
                 parentButton.removeAttribute('oncommand');
               }
 

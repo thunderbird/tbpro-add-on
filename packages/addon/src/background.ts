@@ -11,13 +11,15 @@ import { BASE_URL } from '@send-frontend/apps/common/constants';
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
+import { init as initMenu, menuLoggedIn } from "./menu.ts";
+
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
 const pinia = createPinia();
 setActivePinia(pinia);
 
 // Once we have an active Pinia instance, we can get references
-// to our stores. We initialize everything in the anonymous
+// to our stores. We initialize everything in the cloud init
 // function below.
 const folderStore = useFolderStore();
 const userStore = useUserStore();
@@ -29,7 +31,7 @@ console.log('hello from the background.js!', new Date().getTime());
 
 // ==============================================
 // Initialize the cloudFile accounts, keychain, and stores.
-(async () => {
+async function initCloudFile() {
   try {
     const allAccounts = await browser.cloudFile.getAllAccounts();
     if (allAccounts.length > 0) {
@@ -62,9 +64,8 @@ console.log('hello from the background.js!', new Date().getTime());
       error
     );
   }
-})().catch((error) => {
-  console.error('Error initializing background.js', error);
-});
+}
+
 
 browser.webRequest.onBeforeSendHeaders.addListener(
   (details) => {
@@ -88,8 +89,6 @@ browser.webRequest.onBeforeSendHeaders.addListener(
   { urls: ['https://*.backblazeb2.com/*'] },
   ['blocking', 'requestHeaders']
 );
-
-console.log('webRequest listeners have been set up.');
 
 // ==============================================
 
@@ -223,6 +222,8 @@ browser.runtime.onMessage.addListener(async (message) => {
       } catch (e) {
         console.log(e);
       }
+
+      menuLoggedIn(preferred_username);
 
       break;
 
@@ -397,3 +398,12 @@ async function addThundermailToken(token: string, email: string, hostname: strin
     };
   }
 }
+
+
+
+(async function main() {
+  initMenu();
+  initCloudFile();
+})().catch((error) => {
+  console.error('Error initializing background.js', error);
+});
