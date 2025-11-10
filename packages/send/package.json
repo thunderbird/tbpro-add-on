@@ -3,7 +3,7 @@
   "version": "6.0.2",
   "description": "",
   "keywords": [],
-  "license": "ISC",
+  "license": "MPL-2.0",
   "author": "",
   "main": "index.js",
   "scripts": {
@@ -14,8 +14,8 @@
     "setup": "./scripts/setup.sh",
     "setup:local": "./scripts/setup.sh && bun run scripts/local.ts",
     "sort-package-json": "sort-package-json",
-    "test:e2e": "pnpm exec playwright test --headed",
-    "test:e2e:ui": "pnpm exec playwright test --ui --headed"
+    "test:e2e": "pnpm exec playwright test",
+    "test:e2e:ui": "pnpm exec playwright test --ui"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.1",

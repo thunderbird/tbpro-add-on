@@ -4,7 +4,7 @@
   "private": false,
   "description": "",
   "keywords": [],
-  "license": "ISC",
+  "license": "MPL-2.0",
   "author": "",
   "type": "module",
   "main": "index.js",
