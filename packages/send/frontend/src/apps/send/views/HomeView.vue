@@ -20,7 +20,7 @@ const showFileComponents = computed(() => {
 </script>
 
 <template>
-  <div id="send-page" class="flex min-h-screen relative">
+  <div id="send-page" class="flex h-full relative">
     <!-- Router Loading Overlay -->
 
     <aside class="w-64 border-r border-gray-300 bg-gray-50">

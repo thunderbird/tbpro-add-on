@@ -44,7 +44,6 @@ input {
   color: var(--text-icon-secondary);
 }
 main {
-  min-height: 100vh;
   padding: 2rem;
 }
 </style>

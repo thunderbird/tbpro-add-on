@@ -229,7 +229,6 @@ const stepText = computed(() => {
   .modal-container {
     max-width: 100%;
     margin: 0.5rem;
-    max-height: calc(100vh - 1rem);
   }
 
   .modal-header {
