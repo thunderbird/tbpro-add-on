@@ -1,34 +1,40 @@
 <script setup lang="ts">
-import { PHRASE_SIZE } from '@send-frontend/apps/common/constants';
 import CopyIcon from '@send-frontend/apps/common/CopyIcon.vue';
 import DownloadIcon from '@send-frontend/apps/common/DownloadIcon.vue';
 import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
 import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
 import RefreshIcon from '@send-frontend/apps/common/RefreshIcon.vue';
-import { generatePassphrase } from '@send-frontend/lib/passphrase';
+import { useAuth } from '@send-frontend/lib/auth';
+import {
+  useConfigStore,
+  useStatusStore,
+  useUserStore,
+} from '@send-frontend/stores';
 import { computed, ref } from 'vue';
 
 type Props = {
   words?: string[];
   makeBackup?: () => void;
+  regeneratePassphrase: () => void;
 };
 
 const { makeBackup, words } = defineProps<Props>();
 
+const { isExtension } = useConfigStore();
+const { validators } = useStatusStore();
+const { clearUserFromStorage } = useUserStore();
+const { logOutAuth } = useAuth();
+
 const onClose = () => {};
-const localWords = ref(words);
+
 const isVisible = ref(true);
 
 const passphraseDisplay = computed(() => {
-  return localWords.value.join(' - ');
+  return words.join(' - ');
 });
 
 const toggleVisibility = () => {
   isVisible.value = !isVisible.value;
-};
-
-const regeneratePassphrase = () => {
-  localWords.value = generatePassphrase(PHRASE_SIZE);
 };
 
 const copyToClipboard = async () => {
@@ -42,6 +48,15 @@ const copyToClipboard = async () => {
 const handleDownloadAndContinue = async () => {
   makeBackup();
   onClose();
+};
+
+const handleLogout = async () => {
+  await clearUserFromStorage();
+  await logOutAuth();
+  await validators();
+  if (!isExtension) {
+    location.reload();
+  }
 };
 </script>
 
@@ -135,12 +150,29 @@ const handleDownloadAndContinue = async () => {
           <DownloadIcon class="button-icon" />
           Download and Continue
         </button>
+        <div class="log-out-button-container">
+          <button
+            size="small"
+            data-testid="log-out-button-overlay"
+            @click.prevent="handleLogout"
+          >
+            <span>Log out</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.log-out-button-container {
+  margin-top: 1rem;
+  color: var(--primary-default);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
 .modal-overlay {
   position: fixed;
   top: 0;

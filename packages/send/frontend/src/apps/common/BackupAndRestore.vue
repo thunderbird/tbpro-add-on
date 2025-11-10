@@ -185,6 +185,7 @@ async function restoreFromBackup() {
             v-if="shouldBackup"
             :make-backup="makeBackup"
             :words="words"
+            :regenerate-passphrase="regeneratePassphrase"
           />
           <key-recovery
             :make-backup="makeBackup"
