@@ -69,7 +69,6 @@ export async function log_out_restore_keys() {
   await submitLogin.click();
 
   // restore keys
-
   const passphrase = playwrightConfig.passphrase;
   // await secondPage.goto("/send/profile");
   await secondPage.waitForLoadState("networkidle");
@@ -98,6 +97,8 @@ export async function reset_keys({ page }: PlaywrightProps) {
     keyRestoreButton,
     confirmButton,
     submitLogin,
+    backupKeysButtonOverlay,
+    passphraseInputOverlay,
   } = dashboardLocators(page);
 
   const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
@@ -131,10 +132,10 @@ export async function reset_keys({ page }: PlaywrightProps) {
   await page.waitForLoadState("networkidle");
 
   // Back up keys
-  const passPhrase = await passphraseInput.inputValue();
+  const passPhrase = await passphraseInputOverlay.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");
   playwrightConfig.recoveredPassphrase = passPhrase!;
-  await backupKeysButton.click();
+  await backupKeysButtonOverlay.click();
 
   // Navigate to files
   await page.goto("/send");
