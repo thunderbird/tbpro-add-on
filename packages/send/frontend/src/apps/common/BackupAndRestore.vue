@@ -186,6 +186,7 @@ async function restoreFromBackup() {
             :make-backup="makeBackup"
             :words="words"
             :regenerate-passphrase="regeneratePassphrase"
+            :log-out-auth="logOutAuth"
           />
           <key-recovery
             :make-backup="makeBackup"

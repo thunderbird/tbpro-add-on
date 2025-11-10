@@ -4,7 +4,6 @@ import DownloadIcon from '@send-frontend/apps/common/DownloadIcon.vue';
 import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
 import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
 import RefreshIcon from '@send-frontend/apps/common/RefreshIcon.vue';
-import { useAuth } from '@send-frontend/lib/auth';
 import {
   useConfigStore,
   useStatusStore,
@@ -16,14 +15,14 @@ type Props = {
   words?: string[];
   makeBackup?: () => void;
   regeneratePassphrase: () => void;
+  logOutAuth: () => Promise<void>;
 };
 
-const { makeBackup, words } = defineProps<Props>();
+const { makeBackup, words, logOutAuth } = defineProps<Props>();
 
 const { isExtension } = useConfigStore();
 const { validators } = useStatusStore();
 const { clearUserFromStorage } = useUserStore();
-const { logOutAuth } = useAuth();
 
 const onClose = () => {};
 
