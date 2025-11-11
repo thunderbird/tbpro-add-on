@@ -31,6 +31,7 @@ const createNewKey = () => {
         <input
           id="understand-checkbox"
           v-model="understood"
+          data-testid="understand-checkbox"
           type="checkbox"
           class="checkbox"
         />
@@ -40,7 +41,13 @@ const createNewKey = () => {
       </div>
 
       <div class="actions">
-        <button class="cancel-button" @click="$emit('cancel')">Cancel</button>
+        <button
+          data-testid="danger-button"
+          class="cancel-button"
+          @click="$emit('cancel')"
+        >
+          Cancel
+        </button>
         <DangerButton :disabled="!understood" @click="createNewKey">
           Create new encryption key
         </DangerButton>

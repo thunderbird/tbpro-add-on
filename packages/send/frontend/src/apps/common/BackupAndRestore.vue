@@ -20,6 +20,7 @@ import AccessLocked from '../send/views/AccessLocked.vue';
 import BackupKeys from '../send/views/BackupKeys.vue';
 import ResetEncryptionKey from '../send/views/ResetEncryptionKey.vue';
 import RestoreKeys from '../send/views/RestoreKeys.vue';
+import SecurityAndPrivacy from '../send/views/SecurityAndPrivacy.vue';
 import { PHRASE_SIZE } from './constants';
 const userStore = useUserStore();
 const folderStore = useFolderStore();
@@ -191,6 +192,7 @@ async function restoreFromBackup() {
           />
         </main>
       </div>
+      <SecurityAndPrivacy />
     </div>
   </section>
 </template>

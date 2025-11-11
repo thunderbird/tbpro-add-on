@@ -158,13 +158,23 @@ main {
 
 /* components */
 h1,
+h2,
 .title {
-  font-size: 2rem;
   font-weight: 400;
   color: #3b82f6;
   margin: 1.5rem 0 1rem;
   line-height: 1.2;
 }
+h1,
+.title {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
 .description {
   margin-bottom: 2rem;
   line-height: 1.6;

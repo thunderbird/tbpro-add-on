@@ -36,7 +36,13 @@ defineProps<{
       >
         Learn more
       </a>
-      <button class="recover-access" @click="onRecover">Recover Access</button>
+      <button
+        class="recover-access"
+        data-testid="recover-access-button"
+        @click="onRecover"
+      >
+        Recover Access
+      </button>
     </div>
   </div>
 </template>

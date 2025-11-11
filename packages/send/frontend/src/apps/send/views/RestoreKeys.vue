@@ -81,7 +81,12 @@ const onContinue = async () => {
           </button>
         </div>
       </div>
-      <button v-if="onReset" class="reset-access" @click="onReset">
+      <button
+        v-if="onReset"
+        data-testid="reset-access"
+        class="reset-access"
+        @click="onReset"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
