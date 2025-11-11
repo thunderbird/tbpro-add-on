@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import ButtonComponent from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import useMetricsStore from '@send-frontend/stores/metrics';
-import { BaseButton, CopyIcon } from '@thunderbirdops/services-ui';
+import {
+  CopyIcon,
+  DangerButton,
+  PrimaryButton,
+} from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import { useModal, useModalSlot } from 'vue-final-modal';
@@ -142,33 +146,33 @@ const submit = async () => {
     @click.prevent="makeBackup"
     >Encrypt and backup keys</button-component
   >
-  <BaseButton
+  <PrimaryButton
     v-if="shouldRestore"
     primary
     data-testid="restore-keys-button"
     @click.prevent="submit"
-    >Restore keys from backup</BaseButton
   >
+    Restore keys from backup
+  </PrimaryButton>
 
-  <div v-if="overrideVisibility" class="reset-section">
-    <p>
-      <strong>Note:</strong> If you lose this key, you will not be able to
-      access your files. We do not store your key on our servers and cannot
-      recover it for you.
-    </p>
-    <p>
-      If you lost your key, you can reset it by clicking the button below. This
-      will generate a new key and you will lose access to any files you created
-      before this.
-    </p>
-    <button-component
-      data-testid="restore-keys"
-      danger
-      class="reset-button"
-      @click.prevent="open"
-      >Reset keys and lose access to previously created files</button-component
-    >
-  </div>
+  <p>
+    <strong>Note:</strong> If you lose this key, you will not be able to access
+    your files. We do not store your key on our servers and cannot recover it
+    for you.
+  </p>
+  <p>
+    If you lost your key, you can reset it by clicking the button below. This
+    will generate a new key and you will lose access to any files you created
+    before this.
+  </p>
+  <DangerButton
+    data-testid="restore-keys"
+    danger
+    class="reset-button"
+    @click.prevent="open"
+  >
+    Reset keys and lose access to previously created files
+  </DangerButton>
 </template>
 
 <style scoped>

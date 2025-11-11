@@ -29,7 +29,7 @@ const emit = defineEmits<{
   </VueFinalModal>
 </template>
 
-<style>
+<style scoped>
 .modal-body {
   margin: auto;
   padding: 20px;

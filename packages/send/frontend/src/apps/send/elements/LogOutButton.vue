@@ -20,7 +20,7 @@ defineProps<LogOutProps>();
 <style scoped>
 button {
   color: var(--primary-default);
-  padding: 10px 20px;
+  padding: 10px 0px;
   cursor: pointer;
   display: flex;
   justify-content: center;

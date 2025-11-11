@@ -10,20 +10,6 @@ console.log('isTbproExtension', isTbproExtension.value);
 
 <template>
   <div class="admin-container">
-    <h1 class="main-title" data-testid="tbpro-heading">Your Services</h1>
-    <div class="toggle-group">
-      <label class="toggle">
-        <input
-          v-model="showSend"
-          type="checkbox"
-          class="toggle-input"
-          data-testid="toggle-send"
-        />
-        <span class="toggle-slider"></span>
-        <span class="toggle-label" data-testid="label-send">Send</span>
-      </label>
-    </div>
-
     <div v-if="showSend" class="service-section" data-testid="send-section">
       <SendDashboardView :is-tbpro-extension="isTbproExtension" />
     </div>
