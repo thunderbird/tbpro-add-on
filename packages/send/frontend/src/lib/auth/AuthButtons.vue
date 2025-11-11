@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
 import { ref } from 'vue';
 
@@ -9,7 +10,7 @@ defineProps<{
   loginToOidcForExtension: () => ReturnType;
 }>();
 
-const loginText = ref('Log in using your TB Pro Account');
+const loginText = ref('Sign In');
 </script>
 
 <template class="auth-buttons">
@@ -25,10 +26,16 @@ const loginText = ref('Log in using your TB Pro Account');
     @click.capture="loginToOidcForExtension"
     >{{ loginText }}</PrimaryButton
   >
+  <FeedbackBox />
 </template>
 
 <style scoped>
 .auth-buttons {
   margin: 1rem;
+}
+.auth-buttons button {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 300px;
 }
 </style>

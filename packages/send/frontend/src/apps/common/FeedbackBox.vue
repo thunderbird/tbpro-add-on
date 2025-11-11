@@ -1,24 +1,10 @@
-<script setup lang="ts">
-import OpenerIcon from './OpenerIcon.vue';
-</script>
+<script setup lang="ts"></script>
 
 <template>
   <section class="mx-4 mb-4" data-testid="feedback-box">
-    <p class="text">
-      Please take a moment to give us feedback or raise issues on:
-    </p>
-    <div class="link-container">
-      <a
-        href="https://github.com/thunderbird/send-suite/issues/new?labels=feedback-alpha&title=Alpha+Feedback:+&body=Your+description+here:"
-      >
-        <p>Github issues</p>
-        <OpenerIcon />
-      </a>
-      <a href="https://forms.gle/qBYAjSRwMiTQ6KNr6">
-        <p>Google forms</p>
-        <OpenerIcon />
-      </a>
-    </div>
+    <a href="https://support.tb.pro ">
+      <p class="text">Need help? Visit Support</p>
+    </a>
   </section>
 </template>
 
@@ -38,5 +24,15 @@ import OpenerIcon from './OpenerIcon.vue';
   align-items: center;
   color: var(--primary-default);
   text-decoration: none;
+}
+section {
+  font-size: 11px;
+  font-weight: normal;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: normal;
+  letter-spacing: normal;
+  text-align: left;
+  color: var(--text-icon-secondary);
 }
 </style>
