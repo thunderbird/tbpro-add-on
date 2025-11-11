@@ -5,10 +5,10 @@ import useKeychainStore from '@send-frontend/stores/keychain-store';
 
 // move the following imports elsewhere
 import { useAuth } from '@send-frontend/lib/auth';
-import { downloadTxt } from '@send-frontend/lib/filesync';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import { backupKeys, restoreKeys } from '@send-frontend/lib/keychain';
 import { generatePassphrase } from '@send-frontend/lib/passphrase';
+import { downloadPassPhrase } from '@send-frontend/lib/passphraseUtils';
 import { trpc } from '@send-frontend/lib/trpc';
 import useApiStore from '@send-frontend/stores/api-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
@@ -60,14 +60,6 @@ const shouldOverrideVisibility = ref(false);
 const shouldUnlock = ref(false);
 const shouldReset = ref(false);
 
-const attemptUnlock = () => {
-  shouldUnlock.value = true;
-};
-
-const attemptReset = () => {
-  shouldReset.value = true;
-};
-
 const { mutate: resetKeys } = useMutation({
   mutationKey: ['resetKeys'],
   mutationFn: async () => {
@@ -118,20 +110,13 @@ const showKeyRecovery = computed(() => {
   );
 });
 
-const downloadPassPhrase = async () => {
-  await downloadTxt(
-    words.value.join(' - '),
-    `tb-send-passphrase-${email}-key.txt`
-  );
-};
-
 async function makeBackup() {
   bigMessageDisplay.value = '';
   keychain.storePassPhrase(passphraseString.value);
 
   try {
     await backupKeys(keychain, api, bigMessageDisplay);
-    await downloadPassPhrase();
+    await downloadPassPhrase(passphraseFromLocalStorage, email);
     hideBackupRestore();
     await dbUserSetup(userStore, keychain, folderStore);
     configureExtension();
@@ -169,7 +154,11 @@ async function restoreFromBackup() {
         <section class="recovery-main" data-testid="key-recovery">
           <AccessLocked
             v-if="shouldRestore && !shouldUnlock"
-            :on-recover="attemptUnlock"
+            :on-recover="
+              () => {
+                shouldUnlock = true;
+              }
+            "
           />
           <BackupKeys
             v-if="shouldBackup"
@@ -183,7 +172,11 @@ async function restoreFromBackup() {
             :restore-from-backup="restoreFromBackup"
             :set-passphrase="setPassphrase"
             :message="bigMessageDisplay"
-            :on-reset="attemptReset"
+            :on-reset="
+              () => {
+                shouldReset = true;
+              }
+            "
             @cancel="() => (shouldUnlock = false)"
           />
           <ResetEncryptionKey

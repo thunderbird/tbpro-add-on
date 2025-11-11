@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { useKeychainStore } from '@send-frontend/stores';
+import CopyIcon from '@send-frontend/apps/common/CopyIcon.vue';
+import DownloadIcon from '@send-frontend/apps/common/DownloadIcon.vue';
+import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
+import { downloadPassPhrase } from '@send-frontend/lib/passphraseUtils';
+import { useKeychainStore, useUserStore } from '@send-frontend/stores';
+import { useClipboard } from '@vueuse/core';
 import KeysTemplate from './KeysTemplate.vue';
 
 const emit = defineEmits<{
@@ -8,8 +13,18 @@ const emit = defineEmits<{
 }>();
 
 const { keychain } = useKeychainStore();
+const {
+  user: { email },
+} = useUserStore();
+const { copy } = useClipboard();
 
 const passphraseFromLocalStorage = keychain.getPassphraseValue();
+
+const copyToClipboard = () => {
+  if (passphraseFromLocalStorage) {
+    copy(passphraseFromLocalStorage);
+  }
+};
 </script>
 
 <template>
@@ -36,55 +51,23 @@ const passphraseFromLocalStorage = keychain.getPassphraseValue();
               class="key-input"
             />
             <button class="icon-button" title="Toggle visibility">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <EyeIcon />
             </button>
-            <button class="icon-button" title="Copy to clipboard">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path
-                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                />
-              </svg>
+            <button
+              class="icon-button"
+              title="Copy to clipboard"
+              @click="copyToClipboard"
+            >
+              <CopyIcon />
             </button>
-            <button class="icon-button" title="Download key">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+            <button
+              class="icon-button"
+              title="Download key"
+              @click="
+                () => downloadPassPhrase(passphraseFromLocalStorage, email)
+              "
+            >
+              <DownloadIcon />
             </button>
           </div>
         </div>
