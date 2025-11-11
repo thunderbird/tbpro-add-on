@@ -3,7 +3,14 @@ import { PrimaryButton } from '@thunderbirdops/services-ui';
 import { ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 import ManageKeys from './ManageKeys.vue';
+import ResetEncryptionKey from './ResetEncryptionKey.vue';
+
+const { resetKeys } = defineProps<{
+  resetKeys: () => void;
+}>();
+
 const showKeys = ref(false);
+const willReset = ref(false);
 </script>
 
 <template>
@@ -17,7 +24,14 @@ const showKeys = ref(false);
       Encryption Key
     </PrimaryButton>
   </KeysTemplate>
-  <ManageKeys v-if="showKeys" />
+
+  <ManageKeys v-if="showKeys" @confirm="() => (willReset = true)" />
+
+  <ResetEncryptionKey
+    v-if="willReset"
+    @confirm="resetKeys"
+    @cancel="() => (willReset = false)"
+  />
 </template>
 
 <style scoped>

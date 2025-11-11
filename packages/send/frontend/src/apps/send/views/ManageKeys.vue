@@ -1,21 +1,15 @@
 <script setup lang="ts">
+import { useKeychainStore } from '@send-frontend/stores';
 import KeysTemplate from './KeysTemplate.vue';
 
-const toggleVisibility = () => {
-  // Toggle encryption key visibility
-};
+const emit = defineEmits<{
+  cancel: [];
+  confirm: [];
+}>();
 
-const copyKey = () => {
-  // Copy encryption key to clipboard
-};
+const { keychain } = useKeychainStore();
 
-const downloadKey = () => {
-  // Download encryption key
-};
-
-const resetKey = () => {
-  // Reset encryption key
-};
+const passphraseFromLocalStorage = keychain.getPassphraseValue();
 </script>
 
 <template>
@@ -37,15 +31,11 @@ const resetKey = () => {
           <div class="key-input-container">
             <input
               type="text"
-              :value="'RANDOM - TIGERS - GOVERN - WOEFUL - QU...'"
+              :value="passphraseFromLocalStorage"
               readonly
               class="key-input"
             />
-            <button
-              class="icon-button"
-              title="Toggle visibility"
-              @click="toggleVisibility"
-            >
+            <button class="icon-button" title="Toggle visibility">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -61,11 +51,7 @@ const resetKey = () => {
                 <circle cx="12" cy="12" r="3" />
               </svg>
             </button>
-            <button
-              class="icon-button"
-              title="Copy to clipboard"
-              @click="copyKey"
-            >
+            <button class="icon-button" title="Copy to clipboard">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -83,11 +69,7 @@ const resetKey = () => {
                 />
               </svg>
             </button>
-            <button
-              class="icon-button"
-              title="Download key"
-              @click="downloadKey"
-            >
+            <button class="icon-button" title="Download key">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -118,7 +100,7 @@ const resetKey = () => {
           your encrypted storage. This action cannot be undone.
         </p>
 
-        <button class="reset-button" @click="resetKey">
+        <button class="reset-button" @click="emit('confirm')">
           Reset encryption key
         </button>
       </div>

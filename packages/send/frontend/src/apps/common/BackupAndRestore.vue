@@ -164,8 +164,9 @@ async function restoreFromBackup() {
 <template>
   <section class="container">
     <div class="max-w-xl">
+      <!-- Key recovery -->
       <div v-if="showKeyRecovery">
-        <main class="recovery-main" data-testid="key-recovery">
+        <section class="recovery-main" data-testid="key-recovery">
           <AccessLocked
             v-if="shouldRestore && !shouldUnlock"
             :on-recover="attemptUnlock"
@@ -190,9 +191,10 @@ async function restoreFromBackup() {
             @confirm="resetKeys"
             @cancel="() => (shouldReset = false)"
           />
-        </main>
+        </section>
       </div>
-      <SecurityAndPrivacy />
+      <!-- After keys are restored we show security and privacy -->
+      <SecurityAndPrivacy :reset-keys="resetKeys" />
     </div>
   </section>
 </template>
