@@ -41,14 +41,12 @@ const createNewKey = () => {
       </div>
 
       <div class="actions">
-        <button
+        <button class="cancel-button" @click="$emit('cancel')">Cancel</button>
+        <DangerButton
+          :disabled="!understood"
           data-testid="danger-button"
-          class="cancel-button"
-          @click="$emit('cancel')"
+          @click="createNewKey"
         >
-          Cancel
-        </button>
-        <DangerButton :disabled="!understood" @click="createNewKey">
           Create new encryption key
         </DangerButton>
       </div>

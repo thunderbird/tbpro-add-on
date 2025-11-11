@@ -194,7 +194,7 @@ async function restoreFromBackup() {
         </section>
       </div>
       <!-- After keys are restored we show security and privacy -->
-      <SecurityAndPrivacy :reset-keys="resetKeys" />
+      <SecurityAndPrivacy v-else :reset-keys="resetKeys" />
     </div>
   </section>
 </template>

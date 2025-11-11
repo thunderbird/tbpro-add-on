@@ -100,7 +100,11 @@ const passphraseFromLocalStorage = keychain.getPassphraseValue();
           your encrypted storage. This action cannot be undone.
         </p>
 
-        <button class="reset-button" @click="emit('confirm')">
+        <button
+          data-testid="show-reset"
+          class="reset-button"
+          @click="emit('confirm')"
+        >
           Reset encryption key
         </button>
       </div>
