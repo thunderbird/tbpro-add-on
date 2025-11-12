@@ -14,7 +14,9 @@ import TBProIcon from '../elements/TBProIcon.vue';
     </nav>
   </header>
 
-  <slot></slot>
+  <div class="content">
+    <slot></slot>
+  </div>
 
   <StandardFooter
     contribute-to-this-site-url="https://github.com/thunderbird/tbpro-add-on"

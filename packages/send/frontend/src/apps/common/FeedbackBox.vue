@@ -2,7 +2,7 @@
 
 <template>
   <section class="mx-4 mb-4" data-testid="feedback-box">
-    <a href="https://support.tb.pro ">
+    <a href="https://support.tb.pro">
       <p class="text">Need help? Visit Support</p>
     </a>
   </section>

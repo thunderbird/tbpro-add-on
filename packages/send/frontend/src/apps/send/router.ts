@@ -26,6 +26,8 @@ import {
 } from '@send-frontend/stores';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { storeToRefs } from 'pinia';
+
+import logger from '@send-frontend/logger';
 import NotFoundPage from '../common/NotFoundPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
@@ -247,16 +249,8 @@ router.beforeEach(async (to, from, next) => {
         await userStore.populateFromBackend();
       }
     } catch (error) {
-      console.error('Error restoring keys', error);
+      logger.info('Error restoring keys', error);
     }
-    // This was meant to avoid restoring keys on every route change, but it causes issues when navigating between routes that require keys
-    // if (from.path !== to.path) {
-    //   try {
-    //     await restoreKeysUsingLocalStorage(keychain, api);
-    //   } catch (error) {
-    //     console.error('Error restoring keys', error);
-    //   }
-    // }
   }
 
   if (to.path === '/send/folder/null') {

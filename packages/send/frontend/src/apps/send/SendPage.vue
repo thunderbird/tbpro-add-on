@@ -5,6 +5,8 @@ import init from '@send-frontend/lib/init';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import useUserStore from '@send-frontend/stores/user-store';
+
+import logger from '@send-frontend/logger';
 import { onMounted } from 'vue';
 import { ModalsContainer } from 'vue-final-modal';
 import CompatibilityBanner from '../common/CompatibilityBanner.vue';
@@ -24,7 +26,7 @@ onMounted(async () => {
   const errorCode = await init(userStore, keychain, folderStore);
 
   if (errorCode) {
-    console.log('init error: ', Object.keys(INIT_ERRORS)[errorCode]);
+    logger.info('init error: ', Object.keys(INIT_ERRORS)[errorCode]);
     // Load from backend session and retry init()
     const didPopulate = await userStore.populateFromBackend();
     if (!didPopulate) {

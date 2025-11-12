@@ -44,8 +44,8 @@ const emit = defineEmits<{
 <style scoped>
 .close-button {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 0;
+  right: 0;
   background: none;
   border: none;
   color: #666;

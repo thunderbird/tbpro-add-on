@@ -60,7 +60,7 @@ const onContinue = async () => {
             />
           </div>
         </div>
-        <div>{{ message }}</div>
+        <div class="error-field">{{ message }}</div>
         <div class="button-group">
           <button
             type="button"
@@ -135,6 +135,11 @@ const onContinue = async () => {
 
 .required {
   color: #ef4444;
+}
+
+.error-field {
+  color: var(--colour-danger-default);
+  margin-bottom: 1rem;
 }
 
 .input-container {

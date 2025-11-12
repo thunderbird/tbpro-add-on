@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 
@@ -13,7 +13,8 @@ import { trpc } from '@send-frontend/lib/trpc';
 import useApiStore from '@send-frontend/stores/api-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import useUserStore from '@send-frontend/stores/user-store';
-import { useMutation } from '@tanstack/vue-query';
+import { useMutation, useQuery } from '@tanstack/vue-query';
+import { LoadingSkeleton } from '@thunderbirdops/services-ui';
 import { useExtensionStore } from '../send/stores/extension-store';
 import useFolderStore from '../send/stores/folder-store';
 import AccessLocked from '../send/views/AccessLocked.vue';
@@ -56,7 +57,6 @@ const bigMessageDisplay = ref('');
 const shouldRestore = ref(false);
 const shouldBackup = ref(false);
 const hasBackedUpKeys = ref<string>(null);
-const shouldOverrideVisibility = ref(false);
 const shouldUnlock = ref(false);
 const shouldReset = ref(false);
 
@@ -87,27 +87,25 @@ function hideBackupRestore() {
   shouldBackup.value = false;
 }
 
-onMounted(async () => {
-  const keybackup = await getBackup();
-  hasBackedUpKeys.value = keybackup?.backupKeypair;
-  if (!hasBackedUpKeys.value) {
-    shouldBackup.value = true;
-    bigMessageDisplay.value =
-      '⚠️ Please write down your backup keys and click "Encrypt and backup keys" ⚠️';
-  } else {
-    if (!keychain.getPassphraseValue()) {
-      // bigMessageDisplay.value = '⚠️ Please restore your keys from backup ⚠️';
-      shouldRestore.value = true;
+const { isLoading: isLoadingBackup } = useQuery({
+  queryKey: ['keybackup'],
+  refetchOnMount: true,
+  queryFn: async () => {
+    const keybackup = await getBackup();
+    hasBackedUpKeys.value = keybackup?.backupKeypair;
+    if (!hasBackedUpKeys.value) {
+      shouldBackup.value = true;
+    } else {
+      if (!keychain.getPassphraseValue()) {
+        shouldRestore.value = true;
+      }
     }
-  }
+    return keybackup;
+  },
 });
 
 const showKeyRecovery = computed(() => {
-  return (
-    shouldBackup.value ||
-    shouldRestore.value ||
-    !!shouldOverrideVisibility.value
-  );
+  return shouldBackup.value || shouldRestore.value;
 });
 
 async function makeBackup() {
@@ -126,10 +124,6 @@ async function makeBackup() {
 }
 
 async function restoreFromBackup() {
-  if (!confirm('Replace all your local keys with your backup?')) {
-    return;
-  }
-
   bigMessageDisplay.value = '';
 
   try {
@@ -149,8 +143,17 @@ async function restoreFromBackup() {
 <template>
   <section class="container">
     <div class="max-w-xl">
+      <!-- Loading state -->
+      <LoadingSkeleton
+        v-if="isLoadingBackup"
+        width="576px"
+        height="86px"
+        border-radius="9px"
+        :is-loading="isLoadingBackup"
+      />
+
       <!-- Key recovery -->
-      <div v-if="showKeyRecovery">
+      <div v-else-if="showKeyRecovery">
         <section class="recovery-main" data-testid="key-recovery">
           <AccessLocked
             v-if="shouldRestore && !shouldUnlock"

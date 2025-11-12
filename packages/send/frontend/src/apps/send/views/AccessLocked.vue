@@ -29,7 +29,7 @@ defineProps<{
     </p>
     <div class="actions">
       <a
-        href="https://support.mozilla.org/kb/thunderbird-send-encryption-keys"
+        href="https://support.tb.pro"
         target="_blank"
         rel="noopener noreferrer"
         class="learn-more"

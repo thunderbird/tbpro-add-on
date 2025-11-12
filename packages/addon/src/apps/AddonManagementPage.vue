@@ -47,7 +47,7 @@ function _loginToOIDCForExtension() {
 </template>
 
 <style scoped>
-.container {
+.content {
   display: flex;
   flex-direction: column;
   align-items: start;
@@ -55,13 +55,9 @@ function _loginToOIDCForExtension() {
   padding: 2rem;
   max-width: 700px;
   margin: 0 auto;
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
   width: 100%;
   padding: 1rem;
+  max-width: 52rem;
 }
 
 .login-section {
