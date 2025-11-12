@@ -53,10 +53,35 @@ const {
 const { keychain } = useKeychainStore();
 const { metrics } = useMetricsStore();
 const { configureExtension } = useExtensionStore();
-const bigMessageDisplay = ref('');
-const shouldRestore = ref(false);
-const shouldBackup = ref(false);
-const hasBackedUpKeys = ref<string>(null);
+const errorMessage = ref('');
+
+const {
+  isLoading: isLoadingBackup,
+  data: backupData,
+  refetch,
+} = useQuery({
+  queryKey: ['keybackup'],
+  queryFn: async () => {
+    // 1. We check if the user has previously encrypted and downloaded keys
+    const hasBackupInServer = await getBackup();
+    if (!hasBackupInServer?.backupKeypair) {
+      // No backup found, we need to backup (first time user)
+      return 'SHOULD_ENCRYPT_AND_BACKUP';
+    } else {
+      // 2. We check if the user has keys stored in keychain
+      const hasKeysInLocalStorage = keychain.getPassphraseValue();
+      if (!hasKeysInLocalStorage) {
+        // No keys found, user needs to restore from backup
+        return 'SHOULD_RESTORE_FROM_BACKUP';
+      }
+      return 'KEYS_IN_LOCAL_STORAGE';
+    }
+  },
+  refetchOnMount: true,
+  retryOnMount: true,
+});
+
+// User state actions
 const shouldUnlock = ref(false);
 const shouldReset = ref(false);
 
@@ -82,60 +107,35 @@ if (
   words.value = passphraseFromLocalStorage.split(' ');
 }
 
-function hideBackupRestore() {
-  shouldRestore.value = false;
-  shouldBackup.value = false;
-}
-
-const { isLoading: isLoadingBackup } = useQuery({
-  queryKey: ['keybackup'],
-  refetchOnMount: true,
-  queryFn: async () => {
-    const keybackup = await getBackup();
-    hasBackedUpKeys.value = keybackup?.backupKeypair;
-    if (!hasBackedUpKeys.value) {
-      shouldBackup.value = true;
-    } else {
-      if (!keychain.getPassphraseValue()) {
-        shouldRestore.value = true;
-      }
-    }
-    return keybackup;
-  },
-});
-
-const showKeyRecovery = computed(() => {
-  return shouldBackup.value || shouldRestore.value;
-});
-
 async function makeBackup() {
-  bigMessageDisplay.value = '';
+  errorMessage.value = '';
   keychain.storePassPhrase(passphraseString.value);
 
   try {
-    await backupKeys(keychain, api, bigMessageDisplay);
+    await backupKeys(keychain, api, errorMessage);
     await downloadPassPhrase(passphraseFromLocalStorage, email);
-    hideBackupRestore();
     await dbUserSetup(userStore, keychain, folderStore);
     configureExtension();
   } catch (e) {
     console.error('Error backing up keys', e);
+  } finally {
+    await refetch();
   }
 }
 
 async function restoreFromBackup() {
-  bigMessageDisplay.value = '';
-
+  errorMessage.value = '';
   try {
-    await restoreKeys(keychain, api, bigMessageDisplay, passphraseString.value);
+    await restoreKeys(keychain, api, errorMessage, passphraseString.value);
     keychain.storePassPhrase(passphraseString.value);
-    hideBackupRestore();
     configureExtension();
   } catch (e) {
     metrics.capture('send.restoreKeys.error', {
-      message: bigMessageDisplay.value,
+      message: errorMessage.value,
     });
-    bigMessageDisplay.value = e;
+    errorMessage.value = e;
+  } finally {
+    await refetch();
   }
 }
 </script>
@@ -151,30 +151,30 @@ async function restoreFromBackup() {
         border-radius="9px"
         :is-loading="isLoadingBackup"
       />
-
-      <!-- Key recovery -->
-      <div v-else-if="showKeyRecovery">
+      <div v-else>
         <section class="recovery-main" data-testid="key-recovery">
+          <!-- FIRST TIME USERS -->
+          <BackupKeys
+            v-if="backupData === 'SHOULD_ENCRYPT_AND_BACKUP'"
+            :make-backup="makeBackup"
+            :words="words"
+            :regenerate-passphrase="regeneratePassphrase"
+            :log-out-auth="logOutAuth"
+          />
+          <!-- USERS RESTORING SESSION -->
           <AccessLocked
-            v-if="shouldRestore && !shouldUnlock"
+            v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
             :on-recover="
               () => {
                 shouldUnlock = true;
               }
             "
           />
-          <BackupKeys
-            v-if="shouldBackup"
-            :make-backup="makeBackup"
-            :words="words"
-            :regenerate-passphrase="regeneratePassphrase"
-            :log-out-auth="logOutAuth"
-          />
           <RestoreKeys
-            v-if="shouldUnlock"
+            v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && shouldUnlock"
             :restore-from-backup="restoreFromBackup"
             :set-passphrase="setPassphrase"
-            :message="bigMessageDisplay"
+            :message="errorMessage"
             :on-reset="
               () => {
                 shouldReset = true;
@@ -182,15 +182,20 @@ async function restoreFromBackup() {
             "
             @cancel="() => (shouldUnlock = false)"
           />
+          <!-- RESET -->
           <ResetEncryptionKey
             v-if="shouldReset"
             @confirm="resetKeys"
             @cancel="() => (shouldReset = false)"
           />
+
+          <!-- GOOD TO GO -->
+          <SecurityAndPrivacy
+            v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
+            :reset-keys="resetKeys"
+          />
         </section>
       </div>
-      <!-- After keys are restored we show security and privacy -->
-      <SecurityAndPrivacy v-else :reset-keys="resetKeys" />
     </div>
   </section>
 </template>
