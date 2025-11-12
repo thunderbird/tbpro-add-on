@@ -61,7 +61,6 @@ function _loginToOIDCForExtension() {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 38rem;
   padding: 1rem;
 }
 
