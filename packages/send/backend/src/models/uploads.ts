@@ -167,15 +167,22 @@ export async function getUploadMetadata(id: string) {
 
 // Report an upload as suspicious by its uploadId
 export async function reportSuspiciousFile(uploadId: string) {
-  // We need to get the fileHash from the uploadId to store it in the suspiciousFile table
-  const { fileHash } = await prisma.upload.findUnique({
-    where: { id: uploadId },
-    select: { fileHash: true },
-  });
-  await prisma.suspiciousFile.create({
-    data: { fileHash },
-    select: { id: true },
-  });
+  // find all parts of the upload
+  const parts = await getUploadParts(uploadId);
+  const reportPromises = await Promise.all(
+    parts.map(async ({ id }) => {
+      // We need to get the fileHash from the uploadId to store it in the suspiciousFile table
+      const { fileHash } = await prisma.upload.findUnique({
+        where: { id },
+        select: { fileHash: true },
+      });
+      return await prisma.suspiciousFile.create({
+        data: { fileHash },
+        select: { id: true },
+      });
+    })
+  );
+  return reportPromises;
 }
 
 // Check if a fileHash is in the suspiciousFile table and return a boolean

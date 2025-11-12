@@ -4,6 +4,7 @@ import { SPLIT_SIZE } from '@send-frontend/lib/const';
 import { NamedBlob } from '@send-frontend/lib/filesync';
 import { Keychain } from '@send-frontend/lib/keychain';
 import Uploader from '@send-frontend/lib/upload';
+import { hashFiles } from '@send-frontend/lib/utils';
 import { UserType } from '@send-frontend/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,6 +22,7 @@ vi.mock('@send-frontend/lib/utils', () => ({
     ]),
   retryUntilSuccessOrTimeout: vi.fn().mockResolvedValue(undefined),
   generateFileHash: vi.fn().mockResolvedValue('abc123def456'),
+  hashFiles: vi.fn().mockResolvedValue(['abc123def456']),
 }));
 
 describe('Uploader', () => {
@@ -31,6 +33,9 @@ describe('Uploader', () => {
   let mockProgressTracker: ProgressTracker;
 
   beforeEach(() => {
+    // Reset hashFiles mock to default behavior
+    vi.mocked(hashFiles).mockResolvedValue(['abc123def456']);
+
     mockUser = { id: 'test-user-id' } as UserType;
     // Create a mock CryptoKey-like object
     const mockCryptoKey = {
@@ -228,7 +233,6 @@ describe('Uploader', () => {
 
       mockApi.call = vi
         .fn()
-        .mockResolvedValueOnce({ isSuspicious: false }) // check-hash response
         .mockResolvedValueOnce({ upload: { id: 'upload1' } })
         .mockResolvedValueOnce({ id: 'item1' });
 
@@ -236,9 +240,13 @@ describe('Uploader', () => {
 
       await uploader.doUpload(blob, containerId, mockApi, mockProgressTracker);
 
-      // Verify that the API was called to check the hash
+      // Verify that fileHash was included in the upload creation call
       expect(mockApi.call).toHaveBeenCalledWith(
-        'uploads/check-upload-hash/abc123def456'
+        'uploads',
+        expect.objectContaining({
+          fileHash: 'abc123def456',
+        }),
+        'POST'
       );
     });
 
@@ -248,31 +256,17 @@ describe('Uploader', () => {
       }) as NamedBlob;
       blob.name = 'suspicious.txt';
 
-      // Mock alert function
-      const mockAlert = vi.fn();
-      global.alert = mockAlert;
-
-      mockApi.call = vi.fn().mockResolvedValueOnce({ isSuspicious: true }); // check-hash response
+      // Mock hashFiles to throw an error for suspicious files
+      vi.mocked(hashFiles).mockRejectedValueOnce(
+        new Error('Suspicious file detected')
+      );
 
       const containerId = 'container-id';
 
-      const result = await uploader.doUpload(
-        blob,
-        containerId,
-        mockApi,
-        mockProgressTracker
-      );
-
-      // Verify that upload was blocked
-      expect(result).toBeNull();
-      expect(mockAlert).toHaveBeenCalledWith(
-        'Warning: This file has been reported as suspicious. You cannot upload it. If you believe this is an error, please contact support.'
-      );
-      // Verify that only the hash check API call was made
-      expect(mockApi.call).toHaveBeenCalledTimes(1);
-      expect(mockApi.call).toHaveBeenCalledWith(
-        'uploads/check-upload-hash/abc123def456'
-      );
+      // Should return null when hashFiles throws
+      await expect(
+        uploader.doUpload(blob, containerId, mockApi, mockProgressTracker)
+      ).rejects.toThrow('Suspicious file detected');
     });
 
     it('should include fileHash in upload creation API call', async () => {
@@ -283,7 +277,6 @@ describe('Uploader', () => {
 
       mockApi.call = vi
         .fn()
-        .mockResolvedValueOnce({ isSuspicious: false }) // check-hash response
         .mockResolvedValueOnce({ upload: { id: 'upload1' } })
         .mockResolvedValueOnce({ id: 'item1' });
 
@@ -307,9 +300,10 @@ describe('Uploader', () => {
       }) as NamedBlob;
       blob.name = 'test.txt';
 
-      mockApi.call = vi
-        .fn()
-        .mockRejectedValueOnce(new Error('Hash check failed')); // check-hash error
+      // Mock hashFiles to throw an error
+      vi.mocked(hashFiles).mockRejectedValueOnce(
+        new Error('Hash check failed')
+      );
 
       const containerId = 'container-id';
 
@@ -321,11 +315,6 @@ describe('Uploader', () => {
   });
 
   describe('doUpload multipart logic', () => {
-    beforeEach(() => {
-      // Setup mock API call for hash checking in multipart tests
-      mockApi.call = vi.fn().mockResolvedValueOnce({ isSuspicious: false }); // Always add hash check response first
-    });
-
     it('should process multipart uploads sequentially', async () => {
       // Create a large file that would trigger multipart upload
       const largeFileSize = SPLIT_SIZE + 1000;
@@ -334,9 +323,11 @@ describe('Uploader', () => {
       }) as NamedBlob;
       largeBlob.name = 'large-file.txt';
 
+      // Mock hashFiles to return two hashes for multipart upload
+      vi.mocked(hashFiles).mockResolvedValueOnce(['hash1', 'hash2']);
+
       mockApi.call = vi
         .fn()
-        .mockResolvedValueOnce({ isSuspicious: false }) // hash check response
         .mockResolvedValueOnce({ upload: { id: 'upload1' } })
         .mockResolvedValueOnce({ id: 'item1' })
         .mockResolvedValueOnce({ upload: { id: 'upload2' } })

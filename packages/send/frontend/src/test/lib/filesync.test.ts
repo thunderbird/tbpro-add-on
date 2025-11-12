@@ -58,6 +58,9 @@ vi.mock('@send-frontend/lib/helpers', async (importOriginal) => {
 
 describe(`Filesync`, () => {
   const restHandlers = [
+    http.get(`${API_URL}/download/check-upload-id/${UPLOAD_ID}`, async () =>
+      HttpResponse.json({ isSuspicious: false })
+    ),
     http.get(`${API_URL}/uploads/${UPLOAD_ID}/metadata`, async () =>
       HttpResponse.json(metadata)
     ),

@@ -1,4 +1,4 @@
-import { JsonResponse } from '@send-frontend/lib/api';
+import { ApiConnection, JsonResponse } from '@send-frontend/lib/api';
 import { NamedBlob } from '@send-frontend/types';
 import JSZip from 'jszip';
 import { MAX_FILE_SIZE } from './const';
@@ -357,6 +357,59 @@ export const splitIntoMultipleZips = async (
   }
 
   return chunks;
+};
+
+const hashAndCheck = async (api: ApiConnection, fileBlob: NamedBlob) => {
+  // generate a hash from the file
+  const fileHash = await generateFileHash(fileBlob);
+  console.log('File hash (SHA-256):', fileHash);
+
+  // check fileHash against suspicious files
+  const { isSuspicious } = await api.call<{ isSuspicious: boolean }>(
+    `uploads/check-upload-hash/${fileHash}`
+  );
+
+  if (isSuspicious) {
+    alert(
+      'Warning: This file has been reported as suspicious. You cannot upload it. If you believe this is an error, please contact support.'
+    );
+    throw new Error('Suspicious file detected');
+  }
+  return fileHash;
+};
+
+export const hashFiles = async (
+  api: ApiConnection,
+  fileBlob: NamedBlob,
+  maxSize: number
+): Promise<string[]> => {
+  const hashFromChunk: string[] = [];
+
+  // If the blob is smaller than maxSize, return it as a single zip
+  if (fileBlob.size <= maxSize) {
+    const hashedBlob = await hashAndCheck(api, fileBlob);
+    return [hashedBlob];
+  }
+
+  // Split the blob into chunks
+  const totalSize = fileBlob.size;
+  const numChunks = Math.ceil(totalSize / maxSize);
+
+  for (let i = 0; i < numChunks; i++) {
+    const start = i * maxSize;
+    const end = Math.min(start + maxSize, totalSize);
+
+    // Create a chunk from the original blob
+    const chunk = fileBlob.slice(start, end);
+    const chunkBlob = new Blob([chunk], { type: fileBlob.type }) as NamedBlob;
+    chunkBlob.name = `${fileBlob.name}`;
+
+    // hash the chunk
+    const zippedChunk = await hashAndCheck(api, chunkBlob);
+
+    hashFromChunk.push(zippedChunk);
+  }
+  return hashFromChunk;
 };
 
 export const checkBlobSize = async (blob: NamedBlob) => {
