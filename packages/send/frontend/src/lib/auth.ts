@@ -37,6 +37,9 @@ export function useAuth() {
       isLoggedIn.value = isValid;
       return isValid;
     },
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   // Log out by removing the auth token and updating login status
