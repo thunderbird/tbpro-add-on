@@ -65,6 +65,16 @@ export async function getBlob(
   api: ApiConnection,
   progressTracker: ProgressTracker
 ): Promise<string | void> {
+  // Check if this file has not been reported as suspicious
+  // check fileHash against suspicious files
+  const { isSuspicious } = await api.call<{ isSuspicious: boolean }>(
+    `download/check-upload-id/${id}`
+  );
+
+  if (isSuspicious) {
+    throw new Error('File has been reported as suspicious');
+  }
+
   if (!isBucketStorage) {
     const downloadedBlob = await _download({ id, progressTracker });
 

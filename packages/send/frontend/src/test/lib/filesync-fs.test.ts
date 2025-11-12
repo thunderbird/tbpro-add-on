@@ -58,6 +58,9 @@ vi.mock('@send-frontend/lib/helpers', async (importOriginal) => {
 describe(`Filesync`, () => {
   describe(`getBlob`, async () => {
     const restHandlers = [
+      http.get(`${API_URL}/download/check-upload-id/${UPLOAD_ID}`, async () =>
+        HttpResponse.json({ isSuspicious: false })
+      ),
       http.get(`${API_URL}/uploads/${UPLOAD_ID}/metadata`, async () =>
         HttpResponse.json(metadata)
       ),
@@ -76,6 +79,9 @@ describe(`Filesync`, () => {
 
     it(`should download and decrypt the upload`, async () => {
       const progress = mockProgressTracker;
+      const mockApi = {
+        call: vi.fn().mockResolvedValue({ isSuspicious: false }),
+      } as any;
       const result = await getBlob(
         UPLOAD_ID,
         metadata.size,
@@ -83,7 +89,7 @@ describe(`Filesync`, () => {
         false,
         fileName,
         metadata.type,
-        vi.fn() as any,
+        mockApi,
         progress
       );
       expect(result).toBe(undefined);
@@ -91,6 +97,9 @@ describe(`Filesync`, () => {
 
     it(`should download and decrypt the upload with no key`, async () => {
       const progress = mockProgressTracker;
+      const mockApi = {
+        call: vi.fn().mockResolvedValue({ isSuspicious: false }),
+      } as any;
       const result = await getBlob(
         UPLOAD_ID,
         metadata.size,
@@ -98,7 +107,7 @@ describe(`Filesync`, () => {
         false,
         fileName,
         metadata.type,
-        vi.fn() as any,
+        mockApi,
         progress
       );
       expect(result).toBe(undefined);

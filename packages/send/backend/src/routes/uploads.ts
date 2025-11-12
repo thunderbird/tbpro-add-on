@@ -34,6 +34,16 @@ import {
 
 const router: Router = Router();
 
+// Zod schema for creating an upload
+const createUploadSchema = z.object({
+  id: z.string(),
+  size: z.number().int().positive(),
+  ownerId: z.string(),
+  type: z.string(),
+  part: z.number().int().optional(),
+  fileHash: z.string(),
+});
+
 /**
  * @openapi
  * /api/uploads:
@@ -74,14 +84,17 @@ router.post(
   checkStorageLimit,
   addErrorHandling(UPLOAD_ERRORS.NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
-    const { id, size, ownerId, type, part, fileHash } = req.body;
-    const Metrics = useMetrics();
-
-    const { uniqueHash } = getDataFromAuthenticatedRequest(req);
-
-    const distinctId = uniqueHash;
-
     try {
+      // Validate the request body using Zod
+      const { id, size, ownerId, type, part, fileHash } =
+        createUploadSchema.parse(req.body);
+
+      const Metrics = useMetrics();
+
+      const { uniqueHash } = getDataFromAuthenticatedRequest(req);
+
+      const distinctId = uniqueHash;
+
       const upload = await createUpload(
         id,
         size,
@@ -102,15 +115,19 @@ router.post(
         upload,
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: 'Invalid request body',
+          errors: error.errors,
+        });
+      }
       console.error(error);
       res.status(500).json({
         message: 'Upload not created',
       });
     }
   })
-);
-
-/**
+); /**
  * @openapi
  * /api/uploads/signed:
  *   post:

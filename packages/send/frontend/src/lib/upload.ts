@@ -11,7 +11,7 @@ import { Keychain } from '@send-frontend/lib/keychain';
 import { UserType } from '@send-frontend/types';
 import { SPLIT_SIZE } from './const';
 import {
-  generateFileHash,
+  hashFiles,
   retryUntilSuccessOrTimeout,
   splitIntoMultipleZips,
 } from './utils';
@@ -116,22 +116,6 @@ export default class Uploader {
       return null;
     }
 
-    // generate a hash from the file
-    const fileHash = await generateFileHash(fileBlob);
-    console.log('File hash (SHA-256):', fileHash);
-
-    // check fileHash against suspicious files
-    const { isSuspicious } = await this.api.call<{ isSuspicious: boolean }>(
-      `uploads/check-upload-hash/${fileHash}`
-    );
-
-    if (isSuspicious) {
-      alert(
-        'Warning: This file has been reported as suspicious. You cannot upload it. If you believe this is an error, please contact support.'
-      );
-      return null;
-    }
-
     // get folder key
     const wrappingKey = await this.keychain.get(containerId);
     if (!wrappingKey) {
@@ -148,6 +132,8 @@ export default class Uploader {
     );
 
     let blobs: NamedBlob[] = [];
+
+    const hashes = await hashFiles(api, fileBlob, SPLIT_SIZE);
 
     const shouldSplit = fileBlob.size > SPLIT_SIZE;
     if (shouldSplit) {
@@ -234,7 +220,7 @@ export default class Uploader {
               type: blob.type,
               containerId,
               part, // if the file was split into multiple zips, we add the part
-              fileHash,
+              fileHash: hashes[index],
             },
             'POST'
           );

@@ -19,7 +19,11 @@ const stageInfo = computed(() => {
     ProcessStage,
     { text: string; color: string; bgColor: string }
   > = {
-    idle: { text: 'Ready', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+    idle: {
+      text: 'Hashing...',
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-100',
+    },
     preparing: {
       text: 'Preparing...',
       color: 'text-blue-600',
