@@ -72,6 +72,7 @@ const percentageUsed = computed(() => {
 </script>
 <template>
   <section class="min-w-72">
+    <h1>Send Storage</h1>
     <p v-if="error">{{ error.message }}</p>
     <h2 class="email">{{ user.thundermailEmail || user.email }}</h2>
 
@@ -98,6 +99,10 @@ const percentageUsed = computed(() => {
 </template>
 
 <style lang="css" scoped>
+h1 {
+  font-size: 20px;
+  font-weight: 500;
+}
 .expired {
   color: var(--colour-ti-critical);
 }

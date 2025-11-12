@@ -1,26 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 
-import StatusBar from '@send-frontend/apps/common/StatusBar.vue';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 
 // move the following imports elsewhere
 import { useAuth } from '@send-frontend/lib/auth';
-import { downloadTxt } from '@send-frontend/lib/filesync';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import { backupKeys, restoreKeys } from '@send-frontend/lib/keychain';
 import { generatePassphrase } from '@send-frontend/lib/passphrase';
+import { downloadPassPhrase } from '@send-frontend/lib/passphraseUtils';
 import { trpc } from '@send-frontend/lib/trpc';
 import useApiStore from '@send-frontend/stores/api-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import useUserStore from '@send-frontend/stores/user-store';
-import { useMutation } from '@tanstack/vue-query';
+import { useMutation, useQuery } from '@tanstack/vue-query';
+import { LoadingSkeleton } from '@thunderbirdops/services-ui';
 import { useExtensionStore } from '../send/stores/extension-store';
 import useFolderStore from '../send/stores/folder-store';
+import AccessLocked from '../send/views/AccessLocked.vue';
 import BackupKeys from '../send/views/BackupKeys.vue';
+import ResetEncryptionKey from '../send/views/ResetEncryptionKey.vue';
+import RestoreKeys from '../send/views/RestoreKeys.vue';
+import SecurityAndPrivacy from '../send/views/SecurityAndPrivacy.vue';
 import { PHRASE_SIZE } from './constants';
-import ExpandIcon from './ExpandIcon.vue';
-import KeyRecovery from './KeyRecovery.vue';
 const userStore = useUserStore();
 const folderStore = useFolderStore();
 const { logOutAuth } = useAuth();
@@ -55,7 +57,8 @@ const bigMessageDisplay = ref('');
 const shouldRestore = ref(false);
 const shouldBackup = ref(false);
 const hasBackedUpKeys = ref<string>(null);
-const shouldOverrideVisibility = ref(false);
+const shouldUnlock = ref(false);
+const shouldReset = ref(false);
 
 const { mutate: resetKeys } = useMutation({
   mutationKey: ['resetKeys'],
@@ -84,54 +87,34 @@ function hideBackupRestore() {
   shouldBackup.value = false;
 }
 
-onMounted(async () => {
-  const keybackup = await getBackup();
-  hasBackedUpKeys.value = keybackup?.backupKeypair;
-  if (!hasBackedUpKeys.value) {
-    shouldBackup.value = true;
-    bigMessageDisplay.value =
-      '⚠️ Please write down your backup keys and click "Encrypt and backup keys" ⚠️';
-  } else {
-    if (!keychain.getPassphraseValue()) {
-      bigMessageDisplay.value = '⚠️ Please restore your keys from backup ⚠️';
-      shouldRestore.value = true;
+const { isLoading: isLoadingBackup } = useQuery({
+  queryKey: ['keybackup'],
+  refetchOnMount: true,
+  queryFn: async () => {
+    const keybackup = await getBackup();
+    hasBackedUpKeys.value = keybackup?.backupKeypair;
+    if (!hasBackedUpKeys.value) {
+      shouldBackup.value = true;
+    } else {
+      if (!keychain.getPassphraseValue()) {
+        shouldRestore.value = true;
+      }
     }
-  }
+    return keybackup;
+  },
 });
-
-const toggleVisible = () => {
-  shouldOverrideVisibility.value = !shouldOverrideVisibility.value;
-};
 
 const showKeyRecovery = computed(() => {
-  return (
-    shouldBackup.value ||
-    shouldRestore.value ||
-    !!shouldOverrideVisibility.value
-  );
+  return shouldBackup.value || shouldRestore.value;
 });
-
-const downloadPassPhrase = async () => {
-  await downloadTxt(
-    words.value.join(' - '),
-    `tb-send-passphrase-${email}-key.txt`
-  );
-};
 
 async function makeBackup() {
   bigMessageDisplay.value = '';
-  const userConfirmed = confirm(
-    'Are you sure you want to backup your keys? You will not be able to change your passphrase after this.'
-  );
-
-  if (!userConfirmed) {
-    return;
-  }
   keychain.storePassPhrase(passphraseString.value);
 
   try {
     await backupKeys(keychain, api, bigMessageDisplay);
-    await downloadPassPhrase();
+    await downloadPassPhrase(passphraseFromLocalStorage, email);
     hideBackupRestore();
     await dbUserSetup(userStore, keychain, folderStore);
     configureExtension();
@@ -141,10 +124,6 @@ async function makeBackup() {
 }
 
 async function restoreFromBackup() {
-  if (!confirm('Replace all your local keys with your backup?')) {
-    return;
-  }
-
   bigMessageDisplay.value = '';
 
   try {
@@ -163,24 +142,27 @@ async function restoreFromBackup() {
 
 <template>
   <section class="container">
-    <div class="content max-w-xl">
-      <div
-        :onclick="toggleVisible"
-        class="toggle"
-        data-testid="toggle-key-recovery"
-      >
-        <h3 class="font-bold">Recovery Key</h3>
-        <ExpandIcon :is-open="showKeyRecovery" />
-      </div>
-      <p
-        v-if="bigMessageDisplay"
-        data-testid="big-message-display"
-        style="font-size: larger"
-      >
-        {{ bigMessageDisplay }}
-      </p>
-      <div v-if="showKeyRecovery">
-        <main class="recovery-main" data-testid="key-recovery">
+    <div class="max-w-xl">
+      <!-- Loading state -->
+      <LoadingSkeleton
+        v-if="isLoadingBackup"
+        width="576px"
+        height="86px"
+        border-radius="9px"
+        :is-loading="isLoadingBackup"
+      />
+
+      <!-- Key recovery -->
+      <div v-else-if="showKeyRecovery">
+        <section class="recovery-main" data-testid="key-recovery">
+          <AccessLocked
+            v-if="shouldRestore && !shouldUnlock"
+            :on-recover="
+              () => {
+                shouldUnlock = true;
+              }
+            "
+          />
           <BackupKeys
             v-if="shouldBackup"
             :make-backup="makeBackup"
@@ -188,24 +170,29 @@ async function restoreFromBackup() {
             :regenerate-passphrase="regeneratePassphrase"
             :log-out-auth="logOutAuth"
           />
-          <key-recovery
-            :make-backup="makeBackup"
+          <RestoreKeys
+            v-if="shouldUnlock"
             :restore-from-backup="restoreFromBackup"
-            :should-backup="shouldBackup"
-            :words="words"
-            :should-restore="shouldRestore"
-            :regenerate-passphrase="regeneratePassphrase"
             :set-passphrase="setPassphrase"
-            :override-visibility="shouldOverrideVisibility"
-            :download-passphrase="downloadPassPhrase"
-            :reset-keys="resetKeys"
+            :message="bigMessageDisplay"
+            :on-reset="
+              () => {
+                shouldReset = true;
+              }
+            "
+            @cancel="() => (shouldUnlock = false)"
           />
-        </main>
+          <ResetEncryptionKey
+            v-if="shouldReset"
+            @confirm="resetKeys"
+            @cancel="() => (shouldReset = false)"
+          />
+        </section>
       </div>
+      <!-- After keys are restored we show security and privacy -->
+      <SecurityAndPrivacy v-else :reset-keys="resetKeys" />
     </div>
   </section>
-
-  <StatusBar />
 </template>
 
 <style scoped>
@@ -238,6 +225,6 @@ h2 {
   width: 100%;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 0 1rem 1rem;
+  /* padding: 0 1rem 1rem; */
 }
 </style>

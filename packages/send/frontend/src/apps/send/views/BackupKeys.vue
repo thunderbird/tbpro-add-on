@@ -10,6 +10,7 @@ import {
   useUserStore,
 } from '@send-frontend/stores';
 import { computed, ref } from 'vue';
+import KeysTemplate from './KeysTemplate.vue';
 
 type Props = {
   words?: string[];
@@ -60,13 +61,9 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <div class="modal-overlay">
-    <div class="modal-container">
-      <div class="modal-header">
-        <!-- Send Logo -->
-      </div>
-
-      <div class="modal-body">
+  <KeysTemplate class="modal-overlay" :is-overlay="true">
+    <div class="">
+      <div class="">
         <h1 class="title">Complete your encryption setup</h1>
 
         <div class="description">
@@ -160,7 +157,7 @@ const handleLogout = async () => {
         </div>
       </div>
     </div>
-  </div>
+  </KeysTemplate>
 </template>
 
 <style scoped>
@@ -171,35 +168,6 @@ const handleLogout = async () => {
   justify-content: center;
   align-items: center;
   gap: 0.5rem;
-}
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.893);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 1rem;
-}
-
-.modal-container {
-  background: white;
-  border-radius: 24px;
-  max-width: 800px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.modal-header {
-  padding: 3rem 3rem 1rem;
 }
 
 .icon-container {
@@ -216,18 +184,6 @@ const handleLogout = async () => {
   width: 40px;
   height: 40px;
   color: #3b82f6;
-}
-
-.modal-body {
-  padding: 0 3rem 3rem;
-}
-
-.title {
-  font-size: 2rem;
-  font-weight: 400;
-  color: #3b82f6;
-  margin: 1.5rem 0 1rem;
-  line-height: 1.2;
 }
 
 .description {
@@ -348,17 +304,8 @@ const handleLogout = async () => {
 }
 
 @media (max-width: 768px) {
-  .modal-container {
-    border-radius: 16px;
-    max-height: 95vh;
-  }
-
   .modal-header {
     padding: 2rem 1.5rem 1rem;
-  }
-
-  .modal-body {
-    padding: 0 1.5rem 2rem;
   }
 
   .title {

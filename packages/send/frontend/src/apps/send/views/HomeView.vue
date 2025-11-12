@@ -31,7 +31,7 @@ const showFileComponents = computed(() => {
       <header
         class="w-full sticky top-0 flex items-center justify-between px-4 py-2 bg-white/90 border-b border-gray-300"
       >
-        <h1>{{ user.email }}</h1>
+        <span>{{ user.email }}</span>
         <NewFolder />
       </header>
 

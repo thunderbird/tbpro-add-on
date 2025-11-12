@@ -15,7 +15,6 @@ import FeedbackBox from '../common/FeedbackBox.vue';
 import LoginIndicator from '../common/LoginIndicator.vue';
 import PublicLogin from '../common/PublicLogin.vue';
 import SecureSendIcon from '../common/SecureSendIcon.vue';
-import StatusBar from '../common/StatusBar.vue';
 import TBBanner from '../common/TBBanner.vue';
 import { useConfigStore } from './stores/config-store';
 import useFolderStore from './stores/folder-store';
@@ -88,7 +87,6 @@ async function _loginToOIDC() {
       <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />
       <FeedbackBox />
       <SecureSendIcon />
-      <StatusBar />
     </div>
   </main>
 </template>

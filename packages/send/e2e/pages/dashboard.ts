@@ -12,13 +12,9 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
     passwordField,
     confirmPasswordField,
     submitButton,
-    backupKeysButton,
-    passphraseInput,
     passphraseInputOverlay,
     backupKeysButtonOverlay,
   } = dashboardLocators(page);
-
-  const { folderRowSelector, folderRowTestID } = fileLocators(page);
 
   await registerButton.click();
 
@@ -50,10 +46,10 @@ export async function log_out_restore_keys() {
   const {
     emailField,
     passwordField,
-    logOutButton,
     submitLogin,
     restoreKeysButton,
     restorekeyInput,
+    recoverAccessButton,
   } = dashboardLocators(page);
   const { folderRowSelector, folderRowTestID } = fileLocators(page);
 
@@ -72,6 +68,7 @@ export async function log_out_restore_keys() {
   const passphrase = playwrightConfig.passphrase;
   // await secondPage.goto("/send/profile");
   await secondPage.waitForLoadState("networkidle");
+  await recoverAccessButton.click();
   await restorekeyInput.fill(passphrase!);
   await restoreKeysButton.click();
 
@@ -91,14 +88,13 @@ export async function reset_keys({ page }: PlaywrightProps) {
   const {
     emailField,
     passwordField,
-    backupKeysButton,
-    passphraseInput,
-    keyRecoveryButton,
-    keyRestoreButton,
-    confirmButton,
     submitLogin,
     backupKeysButtonOverlay,
     passphraseInputOverlay,
+    securityButton,
+    showReset,
+    understandCheckbox,
+    dangerButton,
   } = dashboardLocators(page);
 
   const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
@@ -114,9 +110,10 @@ export async function reset_keys({ page }: PlaywrightProps) {
   await page.goto("/send/profile");
 
   // Restore passphrase (account included)
-  await keyRecoveryButton.click();
-  await keyRestoreButton.click();
-  await confirmButton.click();
+  await securityButton.click();
+  await showReset.click();
+  await understandCheckbox.click();
+  await dangerButton.click();
 
   await page.waitForLoadState("networkidle");
   await page.goto("/send/profile");

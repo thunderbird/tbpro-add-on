@@ -24,7 +24,7 @@ onUnmounted(() => {
 <style scoped>
 .progress-content {
   position: relative;
-  max-width: 600px;
+  width: clamp(200px, 75vw, 800px);
 }
 
 .title {

@@ -33,6 +33,8 @@ import { _download } from '@send-frontend/lib/helpers';
 import { blobStream } from '@send-frontend/lib/streams';
 import { trpc } from '@send-frontend/lib/trpc';
 import useMetricsStore from '@send-frontend/stores/metrics';
+
+import logger from '@send-frontend/logger';
 import type { ProcessStage } from './status-store';
 import { useStatusStore } from './status-store';
 
@@ -98,10 +100,15 @@ const useFolderStore = defineStore('folderManager', () => {
   });
 
   async function getDefaultFolderId() {
-    const result = (await trpc.getDefaultFolder.query()).id || null;
-    rootFolderId.value = result;
-    // We want to return the value in case we need it immediately
-    return result;
+    try {
+      const result = (await trpc.getDefaultFolder.query()).id || null;
+      rootFolderId.value = result;
+      // We want to return the value in case we need it immediately
+      return result;
+    } catch {
+      logger.info('No default folder set for user');
+      return null;
+    }
   }
 
   const defaultFolder = computed(() => {

@@ -1,3 +1,11 @@
+<script lang="ts" setup>
+// Try window.close every 3 seconds to close the window after authentication
+setInterval(() => {
+  window.close();
+  console.log('Attempting to close window...');
+}, 3000);
+</script>
+
 <template>
   <div class="close-page-container">
     <h2>Authentication Complete</h2>

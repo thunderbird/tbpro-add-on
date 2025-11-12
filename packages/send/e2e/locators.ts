@@ -67,6 +67,12 @@ export const dashboardLocators = (page: Page) => {
   const keyRecoveryButton = page.getByTestId("toggle-key-recovery");
   const keyRestoreButton = page.getByTestId("restore-keys");
   const confirmButton = page.getByTestId("confirm");
+  const recoverAccessButton = page.getByTestId("recover-access-button");
+  const understandCheckbox = page.getByTestId("understand-checkbox");
+  const resetAccessButton = page.getByTestId("reset-access");
+  const dangerButton = page.getByTestId("danger-button");
+  const securityButton = page.getByTestId("security-and-privacy");
+  const showReset = page.getByTestId("show-reset");
 
   return {
     registerButton,
@@ -85,5 +91,11 @@ export const dashboardLocators = (page: Page) => {
     keyRecoveryButton,
     keyRestoreButton,
     confirmButton,
+    understandCheckbox,
+    recoverAccessButton,
+    resetAccessButton,
+    dangerButton,
+    securityButton,
+    showReset,
   };
 };

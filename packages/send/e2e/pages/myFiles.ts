@@ -255,15 +255,4 @@ export async function delete_file({ page }: PlaywrightProps) {
 
   expect((await responsePromise).status()).toBe(200);
   expect(await page.getByTestId(fileCountID).isVisible()).toBeFalsy();
-
-  // Go to the root
-  await homeButton.click();
-
-  page.getByRole("link", { name: "Profile" }).click();
-
-  await page.waitForURL("**/send/profile");
-
-  expect(await page.getByText("Recovery Key").textContent()).toBe(
-    "Recovery Key"
-  );
 }
