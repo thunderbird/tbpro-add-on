@@ -5,6 +5,7 @@ import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
 import { downloadPassPhrase } from '@send-frontend/lib/passphraseUtils';
 import { useKeychainStore, useUserStore } from '@send-frontend/stores';
 import { useClipboard } from '@vueuse/core';
+import { computed } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 
 const emit = defineEmits<{
@@ -20,9 +21,13 @@ const { copy } = useClipboard();
 
 const passphraseFromLocalStorage = keychain.getPassphraseValue();
 
+const formattedPassphrase = computed(() => {
+  return passphraseFromLocalStorage.split(' ').join(' - ');
+});
+
 const copyToClipboard = () => {
   if (passphraseFromLocalStorage) {
-    copy(passphraseFromLocalStorage);
+    copy(formattedPassphrase.value);
   }
 };
 </script>
@@ -46,7 +51,7 @@ const copyToClipboard = () => {
           <div class="key-input-container">
             <input
               type="text"
-              :value="passphraseFromLocalStorage"
+              :value="formattedPassphrase"
               readonly
               class="key-input"
             />
