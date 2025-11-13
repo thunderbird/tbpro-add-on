@@ -27,4 +27,4 @@ jobs:
           imageName: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
           # Change this to be your CI task/script
           runCmd: |
-            pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+            ls
