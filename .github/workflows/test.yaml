@@ -37,7 +37,7 @@ jobs:
           cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
           push: always
           # Change this to be your CI task/script
-          runCmd: lerna run setup --scope=send-suite
+          runCmd: lerna run setup --scope=send-suite --yes
 
       - name: Setup addon env
         uses: devcontainers/ci@v0.3
@@ -46,4 +46,4 @@ jobs:
           cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
           push: always
           # Change this to be your CI task/script
-          runCmd: lerna run setup --scope=addon
+          runCmd: lerna run setup --scope=addon --yes
