@@ -16,7 +16,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Setup send env
         uses: devcontainers/ci@v0.3
         with:
@@ -34,3 +34,12 @@ jobs:
           push: never
           # Change this to be your CI task/script
           runCmd: echo "Y" | lerna run setup --scope=addon
+
+      - name: Build addon
+        uses: devcontainers/ci@v0.3
+        with:
+          # Change this to point to your image name
+          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          push: never
+          # Change this to be your CI task/script
+          runCmd: pnpm install && echo "Y" | lerna run build --scope=addon
