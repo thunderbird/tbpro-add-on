@@ -17,14 +17,14 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup send env
-        uses: devcontainers/ci@v0.3
-        with:
-          # Change this to point to your image name
-          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
-          push: never
-          # Change this to be your CI task/script
-          runCmd: echo "Y" | lerna run setup --scope=send-suite
+      # - name: Setup send env
+      #   uses: devcontainers/ci@v0.3
+      #   with:
+      #     # Change this to point to your image name
+      #     cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+      #     push: never
+      #     # Change this to be your CI task/script
+      #     runCmd: echo "Y" | lerna run setup --scope=send-suite
 
       - name: Setup addon env
         uses: devcontainers/ci@v0.3
