@@ -20,11 +20,30 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and run Dev Container task
+      - name: Build and cache devcontainer
         uses: devcontainers/ci@v0.3
         with:
           # Change this to point to your image name
           imageName: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          push: always
           # Change this to be your CI task/script
-          runCmd: |
-            ls
+          runCmd: pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+
+      - name: Setup send env
+        uses: devcontainers/ci@v0.3
+        with:
+          # Change this to point to your image name
+          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          push: always
+          # Change this to be your CI task/script
+          runCmd: lerna run setup --scope=send-suite
+
+      - name: Setup addon env
+        uses: devcontainers/ci@v0.3
+        with:
+          # Change this to point to your image name
+          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          push: always
+          # Change this to be your CI task/script
+          runCmd: lerna run setup --scope=addon
