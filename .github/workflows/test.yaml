@@ -35,6 +35,7 @@ jobs:
         with:
           # Change this to point to your image name
           cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          push: never
           # Change this to be your CI task/script
           runCmd: echo "Y" | lerna run setup --scope=send-suite
 
@@ -43,5 +44,6 @@ jobs:
         with:
           # Change this to point to your image name
           cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          push: never
           # Change this to be your CI task/script
           runCmd: echo "Y" | lerna run setup --scope=addon
