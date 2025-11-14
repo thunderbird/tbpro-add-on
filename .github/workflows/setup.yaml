@@ -15,7 +15,28 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}.
+      # backend
+      - name: Install dependencies
+        id: install-dependencies
+        uses: devcontainers/ci@v0.3
+        with:
+          # Change this to point to your image name
+          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          push: never
+          # Change this to be your CI task/script
+          runCmd: pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap && cd packages/send && pnpm install --filter send-backend
+
+      - name: Backend tests
+        id: backend-tests
+        uses: devcontainers/ci@v0.3
+        with:
+          # Change this to point to your image name
+          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+          push: never
+          # Change this to be your CI task/script
+          runCmd: cd packages/send/backend && pnpm prisma generate && pnpm ci:validate
+
 
       # - name: Setup send env
       #   uses: devcontainers/ci@v0.3
@@ -26,20 +47,20 @@ jobs:
       #     # Change this to be your CI task/script
       #     runCmd: echo "Y" | lerna run setup --scope=send-suite
 
-      - name: Setup addon env
-        uses: devcontainers/ci@v0.3
-        with:
-          # Change this to point to your image name
-          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
-          push: never
-          # Change this to be your CI task/script
-          runCmd: echo "Y" | lerna run setup --scope=addon
+      # - name: Setup addon env
+      #   uses: devcontainers/ci@v0.3
+      #   with:
+      #     # Change this to point to your image name
+      #     cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+      #     push: never
+      #     # Change this to be your CI task/script
+      #     runCmd: echo "Y" | lerna run setup --scope=addon
 
-      - name: Build addon
-        uses: devcontainers/ci@v0.3
-        with:
-          # Change this to point to your image name
-          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
-          push: never
-          # Change this to be your CI task/script
-          runCmd: pnpm install && echo "Y" | lerna run build --scope=addon
+      # - name: Build addon
+      #   uses: devcontainers/ci@v0.3
+      #   with:
+      #     # Change this to point to your image name
+      #     cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+      #     push: never
+      #     # Change this to be your CI task/script
+      #     runCmd: pnpm install && echo "Y" | lerna run build --scope=addon
