@@ -6,7 +6,7 @@ on: # rebuild any PRs and main branch changes
       - main
 
 jobs:
-  build:
+  devcontainer-build:
     runs-on: ubuntu-latest
     steps:
 

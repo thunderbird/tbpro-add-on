@@ -1,9 +1,10 @@
-name: 'build' 
+name: 'setup' 
 on: # rebuild any PRs and main branch changes
   pull_request:
   push:
-  
-build:
+
+jobs:
+  setup:
     runs-on: ubuntu-latest
     steps:
       - dev-container-tests
