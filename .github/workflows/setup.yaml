@@ -1,8 +1,11 @@
-name: 'setup' 
+name: 'build' 
 on: # rebuild any PRs and main branch changes
   pull_request:
   push:
-    branches:
+  
+build:
+    runs-on: ubuntu-latest
+    steps:
       - dev-container-tests
       - name: Setup send env
         uses: devcontainers/ci@v0.3
