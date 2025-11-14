@@ -7,7 +7,6 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
-      - dev-container-tests
       - name: Setup send env
         uses: devcontainers/ci@v0.3
         with:
