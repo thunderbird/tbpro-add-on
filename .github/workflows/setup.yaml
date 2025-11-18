@@ -18,7 +18,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       # backend
       - name: Install dependencies
         id: install-dependencies
@@ -30,7 +30,6 @@ jobs:
 
       - name: Backend tests
         id: backend-tests
-        container:
         run:: |
           cd packages/send/backend
           pnpm prisma generate 
