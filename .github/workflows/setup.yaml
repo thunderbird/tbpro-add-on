@@ -6,6 +6,8 @@ on: # rebuild any PRs and main branch changes
 jobs:
   setup:
     runs-on: ubuntu-latest
+    container:
+        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     steps:
       - name: Checkout (GitHub)
         uses: actions/checkout@v3
@@ -19,23 +21,19 @@ jobs:
       # backend
       - name: Install dependencies
         id: install-dependencies
-        uses: devcontainers/ci@v0.3
-        with:
-          # Change this to point to your image name
-          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
-          push: never
-          # Change this to be your CI task/script
-          runCmd: pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap && cd packages/send && pnpm install --filter send-backend
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on
+          lerna run bootstrap
+          cd packages/send
+          pnpm install --filter send-backend
 
       - name: Backend tests
         id: backend-tests
-        uses: devcontainers/ci@v0.3
-        with:
-          # Change this to point to your image name
-          cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
-          push: never
-          # Change this to be your CI task/script
-          runCmd: cd packages/send/backend && pnpm prisma generate && pnpm ci:validate
+        container:
+        run:: |
+          cd packages/send/backend
+          pnpm prisma generate 
+          pnpm ci:validate
 
 
       # - name: Setup send env
