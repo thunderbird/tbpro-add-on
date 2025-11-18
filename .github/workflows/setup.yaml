@@ -1,0 +1,64 @@
+name: 'setup' 
+on: # rebuild any PRs and main branch changes
+  pull_request:
+  push:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    container:
+        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    steps:
+      - name: Checkout (GitHub)
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2 
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # backend
+      - name: Install dependencies
+        id: install-dependencies
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on
+          lerna run bootstrap
+          cd packages/send
+          pnpm install --filter send-backend
+
+      - name: Backend tests
+        id: backend-tests
+        run: |
+          cd packages/send/backend
+          pnpm prisma generate 
+          pnpm ci:validate
+
+
+      # - name: Setup send env
+      #   uses: devcontainers/ci@v0.3
+      #   with:
+      #     # Change this to point to your image name
+      #     cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+      #     push: never
+      #     # Change this to be your CI task/script
+      #     runCmd: echo "Y" | lerna run setup --scope=send-suite
+
+      # - name: Setup addon env
+      #   uses: devcontainers/ci@v0.3
+      #   with:
+      #     # Change this to point to your image name
+      #     cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+      #     push: never
+      #     # Change this to be your CI task/script
+      #     runCmd: echo "Y" | lerna run setup --scope=addon
+
+      # - name: Build addon
+      #   uses: devcontainers/ci@v0.3
+      #   with:
+      #     # Change this to point to your image name
+      #     cacheFrom: ghcr.io/aatchison/tbpro-addon/cached-devcontainer
+      #     push: never
+      #     # Change this to be your CI task/script
+      #     runCmd: pnpm install && echo "Y" | lerna run build --scope=addon
