@@ -30,7 +30,7 @@ jobs:
 
       - name: Backend tests
         id: backend-tests
-        run:: |
+        run: |
           cd packages/send/backend
           pnpm prisma generate 
           pnpm ci:validate
