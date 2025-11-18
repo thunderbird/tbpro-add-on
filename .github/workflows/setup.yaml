@@ -18,6 +18,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          
       # backend
       - name: Install dependencies
         id: install-dependencies
