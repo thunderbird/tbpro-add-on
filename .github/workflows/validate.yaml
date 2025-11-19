@@ -33,7 +33,7 @@ jobs:
         id: check
         with:
           filters: |
-             backend-changed:
+            backend-changed:
               - '**'
             iac-changed:
               - '**'
