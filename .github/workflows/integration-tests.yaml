@@ -65,6 +65,7 @@ jobs:
         id: setup-and-install-dependencies
         shell: bash
         run: |
+          npnm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm i --filter "send-*"
