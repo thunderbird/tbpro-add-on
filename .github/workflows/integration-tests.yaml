@@ -64,7 +64,7 @@ jobs:
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
         run: |
-          npn install -g bun
+          npm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm i --filter "send-*"
