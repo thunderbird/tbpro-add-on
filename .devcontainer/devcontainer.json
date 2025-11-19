@@ -35,7 +35,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap"
+	"postCreateCommand": "pnpm install --filter @thunderbird/tbpro-add-on && npm install -g bun"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
