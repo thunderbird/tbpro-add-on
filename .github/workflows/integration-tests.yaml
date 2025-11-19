@@ -63,7 +63,6 @@ jobs:
 
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
-        shell: bash
         run: |
           npnm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
@@ -77,7 +76,6 @@ jobs:
       - name: Run stack and test
         id: run-stack-and-test
         timeout-minutes: 10
-        shell: bash
         run: |
           lerna run build-image:backend --scope=send-suite
           pnpm run test:integration:ci

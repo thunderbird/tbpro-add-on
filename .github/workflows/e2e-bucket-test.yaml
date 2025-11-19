@@ -64,7 +64,6 @@ jobs:
 
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
-        shell: bash
         run: |
           npm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
@@ -87,7 +86,6 @@ jobs:
           sed -i "s/^VITE_SPLIT_SIZE_IN_MB=100$/VITE_SPLIT_SIZE_IN_MB=1/" .env
 
       - name: Add env vars for backend
-        shell: bash
         run: |
           cd packages/send/backend
           echo "OIDC_CLIENT_ID=${{ secrets.OIDC_CLIENT_ID }}" >> .env
@@ -95,7 +93,6 @@ jobs:
           echo "OIDC_TOKEN_INTROSPECTION_URL=${{ secrets.OIDC_TOKEN_INTROSPECTION_URL }}" >> .env
 
       - name: Add env vars for frontend
-        shell: bash
         run: |
           cd packages/send/frontend
           echo "VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}" >> .env
@@ -104,7 +101,6 @@ jobs:
       - name: Run stack and test
         id: run-stack-and-test
         timeout-minutes: 10
-        shell: bash
         run: |
           # Create .env file with secrets (for end to end run only)
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
