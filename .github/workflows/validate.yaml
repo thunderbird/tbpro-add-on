@@ -34,26 +34,16 @@ jobs:
         with:
           filters: |
             backend-changed:
-              - '**'
+              - 'packages/send/backend/**'
             iac-changed:
-              - '**'
+              - 'packages/send/pulumi/**'
+              - '.github/workflows/validate.yml'
             frontend-changed:
-              - '**'
+              - 'packages/send/frontend/**'
             shared-changed:
-              - '**'
+              - 'packages/shared/**'
             addon-changed:
-              - '**'
-            # backend-changed:
-            #   - 'packages/send/backend/**'
-            # iac-changed:
-            #   - 'packages/send/pulumi/**'
-            #   - '.github/workflows/validate.yml'
-            # frontend-changed:
-            #   - 'packages/send/frontend/**'
-            # shared-changed:
-            #   - 'packages/shared/**'
-            # addon-changed:
-            #   - 'packages/addon/**'
+              - 'packages/addon/**'
 
   # When the backend code changes, run these steps
   backend-tests:

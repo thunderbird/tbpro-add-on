@@ -32,35 +32,25 @@ jobs:
         with:
           filters: |
             backend-changed:
-              - '**'
+              - 'packages/send/backend/**'
             iac-changed:
-              - '**'
+              - 'packages/send/pulumi/**'
+              - '.github/workflows/validate.yml'
             frontend-changed:
-              - '**'
+              - 'packages/send/frontend/**'
             shared-changed:
-              - '**'
+              - 'packages/shared/**'
             addon-changed:
-              - '**'
-            # backend-changed:
-            #   - 'packages/send/backend/**'
-            # iac-changed:
-            #   - 'packages/send/pulumi/**'
-            #   - '.github/workflows/validate.yml'
-            # frontend-changed:
-            #   - 'packages/send/frontend/**'
-            # shared-changed:
-            #   - 'packages/shared/**'
-            # addon-changed:
-            #   - 'packages/addon/**'
-            # backend-changed:
-            #   - 'packages/send/backend/**'
-            # iac-changed:
-            #   - 'packages/send/pulumi/**'
-            #   - '.github/workflows/validate.yml'
-            # frontend-changed:
-            #   - 'packages/send/frontend/**'
-            # shared-changed:
-            #   - 'packages/shared/**'
+              - 'packages/addon/**'
+            backend-changed:
+              - 'packages/send/backend/**'
+            iac-changed:
+              - 'packages/send/pulumi/**'
+              - '.github/workflows/validate.yml'
+            frontend-changed:
+              - 'packages/send/frontend/**'
+            shared-changed:
+              - 'packages/shared/**'
             
   end-to-end-tests:
     needs: detect-changes
