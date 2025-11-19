@@ -71,10 +71,9 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
-        shell: bash
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm i --filter "send-*"
@@ -85,7 +84,6 @@ jobs:
           echo Y | pnpm setup:local
 
       - name: Add env vars for backend
-        shell: bash
         run: |
           cd packages/send/backend
           echo "OIDC_CLIENT_ID=${{ secrets.OIDC_CLIENT_ID }}" >> .env
@@ -93,7 +91,6 @@ jobs:
           echo "OIDC_TOKEN_INTROSPECTION_URL=${{ secrets.OIDC_TOKEN_INTROSPECTION_URL }}" >> .env
 
       - name: Add env vars for frontend
-        shell: bash
         run: |
           cd packages/send/frontend
           echo "VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}" >> .env
@@ -102,7 +99,6 @@ jobs:
       - name: Run stack and test
         id: run-stack-and-test
         timeout-minutes: 10
-        shell: bash
         run: |
           # Create .env file with secrets (for end to end run only)# Create .env file with secrets
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
