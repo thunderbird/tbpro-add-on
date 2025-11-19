@@ -2,10 +2,29 @@
 
 import logger from '@send-frontend/logger';
 import { useApiStore } from '@send-frontend/stores';
-import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
+import { User, UserManager, UserManagerSettings, IdTokenClaims } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
 
 import { ref, watch } from 'vue';
+
+interface RawAuthData extends User {
+    // access_token and token_type are REQUIRED in the User class, so they remain required here.
+    access_token: string;
+    token_type: string;
+
+    // as optional here to resolve the extension error.
+    id_token?: string;
+    scope?: string;
+    expires_at?: number;
+
+    // session_state is REQUIRED but nullable in the User class.
+    session_state: string | null;
+
+    // We use IdTokenClaims as defined in the User class source.
+    profile: IdTokenClaims;
+
+    refresh_token?: string; // Optional in base User class
+}
 
 const settings: UserManagerSettings = {
   authority: import.meta.env?.VITE_OIDC_ROOT_URL,
@@ -89,15 +108,23 @@ export const useAuthStore = defineStore('auth', () => {
         { type: 'APP/PING', text: 'hello from auth store 👋' },
         window.location.origin
       );
-      // Send the token.
 
-      console.log(`[handleOIDCCallback] sending refresh token as token 🤞🤞`);
+      // Send the token for thundermail.
       window.postMessage(
         {
           type: 'TB/OIDC_TOKEN',
           token: user.refresh_token,
           email: user.profile.preferred_username,
           name: user.profile.name || user.profile.given_name,
+        },
+        window.location.origin
+      );
+
+      // Send the entire user for TB Send.
+      window.postMessage(
+        {
+          type: 'TB/OIDC_USER',
+          user: user
         },
         window.location.origin
       );
@@ -202,6 +229,41 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Save authenticated user data obtained from token bridge
+   */
+  async function storeUser(rawAuthData: RawAuthData) {
+    try {
+      if (!rawAuthData || !rawAuthData.access_token) {
+        console.error("Invalid authentication data received from token bridge. Missing access_token.");
+        return;
+      }
+
+      try {
+        const userInstance = new User(rawAuthData);
+        await userManager.storeUser(userInstance);
+
+        console.log("User successfully stored via token bridge data.");
+
+        // TODO: make sure Thunderbird also handles token renewal.
+        // Otherwise, it will be logged out at some point because of Refresh Token Rotation.
+        // After confirming that, we should do our own renewal here.
+        // userManager.startSilentRenew();
+
+      } catch (error) {
+        console.error("Failed to store user with UserManager:", error);
+      }
+
+      isLoggedIn.value = true;
+    } catch (error) {
+      console.error('OIDC login from bridge failed:', error);
+      throw error;
+    }
+  }
+
+
+
+
   // Legacy alias for backward compatibility
   const loginToKeyCloak = loginToOIDC;
 
@@ -218,6 +280,7 @@ export const useAuthStore = defineStore('auth', () => {
     getAccessToken,
     logoutFromOIDC,
     refreshToken,
+    storeUser, // Store auth data received from token bridge
     loginToKeyCloak, // Alias for loginToOIDC
   };
 });

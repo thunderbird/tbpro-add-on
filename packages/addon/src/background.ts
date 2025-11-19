@@ -6,6 +6,7 @@ import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
+import { useAuthStore } from '@send-frontend/stores/auth-store';
 
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import init from '@send-frontend/lib/init';
@@ -23,9 +24,11 @@ setActivePinia(pinia);
 // function below.
 const folderStore = useFolderStore();
 const userStore = useUserStore();
+const authStore = useAuthStore();
 const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 const { configureExtension } = useExtensionStore();
+
 
 console.log('hello from the background.js!', new Date().getTime());
 
@@ -198,6 +201,13 @@ browser.runtime.onMessage.addListener(async (message) => {
     case 'TB/PING':
       console.log('[background] got the ping from the bridge');
       console.log(message);
+      break;
+
+    case 'TB/OIDC_USER':
+      console.log(`🪓 attempting to store user from token bridge`);
+      console.log(message.user);
+      await authStore.storeUser(message.user);
+      console.log(`🎯 user stored`);
       break;
 
     case 'TB/OIDC_TOKEN':

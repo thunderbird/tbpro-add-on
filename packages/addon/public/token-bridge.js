@@ -41,6 +41,17 @@ window.addEventListener("message", (e) => {
     });
   }
 
+  if (e?.data?.type === "TB/OIDC_USER") {
+    const userData = e.data.user;
+
+    if (userData && typeof userData === 'object') {
+      browser.runtime.sendMessage({
+        type: "TB/OIDC_USER",
+        user: userData,
+      });
+    }
+  }
+
   if (e?.data?.type === "APP/PING") {
     browser.runtime.sendMessage({
       type: "TB/PING",
