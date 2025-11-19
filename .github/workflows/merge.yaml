@@ -139,7 +139,6 @@ jobs:
 
           # Set up the Pulumi environment and update the service
           export PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
-          source ./venv/bin/activate
           pulumi login
           pulumi stack select stage
           pulumi up -y --diff --target \
