@@ -113,7 +113,7 @@ async function makeBackup() {
 
   try {
     await backupKeys(keychain, api, errorMessage);
-    await downloadPassPhrase(passphraseFromLocalStorage, email);
+    await downloadPassPhrase(passphraseString.value, email);
     await dbUserSetup(userStore, keychain, folderStore);
     configureExtension();
   } catch (e) {
