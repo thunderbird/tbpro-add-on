@@ -249,11 +249,7 @@ export const useAuthStore = defineStore('auth', () => {
         await userManager.storeUser(userInstance);
 
         console.log("User successfully stored via token bridge data.");
-
-        // TODO: make sure Thunderbird also handles token renewal.
-        // Otherwise, it will be logged out at some point because of Refresh Token Rotation.
-        // After confirming that, we should do our own renewal here.
-        // userManager.startSilentRenew();
+        userManager.startSilentRenew();
 
       } catch (error) {
         console.error("Failed to store user with UserManager:", error);
