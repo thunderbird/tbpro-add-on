@@ -4,8 +4,13 @@ import logger from '@send-frontend/logger';
 import { useApiStore } from '@send-frontend/stores';
 import { User, UserManager, UserManagerSettings, IdTokenClaims } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
-
 import { ref, watch } from 'vue';
+import {
+  BRIDGE_PING,
+  BRIDGE_READY,
+  OIDC_USER,
+  OIDC_TOKEN,
+} from '@send-frontend/lib/const';
 
 interface RawAuthData extends User {
     // access_token and token_type are REQUIRED in the User class, so they remain required here.
@@ -97,7 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
       window.addEventListener('message', (e) => {
         if (
           e.origin === window.location.origin &&
-          e.data?.type === 'TB/BRIDGE_READY'
+          e.data?.type === BRIDGE_READY
         ) {
           console.log('[web app] bridge says: ready');
         }
@@ -105,14 +110,14 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Send one tiny ping to the bridge.
       window.postMessage(
-        { type: 'APP/PING', text: 'hello from auth store 👋' },
+        { type: BRIDGE_PING, text: 'hello from auth store 👋' },
         window.location.origin
       );
 
       // Send the token for thundermail.
       window.postMessage(
         {
-          type: 'TB/OIDC_TOKEN',
+          type: OIDC_TOKEN,
           token: user.refresh_token,
           email: user.profile.preferred_username,
           name: user.profile.name || user.profile.given_name,
@@ -123,7 +128,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Send the entire user for TB Send.
       window.postMessage(
         {
-          type: 'TB/OIDC_USER',
+          type: OIDC_USER,
           user: user
         },
         window.location.origin

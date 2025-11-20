@@ -9,6 +9,17 @@ import useUserStore from '@send-frontend/stores/user-store';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
 
 import { BASE_URL } from '@send-frontend/apps/common/constants';
+import {
+  PING,
+  OIDC_USER,
+  OIDC_TOKEN,
+  SIGN_IN,
+  ALL_UPLOADS_ABORTED,
+  ALL_UPLOADS_COMPLETE,
+  FILE_LIST,
+  POPUP_READY,
+} from '@send-frontend/lib/const';
+
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
@@ -198,19 +209,19 @@ const THUNDERMAIL_DISPLAY_NAME = "Thundermail";
 // Handle all messages from popup.
 browser.runtime.onMessage.addListener(async (message) => {
   switch (message.type) {
-    case 'TB/PING':
+    case PING:
       console.log('[background] got the ping from the bridge');
       console.log(message);
       break;
 
-    case 'TB/OIDC_USER':
+    case OIDC_USER:
       console.log(`🪓 attempting to store user from token bridge`);
       console.log(message.user);
       await authStore.storeUser(message.user);
       console.log(`🎯 user stored`);
       break;
 
-    case 'TB/OIDC_TOKEN':
+    case OIDC_TOKEN:
       const { email, name, token } = message;
 
       if (!email || !token) {
@@ -237,7 +248,7 @@ browser.runtime.onMessage.addListener(async (message) => {
 
       break;
 
-    case 'SIGN_IN':
+    case SIGN_IN:
       console.log(
         `[onMessage] sounds like you want to sign in from the typescript handler`
       );
@@ -252,11 +263,11 @@ browser.runtime.onMessage.addListener(async (message) => {
       break;
 
     // Popup is ready and is requesting the file list.
-    case 'POPUP_READY':
+    case POPUP_READY:
       console.log(`[onMessage] Popup is ready. Sending file list.`);
 
       browser.runtime.sendMessage({
-        type: 'FILE_LIST',
+        type: FILE_LIST,
         files: uploadInfoQueue, // Send the entire queue
       });
 
@@ -265,7 +276,7 @@ browser.runtime.onMessage.addListener(async (message) => {
       break;
 
     // Popup reports that all uploads are complete.
-    case 'ALL_UPLOADS_COMPLETE': {
+    case ALL_UPLOADS_COMPLETE: {
       console.log(`[onMessage] Received message that files were uploaded.`);
       const { url } = message;
 
@@ -280,7 +291,7 @@ browser.runtime.onMessage.addListener(async (message) => {
     }
 
     // Popup reports that the user cancelled the entire process.
-    case 'ALL_UPLOADS_ABORTED':
+    case ALL_UPLOADS_ABORTED:
       console.log(`[onMessage] User aborted all uploads.`);
       rejectAllInQueue(new Error('User aborted the operation.'));
       break;
