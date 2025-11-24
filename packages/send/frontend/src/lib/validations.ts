@@ -13,16 +13,16 @@ export const validateToken = async (api: ApiConnection): Promise<boolean> => {
       const authStore = await import('@send-frontend/stores/auth-store').then(
         (m) => m.useAuthStore()
       );
-      const accessToken = await authStore.getAccessToken();
+      const oidcAccessToken = await authStore.getAccessToken();
 
-      if (accessToken) {
+      if (oidcAccessToken) {
         // Try OIDC validation
         const oidcResponse = await api.call(
           'auth/oidc/me',
           {},
           'GET',
           {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${oidcAccessToken}`,
           },
           { fullResponse: true }
         );
@@ -183,6 +183,7 @@ export const validator = async ({
     }
   }
 
+  console.log('Validations result:', validations);
   return validations;
 };
 

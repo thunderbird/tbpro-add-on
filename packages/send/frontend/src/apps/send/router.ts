@@ -15,11 +15,9 @@ import {
   validateToken,
 } from '@send-frontend/lib/validations';
 
-import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import {
   useApiStore,
-  useConfigStore,
   useFolderStore,
   useKeychainStore,
   useUserStore,
@@ -37,7 +35,6 @@ import ClosePage from './pages/ClosePage.vue';
 import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
 import PromptVerification from './pages/PromptVerification.vue';
-import VerifyPage from './pages/VerifyPage.vue';
 import { useStatusStore } from './stores/status-store';
 import { useVerificationStore } from './stores/verification-store';
 
@@ -75,15 +72,6 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/post-login',
     component: PostLoginPage,
-  },
-  {
-    path: '/verify',
-    component: VerifyPage,
-    meta: {
-      [META_OPTIONS.requiresValidToken]: true,
-      [META_OPTIONS.requiresBackedUpKeys]: true,
-      [META_OPTIONS.autoRestoresKeys]: true,
-    },
   },
   {
     path: '/prompt-verification',
@@ -179,7 +167,7 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
-  const { isRouteExtension } = useIsRouteExtension();
+  // const { isRouteExtension } = useIsRouteExtension();
   const folderStore = useFolderStore();
   const statusStore = useStatusStore();
   const { isRouterLoading } = storeToRefs(statusStore);
@@ -188,7 +176,7 @@ router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore();
   const { metrics } = useMetricsStore();
   useVerificationStore();
-  const { isThunderbirdHost } = useConfigStore();
+  // const { isThunderbirdHost } = useConfigStore();
 
   // We want to show the loading state when navigating to folder routes (on web)
   if (to.path.includes('/folder')) {
@@ -202,7 +190,7 @@ router.beforeEach(async (to, from, next) => {
   );
   const resolveDefaultFolder = matchMeta(to, META_OPTIONS.resolveDefaultFolder);
   const requiresValidToken = matchMeta(to, META_OPTIONS.requiresValidToken);
-  const closeOnExtension = matchMeta(to, META_OPTIONS.closeOnExtension);
+  // const closeOnExtension = matchMeta(to, META_OPTIONS.closeOnExtension);
   const autoRestoresKeys = matchMeta(to, META_OPTIONS.autoRestoresKeys);
   const requiresBackedUpKeys = matchMeta(to, META_OPTIONS.requiresBackedUpKeys);
   const requiresRetryCountCheck = matchMeta(
@@ -222,9 +210,9 @@ router.beforeEach(async (to, from, next) => {
 
   // We don't want users to navigate the web application from the extension, just log in
   // So if they're logged in, this window will close
-  if (closeOnExtension && (isRouteExtension.value || isThunderbirdHost)) {
-    window.close();
-  }
+  // if (closeOnExtension && (isRouteExtension.value || isThunderbirdHost)) {
+  //   window.close();
+  // }
 
   if (redirectOnValidSession && hasLocalStorageSession) {
     const isTokenValid = await validateToken(api);

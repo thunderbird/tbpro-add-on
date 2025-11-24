@@ -20,7 +20,7 @@ export function useAuth() {
   const { refetch: refetchAuth, isLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => {
-      isLoggedIn.value = false;
+      // isLoggedIn.value = false;
       // Check OIDC authentication status first
       try {
         const user = await authStore.checkAuthStatus();

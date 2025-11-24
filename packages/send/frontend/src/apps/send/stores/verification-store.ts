@@ -4,21 +4,30 @@ import { trpc } from '@send-frontend/lib/trpc';
 import { validateBackedUpKeys } from '@send-frontend/lib/validations';
 import { useKeychainStore, useUserStore } from '@send-frontend/stores';
 import { defineStore } from 'pinia';
-import { useRouter } from 'vue-router';
+import { ref } from 'vue';
 
 const sessionUUID = getUUID();
 
 export const useVerificationStore = defineStore('verification', () => {
-  const { push } = useRouter();
-
+  const generatedCode = ref<string | null>(null);
   const userStore = useUserStore();
   const { keychain } = useKeychainStore();
+  const isDeviceAskingForVerification = ref(false);
+
+  console.log(
+    '💬 Verification Store initialized with session UUID:',
+    sessionUUID
+  );
 
   async function validateActiveClient() {
     return await validateBackedUpKeys(userStore.getBackup, keychain);
   }
 
   async function handleSuccessfulVerificationForExistingClient(code: string) {
+    console.log(
+      '🔐 Handling successful verification for existing client with code:',
+      code
+    );
     const passphrase = keychain.getPassphraseValue();
 
     // Generate a key for encrypting the passphrase using the code
@@ -58,6 +67,7 @@ export const useVerificationStore = defineStore('verification', () => {
       codeSalt: codeSaltStr,
     };
     const id = await trpc.shareEncryptedPassphrase.mutate(payload);
+    console.log('Successfully shared encrypted passphrase with ID:', id);
     return id;
   }
 
@@ -84,6 +94,7 @@ export const useVerificationStore = defineStore('verification', () => {
       // This function would be called on the receiving client to decrypt
       // the passphrase using the code provided during verification
       await keychain.storePassPhrase(decryptedPassphrase);
+      console.log('🗝️ Passphrase successfully decrypted and stored.');
       return decryptedPassphrase;
     } catch (error) {
       console.error('Error retrieving encrypted passphrase:', error);
@@ -128,16 +139,15 @@ export const useVerificationStore = defineStore('verification', () => {
       const hasValidPassphrase = await validateActiveClient();
 
       if (data?.code !== sessionUUID && hasValidPassphrase) {
-        const userResponse = window.confirm(
+        isDeviceAskingForVerification.value.value = true;
+        console.warn(
           'A new device wants to authenticate. Do you want to verify it?.'
         );
 
-        if (userResponse) {
-          push('/verify');
-          if (!data || !data.code) {
-            console.error('Verification failed: no code provided');
-            return;
-          }
+        // push('/verify');
+        if (!data || !data.code) {
+          console.error('Verification failed: no code provided');
+          return;
         }
       }
     } catch (error) {
@@ -156,6 +166,7 @@ export const useVerificationStore = defineStore('verification', () => {
   return {
     // Session
     sessionUUID,
+    generatedCode,
 
     // Methods
     handleSuccessfulVerificationForNewClient,
@@ -163,6 +174,8 @@ export const useVerificationStore = defineStore('verification', () => {
 
     // Utility methods
     decryptPassphraseWithCode,
+    // State
+    isDeviceAskingForVerification,
   };
 });
 

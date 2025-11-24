@@ -15,6 +15,8 @@ import useMetricsStore from '@send-frontend/stores/metrics';
 import useUserStore from '@send-frontend/stores/user-store';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { LoadingSkeleton } from '@thunderbirdops/services-ui';
+import VerifyComponent from '../send/components/VerifyComponent.vue';
+import PromptVerification from '../send/pages/PromptVerification.vue';
 import { useExtensionStore } from '../send/stores/extension-store';
 import useFolderStore from '../send/stores/folder-store';
 import AccessLocked from '../send/views/AccessLocked.vue';
@@ -162,6 +164,9 @@ async function restoreFromBackup() {
             :log-out-auth="logOutAuth"
           />
           <!-- USERS RESTORING SESSION -->
+          <PromptVerification
+            v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
+          />
           <AccessLocked
             v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
             :on-recover="
@@ -190,6 +195,7 @@ async function restoreFromBackup() {
           />
 
           <!-- GOOD TO GO -->
+          <VerifyComponent v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'" />
           <SecurityAndPrivacy
             v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
             :reset-keys="resetKeys"

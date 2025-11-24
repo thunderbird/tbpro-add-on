@@ -23,6 +23,13 @@ const isTesting = import.meta.env.VITE_TESTING === 'true';
 const wsClient = !isTesting
   ? createWSClient({
       url: `${import.meta.env.VITE_SEND_SERVER_URL}${TRPC_WS_PATH}`,
+      keepAlive: { enabled: true, intervalMs: 30_000 },
+      onClose(cause) {
+        logger.warn('WebSocket connection closed', { cause });
+      },
+      onError(err) {
+        logger.error('WebSocket connection error', { err });
+      },
     })
   : null;
 

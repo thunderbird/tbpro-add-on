@@ -165,6 +165,11 @@ export async function requireJWT(
   res: Response,
   next: NextFunction
 ) {
+  // If public login is disabled, force OIDC authentication
+  // if (process.env.ALLOW_PUBLIC_LOGIN === 'false') {
+  //   return await requireAuth(req, res, next);
+  // }
+  // PUBLIC LOGIN ENABLED - proceed with JWT authentication
   const jwtToken = getCookie(req?.headers?.cookie, 'authorization');
   const jwtRefreshToken = getCookie(req?.headers?.cookie, 'refresh_token');
 

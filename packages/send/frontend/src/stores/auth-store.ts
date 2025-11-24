@@ -1,11 +1,10 @@
 // stores/auth-store.js
 
-import logger from '@send-frontend/logger';
 import { useApiStore } from '@send-frontend/stores';
 import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
 
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 
 const settings: UserManagerSettings = {
   authority: import.meta.env?.VITE_OIDC_ROOT_URL,
@@ -27,10 +26,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = ref(false);
   const currentUser = ref<User | null>(null);
-
-  watch(isLoggedIn, (newValue) => {
-    logger.info('isLoggedIn changed', newValue);
-  });
 
   // ------- OIDC Authentication ------- //
 

@@ -37,7 +37,7 @@ router.post('', requireJWT, async (req, res) => {
     });
   }
 
-  return res.json({ message: 'Verification complete' });
+  return res.json({ message: 'Step 2: Verification complete' });
 });
 
 /*

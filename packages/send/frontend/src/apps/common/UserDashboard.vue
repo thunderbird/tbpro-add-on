@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import LogOutButton from '@send-frontend/apps/send/elements/LogOutButton.vue';
-import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { useAuth } from '@send-frontend/lib/auth';
 import { DAYS_TO_EXPIRY } from '@send-frontend/lib/const';
 import { trpc } from '@send-frontend/lib/trpc';
@@ -9,6 +8,7 @@ import { useQuery } from '@tanstack/vue-query';
 import prettyBytes from 'pretty-bytes';
 import { computed } from 'vue';
 import ProgressBarDashboard from '../send/components/ProgressBarDashboard.vue';
+import SubscriptionsWrapper from '../send/components/SubscriptionsWrapper.vue';
 import { useConfigStore } from '../send/stores/config-store';
 import { useStatusStore } from '../send/stores/status-store';
 import LoadingComponent from './LoadingComponent.vue';
@@ -18,7 +18,7 @@ const { isExtension } = useConfigStore();
 const { validators } = useStatusStore();
 const { clearUserFromStorage } = useUserStore();
 const { logOutAuth } = useAuth();
-const { isRouteExtension } = useIsRouteExtension();
+// const { isRouteExtension } = useIsRouteExtension();
 
 const handleLogout = async () => {
   await clearUserFromStorage();
@@ -29,9 +29,9 @@ const handleLogout = async () => {
   }
 };
 
-if (isRouteExtension.value) {
-  window.close();
-}
+// if (isRouteExtension.value) {
+//   window.close();
+// }
 
 const {
   data: size,
@@ -70,32 +70,35 @@ const percentageUsed = computed(() => {
   return (size.value.active * 100) / size.value.limit;
 });
 </script>
+
 <template>
-  <section class="min-w-72">
-    <h1>Send Storage</h1>
-    <p v-if="error">{{ error.message }}</p>
-    <h2 class="email">{{ user.thundermailEmail || user.email }}</h2>
+  <SubscriptionsWrapper>
+    <section class="min-w-72">
+      <h1>Send Storage</h1>
+      <p v-if="error">{{ error.message }}</p>
+      <h2 class="email">{{ user.thundermailEmail || user.email }}</h2>
 
-    <LoadingComponent v-if="isLoading" />
+      <LoadingComponent v-if="isLoading" />
 
-    <div v-else>
-      <p v-if="hasLimitedStorage">
-        Total storage used:
-        <span class="active">{{ size?.active }} active</span> /
-        <span class="expired">{{ size?.expired }} expired</span>
-      </p>
+      <div v-else>
+        <p v-if="hasLimitedStorage">
+          Total storage used:
+          <span class="active">{{ size?.active }} active</span> /
+          <span class="expired">{{ size?.expired }} expired</span>
+        </p>
 
-      <div v-if="!error && !loadingSize">
-        <p class="font-bold">{{ activeText }}</p>
-        <ProgressBarDashboard :percentage="percentageUsed" />
+        <div v-if="!error && !loadingSize">
+          <p class="font-bold">{{ activeText }}</p>
+          <ProgressBarDashboard :percentage="percentageUsed" />
+        </div>
+
+        <p v-if="hasLimitedStorage">
+          Your files expire after {{ DAYS_TO_EXPIRY }} days
+        </p>
+        <log-out-button :log-out="handleLogout" />
       </div>
-
-      <p v-if="hasLimitedStorage">
-        Your files expire after {{ DAYS_TO_EXPIRY }} days
-      </p>
-      <log-out-button :log-out="handleLogout" />
-    </div>
-  </section>
+    </section>
+  </SubscriptionsWrapper>
 </template>
 
 <style lang="css" scoped>

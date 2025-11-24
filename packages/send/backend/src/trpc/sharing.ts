@@ -246,6 +246,7 @@ export const sharingRouter = router({
       });
 
       if (result.id) {
+        console.log('Encrypted passphrase stored with ID:', result.id);
         // Notify any listeners waiting for the passphrase
         verificationEmitter.emit('shared_passphrase', { id: result.id });
         return { success: true, id: result.id };

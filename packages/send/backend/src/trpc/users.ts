@@ -171,12 +171,13 @@ export const usersRouter = router({
         yield post;
       }
     }),
-
+  // Step 3
   // This listener is not exposed to the API, but is used internally to listen for verification events
   onPassphraseShared: trpc
     .input(
       z.object({
         code: z.string(),
+        identifier: z.string().optional().default('onPassphraseShared'),
       })
     )
     .subscription(async function* (opts) {
@@ -193,11 +194,13 @@ export const usersRouter = router({
       }
     }),
 
+  // Step 2
   // This listener is not exposed to the API, but is used internally to listen for verification events
   onVerificationFinished: trpc
     .input(
       z.object({
         code: z.string(),
+        identifier: z.string().optional().default('onVerificationFinished'),
       })
     )
     .subscription(async function* (opts) {
@@ -218,12 +221,13 @@ export const usersRouter = router({
       }
     }),
 
+  // Step 1
   // This listener is not exposed to the API, but is used internally to listen for verification events
-
   onVerificationRequested: trpc
     .input(
       z.object({
         code: z.string(),
+        identifier: z.string().optional().default('onVerificationRequested'),
       })
     )
     .subscription(async function* (opts) {

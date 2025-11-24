@@ -1,15 +1,15 @@
 <script lang="ts" setup>
 import { trpc } from '@send-frontend/lib/trpc';
-import { useApiStore } from '@send-frontend/stores';
+import { useApiStore, useKeychainStore } from '@send-frontend/stores';
 import { useQuery } from '@tanstack/vue-query';
-import { onMounted, onUnmounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useVerificationStore } from '../stores/verification-store';
 
 const { api } = useApiStore();
 const { sessionUUID } = useVerificationStore();
 const { handleSuccessfulVerificationForNewClient } = useVerificationStore();
-const router = useRouter();
+const { keychain } = useKeychainStore();
 
 const codeVerification = ref<string | null>(null);
 const timeRemaining = ref<number>(60);
@@ -21,8 +21,53 @@ const verifyCode = async (data: { code: string }) => {
     return;
   }
   codeVerification.value = data.code;
-  router.back(); // Navigate back after verification
+  // reload page
+  // window.location.reload();
+  // router.back(); // Navigate back after verification
 };
+
+watch(codeVerification, (olddata, newdata) => {
+  if (newdata !== olddata) {
+    alert('Device verified successfully. Reloading page...');
+    // window.location.reload();
+    setInterval(() => {
+      console.log('checking keys');
+      const passphraseFromLocalStorage = keychain.getPassphraseValue();
+      console.log('passphraseFromLocalStorage', passphraseFromLocalStorage);
+
+      if (passphraseFromLocalStorage) {
+        window.location.reload();
+      }
+    }, 1000);
+  }
+});
+
+/* 
+==== SUBSCRIPTIONS ====
+These subscriptions listen for events from the backend to handle verification processes.
+They are essential for real-time updates during the verification flow.
+ */
+
+trpc.onVerificationFinished.subscribe(
+  // This code is unused but it might be useful to tell which client is making the request in the future
+  { code: 'data.value' },
+  {
+    onData: verifyCode,
+  }
+);
+
+// This is the final step. After the existing client has verified that the new client is trusted, they will share their encrypted passphrase and trigger this event.
+trpc.onPassphraseShared.subscribe(
+  // This code is unused but it might be useful to tell which client is making the request in the future
+  { code: 'data.value' },
+  {
+    onData: async (pars) =>
+      await handleSuccessfulVerificationForNewClient(
+        pars,
+        codeVerification.value
+      ),
+  }
+);
 
 const { data, refetch } = useQuery({
   queryKey: ['generateVerificationCode'],
@@ -70,33 +115,6 @@ onUnmounted(() => {
     clearInterval(countdownTimer);
   }
 });
-
-/* 
-==== SUBSCRIPTIONS ====
-These subscriptions listen for events from the backend to handle verification processes.
-They are essential for real-time updates during the verification flow.
- */
-
-trpc.onVerificationFinished.subscribe(
-  // This code is unused but it might be useful to tell which client is making the request in the future
-  { code: 'data.value' },
-  {
-    onData: verifyCode,
-  }
-);
-
-// This is the final step. After the existing client has verified that the new client is trusted, they will share their encrypted passphrase and trigger this event.
-trpc.onPassphraseShared.subscribe(
-  // This code is unused but it might be useful to tell which client is making the request in the future
-  { code: 'data.value' },
-  {
-    onData: async (pars) =>
-      await handleSuccessfulVerificationForNewClient(
-        pars,
-        codeVerification.value
-      ),
-  }
-);
 </script>
 
 <template>
