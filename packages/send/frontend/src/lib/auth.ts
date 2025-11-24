@@ -23,6 +23,16 @@ export function useAuth() {
       isLoggedIn.value = false;
       // Check OIDC authentication status first
       try {
+        console.log(`
+
+        🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓
+
+        Just tried to read the token in useAuth
+
+        🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓🪓
+
+`);
+
         const user = await authStore.checkAuthStatus();
         if (user) {
           isLoggedIn.value = true;

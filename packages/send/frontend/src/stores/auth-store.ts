@@ -2,7 +2,12 @@
 
 import logger from '@send-frontend/logger';
 import { useApiStore } from '@send-frontend/stores';
-import { User, UserManager, UserManagerSettings, IdTokenClaims } from 'oidc-client-ts';
+import {
+  User,
+  UserManager,
+  UserManagerSettings,
+  IdTokenClaims,
+} from 'oidc-client-ts';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import {
@@ -13,22 +18,22 @@ import {
 } from '@send-frontend/lib/const';
 
 interface RawAuthData extends User {
-    // access_token and token_type are REQUIRED in the User class, so they remain required here.
-    access_token: string;
-    token_type: string;
+  // access_token and token_type are REQUIRED in the User class, so they remain required here.
+  access_token: string;
+  token_type: string;
 
-    // as optional here to resolve the extension error.
-    id_token?: string;
-    scope?: string;
-    expires_at?: number;
+  // as optional here to resolve the extension error.
+  id_token?: string;
+  scope?: string;
+  expires_at?: number;
 
-    // session_state is REQUIRED but nullable in the User class.
-    session_state: string | null;
+  // session_state is REQUIRED but nullable in the User class.
+  session_state: string | null;
 
-    // We use IdTokenClaims as defined in the User class source.
-    profile: IdTokenClaims;
+  // We use IdTokenClaims as defined in the User class source.
+  profile: IdTokenClaims;
 
-    refresh_token?: string; // Optional in base User class
+  refresh_token?: string; // Optional in base User class
 }
 
 const settings: UserManagerSettings = {
@@ -125,11 +130,13 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.origin
       );
 
+      console.log(`[auth-store] will send OIDC_USER with value:`);
+      console.log(user);
       // Send the entire user for TB Send.
       window.postMessage(
         {
           type: OIDC_USER,
-          user: user
+          user: user,
         },
         window.location.origin
       );
@@ -240,7 +247,9 @@ export const useAuthStore = defineStore('auth', () => {
   async function storeUser(rawAuthData: RawAuthData) {
     try {
       if (!rawAuthData || !rawAuthData.access_token) {
-        console.error("Invalid authentication data received from token bridge. Missing access_token.");
+        console.error(
+          'Invalid authentication data received from token bridge. Missing access_token.'
+        );
         return;
       }
 
@@ -248,11 +257,19 @@ export const useAuthStore = defineStore('auth', () => {
         const userInstance = new User(rawAuthData);
         await userManager.storeUser(userInstance);
 
-        console.log("User successfully stored via token bridge data.");
-        userManager.startSilentRenew();
+        console.log('User successfully stored via token bridge data.');
+        console.log(`
 
+        💣💣💣💣💣💣💣💣💣💣💣💣💣💣💣💣
+
+        I just saved the token in storeUser
+
+        💣💣💣💣💣💣💣💣💣💣💣💣💣💣💣💣
+
+`);
+        userManager.startSilentRenew();
       } catch (error) {
-        console.error("Failed to store user with UserManager:", error);
+        console.error('Failed to store user with UserManager:', error);
       }
 
       isLoggedIn.value = true;
@@ -261,9 +278,6 @@ export const useAuthStore = defineStore('auth', () => {
       throw error;
     }
   }
-
-
-
 
   // Legacy alias for backward compatibility
   const loginToKeyCloak = loginToOIDC;

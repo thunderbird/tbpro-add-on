@@ -1,9 +1,9 @@
 const ALLOWED_ORIGINS = new Set([
-  "https://auth-stage.tb.pro",
-  "https://send-stage.tb.pro",
-  "https://send-backend-stage.tb.pro",
-  "http://localhost:5173",           // dev
-  "http://127.0.0.1:5173"            // dev
+  'https://auth-stage.tb.pro',
+  'https://send-stage.tb.pro',
+  'https://send-backend-stage.tb.pro',
+  'http://localhost:5173', // dev
+  'http://127.0.0.1:5173', // dev
 ]);
 
 const PING = 'TB/PING';
@@ -16,23 +16,27 @@ window.postMessage({ type: BRIDGE_READY }, window.location.origin);
 console.log(`[🌉 token-bridge] the token bridge has loaded.`);
 
 // Visual cue, make sure to remove.
-const tag = document.createElement("div");
-tag.textContent = "✅ Content script injected";
+const tag = document.createElement('div');
+tag.textContent = '✅ Content script injected';
 Object.assign(tag.style, {
-  position: "fixed", zIndex: 999999, inset: "8px auto auto 8px",
-  padding: "6px 10px", background: "lime", color: "black",
-  fontFamily: "monospace", boxShadow: "0 2px 8px rgba(0,0,0,.25)"
+  position: 'fixed',
+  zIndex: 999999,
+  inset: '8px auto auto 8px',
+  padding: '6px 10px',
+  background: 'lime',
+  color: 'black',
+  fontFamily: 'monospace',
+  boxShadow: '0 2px 8px rgba(0,0,0,.25)',
 });
 // document.documentElement.appendChild(tag);
 
 // Initial message to the background
 browser.runtime.sendMessage({
   type: PING,
-  text: "This got sent from the bridge to the background."
+  text: 'This got sent from the bridge to the background.',
 });
 
-
-window.addEventListener("message", (e) => {
+window.addEventListener('message', (e) => {
   // if (e.origin !== APP_ORIGIN) return;   // security: only trust your app
   // if (e.source !== window) return;       // same-page messages only
   // if (!e.data || e.data.type !== "TB_PING") return;
@@ -41,14 +45,20 @@ window.addEventListener("message", (e) => {
     // Forward to the background script
     browser.runtime.sendMessage({
       type: OIDC_TOKEN,
-      token: String(e.data.token ?? ""),
-      email: String(e.data.email ?? ""),
-      name: String(e.data.name ?? ""),
+      token: String(e.data.token ?? ''),
+      email: String(e.data.email ?? ''),
+      name: String(e.data.name ?? ''),
     });
   }
 
   if (e?.data?.type === OIDC_USER) {
     const userData = e.data.user;
+
+    console.log(
+      `[token-bridge] Received OIDC_USER message for following userData:`
+    );
+    console.log(userData);
+    console.log(`[token-bridge userData of type ${typeof userData}]`);
 
     if (userData && typeof userData === 'object') {
       browser.runtime.sendMessage({
@@ -61,7 +71,7 @@ window.addEventListener("message", (e) => {
   if (e?.data?.type === BRIDGE_PING) {
     browser.runtime.sendMessage({
       type: PING,
-      text: String(e.data.text ?? "")
+      text: String(e.data.text ?? ''),
     });
   }
 });
