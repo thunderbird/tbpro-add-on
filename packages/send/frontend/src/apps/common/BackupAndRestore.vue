@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 
@@ -54,6 +54,10 @@ const { keychain } = useKeychainStore();
 const { metrics } = useMetricsStore();
 const { configureExtension } = useExtensionStore();
 const errorMessage = ref('');
+
+onMounted(() => {
+  configureExtension();
+});
 
 const {
   isLoading: isLoadingBackup,
@@ -115,7 +119,6 @@ async function makeBackup() {
     await backupKeys(keychain, api, errorMessage);
     await downloadPassPhrase(passphraseString.value, email);
     await dbUserSetup(userStore, keychain, folderStore);
-    configureExtension();
   } catch (e) {
     console.error('Error backing up keys', e);
   } finally {
@@ -128,7 +131,6 @@ async function restoreFromBackup() {
   try {
     await restoreKeys(keychain, api, errorMessage, passphraseString.value);
     keychain.storePassPhrase(passphraseString.value);
-    configureExtension();
   } catch (e) {
     metrics.capture('send.restoreKeys.error', {
       message: errorMessage.value,
