@@ -11,7 +11,8 @@ import { BASE_URL } from '@send-frontend/apps/common/constants';
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
-import { init as initMenu, menuLoggedIn } from "./menu.ts";
+import { useConfigStore } from '@send-frontend/stores/index.js';
+import { init as initMenu, menuLoggedIn } from './menu.ts';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -26,6 +27,7 @@ const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 const { configureExtension } = useExtensionStore();
+const { isProd } = useConfigStore();
 
 console.log('hello from the background.js!', new Date().getTime());
 
@@ -65,7 +67,6 @@ async function initCloudFile() {
     );
   }
 }
-
 
 browser.webRequest.onBeforeSendHeaders.addListener(
   (details) => {
@@ -187,13 +188,12 @@ async function openUnifiedPopup() {
   }
 }
 
-// TODO: move these to env vars.
-const THUNDERMAIL_HOST = "mail.stage-thundermail.com";
-const THUNDERMAIL_DISPLAY_NAME = "Thundermail";
-
+const THUNDERMAIL_HOST = `mail.${!isProd ? 'stage-' : ''}thundermail.com`;
+const THUNDERMAIL_DISPLAY_NAME = 'Thundermail';
 
 // Handle all messages from popup.
 browser.runtime.onMessage.addListener(async (message) => {
+  const { email, name, token } = message;
   switch (message.type) {
     case 'TB/PING':
       console.log('[background] got the ping from the bridge');
@@ -201,8 +201,6 @@ browser.runtime.onMessage.addListener(async (message) => {
       break;
 
     case 'TB/OIDC_TOKEN':
-      const { email, name, token } = message;
-
       if (!email || !token) {
         console.log(`Did not get info back from login`);
         return;
@@ -212,7 +210,12 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log(token);
 
       try {
-        await createThundermailAccount(email, name, THUNDERMAIL_HOST, THUNDERMAIL_DISPLAY_NAME);
+        await createThundermailAccount(
+          email,
+          name,
+          THUNDERMAIL_HOST,
+          THUNDERMAIL_DISPLAY_NAME
+        );
       } catch (e) {
         console.log(e);
       }
@@ -233,11 +236,11 @@ browser.runtime.onMessage.addListener(async (message) => {
       );
       await browser.windows.create({
         url: `${BASE_URL}/login?isExtension=true`,
-        type: "popup",
+        type: 'popup',
         allowScriptsToClose: true,
         height: 750,
         width: 980,
-        linkHandler: "relaxed",
+        linkHandler: 'relaxed',
       });
       break;
 
@@ -328,7 +331,12 @@ function rejectAllInQueue(reason: Error) {
   uploadInfoQueue = [];
 }
 
-async function createThundermailAccount(email: string, realname: string, hostname: string, displayName: string) {
+async function createThundermailAccount(
+  email: string,
+  realname: string,
+  hostname: string,
+  displayName: string
+) {
   try {
     const result = await browser.MailAccounts.createAccount(
       email,
@@ -357,7 +365,6 @@ async function createThundermailAccount(email: string, realname: string, hostnam
         message: `Creation failed: ${result.error || 'Unknown error'}`,
       };
     }
-
   } catch (e) {
     return {
       success: false,
@@ -366,17 +373,16 @@ async function createThundermailAccount(email: string, realname: string, hostnam
   }
 }
 
-
-async function addThundermailToken(token: string, email: string, hostname: string) {
+async function addThundermailToken(
+  token: string,
+  email: string,
+  hostname: string
+) {
   console.log(`[addThundermailToken] Setting token for ${email}`);
 
   try {
     console.log(`[addThundermailToken] Calling setToken API`);
-    const result = await browser.MailAccounts.setToken(
-      token,
-      email,
-      hostname
-    );
+    const result = await browser.MailAccounts.setToken(token, email, hostname);
 
     if (result.success) {
       return {
@@ -389,7 +395,6 @@ async function addThundermailToken(token: string, email: string, hostname: strin
         message: `Saving token failed: ${result.error || 'Unknown error'}`,
       };
     }
-
   } catch (e) {
     console.log(`[addThundermailToken] Caught an error:`, e);
     return {
@@ -398,8 +403,6 @@ async function addThundermailToken(token: string, email: string, hostname: strin
     };
   }
 }
-
-
 
 (async function main() {
   initMenu();
