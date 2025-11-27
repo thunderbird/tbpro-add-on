@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { ref } from 'vue';
 
 import init from '@send-frontend/lib/init';
 
@@ -37,9 +37,8 @@ const { api } = useApiStore();
 const { validators, progress } = useStatusStore();
 
 const folderStore = useFolderStore();
-const { isError, uploadAndShare } = useUploadAndShare();
+const { isError: uploadingError, uploadAndShare } = useUploadAndShare();
 
-const isAllowed = ref(true);
 const files = ref<FileItem[] | null>(null);
 const message = ref('');
 
@@ -58,14 +57,39 @@ async function handleUploadAndShare(
   await uploadAndShare(files, password, expiration, onStatusUpdate);
 }
 
-const { error: cannotUpload } = useQuery({
+const { error: uploadBlockedDuetoSize } = useQuery({
   queryKey: ['can-upload'],
   queryFn: canUploadQuery,
   retry: false,
   staleTime: FIFTEEN_MINUTES,
 });
 
-onMounted(async () => {
+const { data: isConfigured } = useQuery({
+  queryKey: ['is-configured-for-upload'],
+  queryFn: async () => {
+    // At the very end we have to validate that everything is in order for the upload to happen
+    const { hasBackedUpKeys, isTokenValid, hasForcedLogin } =
+      await validators();
+
+    if (!hasBackedUpKeys) {
+      message.value = `Please make sure you have backed up or restored your keys. Go back to the compositon panel and follow the instructions`;
+      // close this window and open the management page
+      window.open(`${window.location.origin}/index.management.html`, '_blank');
+      return false;
+    }
+    if (!isTokenValid || hasForcedLogin) {
+      message.value = `You're not logged in properly. Please go back to the compositon panel to log back in`;
+      return false;
+    }
+    // If everything is fine, we initialize the app
+    await initialize();
+    return true;
+  },
+  refetchOnWindowFocus: true,
+  refetchOnMount: true,
+});
+
+const initialize = async () => {
   try {
     await restoreKeysUsingLocalStorage(keychain, api);
     await init(userStore, keychain, folderStore);
@@ -86,20 +110,6 @@ onMounted(async () => {
     );
   }
 
-  // At the very end we have to validate that everything is in order for the upload to happen
-  const { hasBackedUpKeys, isTokenValid, hasForcedLogin } = await validators();
-
-  if (!hasBackedUpKeys) {
-    isAllowed.value = false;
-    message.value = `Please make sure you have backed up or restored your keys. Go back to the compositon panel and follow the instructions`;
-    return;
-  }
-  if (!isTokenValid || hasForcedLogin) {
-    isAllowed.value = false;
-    message.value = `You're not logged in properly. Please go back to the compositon panel to log back in`;
-    return;
-  }
-
   // Check if the filesize is allowed.
   // Using a for loop so we can return.
   for (let i = 0; i < files.value?.length; i++) {
@@ -107,7 +117,7 @@ onMounted(async () => {
     if (file.size > MAX_FILE_SIZE) {
       progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
       console.log(`Max file size exceeded`);
-      isError.value = true;
+      uploadingError.value = true;
 
       browser.runtime.sendMessage({
         type: ALL_UPLOADS_ABORTED,
@@ -119,23 +129,30 @@ onMounted(async () => {
     }
   }
   // TODO: do this for each file
-});
+};
+
+function reload() {
+  window.location.reload();
+}
 </script>
 
 <template>
-  <!-- We only show the error message when storage limit has been exceeded -->
-  <h1 v-if="cannotUpload">{{ cannotUpload }}</h1>
+  <div v-if="!isConfigured">
+    <h1>Initialization failed</h1>
+    <button @click="reload()">Reload</button>
+    <p>{{ message }}</p>
+  </div>
 
-  <div v-if="isAllowed && !cannotUpload">
-    <div v-if="isError">
+  <!-- We only show the error message when storage limit has been exceeded -->
+  <h1 v-if="uploadBlockedDuetoSize">{{ uploadBlockedDuetoSize }}</h1>
+
+  <div v-if="!uploadBlockedDuetoSize">
+    <div v-if="uploadingError">
       <ErrorUploading />
     </div>
 
     <div>
       <UploadPage :files="files" :on-upload-and-share="handleUploadAndShare" />
     </div>
-  </div>
-  <div v-else>
-    <p>{{ message }}</p>
   </div>
 </template>
