@@ -113,22 +113,31 @@ function submitXpi(xpiPath: string, version: string, jwt: string): void {
 
   // React to the response
   request.on('response', function (resp) {
-    if (resp.statusCode == 202) {
-      console.log('SUCCESS!');
-      process.exit(0);
-    }
-    if (resp.statusCode === 409) {
-      console.warn('XPI version already exists');
-      process.exit(0);
-    }
-    //  Any other status code is a failure
-    else {
-      console.error(
-        `FAILURE! With status code: ${resp.statusCode}`,
-        resp.statusMessage
-      );
-      process.exit(1);
-    }
+    console.log(`Status code: ${resp.statusCode}`);
+    let body = '';
+    resp.on('data', (chunk) => {
+      body += chunk;
+    });
+    resp.on('end', () => {
+      console.log('Response body:', body);
+      if (resp.statusCode == 202) {
+        console.log('SUCCESS!');
+        process.exit(0);
+      }
+      if (resp.statusCode === 409) {
+        console.warn('XPI version already exists');
+        process.exit(0);
+      }
+      // Any other status code is a failure
+      else {
+        console.error(
+          `FAILURE! With status code: ${resp.statusCode}`,
+          resp.statusMessage,
+          body
+        );
+        process.exit(1);
+      }
+    });
   });
 }
 
