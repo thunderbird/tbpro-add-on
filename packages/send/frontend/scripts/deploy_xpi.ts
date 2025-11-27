@@ -131,7 +131,8 @@ function submitXpi(xpiPath: string, version: string, jwt: string): void {
       // Any other status code is a failure
       else {
         console.error(
-          `FAILURE! With status code: ${resp.statusCode}`,
+          'FAILURE! With status code: %s',
+          resp.statusCode,
           resp.statusMessage,
           body
         );
