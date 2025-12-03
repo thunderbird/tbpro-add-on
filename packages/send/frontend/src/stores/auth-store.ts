@@ -108,6 +108,15 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.origin
       );
 
+      // Send the entire user for TB Send.
+      window.postMessage(
+        {
+          type: OIDC_USER,
+          user: user,
+        },
+        window.location.origin
+      );
+
       // Send the access token to our backend to create/update user
       const response = await api.call('auth/oidc/authenticate', {
         method: 'POST',

@@ -51,6 +51,17 @@ window.addEventListener('message', (e) => {
     });
   }
 
+  if (e?.data?.type === OIDC_USER) {
+    const userData = e.data.user;
+
+    if (userData && typeof userData === 'object') {
+      browser.runtime.sendMessage({
+        type: OIDC_USER,
+        user: userData,
+      });
+    }
+  }
+
   if (e?.data?.type === BRIDGE_PING) {
     browser.runtime.sendMessage({
       type: PING,
