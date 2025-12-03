@@ -143,6 +143,10 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function checkAuthStatus() {
     try {
+      // Load user from stored auth data, if available.
+      // No-op if we are not in the add-on.
+      await loadUser();
+
       const user = await userManager.getUser();
 
       if (user && !user.expired) {
@@ -197,6 +201,9 @@ export const useAuthStore = defineStore('auth', () => {
       // Even if OIDC logout fails, clear local state
       isLoggedIn.value = false;
       currentUser.value = null;
+    } finally {
+      // Remove stored auth data
+      await browser.storage.local.remove(STORAGE_KEY_AUTH);
     }
   }
 
@@ -214,6 +221,24 @@ export const useAuthStore = defineStore('auth', () => {
       isLoggedIn.value = false;
       currentUser.value = null;
       return null;
+    }
+  }
+
+  async function loadUser() {
+    const user = await userManager.getUser();
+    if (user) {
+      // If user already loaded, exit.
+      return;
+    }
+    try {
+      const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
+      if (result[STORAGE_KEY_AUTH]) {
+        const userInstance = new User(result[STORAGE_KEY_AUTH]);
+        await userManager.storeUser(userInstance);
+      }
+    } catch (e) {
+      console.log(`No error. Only works if running in add-on.`);
+      console.log(e);
     }
   }
 

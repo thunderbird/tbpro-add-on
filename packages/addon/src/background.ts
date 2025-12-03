@@ -211,6 +211,14 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log('[background] got the ping from the bridge');
       break;
 
+    case OIDC_USER:
+      await browser.storage.local.set({
+        [STORAGE_KEY_AUTH]: message.user,
+      });
+
+      console.log(`🎯 user auth stored in add-on context.`);
+      break;
+
     case OIDC_TOKEN:
       if (!email || !token) {
         console.log(`Did not get info back from login`);
