@@ -245,7 +245,7 @@ browser.runtime.onMessage.addListener(async (message) => {
         console.log(e);
       }
 
-      menuLoggedIn(preferred_username);
+      menuLoggedIn(email);
 
       break;
 
