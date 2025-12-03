@@ -6,6 +6,13 @@ import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
 
 import { ref, watch } from 'vue';
+import {
+  BRIDGE_PING,
+  BRIDGE_READY,
+  OIDC_USER,
+  OIDC_TOKEN,
+  STORAGE_KEY_AUTH,
+} from '@send-frontend/lib/const';
 
 const settings: UserManagerSettings = {
   authority: import.meta.env?.VITE_OIDC_ROOT_URL,
@@ -78,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
       window.addEventListener('message', (e) => {
         if (
           e.origin === window.location.origin &&
-          e.data?.type === 'TB/BRIDGE_READY'
+          e.data?.type === BRIDGE_READY
         ) {
           console.log('[web app] bridge says: ready');
         }
@@ -86,18 +93,26 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Send one tiny ping to the bridge.
       window.postMessage(
-        { type: 'APP/PING', text: 'hello from auth store 👋' },
+        { type: BRIDGE_PING, text: 'hello from auth store 👋' },
         window.location.origin
       );
-      // Send the token.
 
-      console.log(`[handleOIDCCallback] sending refresh token as token 🤞🤞`);
+      // Send the token for thundermail.
       window.postMessage(
         {
-          type: 'TB/OIDC_TOKEN',
+          type: OIDC_TOKEN,
           token: user.refresh_token,
           email: user.profile.preferred_username,
           name: user.profile.name || user.profile.given_name,
+        },
+        window.location.origin
+      );
+
+      // Send the entire user for TB Send.
+      window.postMessage(
+        {
+          type: OIDC_USER,
+          user: user,
         },
         window.location.origin
       );
@@ -128,6 +143,10 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function checkAuthStatus() {
     try {
+      // Load user from stored auth data, if available.
+      // No-op if we are not in the add-on.
+      await loadUser();
+
       const user = await userManager.getUser();
 
       if (user && !user.expired) {
@@ -182,6 +201,9 @@ export const useAuthStore = defineStore('auth', () => {
       // Even if OIDC logout fails, clear local state
       isLoggedIn.value = false;
       currentUser.value = null;
+    } finally {
+      // Remove stored auth data
+      await browser.storage.local.remove(STORAGE_KEY_AUTH);
     }
   }
 
@@ -199,6 +221,24 @@ export const useAuthStore = defineStore('auth', () => {
       isLoggedIn.value = false;
       currentUser.value = null;
       return null;
+    }
+  }
+
+  async function loadUser() {
+    const user = await userManager.getUser();
+    if (user) {
+      // If user already loaded, exit.
+      return;
+    }
+    try {
+      const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
+      if (result[STORAGE_KEY_AUTH]) {
+        const userInstance = new User(result[STORAGE_KEY_AUTH]);
+        await userManager.storeUser(userInstance);
+      }
+    } catch (e) {
+      console.log(`No error. Only works if running in add-on.`);
+      console.log(e);
     }
   }
 
