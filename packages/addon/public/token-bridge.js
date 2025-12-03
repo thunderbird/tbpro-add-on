@@ -6,7 +6,13 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:5173"            // dev
 ]);
 
-window.postMessage({ type: "TB/BRIDGE_READY" }, window.location.origin);
+const PING = 'TB/PING';
+const BRIDGE_PING = 'APP/PING';
+const BRIDGE_READY = 'TB/BRIDGE_READY';
+const OIDC_USER = 'TB/OIDC_USER';
+const OIDC_TOKEN = 'TB/OIDC_TOKEN';
+
+window.postMessage({ type: BRIDGE_READY }, window.location.origin);
 console.log(`[🌉 token-bridge] the token bridge has loaded.`);
 
 // Visual cue, make sure to remove.
@@ -21,8 +27,8 @@ Object.assign(tag.style, {
 
 // Initial message to the background
 browser.runtime.sendMessage({
-  type: "TB/PING",
-  text: "This got sent from the bridge to the background."
+  type: PING,
+  text: 'This got sent from the bridge to the background.',
 });
 
 
@@ -31,20 +37,20 @@ window.addEventListener("message", (e) => {
   // if (e.source !== window) return;       // same-page messages only
   // if (!e.data || e.data.type !== "TB_PING") return;
 
-  if (e?.data?.type === "TB/OIDC_TOKEN") {
+  if (e?.data?.type === OIDC_TOKEN) {
     // Forward to the background script
     browser.runtime.sendMessage({
-      type: "TB/OIDC_TOKEN",
-      token: String(e.data.token ?? ""),
-      email: String(e.data.email ?? ""),
-      name: String(e.data.name ?? ""),
+      type: OIDC_TOKEN,
+      token: String(e.data.token ?? ''),
+      email: String(e.data.email ?? ''),
+      name: String(e.data.name ?? ''),
     });
   }
 
-  if (e?.data?.type === "APP/PING") {
+  if (e?.data?.type === BRIDGE_PING) {
     browser.runtime.sendMessage({
-      type: "TB/PING",
-      text: String(e.data.text ?? "")
+      type: PING,
+      text: String(e.data.text ?? ''),
     });
   }
 });

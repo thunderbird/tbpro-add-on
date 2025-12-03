@@ -6,6 +6,13 @@ import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
 
 import { ref, watch } from 'vue';
+import {
+  BRIDGE_PING,
+  BRIDGE_READY,
+  OIDC_USER,
+  OIDC_TOKEN,
+  STORAGE_KEY_AUTH,
+} from '@send-frontend/lib/const';
 
 const settings: UserManagerSettings = {
   authority: import.meta.env?.VITE_OIDC_ROOT_URL,
@@ -78,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
       window.addEventListener('message', (e) => {
         if (
           e.origin === window.location.origin &&
-          e.data?.type === 'TB/BRIDGE_READY'
+          e.data?.type === BRIDGE_READY
         ) {
           console.log('[web app] bridge says: ready');
         }
@@ -86,7 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Send one tiny ping to the bridge.
       window.postMessage(
-        { type: 'APP/PING', text: 'hello from auth store 👋' },
+        { type: BRIDGE_PING, text: 'hello from auth store 👋' },
         window.location.origin
       );
       // Send the token.
@@ -94,7 +101,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.log(`[handleOIDCCallback] sending refresh token as token 🤞🤞`);
       window.postMessage(
         {
-          type: 'TB/OIDC_TOKEN',
+          type: OIDC_TOKEN,
           token: user.refresh_token,
           email: user.profile.preferred_username,
           name: user.profile.name || user.profile.given_name,
