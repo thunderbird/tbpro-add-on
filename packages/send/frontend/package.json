@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "build": "NODE_ENV=production ./scripts/build.sh",
-    "build-and-submit": "NODE_ENV=production ./scripts/build.sh",
     "build:dev": "./scripts/build.sh",
     "build:dev:watch": "nodemon -e vue,ts,js,json --ignore 'dist*/' --ignore manifest.json --watch './{src,public}/**/*' --exec 'pnpm build:dev'",
     "build:watch": "nodemon -e vue,ts,js,json --watch './{src,public}/**/*' --exec 'pnpm build'",
