@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watchEffect } from 'vue';
 
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 
@@ -26,6 +26,10 @@ import { PHRASE_SIZE } from './constants';
 const userStore = useUserStore();
 const folderStore = useFolderStore();
 const { logOutAuth } = useAuth();
+
+const emit = defineEmits<{
+  (e: 'backup-completed'): void;
+}>();
 
 const words = ref(generatePassphrase(PHRASE_SIZE));
 
@@ -103,6 +107,17 @@ const { mutate: resetKeys } = useMutation({
 });
 
 const passphraseFromLocalStorage = keychain.getPassphraseValue();
+
+const allGood = computed(() => {
+  return backupData.value === 'KEYS_IN_LOCAL_STORAGE';
+});
+
+watchEffect(() => {
+  if (allGood.value) {
+    console.log('Backup and restore completed');
+    emit('backup-completed');
+  }
+});
 
 if (
   !!passphraseFromLocalStorage &&
