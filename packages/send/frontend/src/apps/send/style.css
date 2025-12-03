@@ -145,10 +145,6 @@ main {
     0 10px 10px -5px rgba(0, 0, 0, 0.04); */
 }
 
-.modal-header {
-  /* padding: 3rem 3rem 1rem; */
-}
-
 .modal-body {
   /* margin: auto; */
   padding: 20px;
@@ -192,11 +188,7 @@ h2 {
   }
 
   .modal-header {
-    padding: 2rem 1.5rem 1rem;
-  }
-
-  .modal-body {
-    /* padding: 0 1.5rem 2rem; */
+    padding: 0rem 1.5rem 1rem;
   }
 
   .title {

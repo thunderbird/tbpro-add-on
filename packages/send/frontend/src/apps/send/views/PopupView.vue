@@ -10,6 +10,7 @@ import ErrorUploading from '@send-frontend/apps/send/components/ErrorUploading.v
 import { useUploadAndShare } from '@send-frontend/apps/send/composables/useUploadAndShare';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 
+import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
 import {
   ALL_UPLOADS_ABORTED,
   FIFTEEN_MINUTES,
@@ -64,7 +65,7 @@ const { error: uploadBlockedDuetoSize } = useQuery({
   staleTime: FIFTEEN_MINUTES,
 });
 
-const { data: isConfigured } = useQuery({
+const { data: isConfigured, refetch } = useQuery({
   queryKey: ['is-configured-for-upload'],
   queryFn: async () => {
     // At the very end we have to validate that everything is in order for the upload to happen
@@ -74,7 +75,6 @@ const { data: isConfigured } = useQuery({
     if (!hasBackedUpKeys) {
       message.value = `Please make sure you have backed up or restored your keys. Go back to the compositon panel and follow the instructions`;
       // close this window and open the management page
-      window.open(`${window.location.origin}/index.management.html`, '_blank');
       return false;
     }
     if (!isTokenValid || hasForcedLogin) {
@@ -130,29 +130,27 @@ const initialize = async () => {
   }
   // TODO: do this for each file
 };
-
-function reload() {
-  window.location.reload();
-}
 </script>
 
 <template>
   <div v-if="!isConfigured">
-    <h1>Initialization failed</h1>
-    <button @click="reload()">Reload</button>
-    <p>{{ message }}</p>
+    <BackupAndRestore @backup-completed="refetch" />
   </div>
+  <div v-else>
+    <!-- We only show the error message when storage limit has been exceeded -->
+    <h1 v-if="uploadBlockedDuetoSize">{{ uploadBlockedDuetoSize }}</h1>
 
-  <!-- We only show the error message when storage limit has been exceeded -->
-  <h1 v-if="uploadBlockedDuetoSize">{{ uploadBlockedDuetoSize }}</h1>
+    <div v-if="!uploadBlockedDuetoSize">
+      <div v-if="uploadingError">
+        <ErrorUploading />
+      </div>
 
-  <div v-if="!uploadBlockedDuetoSize">
-    <div v-if="uploadingError">
-      <ErrorUploading />
-    </div>
-
-    <div>
-      <UploadPage :files="files" :on-upload-and-share="handleUploadAndShare" />
+      <div>
+        <UploadPage
+          :files="files"
+          :on-upload-and-share="handleUploadAndShare"
+        />
+      </div>
     </div>
   </div>
 </template>
