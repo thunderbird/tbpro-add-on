@@ -24,7 +24,7 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { useConfigStore } from '@send-frontend/stores/index.js';
-import { init as initMenu, menuLoggedIn } from './menu.ts';
+import { init as initMenu, menuLoggedIn } from './menu';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -209,7 +209,6 @@ browser.runtime.onMessage.addListener(async (message) => {
   switch (message.type) {
     case PING:
       console.log('[background] got the ping from the bridge');
-      console.log(message);
       break;
 
     case OIDC_TOKEN:

@@ -96,9 +96,8 @@ export const useAuthStore = defineStore('auth', () => {
         { type: BRIDGE_PING, text: 'hello from auth store 👋' },
         window.location.origin
       );
-      // Send the token.
 
-      console.log(`[handleOIDCCallback] sending refresh token as token 🤞🤞`);
+      // Send the token for thundermail.
       window.postMessage(
         {
           type: OIDC_TOKEN,
