@@ -1,0 +1,49 @@
+{
+  "features": {
+    "ghcr.io/devcontainer-community/devcontainer-features/bun.sh:1": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/devcontainer-community/devcontainer-features/bun.sh@sha256:ee61a36ce4180d10715e0911ac2cf1a28acd0f81bb238ffab3bed2b06bb61b92",
+      "integrity": "sha256:ee61a36ce4180d10715e0911ac2cf1a28acd0f81bb238ffab3bed2b06bb61b92"
+    },
+    "ghcr.io/devcontainers-extra/features/lerna-npm:1": {
+      "version": "1.0.11",
+      "resolved": "ghcr.io/devcontainers-extra/features/lerna-npm@sha256:05f3aa2414d97db38521a0187bb4ca10b14dc4353b62d78a2b305fc54dcee28c",
+      "integrity": "sha256:05f3aa2414d97db38521a0187bb4ca10b14dc4353b62d78a2b305fc54dcee28c"
+    },
+    "ghcr.io/devcontainers-extra/features/pulumi:1": {
+      "version": "1.2.4",
+      "resolved": "ghcr.io/devcontainers-extra/features/pulumi@sha256:99ad8f91bd273eda83a0794565015314f463e7c07c76c3e4de8f28dd5c795d5e",
+      "integrity": "sha256:99ad8f91bd273eda83a0794565015314f463e7c07c76c3e4de8f28dd5c795d5e"
+    },
+    "ghcr.io/devcontainers-extra/features/ruff:1": {
+      "version": "1.1.1",
+      "resolved": "ghcr.io/devcontainers-extra/features/ruff@sha256:017adb4bd389a4eabcebfb5a200cd6366046e603a38cc3461747e6d4c7d57142",
+      "integrity": "sha256:017adb4bd389a4eabcebfb5a200cd6366046e603a38cc3461747e6d4c7d57142"
+    },
+    "ghcr.io/devcontainers/features/aws-cli:1": {
+      "version": "1.1.2",
+      "resolved": "ghcr.io/devcontainers/features/aws-cli@sha256:bbc9fd513c22e331953126c75ad7b2ed1f9044f1cd5890b7073b634810459b18",
+      "integrity": "sha256:bbc9fd513c22e331953126c75ad7b2ed1f9044f1cd5890b7073b634810459b18"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "2.12.4",
+      "resolved": "ghcr.io/devcontainers/features/docker-in-docker@sha256:7f32d985aac6929b4f37cf8a0bdb9196473e9e192281a3d708207a70633f83df",
+      "integrity": "sha256:7f32d985aac6929b4f37cf8a0bdb9196473e9e192281a3d708207a70633f83df"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "1.6.3",
+      "resolved": "ghcr.io/devcontainers/features/node@sha256:3c35dff2aedeaeb86f03e10c265c29b56a1b3609324d83d6e901dbb6032543a4",
+      "integrity": "sha256:3c35dff2aedeaeb86f03e10c265c29b56a1b3609324d83d6e901dbb6032543a4"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "1.8.0",
+      "resolved": "ghcr.io/devcontainers/features/python@sha256:fbcad6955caeecc5ad3f7886baf652e25cba5225a6c4c2287c536de2e5607511",
+      "integrity": "sha256:fbcad6955caeecc5ad3f7886baf652e25cba5225a6c4c2287c536de2e5607511"
+    },
+    "ghcr.io/guiyomh/features/vim:0": {
+      "version": "0.0.1",
+      "resolved": "ghcr.io/guiyomh/features/vim@sha256:53c64a458fe88f40862ad5f94ea3f8d7fdf46c3fb42bdaa8a6a09f7d44f182f7",
+      "integrity": "sha256:53c64a458fe88f40862ad5f94ea3f8d7fdf46c3fb42bdaa8a6a09f7d44f182f7"
+    }
+  }
+}
