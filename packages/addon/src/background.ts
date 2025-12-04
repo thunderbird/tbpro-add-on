@@ -9,14 +9,14 @@ import useUserStore from '@send-frontend/stores/user-store';
 
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import {
-  PING,
-  OIDC_USER,
-  OIDC_TOKEN,
-  SIGN_IN,
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
   FILE_LIST,
+  OIDC_TOKEN,
+  OIDC_USER,
+  PING,
   POPUP_READY,
+  SIGN_IN,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
 
@@ -245,7 +245,7 @@ browser.runtime.onMessage.addListener(async (message) => {
         console.log(e);
       }
 
-      menuLoggedIn(email);
+      menuLoggedIn({ username: email });
 
       break;
 
