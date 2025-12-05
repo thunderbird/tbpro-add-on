@@ -106,13 +106,6 @@
       "dependsOn": [],
       "cache": true
     },
-    "build-and-submit": {
-      "dependsOn": [],
-      "cache": true,
-      "outputs": [
-        "{projectRoot}/packages/send/frontend/dist,packages/send/frontend/dist-web"
-      ]
-    },
     "build:dev": {
       "dependsOn": [],
       "cache": true
