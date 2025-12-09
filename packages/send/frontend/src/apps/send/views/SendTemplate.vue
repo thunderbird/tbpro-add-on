@@ -1,26 +1,35 @@
 <script setup lang="ts">
 import { StandardFooter } from '@thunderbirdops/services-ui';
+import { useRoute } from 'vue-router';
 import TBProIcon from '../elements/TBProIcon.vue';
+
+const route = useRoute();
+const isPrintMode = route.query.print !== undefined;
 </script>
 
 <template>
-  <header>
-    <nav class="header-nav">
-      <div class="header-logo">
-        <a href="https://tb.pro/" class="logo-link">
-          <TBProIcon />
-        </a>
-      </div>
-    </nav>
-  </header>
-
-  <div class="content">
+  <template v-if="isPrintMode">
     <slot></slot>
-  </div>
+  </template>
+  <template v-else>
+    <header>
+      <nav class="header-nav">
+        <div class="header-logo">
+          <a href="https://tb.pro/" class="logo-link">
+            <TBProIcon />
+          </a>
+        </div>
+      </nav>
+    </header>
 
-  <StandardFooter
-    contribute-to-this-site-url="https://github.com/thunderbird/tbpro-add-on"
-  />
+    <div class="content">
+      <slot></slot>
+    </div>
+
+    <StandardFooter
+      contribute-to-this-site-url="https://github.com/thunderbird/tbpro-add-on"
+    />
+  </template>
 </template>
 
 <style lang="css" scoped>
