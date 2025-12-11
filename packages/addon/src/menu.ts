@@ -1,5 +1,6 @@
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { getEnvName } from '@send-frontend/lib/clientConfig';
+import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
 
 // Determine environment-specific URLs
 const environmentName = getEnvName();
@@ -102,6 +103,19 @@ export async function menuLogout() {
   await browser.TBProMenu.clear('root');
 }
 
+async function getLoginState() {
+  const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
+  console.log(result);
+  if (result[STORAGE_KEY_AUTH]) {
+    const username =
+      result[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
+      result[STORAGE_KEY_AUTH]?.profile?.email;
+    if (username) {
+      menuLoggedIn({ username });
+    }
+  }
+}
+
 /**
  * Initializes the TBPro menu system and sets up click event handlers.
  * Creates the root menu item and registers listeners for all menu actions.
@@ -135,4 +149,8 @@ export function init() {
     secondaryTitle: browser.i18n.getMessage('thunderbirdPro'),
     tooltip: '',
   });
+
+  // Technically this is an async function.
+  // But we do not need to wait for it synchronously.
+  getLoginState();
 }
