@@ -217,6 +217,9 @@ browser.runtime.onMessage.addListener(async (message) => {
       });
 
       console.log(`🎯 user auth stored in add-on context.`);
+      console.log(`updating the 🍔 menu.`);
+      menuLoggedIn({ username: email });
+
       break;
 
     case OIDC_TOKEN:
