@@ -17,6 +17,7 @@ import {
   PING,
   POPUP_READY,
   SIGN_IN,
+  SIGN_IN_COMPLETE,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
 
@@ -24,7 +25,7 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { useConfigStore } from '@send-frontend/stores/index.js';
-import { init as initMenu, menuLoggedIn } from './menu';
+import { init as initMenu, menuLoggedIn, closeLoginTab } from './menu';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -259,6 +260,13 @@ browser.runtime.onMessage.addListener(async (message) => {
         width: 980,
         linkHandler: 'relaxed',
       });
+      break;
+
+    case SIGN_IN_COMPLETE:
+      console.log(
+        `[onMessage] background.ts received SIGN_IN_COMPLETE. Telling menu.ts to close tab.`
+      );
+      await closeLoginTab();
       break;
 
     // Popup is ready and is requesting the file list.

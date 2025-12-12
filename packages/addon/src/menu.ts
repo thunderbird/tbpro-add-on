@@ -21,14 +21,18 @@ export const MENU_ACTIONS = {
 
 export type MenuAction = (typeof MENU_ACTIONS)[keyof typeof MENU_ACTIONS];
 
+let loginTabId = null;
+
 /**
  * Opens the login page in a new tab when user clicks the root menu item.
  * Includes extension flag to enable proper authentication flow.
  */
 async function menuLogin() {
-  await browser.tabs.create({
+  const loginTab = await browser.tabs.create({
     url: `${BASE_URL}/login?isExtension=true`,
   });
+
+  loginTabId = loginTab.id;
 }
 
 /**
@@ -112,6 +116,19 @@ async function getLoginState() {
       result[STORAGE_KEY_AUTH]?.profile?.email;
     if (username) {
       menuLoggedIn({ username });
+    }
+  }
+}
+
+export async function closeLoginTab() {
+  // Close the associated login tab, if any
+  console.log(`[menu.ts] Attempting to close login tab with id ${loginTabId}`);
+  if (loginTabId) {
+    try {
+      await browser.tabs.get(loginTabId);
+      await browser.tabs.remove(loginTabId);
+    } catch (e) {
+      console.warn(`Could not close login tab with id ${loginTabId}`);
     }
   }
 }
