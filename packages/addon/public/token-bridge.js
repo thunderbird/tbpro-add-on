@@ -11,6 +11,7 @@ const BRIDGE_PING = 'APP/PING';
 const BRIDGE_READY = 'TB/BRIDGE_READY';
 const OIDC_USER = 'TB/OIDC_USER';
 const OIDC_TOKEN = 'TB/OIDC_TOKEN';
+const SIGN_IN_COMPLETE = 'SIGN_IN_COMPLETE';
 
 window.postMessage({ type: BRIDGE_READY }, window.location.origin);
 console.log(`[🌉 token-bridge] the token bridge has loaded.`);
@@ -60,6 +61,12 @@ window.addEventListener('message', (e) => {
         user: userData,
       });
     }
+  }
+
+  if (e?.data?.type === SIGN_IN_COMPLETE) {
+    browser.runtime.sendMessage({
+      type: SIGN_IN_COMPLETE,
+    });
   }
 
   if (e?.data?.type === BRIDGE_PING) {

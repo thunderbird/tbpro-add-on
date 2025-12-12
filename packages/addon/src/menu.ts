@@ -1,5 +1,6 @@
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { getEnvName } from '@send-frontend/lib/clientConfig';
+import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
 
 // Determine environment-specific URLs
 const environmentName = getEnvName();
@@ -20,14 +21,18 @@ export const MENU_ACTIONS = {
 
 export type MenuAction = (typeof MENU_ACTIONS)[keyof typeof MENU_ACTIONS];
 
+let loginTabId = null;
+
 /**
  * Opens the login page in a new tab when user clicks the root menu item.
  * Includes extension flag to enable proper authentication flow.
  */
 async function menuLogin() {
-  await browser.tabs.create({
+  const loginTab = await browser.tabs.create({
     url: `${BASE_URL}/login?isExtension=true`,
   });
+
+  loginTabId = loginTab.id;
 }
 
 /**
@@ -100,6 +105,33 @@ export async function menuLogout() {
   // TODO: Implement proper menu item cleanup
   console.log('🧹this should clear the menu items');
   await browser.TBProMenu.clear('root');
+  await browser.storage.local.remove(STORAGE_KEY_AUTH);
+}
+
+async function getLoginState() {
+  const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
+  console.log(result);
+  if (result[STORAGE_KEY_AUTH]) {
+    const username =
+      result[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
+      result[STORAGE_KEY_AUTH]?.profile?.email;
+    if (username) {
+      menuLoggedIn({ username });
+    }
+  }
+}
+
+export async function closeLoginTab() {
+  // Close the associated login tab, if any
+  console.log(`[menu.ts] Attempting to close login tab with id ${loginTabId}`);
+  if (loginTabId) {
+    try {
+      await browser.tabs.get(loginTabId);
+      await browser.tabs.remove(loginTabId);
+    } catch (e) {
+      console.warn(`Could not close login tab with id ${loginTabId}`);
+    }
+  }
 }
 
 /**
@@ -135,4 +167,8 @@ export function init() {
     secondaryTitle: browser.i18n.getMessage('thunderbirdPro'),
     tooltip: '',
   });
+
+  // Technically this is an async function.
+  // But we do not need to wait for it synchronously.
+  getLoginState();
 }
