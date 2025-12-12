@@ -105,6 +105,7 @@ export async function menuLogout() {
   // TODO: Implement proper menu item cleanup
   console.log('🧹this should clear the menu items');
   await browser.TBProMenu.clear('root');
+  await browser.storage.local.remove(STORAGE_KEY_AUTH);
 }
 
 async function getLoginState() {

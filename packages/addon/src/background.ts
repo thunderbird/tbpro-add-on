@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-store';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import useApiStore from '@send-frontend/stores/api-store';
+import { useApiStore, useAuthStore } from '@send-frontend/stores';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
@@ -41,6 +41,7 @@ const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 const { configureExtension } = useExtensionStore();
 const { isProd } = useConfigStore();
+const authStore = useAuthStore();
 
 console.log('hello from the background.js!', new Date().getTime());
 
@@ -429,9 +430,37 @@ async function addThundermailToken(
   }
 }
 
+function initStorageWatcher() {
+  browser.storage.onChanged.addListener(async (changes, area) => {
+    if (changes[STORAGE_KEY_AUTH]) {
+      if (changes[STORAGE_KEY_AUTH].newValue === undefined) {
+        try {
+          // OIDC logout
+          await authStore.logoutFromOIDC();
+        } catch (error) {
+          // We really shouldn't be using the authStore here, since we don't have the right
+          // env vars, but that does not interfere with logout.
+        }
+
+        try {
+          // FXA/JWT logout
+          await api.removeAuthToken();
+        } catch (error) {
+          console.error('Legacy (fxa) logout failed:', error);
+        }
+      }
+      // Optionally, we can check if they've just logged in:
+      // typeof changes[STORAGE_KEY_AUTH].newValue === 'object'
+      // In which case, we could shift some logic from the onMessage handler
+      // to this function.
+    }
+  });
+}
+
 (async function main() {
   initMenu();
   initCloudFile();
+  initStorageWatcher();
 })().catch((error) => {
   console.error('Error initializing background.js', error);
 });

@@ -225,16 +225,20 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function loadUser() {
-    const user = await userManager.getUser();
-    if (user) {
-      // If user already loaded, exit.
-      return;
-    }
+    // Always check for a stored user instead of getting it from
+    // the userManager.
+    // A stored user is how we coordinate the different parts of
+    // the tb.pro add-on.
     try {
       const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
       if (result[STORAGE_KEY_AUTH]) {
         const userInstance = new User(result[STORAGE_KEY_AUTH]);
         await userManager.storeUser(userInstance);
+      } else {
+        // If there is no user in storage, remove the one in memory.
+        await userManager.removeUser();
+        isLoggedIn.value = false;
+        currentUser.value = null;
       }
     } catch (e) {
       console.log(`No error. Only works if running in add-on.`);
