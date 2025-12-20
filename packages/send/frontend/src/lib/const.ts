@@ -34,3 +34,13 @@ export const SPLIT_SIZE = SPLIT_SIZE_IN_MB * ONE_MB_IN_BYTES;
 // Cache durations
 const ONE_MINUTE_IN_MILLISECONDS = 60 * 1000;
 export const FIFTEEN_MINUTES = 15 * ONE_MINUTE_IN_MILLISECONDS; // 15 minutes in milliseconds
+
+export const PING = 'TB/PING';
+export const BRIDGE_PING = 'APP/PING';
+export const BRIDGE_READY = 'TB/BRIDGE_READY';
+export const OIDC_USER = 'TB/OIDC_USER';
+export const OIDC_TOKEN = 'TB/OIDC_TOKEN';
+export const OIDC_LOAD = 'TB/OIDC_LOAD';
+export const SIGN_IN = 'SIGN_IN';
+
+export const STORAGE_KEY_AUTH = 'STORAGE_KEY_AUTH';
