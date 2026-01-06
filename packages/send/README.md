@@ -71,7 +71,7 @@ Make sure you have a file named `.env.production` inside the frontend directory 
 Run
 
 ```sh
-lerna run build --scope=send-frontend
+lerna run build-and-submit --scope=send-frontend
 ```
 
 This will create `frontend-source.zip` use it to upload to ATN when asked for source code.
