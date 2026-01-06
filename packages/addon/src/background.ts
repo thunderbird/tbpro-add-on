@@ -17,6 +17,7 @@ import {
   PING,
   POPUP_READY,
   SIGN_IN,
+  SIGN_OUT,
   SIGN_IN_COMPLETE,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
@@ -25,7 +26,8 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { useConfigStore } from '@send-frontend/stores/index.js';
-import { init as initMenu, menuLoggedIn, closeLoginTab } from './menu';
+import { init as initMenu, menuLoggedIn, menuLogout, closeLoginTab } from './menu';
+
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -252,6 +254,10 @@ browser.runtime.onMessage.addListener(async (message) => {
 
       menuLoggedIn({ username: email });
 
+      break;
+
+    case SIGN_OUT:
+      menuLogout();
       break;
 
     case SIGN_IN:

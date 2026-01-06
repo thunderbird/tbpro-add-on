@@ -12,6 +12,7 @@ import {
   OIDC_USER,
   OIDC_TOKEN,
   STORAGE_KEY_AUTH,
+  SIGN_OUT,
 } from '@send-frontend/lib/const';
 
 const settings: UserManagerSettings = {
@@ -97,7 +98,7 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.origin
       );
 
-      // Send the token for thundermail.
+      // Send the token for thundermail via bridge.
       window.postMessage(
         {
           type: OIDC_TOKEN,
@@ -108,7 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.origin
       );
 
-      // Send the entire user for TB Send.
+      // Send the entire user for TB Send via bridge.
       window.postMessage(
         {
           type: OIDC_USER,
@@ -204,6 +205,11 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       // Remove stored auth data
       await browser.storage.local.remove(STORAGE_KEY_AUTH);
+
+      // Let background.ts know that we have logged out.
+      browser.runtime.sendMessage({
+        type: SIGN_OUT,
+      });
     }
   }
 
