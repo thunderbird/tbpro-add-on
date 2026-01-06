@@ -218,7 +218,7 @@ jobs:
           cd packages/send/frontend
 
           # Build static frontend assets and the .xpi
-          IS_CI_AUTOMATION=yes pnpm build
+          IS_CI_AUTOMATION=yes pnpm build-and-submit
           mv dist-web ../dist-web-stage
           cd ..
           mv frontend-source frontend-source-stage
@@ -278,7 +278,7 @@ jobs:
           cd packages/send/frontend
 
           # Build static frontend assets and the .xpi
-          IS_CI_AUTOMATION=yes pnpm build
+          IS_CI_AUTOMATION=yes pnpm build-and-submit
           mv dist-web ../dist-web-prod
           cd ..
           mv frontend-source frontend-source-prod
@@ -394,7 +394,7 @@ jobs:
           pnpm install --filter send-frontend
 
           IS_CI_AUTOMATION=yes
-          lerna run build --scope=addon
+          lerna run build-and-submit --scope=addon
 
           cd packages/addon
 
@@ -450,7 +450,7 @@ jobs:
           pnpm install --filter send-frontend
 
           IS_CI_AUTOMATION=yes
-          lerna run build --scope=addon
+          lerna run build-and-submit --scope=addon
 
           cd packages/addon
           # Delete any existing stage XPI to avoid confusion
