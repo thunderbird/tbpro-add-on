@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-store';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import useApiStore from '@send-frontend/stores/api-store';
+import { useApiStore, useAuthStore } from '@send-frontend/stores';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
@@ -17,6 +17,7 @@ import {
   PING,
   POPUP_READY,
   SIGN_IN,
+  SIGN_IN_COMPLETE,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
 
@@ -24,7 +25,7 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { useConfigStore } from '@send-frontend/stores/index.js';
-import { init as initMenu, menuLoggedIn } from './menu';
+import { init as initMenu, menuLoggedIn, closeLoginTab } from './menu';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -40,6 +41,7 @@ const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 const { configureExtension } = useExtensionStore();
 const { isProd } = useConfigStore();
+const authStore = useAuthStore();
 
 console.log('hello from the background.js!', new Date().getTime());
 
@@ -261,6 +263,13 @@ browser.runtime.onMessage.addListener(async (message) => {
       });
       break;
 
+    case SIGN_IN_COMPLETE:
+      console.log(
+        `[onMessage] background.ts received SIGN_IN_COMPLETE. Telling menu.ts to close tab.`
+      );
+      await closeLoginTab();
+      break;
+
     // Popup is ready and is requesting the file list.
     case POPUP_READY:
       console.log(`[onMessage] Popup is ready. Sending file list.`);
@@ -421,9 +430,37 @@ async function addThundermailToken(
   }
 }
 
+function initStorageWatcher() {
+  browser.storage.onChanged.addListener(async (changes, area) => {
+    if (changes[STORAGE_KEY_AUTH]) {
+      if (changes[STORAGE_KEY_AUTH].newValue === undefined) {
+        try {
+          // OIDC logout
+          await authStore.logoutFromOIDC();
+        } catch (error) {
+          // We really shouldn't be using the authStore here, since we don't have the right
+          // env vars, but that does not interfere with logout.
+        }
+
+        try {
+          // FXA/JWT logout
+          await api.removeAuthToken();
+        } catch (error) {
+          console.error('Legacy (fxa) logout failed:', error);
+        }
+      }
+      // Optionally, we can check if they've just logged in:
+      // typeof changes[STORAGE_KEY_AUTH].newValue === 'object'
+      // In which case, we could shift some logic from the onMessage handler
+      // to this function.
+    }
+  });
+}
+
 (async function main() {
   initMenu();
   initCloudFile();
+  initStorageWatcher();
 })().catch((error) => {
   console.error('Error initializing background.js', error);
 });
