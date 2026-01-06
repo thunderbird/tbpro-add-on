@@ -43,5 +43,7 @@ export const OIDC_TOKEN = 'TB/OIDC_TOKEN';
 export const OIDC_LOAD = 'TB/OIDC_LOAD';
 export const SIGN_IN = 'SIGN_IN';
 export const SIGN_OUT = 'SIGN_OUT';
+export const SIGN_IN_COMPLETE = 'SIGN_IN_COMPLETE';
+
 
 export const STORAGE_KEY_AUTH = 'STORAGE_KEY_AUTH';

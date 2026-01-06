@@ -1,8 +1,16 @@
 <script lang="ts" setup>
+import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
+
 // Try window.close every 3 seconds to close the window after authentication
 setInterval(() => {
   window.close();
   console.log('Attempting to close window...');
+
+  window.postMessage(
+    { type: SIGN_IN_COMPLETE },
+    window.location.origin
+  );
+
 }, 3000);
 </script>
 
