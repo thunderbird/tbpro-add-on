@@ -8,6 +8,7 @@ export const EMPTY_USER: UserType = {
   id: undefined,
   tier: UserTier.FREE,
   email: '',
+  thundermailEmail: '',
 };
 
 const useUserStore = defineStore('user', () => {
@@ -20,9 +21,13 @@ const useUserStore = defineStore('user', () => {
     user.id = userData.id;
     user.tier = userData.tier;
     user.email = userData.email;
+    user.thundermailEmail = userData.thundermailEmail;
 
     if (userData.uniqueHash) {
       user.uniqueHash = userData.uniqueHash;
+    }
+    if (userData.thundermailEmail) {
+      user.thundermailEmail = userData.thundermailEmail;
     }
   }
 
@@ -48,6 +53,7 @@ const useUserStore = defineStore('user', () => {
       id: resp.user.id,
       tier: resp.user.tier,
       email,
+      thundermailEmail: resp.user.thundermailEmail,
       uniqueHash: resp.user.uniqueHash,
     };
   }
@@ -76,9 +82,9 @@ const useUserStore = defineStore('user', () => {
       if (!userFromStorage) {
         return false;
       }
-      const { id, tier, email } = userFromStorage;
+      const { id, tier, email, thundermailEmail } = userFromStorage;
 
-      populateUser({ id, email, tier });
+      populateUser({ id, email, tier, thundermailEmail });
 
       return true;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -90,13 +96,14 @@ const useUserStore = defineStore('user', () => {
   async function store(
     newId?: string,
     newTier?: UserTier,
-    newEmail?: string
+    newEmail?: string,
+    newThundermailEmail?: string
   ): Promise<void> {
-    let { id, tier, email } = user;
+    let { id, tier, email, thundermailEmail } = user;
     id = newId ?? id;
     tier = newTier ?? tier;
     email = newEmail ?? email;
-
+    thundermailEmail = newThundermailEmail ?? thundermailEmail;
     // TODO: this is confusing.
     // we could be storing new values, but we're not setting them
     // on the current/active object.
@@ -104,7 +111,7 @@ const useUserStore = defineStore('user', () => {
     if (!id) {
       return;
     }
-    await storage.storeUser({ id, tier, email });
+    await storage.storeUser({ id, tier, email, thundermailEmail });
   }
 
   // After login, get user from backend and save it locally.
