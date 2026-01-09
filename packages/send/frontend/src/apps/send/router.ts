@@ -40,6 +40,7 @@ import PromptVerification from './pages/PromptVerification.vue';
 import VerifyPage from './pages/VerifyPage.vue';
 import { useStatusStore } from './stores/status-store';
 import { useVerificationStore } from './stores/verification-store';
+import PassphrasePage from './views/PassphrasePage.vue';
 
 enum META_OPTIONS {
   redirectOnValidSession = 'redirectOnValidSession',
@@ -146,6 +147,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/locked/:linkId',
     component: LockedPage,
+  },
+  {
+    path: '/passphrase',
+    component: PassphrasePage,
   },
 
   /* 
