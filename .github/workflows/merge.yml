@@ -218,11 +218,9 @@ jobs:
           cd packages/send/frontend
 
           # Build static frontend assets and the .xpi
-          IS_CI_AUTOMATION=yes pnpm build-and-submit
+          IS_CI_AUTOMATION=yes pnpm build
           mv dist-web ../dist-web-stage
           cd ..
-          mv frontend-source frontend-source-stage
-          mv frontend-source.zip frontend-source-stage.zip
           mv "$(find send-suite-*.xpi)" "send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
 
       - name: Archive the stage frontend build
@@ -278,11 +276,9 @@ jobs:
           cd packages/send/frontend
 
           # Build static frontend assets and the .xpi
-          IS_CI_AUTOMATION=yes pnpm build-and-submit
+          IS_CI_AUTOMATION=yes pnpm build
           mv dist-web ../dist-web-prod
           cd ..
-          mv frontend-source frontend-source-prod
-          mv frontend-source.zip frontend-source-prod.zip
           # There should be an XPI marked "stage" already here, so we exclude it to get the prod XPI instead
           XPI=$(find send-suite-*.xpi | grep -v stage | grep -v prod)
           # The filename is something like "send-suite-0-2-1.xpi"; use cut to pull just the version string
@@ -394,7 +390,7 @@ jobs:
           pnpm install --filter send-frontend
 
           IS_CI_AUTOMATION=yes
-          lerna run build-and-submit --scope=addon
+          lerna run build --scope=addon
 
           cd packages/addon
 
@@ -450,7 +446,7 @@ jobs:
           pnpm install --filter send-frontend
 
           IS_CI_AUTOMATION=yes
-          lerna run build-and-submit --scope=addon
+          lerna run build --scope=addon
 
           cd packages/addon
           # Delete any existing stage XPI to avoid confusion
