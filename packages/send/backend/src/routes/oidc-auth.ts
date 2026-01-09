@@ -23,7 +23,7 @@ const router: Router = Router();
  * Endpoint for handling OIDC authentication after the frontend completes the OAuth flow
  * The frontend should call this endpoint with the access token received from OIDC
  */
-router.get(
+router.post(
   '/oidc/authenticate',
   requireOIDCAuth,
   addErrorHandling(AUTH_ERRORS.AUTH_FAILED),
@@ -34,7 +34,6 @@ router.get(
         error: 'missing_oidc_user',
       });
     }
-
     const { sub, email, username } = req.oidcUser;
 
     try {
