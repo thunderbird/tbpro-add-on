@@ -1,19 +1,19 @@
 // stores/auth-store.js
 
 import logger from '@send-frontend/logger';
-import { useApiStore } from '@send-frontend/stores';
+import { useApiStore, useConfigStore } from '@send-frontend/stores';
 import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
 
-import { ref, watch } from 'vue';
 import {
   BRIDGE_PING,
   BRIDGE_READY,
-  OIDC_USER,
   OIDC_TOKEN,
-  STORAGE_KEY_AUTH,
+  OIDC_USER,
   SIGN_OUT,
+  STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
+import { ref, watch } from 'vue';
 
 const settings: UserManagerSettings = {
   authority: import.meta.env?.VITE_OIDC_ROOT_URL,
@@ -32,6 +32,7 @@ const userManager = new UserManager(settings);
 
 export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
+  const { isExtension } = useConfigStore();
 
   const isLoggedIn = ref(false);
   const currentUser = ref<User | null>(null);
@@ -146,7 +147,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       // Load user from stored auth data, if available.
       // No-op if we are not in the add-on.
-      await loadUser();
+      if (isExtension) {
+        await loadUser();
+      }
 
       const user = await userManager.getUser();
 
@@ -269,5 +272,8 @@ export const useAuthStore = defineStore('auth', () => {
     logoutFromOIDC,
     refreshToken,
     loginToKeyCloak, // Alias for loginToOIDC
+
+    // add-on specific
+    loadUser,
   };
 });

@@ -13,7 +13,16 @@ export const validateToken = async (api: ApiConnection): Promise<boolean> => {
       const authStore = await import('@send-frontend/stores/auth-store').then(
         (m) => m.useAuthStore()
       );
+      const isExtension = await import('@send-frontend/stores').then(
+        (m) => m.useConfigStore().isExtension
+      );
       const accessToken = await authStore.getAccessToken();
+
+      // Load user from stored auth data, if available.
+      // No-op if we are not in the add-on.
+      if (isExtension) {
+        await authStore.loadUser();
+      }
 
       if (accessToken) {
         // Try OIDC validation

@@ -219,12 +219,19 @@ describe('User Store', () => {
       const newId = 2;
       const newTier = UserTier.PRO;
       const newEmail = 'new@example.com';
+      const thundermailEmail = 'thundermail@thundermail.com';
       const storageMock = vi.spyOn(Storage.prototype, 'storeUser');
-      await userStore.store(newId.toString(), newTier, newEmail);
+      await userStore.store(
+        newId.toString(),
+        newTier,
+        newEmail,
+        thundermailEmail
+      );
       expect(storageMock).toHaveBeenCalledWith({
         id: newId.toString(),
         tier: newTier,
         email: newEmail,
+        thundermailEmail: thundermailEmail,
       });
     });
 
