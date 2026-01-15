@@ -122,7 +122,6 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.autoRestoresKeys]: true,
-          [META_OPTIONS.closeOnExtension]: true,
         },
       },
       {
