@@ -45,5 +45,7 @@ export const SIGN_IN = 'SIGN_IN';
 export const SIGN_OUT = 'SIGN_OUT';
 export const SIGN_IN_COMPLETE = 'SIGN_IN_COMPLETE';
 
+export const ADDON_TO_WEBAPP = 'addon-to-webapp';
+export const WEBAPP_TO_ADDON = 'webapp-to-addon';
 
 export const STORAGE_KEY_AUTH = 'STORAGE_KEY_AUTH';

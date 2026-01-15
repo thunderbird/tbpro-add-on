@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
+import { ADDON_TO_WEBAPP, SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
 
 // Try window.close every 3 seconds to close the window after authentication
 setInterval(() => {
@@ -12,6 +12,20 @@ setInterval(() => {
   );
 
 }, 3000);
+
+// Listen for ADDON_TO_WEBAPP: add-on -> bridge -> web app
+window.addEventListener('message', async (e) => {
+  if (e.origin === window.location.origin && e.data?.type === ADDON_TO_WEBAPP) {
+    alert(
+      `🐦‍🔥 [web-app:close-page] received message: ${e.data?.payload?.message}`
+    );
+  }
+  return new Promise((resolve) => {
+    resolve(true);
+  });
+
+});
+
 </script>
 
 <template>

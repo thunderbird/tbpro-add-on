@@ -12,6 +12,8 @@ const BRIDGE_READY = 'TB/BRIDGE_READY';
 const OIDC_USER = 'TB/OIDC_USER';
 const OIDC_TOKEN = 'TB/OIDC_TOKEN';
 const SIGN_IN_COMPLETE = 'SIGN_IN_COMPLETE';
+const ADDON_TO_WEBAPP = 'addon-to-webapp';
+const WEBAPP_TO_ADDON = 'webapp-to-addon';
 
 window.postMessage({ type: BRIDGE_READY }, window.location.origin);
 console.log(`[🌉 token-bridge] the token bridge has loaded.`);
@@ -75,4 +77,34 @@ window.addEventListener('message', (e) => {
       text: String(e.data.text ?? ''),
     });
   }
+  // Bridge translates WEBAPP_TO_ADDON: web app -> bridge -> add-on
+  // (receive postMessage, send sendMessage)
+  if (e?.data?.type === WEBAPP_TO_ADDON) {
+    console.log(`🌉 doing message translation WEBAPP_TO_ADDON`);
+    browser.runtime.sendMessage({
+      type: WEBAPP_TO_ADDON,
+      payload: e.data?.payload,
+    });
+  }
+});
+
+// Bridge translates ADDON_TO_WEBAPP: add-on -> bridge -> web app
+// (receive sendMessage, send postMessage)
+browser.runtime.onMessage.addListener(async (message, _, sendResponse) => {
+  console.log(`BRIDGE GOT A MESSAGE`);
+  console.log(message);
+  switch (message.type) {
+    case ADDON_TO_WEBAPP:
+      console.log(`🌉 doing message translation ADDON_TO_WEBAPP`);
+      sendResponse({
+        status: 'received/forwarded by bridge',
+      });
+      window.postMessage(
+        { type: ADDON_TO_WEBAPP, payload: message.payload },
+        window.location.origin
+      );
+  }
+  return new Promise((resolve) => {
+    resolve(true);
+  });
 });
