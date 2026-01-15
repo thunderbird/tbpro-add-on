@@ -7,7 +7,7 @@ const DEBUG = true;
 const SERVER = `server`;
 
 export const useExtensionStore = defineStore('extension', () => {
-  const { serverUrl, setServerUrl } = useConfigStore();
+  const { serverUrl, setServerUrl, getAddonId } = useConfigStore();
 
   // This specifies the id of the provider chosen in the
   // "Composition > Attachments" window.
@@ -29,6 +29,34 @@ export const useExtensionStore = defineStore('extension', () => {
   }
 
   async function configureExtension(id = accountId) {
+    // Create cloud file account if it doesn't exist
+    try {
+      //@ts-ignore
+      const result = await browser.CloudFileAccounts.createAccount(
+        getAddonId(),
+        true
+      );
+
+      if (!result.success) {
+        console.error(
+          `[extension-store] Failed to create cloud file account: ${result.error}`
+        );
+      } else if (result.alreadyExists) {
+        console.log(
+          `[extension-store] Cloud file account already exists: ${result.accountId}`
+        );
+      } else {
+        console.log(
+          `[extension-store] Cloud file account created: ${result.accountId}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[extension-store] Error creating cloud file account:`,
+        error
+      );
+    }
+
     // This function only needs to run if we're in the TB addon.
     // Exit early if there's no account id.
     if (!id) {
