@@ -14,20 +14,25 @@ import {
   FILE_LIST,
   OIDC_TOKEN,
   OIDC_USER,
-  PING,
   POPUP_READY,
   SIGN_IN,
   SIGN_OUT,
   SIGN_IN_COMPLETE,
   STORAGE_KEY_AUTH,
+  WEBAPP_TO_ADDON,
+  ADDON_TO_WEBAPP,
 } from '@send-frontend/lib/const';
 
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { useConfigStore } from '@send-frontend/stores/index.js';
-import { init as initMenu, menuLoggedIn, menuLogout, closeLoginTab } from './menu';
-
+import {
+  init as initMenu,
+  menuLoggedIn,
+  menuLogout,
+  closeLoginTab,
+} from './menu';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -207,12 +212,47 @@ async function openUnifiedPopup() {
 const THUNDERMAIL_HOST = `mail.${!isProd ? 'stage-' : ''}thundermail.com`;
 const THUNDERMAIL_DISPLAY_NAME = 'Thundermail';
 
+// Send to bridge, running in a tab
+async function sendMessageToBridge(payload: Record<string, string>) {
+  const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+
+  if (tabs.length > 0) {
+    try {
+      const response = await browser.tabs.sendMessage(tabs[0].id, {
+        type: ADDON_TO_WEBAPP,
+        payload,
+      });
+      if (response) {
+        console.log(response);
+      }
+    } catch (error) {
+      console.error('Transmission failed:', error);
+    }
+  }
+}
+
+// setTimeout(() => {
+//   browser.runtime.sendMessage({
+//   });
+// }, 3000);
+
 // Handle all messages from popup.
 browser.runtime.onMessage.addListener(async (message) => {
   const { email, name, token } = message;
   switch (message.type) {
-    case PING:
-      console.log('[background] got the ping from the bridge');
+    case WEBAPP_TO_ADDON:
+      // Received WEBAPP_TO_ADDON: web app -> bridge -> add-on
+      if (message.payload) {
+        console.log(
+          `🐦‍🔥 [add-on:background] received message: ${message.payload?.message}`
+        );
+
+        // Send ADDON_TO_WEBAPP: add-on -> bridge -> web app
+        // Adding here, because we know that the web app is listening.
+        await sendMessageToBridge({
+          message: "Hey web app, it's me, background",
+        });
+      }
       break;
 
     case OIDC_USER:
@@ -276,6 +316,7 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log(
         `[onMessage] background.ts received SIGN_IN_COMPLETE. Telling menu.ts to close tab.`
       );
+
       await closeLoginTab();
       break;
 

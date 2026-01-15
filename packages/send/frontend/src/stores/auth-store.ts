@@ -6,12 +6,15 @@ import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
 
 import {
+  ADDON_TO_WEBAPP,
   BRIDGE_PING,
   BRIDGE_READY,
   OIDC_TOKEN,
   OIDC_USER,
+  PING,
   SIGN_OUT,
   STORAGE_KEY_AUTH,
+  WEBAPP_TO_ADDON,
 } from '@send-frontend/lib/const';
 import { ref, watch } from 'vue';
 
@@ -29,6 +32,30 @@ const settings: UserManagerSettings = {
 };
 
 const userManager = new UserManager(settings);
+
+// Send WEBAPP_TO_ADDON: web app -> bridge -> add-on
+// Uses postMessage
+window.postMessage(
+  {
+    type: WEBAPP_TO_ADDON,
+    payload: {
+      message: `hello from web app`,
+    },
+  },
+  window.location.origin
+);
+
+// Listen for ADDON_TO_WEBAPP: add-on -> bridge -> web app
+window.addEventListener('message', async (e) => {
+  if (e.origin === window.location.origin && e.data?.type === ADDON_TO_WEBAPP) {
+    alert(
+      `🐦‍🔥 [web-app:auth-store] received message: ${e.data?.payload?.message}`
+    );
+  }
+  return new Promise((resolve) => {
+    resolve(true);
+  });
+});
 
 export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
