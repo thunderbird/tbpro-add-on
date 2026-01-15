@@ -91,8 +91,6 @@ window.addEventListener('message', (e) => {
 // Bridge translates ADDON_TO_WEBAPP: add-on -> bridge -> web app
 // (receive sendMessage, send postMessage)
 browser.runtime.onMessage.addListener(async (message, _, sendResponse) => {
-  console.log(`BRIDGE GOT A MESSAGE`);
-  console.log(message);
   switch (message.type) {
     case ADDON_TO_WEBAPP:
       console.log(`🌉 doing message translation ADDON_TO_WEBAPP`);
