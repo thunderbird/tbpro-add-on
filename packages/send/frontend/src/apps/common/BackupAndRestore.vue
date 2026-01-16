@@ -8,7 +8,10 @@ import { useAuth } from '@send-frontend/lib/auth';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import { backupKeys, restoreKeys } from '@send-frontend/lib/keychain';
 import { generatePassphrase } from '@send-frontend/lib/passphrase';
-import { downloadPassPhrase } from '@send-frontend/lib/passphraseUtils';
+import {
+  downloadPassPhrase,
+  parsePassphrase,
+} from '@send-frontend/lib/passphraseUtils';
 import { trpc } from '@send-frontend/lib/trpc';
 import useApiStore from '@send-frontend/stores/api-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
@@ -42,10 +45,9 @@ const passphraseString = computed(() => {
 });
 
 const setPassphrase = (newPassphrase: string) => {
-  let res = newPassphrase.replace(/\s+/g, '');
-  console.log('newPassphrase', res);
+  const parsedPassphrase = parsePassphrase(newPassphrase);
 
-  words.value = res.split('-');
+  words.value = parsedPassphrase.split('-');
 };
 
 const { api } = useApiStore();
