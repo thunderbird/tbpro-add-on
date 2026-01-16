@@ -51,56 +51,68 @@ const authStore = useAuthStore();
 
 console.log('hello from the background.js!', new Date().getTime());
 
+async function setupCloudFileAccountWorkaround() {
+  try {
+    const allAccounts = await browser.cloudFile.getAllAccounts();
+    if (allAccounts.length > 0) {
+      for (const { id } of allAccounts) {
+        console.log(`[background.td] passing ${id} to configureExtension()`);
+        await configureExtension(id);
+      }
+    } else {
+      for (let i = 0; i < 100; i++) {
+        await configureExtension(`account${i}`);
+      }
+    }
+  } catch (error) {
+    console.warn('Error configuring cloudFile:', error);
+  }
+}
+
+// ==============================================
+// Log the result of cloud file account creation
+function logAccountCreationResult(result: {
+  success: boolean;
+  error?: string;
+  alreadyExists?: boolean;
+  accountId?: string;
+}) {
+  if (!result.success) {
+    console.error(
+      `[extension-store] Failed to create cloud file account: ${result.error}`
+    );
+  } else if (result.alreadyExists) {
+    console.log(
+      `[extension-store] Cloud file account already exists: ${result.accountId}`
+    );
+  } else {
+    console.log(
+      `[extension-store] Cloud file account created: ${result.accountId}`
+    );
+  }
+}
+
 // ==============================================
 // Initialize the cloudFile accounts, keychain, and stores.
 async function initCloudFile() {
   try {
-    //@ts-ignore
     const result = await browser.CloudFileAccounts.createAccount(
       getAddonId(),
       true
     );
 
-    if (!result.success) {
-      console.error(
-        `[extension-store] Failed to create cloud file account: ${result.error}`
-      );
-    } else if (result.alreadyExists) {
-      console.log(
-        `[extension-store] Cloud file account already exists: ${result.accountId}`
-      );
+    logAccountCreationResult(result);
+
+    if (result?.accountId) {
+      await configureExtension(result.accountId);
     } else {
-      console.log(
-        `[extension-store] Cloud file account created: ${result.accountId}`
-      );
+      await setupCloudFileAccountWorkaround();
     }
   } catch (error) {
     console.error(
       `[extension-store] Error creating cloud file account:`,
       error
     );
-  }
-
-  // @ts-ignore
-  if (result?.accountId) {
-    // @ts-ignore
-    await configureExtension(result.accountId);
-  } else {
-    try {
-      const allAccounts = await browser.cloudFile.getAllAccounts();
-      if (allAccounts.length > 0) {
-        for (const { id } of allAccounts) {
-          console.log(`[background.td] passing ${id} to configureExtension()`);
-          await configureExtension(id);
-        }
-      } else {
-        for (let i = 0; i < 100; i++) {
-          await configureExtension(`account${i}`);
-        }
-      }
-    } catch (error) {
-      console.warn('Error configuring cloudFile:', error);
-    }
   }
 
   try {
