@@ -38,7 +38,7 @@ export const useConfigStore = defineStore('config', () => {
 
   // Returns the addon id based on the server URL uses (ext-) to register cloudfile
   function getAddonId() {
-    if (serverUrl.value.includes('send.tb.pro')) {
+    if (serverUrl.value.includes('send-backend.tb.pro')) {
       return 'ext-tbpro-add-on@thunderbird.net';
     } else {
       return 'ext-tbpro-addon-stage@thunderbird.net';
