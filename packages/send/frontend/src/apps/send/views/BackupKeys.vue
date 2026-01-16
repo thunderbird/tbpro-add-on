@@ -6,6 +6,7 @@ import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
 import RefreshIcon from '@send-frontend/apps/common/RefreshIcon.vue';
 import {
   useConfigStore,
+  useExtensionStore,
   useStatusStore,
   useUserStore,
 } from '@send-frontend/stores';
@@ -23,6 +24,7 @@ const { makeBackup, words, logOutAuth } = defineProps<Props>();
 
 const { isExtension } = useConfigStore();
 const { validators } = useStatusStore();
+const { logOutExtension } = useExtensionStore();
 const { clearUserFromStorage } = useUserStore();
 
 const onClose = () => {};
@@ -54,6 +56,7 @@ const handleLogout = async () => {
   await clearUserFromStorage();
   await logOutAuth();
   await validators();
+  logOutExtension();
   if (!isExtension) {
     location.reload();
   }
