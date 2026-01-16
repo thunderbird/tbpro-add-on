@@ -61,6 +61,23 @@
         "script": "api/MailAccounts/implementation.js"
       }
     },
+    "CloudFileAccounts": {
+      "schema": "api/CloudFileAccounts/schema.json",
+      "parent": {
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "CloudFileAccounts"
+          ]
+        ],
+        "script": "api/CloudFileAccounts/implementation.js",
+        "events": [
+          "startup"
+        ]
+      }
+    },
     "TBProMenu": {
       "schema": "api/TBProMenu/schema.json",
       "parent": {

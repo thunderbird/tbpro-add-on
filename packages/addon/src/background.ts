@@ -17,8 +17,8 @@ import {
   PING,
   POPUP_READY,
   SIGN_IN,
-  SIGN_OUT,
   SIGN_IN_COMPLETE,
+  SIGN_OUT,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
 
@@ -26,8 +26,12 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { useConfigStore } from '@send-frontend/stores/index.js';
-import { init as initMenu, menuLoggedIn, menuLogout, closeLoginTab } from './menu';
-
+import {
+  closeLoginTab,
+  init as initMenu,
+  menuLoggedIn,
+  menuLogout,
+} from './menu';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -42,7 +46,7 @@ const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 const { configureExtension } = useExtensionStore();
-const { isProd } = useConfigStore();
+const { isProd, getAddonId } = useConfigStore();
 const authStore = useAuthStore();
 
 console.log('hello from the background.js!', new Date().getTime());
@@ -51,19 +55,52 @@ console.log('hello from the background.js!', new Date().getTime());
 // Initialize the cloudFile accounts, keychain, and stores.
 async function initCloudFile() {
   try {
-    const allAccounts = await browser.cloudFile.getAllAccounts();
-    if (allAccounts.length > 0) {
-      for (const { id } of allAccounts) {
-        console.log(`[background.td] passing ${id} to configureExtension()`);
-        await configureExtension(id);
-      }
+    //@ts-ignore
+    const result = await browser.CloudFileAccounts.createAccount(
+      getAddonId(),
+      true
+    );
+
+    if (!result.success) {
+      console.error(
+        `[extension-store] Failed to create cloud file account: ${result.error}`
+      );
+    } else if (result.alreadyExists) {
+      console.log(
+        `[extension-store] Cloud file account already exists: ${result.accountId}`
+      );
     } else {
-      for (let i = 0; i < 100; i++) {
-        await configureExtension(`account${i}`);
-      }
+      console.log(
+        `[extension-store] Cloud file account created: ${result.accountId}`
+      );
     }
   } catch (error) {
-    console.warn('Error configuring cloudFile:', error);
+    console.error(
+      `[extension-store] Error creating cloud file account:`,
+      error
+    );
+  }
+
+  // @ts-ignore
+  if (result?.accountId) {
+    // @ts-ignore
+    await configureExtension(result.accountId);
+  } else {
+    try {
+      const allAccounts = await browser.cloudFile.getAllAccounts();
+      if (allAccounts.length > 0) {
+        for (const { id } of allAccounts) {
+          console.log(`[background.td] passing ${id} to configureExtension()`);
+          await configureExtension(id);
+        }
+      } else {
+        for (let i = 0; i < 100; i++) {
+          await configureExtension(`account${i}`);
+        }
+      }
+    } catch (error) {
+      console.warn('Error configuring cloudFile:', error);
+    }
   }
 
   try {
@@ -277,6 +314,7 @@ browser.runtime.onMessage.addListener(async (message) => {
         `[onMessage] background.ts received SIGN_IN_COMPLETE. Telling menu.ts to close tab.`
       );
       await closeLoginTab();
+      await initCloudFile();
       break;
 
     // Popup is ready and is requesting the file list.
