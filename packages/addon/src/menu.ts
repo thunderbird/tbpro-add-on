@@ -93,6 +93,7 @@ export async function menuLoggedIn({ username }: Args) {
 /**
  * Handles logout process by resetting menu to logged-out state and opening logout page.
  * Clears the username and removes authenticated menu items.
+ * Also clears all localStorage and extension storage data.
  */
 export async function menuLogout() {
   // Reset menu to display sign-in prompt
@@ -102,10 +103,22 @@ export async function menuLogout() {
     tooltip: '',
   });
 
-  // TODO: Implement proper menu item cleanup
-  console.log('🧹this should clear the menu items');
+  // Clear menu items
+  console.log('🧹 Clearing menu items and storage');
   await browser.TBProMenu.clear('root');
-  await browser.storage.local.remove(STORAGE_KEY_AUTH);
+
+  // Clear all extension storage
+  await browser.storage.local.clear();
+
+  // Clear localStorage (if running in a context that has access to it)
+  try {
+    localStorage.clear();
+    console.log('✅ Cleared localStorage');
+  } catch {
+    console.log('ℹ️ localStorage not available in this context');
+  }
+
+  console.log('✅ Cleared extension storage');
 }
 
 async function getLoginState() {
@@ -128,7 +141,7 @@ export async function closeLoginTab() {
     try {
       await browser.tabs.get(loginTabId);
       await browser.tabs.remove(loginTabId);
-    } catch (e) {
+    } catch {
       console.warn(`Could not close login tab with id ${loginTabId}`);
     }
   }

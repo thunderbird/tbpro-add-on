@@ -2,7 +2,7 @@
 import LogOutButton from '@send-frontend/apps/send/elements/LogOutButton.vue';
 import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { useAuth } from '@send-frontend/lib/auth';
-import { DAYS_TO_EXPIRY } from '@send-frontend/lib/const';
+import { DAYS_TO_EXPIRY, SIGN_OUT } from '@send-frontend/lib/const';
 import { trpc } from '@send-frontend/lib/trpc';
 import useUserStore from '@send-frontend/stores/user-store';
 import { useQuery } from '@tanstack/vue-query';
@@ -14,7 +14,7 @@ import { useStatusStore } from '../send/stores/status-store';
 import LoadingComponent from './LoadingComponent.vue';
 
 const { user } = useUserStore();
-const { isExtension } = useConfigStore();
+const { isExtension: isRouteMozExtension } = useConfigStore();
 const { validators } = useStatusStore();
 const { clearUserFromStorage } = useUserStore();
 const { logOutAuth } = useAuth();
@@ -24,8 +24,13 @@ const handleLogout = async () => {
   await clearUserFromStorage();
   await logOutAuth();
   await validators();
-  if (!isExtension) {
+  if (!isRouteMozExtension) {
     location.reload();
+  } else {
+    // Let background.ts know that we have logged out.
+    browser.runtime.sendMessage({
+      type: SIGN_OUT,
+    });
   }
 };
 

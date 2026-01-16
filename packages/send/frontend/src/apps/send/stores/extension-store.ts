@@ -1,5 +1,6 @@
 // stores/counter.js
 
+import { SEND_MESSAGE_TO_BRIDGE } from '@send-frontend/lib/const';
 import { defineStore } from 'pinia';
 import { useConfigStore } from './config-store';
 
@@ -70,8 +71,17 @@ export const useExtensionStore = defineStore('extension', () => {
       });
   }
 
+  // Send bridge message
+  const sendMessageToBridge = (message: string) => {
+    window.postMessage(
+      { type: SEND_MESSAGE_TO_BRIDGE, value: message },
+      window.location.origin
+    );
+  };
+
   return {
     configureExtension,
+    sendMessageToBridge,
     serverUrl,
     setServerUrl,
   };

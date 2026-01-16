@@ -16,9 +16,10 @@ import {
   OIDC_USER,
   PING,
   POPUP_READY,
+  SEND_MESSAGE_TO_BRIDGE,
   SIGN_IN,
-  SIGN_OUT,
   SIGN_IN_COMPLETE,
+  SIGN_OUT,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
 
@@ -26,8 +27,12 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { useConfigStore } from '@send-frontend/stores/index.js';
-import { init as initMenu, menuLoggedIn, menuLogout, closeLoginTab } from './menu';
-
+import {
+  closeLoginTab,
+  init as initMenu,
+  menuLoggedIn,
+  menuLogout,
+} from './menu';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -277,6 +282,13 @@ browser.runtime.onMessage.addListener(async (message) => {
         `[onMessage] background.ts received SIGN_IN_COMPLETE. Telling menu.ts to close tab.`
       );
       await closeLoginTab();
+      break;
+
+    case SEND_MESSAGE_TO_BRIDGE:
+      await browser.storage.local.set({
+        SEND_MESSAGE_TO_BRIDGE: message.value,
+      });
+      console.log(`✅ SEND_MESSAGE_TO_BRIDGE value stored in browser storage`);
       break;
 
     // Popup is ready and is requesting the file list.
