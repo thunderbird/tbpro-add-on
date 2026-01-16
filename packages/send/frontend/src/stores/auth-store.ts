@@ -58,13 +58,10 @@ export const useAuthStore = defineStore('auth', () => {
         // For extensions, we might need to handle this differently
         // For now, use the same flow as web
         await userManager.signinRedirect({
-          prompt: 'login',
           redirect_uri: `${window.location.origin}/post-login?isExtension=${isExtension}`,
         });
       } else {
-        await userManager.signinRedirect({
-          prompt: 'login',
-        });
+        await userManager.signinRedirect();
       }
 
       if (onSuccess) {
