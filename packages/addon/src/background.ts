@@ -227,8 +227,8 @@ async function openUnifiedPopup() {
     const popup = await browser.windows.create({
       url: browser.runtime.getURL('index.extension.html'),
       type: 'popup',
-      width: 400,
-      height: 500,
+      width: 480,
+      height: 600,
       allowScriptsToClose: true,
     });
 
