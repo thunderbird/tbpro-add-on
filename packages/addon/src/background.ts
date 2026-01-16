@@ -284,12 +284,26 @@ browser.runtime.onMessage.addListener(async (message) => {
       await closeLoginTab();
       break;
 
-    case SEND_MESSAGE_TO_BRIDGE:
+    case SEND_MESSAGE_TO_BRIDGE: {
       await browser.storage.local.set({
         SEND_MESSAGE_TO_BRIDGE: message.value,
       });
       console.log(`✅ SEND_MESSAGE_TO_BRIDGE value stored in browser storage`);
+
+      // Notify all tabs to transfer the message to localStorage
+      const tabs = await browser.tabs.query({});
+      tabs.forEach((tab) => {
+        if (tab.id) {
+          browser.tabs
+            .sendMessage(tab.id, { type: 'TRANSFER_BRIDGE_MESSAGE' })
+            .catch(() => {
+              // Ignore errors for tabs that can't receive messages
+            });
+        }
+      });
+
       break;
+    }
 
     // Popup is ready and is requesting the file list.
     case POPUP_READY:
@@ -452,13 +466,13 @@ async function addThundermailToken(
 }
 
 function initStorageWatcher() {
-  browser.storage.onChanged.addListener(async (changes, area) => {
+  browser.storage.onChanged.addListener(async (changes) => {
     if (changes[STORAGE_KEY_AUTH]) {
       if (changes[STORAGE_KEY_AUTH].newValue === undefined) {
         try {
           // OIDC logout
           await authStore.logoutFromOIDC();
-        } catch (error) {
+        } catch {
           // We really shouldn't be using the authStore here, since we don't have the right
           // env vars, but that does not interfere with logout.
         }

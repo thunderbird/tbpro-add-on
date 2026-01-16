@@ -55,7 +55,19 @@ export function useSendConfig() {
       return false;
     }
   };
-
+  // Set up listener for bridge message transfer trigger
+  try {
+    browser.runtime.onMessage.addListener(async (message) => {
+      if (message.type === 'TRANSFER_BRIDGE_MESSAGE') {
+        console.log('📨 Received transfer trigger from background');
+        await loadLogin();
+      }
+      return false;
+    });
+  } catch {
+    // browser.runtime not available in non-extension context
+    console.log('ℹ️ Running in non-extension context');
+  }
   const loadLogin = async () => {
     await checkAndTransferBridgeMessage();
     // Check for data inconsistencies between local storage and api
