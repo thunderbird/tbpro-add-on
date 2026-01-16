@@ -17,8 +17,8 @@ import {
   PING,
   POPUP_READY,
   SIGN_IN,
-  SIGN_OUT,
   SIGN_IN_COMPLETE,
+  SIGN_OUT,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
 
@@ -26,8 +26,12 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { useConfigStore } from '@send-frontend/stores/index.js';
-import { init as initMenu, menuLoggedIn, menuLogout, closeLoginTab } from './menu';
-
+import {
+  closeLoginTab,
+  init as initMenu,
+  menuLoggedIn,
+  menuLogout,
+} from './menu';
 
 // We have to create a Pinia instance in order to
 // access the folder-store, user-store, etc.
@@ -190,8 +194,8 @@ async function openUnifiedPopup() {
     const popup = await browser.windows.create({
       url: browser.runtime.getURL('index.extension.html'),
       type: 'popup',
-      width: 400,
-      height: 500,
+      width: 480,
+      height: 600,
       allowScriptsToClose: true,
     });
 
