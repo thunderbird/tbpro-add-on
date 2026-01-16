@@ -90,4 +90,50 @@ declare namespace browser {
       addListener(callback: (action: string) => Promise<void> | void): void;
     };
   }
+
+  /**
+   * Extension to the WebExtensions browser API for CloudFile account management.
+   * Provides methods to create and manage cloud file storage accounts in Thunderbird.
+   */
+  namespace CloudFileAccounts {
+    /**
+     * Result returned when creating a cloud file account.
+     */
+    interface CreateAccountResult {
+      /** Whether the account creation was successful */
+      success: boolean;
+      /** Account ID if the account was created or already exists */
+      accountId?: string;
+      /** Whether the account already existed */
+      alreadyExists?: boolean;
+      /** Success or informational message */
+      message?: string;
+      /** Error message if the operation failed */
+      error?: string;
+    }
+
+    /**
+     * Creates a new cloud file account for the extension.
+     * If an account with the same type already exists, returns the existing account.
+     *
+     * @param type - The provider type identifier (typically "ext-" followed by extension ID)
+     * @param configured - Whether the account should be marked as configured
+     * @returns Promise that resolves with the result of the account creation
+     *
+     * @example
+     * ```typescript
+     * const result = await browser.CloudFileAccounts.createAccount(
+     *   'ext-myextension@example.com',
+     *   true
+     * );
+     * if (result.success) {
+     *   console.log('Account ID:', result.accountId);
+     * }
+     * ```
+     */
+    function createAccount(
+      type: string,
+      configured: boolean
+    ): Promise<CreateAccountResult>;
+  }
 }
