@@ -4,29 +4,29 @@ import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension
 import { useAuth } from '@send-frontend/lib/auth';
 import { DAYS_TO_EXPIRY } from '@send-frontend/lib/const';
 import { trpc } from '@send-frontend/lib/trpc';
+import { useExtensionStore } from '@send-frontend/stores';
 import useUserStore from '@send-frontend/stores/user-store';
 import { useQuery } from '@tanstack/vue-query';
 import prettyBytes from 'pretty-bytes';
 import { computed } from 'vue';
 import ProgressBarDashboard from '../send/components/ProgressBarDashboard.vue';
-import { useConfigStore } from '../send/stores/config-store';
 import { useStatusStore } from '../send/stores/status-store';
 import LoadingComponent from './LoadingComponent.vue';
 
 const { user } = useUserStore();
-const { isExtension } = useConfigStore();
 const { validators } = useStatusStore();
 const { clearUserFromStorage } = useUserStore();
 const { logOutAuth } = useAuth();
+const { logOutExtension } = useExtensionStore();
 const { isRouteExtension } = useIsRouteExtension();
 
 const handleLogout = async () => {
   await clearUserFromStorage();
   await logOutAuth();
   await validators();
-  if (!isExtension) {
-    location.reload();
-  }
+  // Let background.ts know that we have logged out.
+  logOutExtension();
+  location.reload();
 };
 
 if (isRouteExtension.value) {

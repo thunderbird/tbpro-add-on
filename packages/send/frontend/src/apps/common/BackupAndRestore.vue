@@ -29,6 +29,7 @@ import { PHRASE_SIZE } from './constants';
 const userStore = useUserStore();
 const folderStore = useFolderStore();
 const { logOutAuth } = useAuth();
+const { sendMessageToBridge } = useExtensionStore();
 
 const emit = defineEmits<{
   (e: 'backup-completed'): void;
@@ -148,6 +149,7 @@ async function restoreFromBackup() {
   try {
     await restoreKeys(keychain, api, errorMessage, passphraseString.value);
     keychain.storePassPhrase(passphraseString.value);
+    sendMessageToBridge(passphraseString.value);
   } catch (e) {
     metrics.capture('send.restoreKeys.error', {
       message: errorMessage.value,

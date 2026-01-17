@@ -1,5 +1,6 @@
 // stores/counter.js
 
+import { SEND_MESSAGE_TO_BRIDGE, SIGN_OUT } from '@send-frontend/lib/const';
 import { defineStore } from 'pinia';
 import { useConfigStore } from './config-store';
 
@@ -98,9 +99,26 @@ export const useExtensionStore = defineStore('extension', () => {
       });
   }
 
+  // Send bridge message
+  const sendMessageToBridge = (message: string) => {
+    window.postMessage(
+      { type: SEND_MESSAGE_TO_BRIDGE, value: message },
+      window.location.origin
+    );
+  };
+
+  // Log out extension
+  const logOutExtension = () => {
+    browser.runtime.sendMessage({
+      type: SIGN_OUT,
+    });
+  };
+
   return {
     configureExtension,
+    sendMessageToBridge,
     serverUrl,
     setServerUrl,
+    logOutExtension,
   };
 });
