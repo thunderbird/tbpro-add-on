@@ -22,6 +22,13 @@ export default defineConfig(({ mode }) => {
       minify: true,
       sourcemap: true,
       outDir: 'dist/background',
+      // rollupOptions: {
+      //   output: {
+      //     // Preserve module structure to enable shared instances
+      //     preserveModules: false,
+      //     inlineDynamicImports: true,
+      //   },
+      // },
     },
   };
 });

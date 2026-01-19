@@ -4,13 +4,13 @@ import { VueQueryPlugin } from '@tanstack/vue-query';
 import '@thunderbirdops/services-ui/style.css';
 import FloatingVue from 'floating-vue';
 import 'floating-vue/dist/style.css';
-import { createPinia } from 'pinia';
+import { getSharedPinia } from '@send-frontend/lib/shared-pinia';
 import { createVfm } from 'vue-final-modal';
 import 'vue-final-modal/style.css';
 import './style.css';
 
 export function setupApp(app) {
-  const pinia = createPinia();
+  const pinia = getSharedPinia();
   app.use(VueQueryPlugin);
   app.use(pinia);
   app.use(FloatingVue);
