@@ -327,6 +327,8 @@ browser.runtime.onMessage.addListener(async (message) => {
       );
       await closeLoginTab();
       await initCloudFile();
+      // Open the add-on options page after successful login
+      await browser.runtime.openOptionsPage();
       break;
 
     // Popup is ready and is requesting the file list.
