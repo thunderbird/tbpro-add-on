@@ -55,7 +55,7 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: '>=6.3.6'
+        specifier: '>=6.4.1'
         version: 7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1)
       vitest:
         specifier: ^3.2.3
@@ -113,7 +113,7 @@ importers:
         version: 6.1.1
       send-frontend:
         specifier: workspace:*
-        version: link:../send/frontend
+        version: file:packages/send/frontend(@trpc/server@11.5.1(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(encoding@0.1.13)(focus-trap@7.6.4)(typescript@5.8.3)
       tbpro-shared:
         specifier: workspace:*
         version: link:../shared
@@ -161,8 +161,8 @@ importers:
         specifier: ^8.29.1
         version: 8.29.1(eslint@9.24.0(jiti@1.21.7))(typescript@5.8.3)
       '@vitejs/plugin-vue':
-        specifier: ^5.2.3
-        version: 5.2.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.8.3))
+        specifier: ^6.0.3
+        version: 6.0.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.8.3))
       '@vitest/coverage-v8':
         specifier: '*'
         version: 3.1.1(vitest@3.1.1(@types/node@22.14.0)(happy-dom@20.0.7)(jiti@1.21.7)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))
@@ -245,7 +245,7 @@ importers:
         specifier: ^3.3.2
         version: 3.3.2
       vite:
-        specifier: '*'
+        specifier: '>=6.4.1'
         version: 7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1)
       vitest:
         specifier: '*'
@@ -312,8 +312,8 @@ importers:
         specifier: '*'
         version: 22.14.0
       '@vitejs/plugin-vue':
-        specifier: ^5.0.5
-        version: 5.2.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.4.5))
+        specifier: ^6.0.3
+        version: 6.0.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.4.5))
       '@vue/eslint-config-prettier':
         specifier: ^9.0.0
         version: 9.0.0(eslint@8.57.1)(prettier@3.5.3)
@@ -477,7 +477,7 @@ importers:
         specifier: ^11.1.0
         version: 11.1.0
       vite:
-        specifier: '*'
+        specifier: '>=6.4.1'
         version: 7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1)
       websocket:
         specifier: npm:ws@^8.18.1
@@ -689,8 +689,8 @@ importers:
         specifier: ^8.29.1
         version: 8.29.1(eslint@9.24.0(jiti@1.21.7))(typescript@5.8.3)
       '@vitejs/plugin-vue':
-        specifier: ^5.2.3
-        version: 5.2.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.8.3))
+        specifier: ^6.0.3
+        version: 6.0.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.8.3))
       '@vitest/coverage-v8':
         specifier: '*'
         version: 3.1.1(vitest@3.1.1(@types/node@22.14.0)(happy-dom@20.0.7)(jiti@1.21.7)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))
@@ -770,7 +770,7 @@ importers:
         specifier: ^3.3.2
         version: 3.3.2
       vite:
-        specifier: '*'
+        specifier: '>=6.4.1'
         version: 7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1)
       vitest:
         specifier: '*'
@@ -822,8 +822,8 @@ importers:
         specifier: ^8.29.1
         version: 8.29.1(eslint@9.24.0(jiti@1.21.7))(typescript@5.8.3)
       '@vitejs/plugin-vue':
-        specifier: ^5.2.3
-        version: 5.2.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.19(typescript@5.8.3))
+        specifier: ^6.0.3
+        version: 6.0.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.19(typescript@5.8.3))
       '@vitest/coverage-v8':
         specifier: '*'
         version: 3.1.1(vitest@3.1.1(@types/node@22.14.0)(happy-dom@20.0.7)(jiti@1.21.7)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))
@@ -852,7 +852,7 @@ importers:
         specifier: ^8.29.1
         version: 8.29.1(eslint@9.24.0(jiti@1.21.7))(typescript@5.8.3)
       vite:
-        specifier: '*'
+        specifier: '>=6.4.1'
         version: 7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1)
       vitest:
         specifier: '*'
@@ -2001,6 +2001,9 @@ packages:
   '@prisma/instrumentation@5.22.0':
     resolution: {integrity: sha512-LxccF392NN37ISGxIurUljZSh1YWnphO34V5a0+T7FVQG2u9bhAXRTJpgmQ3483woVhkraQZFF7cbRrpbw/F4Q==}
 
+  '@rolldown/pluginutils@1.0.0-beta.53':
+    resolution: {integrity: sha512-vENRlFU4YbrwVqNDZ7fLvy+JR1CRkyr01jhSiDpE1u6py3OMzQfztQU2jxykW3ALNxO4kSlqIDeYyD0Y9RcQeQ==}
+
   '@rollup/rollup-android-arm-eabi@4.52.5':
     resolution: {integrity: sha512-8c1vW4ocv3UOMp9K+gToY5zL2XiiVw3k7f1ksf4yO1FlDFQ1C2u72iACFnSOceJFsWskc2WZNqeRhFRPzv+wtQ==}
     cpu: [arm]
@@ -2888,11 +2891,11 @@ packages:
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
 
-  '@vitejs/plugin-vue@5.2.3':
-    resolution: {integrity: sha512-IYSLEQj4LgZZuoVpdSUCw3dIynTWQgPlaRP6iAvMle4My0HdYwr5g5wQAfwOeHQBmYwEkqF70nRpSilr6PoUDg==}
-    engines: {node: ^18.0.0 || >=20.0.0}
+  '@vitejs/plugin-vue@6.0.3':
+    resolution: {integrity: sha512-TlGPkLFLVOY3T7fZrwdvKpjprR3s4fxRln0ORDo1VQ7HHyxJwTlrjKU3kpVWTlaAjIEuCTokmjkZnr8Tpc925w==}
+    engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
-      vite: ^5.0.0 || ^6.0.0
+      vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0
       vue: ^3.2.25
 
   '@vitest/coverage-v8@3.1.1':
@@ -6115,6 +6118,10 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  send-frontend@file:packages/send/frontend:
+    resolution: {directory: packages/send/frontend, type: directory}
+    engines: {node: '>=22.11.0'}
+
   send@0.19.0:
     resolution: {integrity: sha512-dW41u5VfLXu8SJh5bwRmyYUbAoSB3c9uQh6L8h/KtsFREPWpbX1lrljJo186Jc4nmci/sGUZ9a0a0J2zgfq2hw==}
     engines: {node: '>= 0.8.0'}
@@ -6417,6 +6424,9 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
+
+  tbpro-shared@file:packages/shared:
+    resolution: {directory: packages/shared, type: directory}
 
   temp-dir@1.0.0:
     resolution: {integrity: sha512-xZFXEGbG7SNC3itwBzI3RYjq/cEhBkx2hJuKGIUOcEULmkQExXiHat2z/qkISYsuR+IKumhEfKKbV5qXmhICFQ==}
@@ -8938,6 +8948,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@rolldown/pluginutils@1.0.0-beta.53': {}
+
   '@rollup/rollup-android-arm-eabi@4.52.5':
     optional: true
 
@@ -9223,6 +9235,14 @@ snapshots:
       '@sentry/browser': 8.55.0
       '@sentry/core': 8.55.0
       vue: 3.5.13(typescript@5.8.3)
+    optionalDependencies:
+      pinia: 2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
+
+  '@sentry/vue@8.55.0(pinia@2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3)))(vue@3.5.19(typescript@5.8.3))':
+    dependencies:
+      '@sentry/browser': 8.55.0
+      '@sentry/core': 8.55.0
+      vue: 3.5.19(typescript@5.8.3)
     optionalDependencies:
       pinia: 2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
 
@@ -9595,6 +9615,11 @@ snapshots:
     dependencies:
       '@tabler/icons': 2.47.0
       vue: 3.5.13(typescript@5.8.3)
+
+  '@tabler/icons-vue@2.47.0(vue@3.5.19(typescript@5.8.3))':
+    dependencies:
+      '@tabler/icons': 2.47.0
+      vue: 3.5.19(typescript@5.8.3)
 
   '@tabler/icons@2.47.0': {}
 
@@ -10044,18 +10069,21 @@ snapshots:
 
   '@ungap/structured-clone@1.3.0': {}
 
-  '@vitejs/plugin-vue@5.2.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.4.5))':
+  '@vitejs/plugin-vue@6.0.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.4.5))':
     dependencies:
+      '@rolldown/pluginutils': 1.0.0-beta.53
       vite: 7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1)
       vue: 3.5.13(typescript@5.4.5)
 
-  '@vitejs/plugin-vue@5.2.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.8.3))':
+  '@vitejs/plugin-vue@6.0.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.13(typescript@5.8.3))':
     dependencies:
+      '@rolldown/pluginutils': 1.0.0-beta.53
       vite: 7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1)
       vue: 3.5.13(typescript@5.8.3)
 
-  '@vitejs/plugin-vue@5.2.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.19(typescript@5.8.3))':
+  '@vitejs/plugin-vue@6.0.3(vite@7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1))(vue@3.5.19(typescript@5.8.3))':
     dependencies:
+      '@rolldown/pluginutils': 1.0.0-beta.53
       vite: 7.1.11(@types/node@22.14.0)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.7.1)
       vue: 3.5.19(typescript@5.8.3)
 
@@ -11571,6 +11599,12 @@ snapshots:
       '@floating-ui/dom': 1.1.1
       vue: 3.5.13(typescript@5.8.3)
       vue-resize: 2.0.0-alpha.1(vue@3.5.13(typescript@5.8.3))
+
+  floating-vue@5.2.2(vue@3.5.19(typescript@5.8.3)):
+    dependencies:
+      '@floating-ui/dom': 1.1.1
+      vue: 3.5.19(typescript@5.8.3)
+      vue-resize: 2.0.0-alpha.1(vue@3.5.19(typescript@5.8.3))
 
   focus-trap@7.6.4:
     dependencies:
@@ -13605,6 +13639,43 @@ snapshots:
 
   semver@7.7.1: {}
 
+  send-frontend@file:packages/send/frontend(@trpc/server@11.5.1(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(encoding@0.1.13)(focus-trap@7.6.4)(typescript@5.8.3):
+    dependencies:
+      '@scure/bip39': 1.5.4
+      '@sentry/vite-plugin': 2.23.0(encoding@0.1.13)
+      '@sentry/vue': 8.55.0(pinia@2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3)))(vue@3.5.19(typescript@5.8.3))
+      '@tabler/icons-vue': 2.47.0(vue@3.5.19(typescript@5.8.3))
+      '@tanstack/vue-query': 5.72.1(vue@3.5.19(typescript@5.8.3))
+      '@thunderbirdops/services-ui': 1.3.0(typescript@5.8.3)
+      '@trpc/client': 11.5.1(@trpc/server@11.5.1(typescript@5.8.3))(typescript@5.8.3)
+      '@types/ua-parser-js': 0.7.39
+      dayjs: 1.11.13
+      floating-vue: 5.2.2(vue@3.5.19(typescript@5.8.3))
+      get-random-values: 3.0.0
+      install: 0.13.0
+      jszip: 3.10.1
+      oidc-client-ts: 3.3.0
+      pinia: 2.3.1(typescript@5.8.3)(vue@3.5.19(typescript@5.8.3))
+      posthog-js: 1.235.0
+      pretty-bytes: 6.1.1
+      tbpro-shared: file:packages/shared(typescript@5.8.3)
+      ua-parser-js: 1.0.40
+      vue: 3.5.19(typescript@5.8.3)
+      vue-final-modal: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.19(typescript@5.8.3))
+      vue-router: 4.5.0(vue@3.5.19(typescript@5.8.3))
+    transitivePeerDependencies:
+      - '@nuxt/kit'
+      - '@rrweb/types'
+      - '@trpc/server'
+      - '@vue/composition-api'
+      - '@vueuse/core'
+      - '@vueuse/integrations'
+      - encoding
+      - focus-trap
+      - rrweb-snapshot
+      - supports-color
+      - typescript
+
   send@0.19.0:
     dependencies:
       debug: 2.6.9
@@ -13983,6 +14054,18 @@ snapshots:
       minizlib: 2.1.2
       mkdirp: 1.0.4
       yallist: 4.0.0
+
+  tbpro-shared@file:packages/shared(typescript@5.8.3):
+    dependencies:
+      '@tanstack/vue-query': 5.72.1(vue@3.5.19(typescript@5.8.3))
+      dayjs: 1.11.13
+      get-random-values: 3.0.0
+      oidc-client-ts: 3.3.0
+      pinia: 2.3.1(typescript@5.8.3)(vue@3.5.19(typescript@5.8.3))
+      vue: 3.5.19(typescript@5.8.3)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - typescript
 
   temp-dir@1.0.0: {}
 
@@ -14576,6 +14659,13 @@ snapshots:
       focus-trap: 7.6.4
       vue: 3.5.13(typescript@5.8.3)
 
+  vue-final-modal@4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.19(typescript@5.8.3)):
+    dependencies:
+      '@vueuse/core': 10.11.1(vue@3.5.13(typescript@5.8.3))
+      '@vueuse/integrations': 13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))
+      focus-trap: 7.6.4
+      vue: 3.5.19(typescript@5.8.3)
+
   vue-i18n@11.1.12(vue@3.5.13(typescript@5.4.5)):
     dependencies:
       '@intlify/core-base': 11.1.12
@@ -14594,6 +14684,10 @@ snapshots:
     dependencies:
       vue: 3.5.13(typescript@5.8.3)
 
+  vue-resize@2.0.0-alpha.1(vue@3.5.19(typescript@5.8.3)):
+    dependencies:
+      vue: 3.5.19(typescript@5.8.3)
+
   vue-router@4.5.0(vue@3.5.13(typescript@5.4.5)):
     dependencies:
       '@vue/devtools-api': 6.6.4
@@ -14603,6 +14697,11 @@ snapshots:
     dependencies:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.13(typescript@5.8.3)
+
+  vue-router@4.5.0(vue@3.5.19(typescript@5.8.3)):
+    dependencies:
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.19(typescript@5.8.3)
 
   vue-tsc@2.2.10(typescript@5.4.5):
     dependencies:
