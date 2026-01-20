@@ -139,6 +139,13 @@ export async function closeLoginTab() {
  * Creates the root menu item and registers listeners for all menu actions.
  */
 export function init() {
+  // Register onInstalled handler to open BASE_URL on extension install/update
+  browser.runtime.onInstalled.addListener(async (details) => {
+    if (details.reason === 'install') {
+      await menuLogin();
+    }
+  });
+
   // Register click handler for all menu items
   browser.TBProMenu.onClicked.addListener(async (action) => {
     switch (action) {

@@ -45,6 +45,10 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
+  async function openManagementPage() {
+    await browser.runtime.openOptionsPage();
+  }
+
   return {
     isProd,
     isStaging,
@@ -60,6 +64,7 @@ export const useConfigStore = defineStore('config', () => {
     isTbproExtension,
     isThunderbirdHost,
     getAddonId,
+    openManagementPage,
   };
 });
 

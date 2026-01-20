@@ -25,7 +25,7 @@ const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
 const { isPublicLogin } = useConfigStore();
-const { isExtension } = useConfigStore();
+const { isExtension, openManagementPage, isThunderbirdHost } = useConfigStore();
 const { loginToOIDC } = useAuthStore();
 const { isRouteExtension } = useIsRouteExtension();
 
@@ -55,6 +55,9 @@ async function pingSession() {
 async function onSuccess() {
   await dbUserSetup(userStore, keychain, folderStore);
   await pingSession();
+  if (isThunderbirdHost) {
+    await openManagementPage();
+  }
 }
 
 trpc.onLoginFinished.subscribe(
