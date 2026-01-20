@@ -87,7 +87,7 @@ importers:
         specifier: ^11.1.0
         version: 11.1.0
       vite:
-        specifier: '*'
+        specifier: '>=6.4.1'
         version: 7.1.11(@types/node@24.9.1)(yaml@2.8.1)
       websocket:
         specifier: npm:ws@^8.18.1
