@@ -150,7 +150,7 @@ importers:
         specifier: ^0.5.10
         version: 0.5.10(tailwindcss@3.4.17(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3)))
       '@trpc/server':
-        specifier: '>=11.8.0'
+        specifier: '>=11.8.1'
         version: 11.8.1(typescript@5.8.3)
       '@types/eslint-config-prettier':
         specifier: ^6.11.3
@@ -430,7 +430,7 @@ importers:
         specifier: ^8.55.0
         version: 8.55.0
       '@trpc/server':
-        specifier: '>=11.8.0'
+        specifier: '>=11.8.1'
         version: 11.8.1(typescript@5.8.3)
       '@tweedegolf/sab-adapter-amazon-s3':
         specifier: ^1.0.17
@@ -678,7 +678,7 @@ importers:
         specifier: ^0.5.10
         version: 0.5.10(tailwindcss@3.4.17(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3)))
       '@trpc/server':
-        specifier: '>=11.8.0'
+        specifier: '>=11.8.1'
         version: 11.8.1(typescript@5.8.3)
       '@types/eslint-config-prettier':
         specifier: ^6.11.3
