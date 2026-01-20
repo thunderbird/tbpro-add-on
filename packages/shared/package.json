@@ -30,7 +30,7 @@
     "@types/node": "*",
     "@types/thunderbird-webext-browser": "^127.0.0",
     "@typescript-eslint/parser": "^8.29.1",
-    "@vitejs/plugin-vue": "^5.2.3",
+    "@vitejs/plugin-vue": "^6.0.3",
     "@vitest/coverage-v8": "*",
     "dotenv": "*",
     "eslint": "^9.24.0",
@@ -40,7 +40,7 @@
     "prettier": "^3.5.3",
     "typescript": "*",
     "typescript-eslint": "^8.29.1",
-    "vite": "*",
+    "vite": ">=6.4.1",
     "vitest": "*",
     "webextension-polyfill": "^0.12.0"
   },
