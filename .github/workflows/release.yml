@@ -98,8 +98,6 @@ jobs:
           curl -fsSL https://get.pulumi.com | sh
           pip install -Ur requirements.txt
 
-
-
       - name: Deploy version-tagged image to prod
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         env:
@@ -194,7 +192,7 @@ jobs:
           file: xpi-prod.zip
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
