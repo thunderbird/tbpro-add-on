@@ -1,6 +1,4 @@
 /// <reference types="thunderbird-webext-browser" />
-import { createPinia, setActivePinia } from 'pinia';
-
 import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-store';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { useApiStore, useAuthStore } from '@send-frontend/stores';
@@ -32,11 +30,11 @@ import {
   menuLoggedIn,
   menuLogout,
 } from './menu';
+import { initSharedPinia } from '@send-frontend/lib/shared-pinia';
 
-// We have to create a Pinia instance in order to
-// access the folder-store, user-store, etc.
-const pinia = createPinia();
-setActivePinia(pinia);
+// Initialize the shared Pinia instance that will be used by both
+// background and extension contexts
+initSharedPinia();
 
 // Once we have an active Pinia instance, we can get references
 // to our stores. We initialize everything in the cloud init
