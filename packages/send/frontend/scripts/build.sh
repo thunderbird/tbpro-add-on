@@ -54,15 +54,16 @@ cp -R dist/pages/assets/* dist/assets/
 cp -R dist/pages/*.* dist/
 rm -rf dist/pages
 
+echo "================================================================"
+echo "=============== web app================================="
+echo 'Building web app 🏭'
+vite build --config vite.config.js
+echo 'Web app build complete 🎉'
+
 cd dist
 
 # Create xpi with version number
 zip -r -FS ../../send-suite-${VERSION}.xpi *
 
 echo 'Add-on build complete 🎉'
-
-echo 'Building web app 🏭'
-pnpm exec vite build
-echo 'Web app build complete 🎉'
-
 
