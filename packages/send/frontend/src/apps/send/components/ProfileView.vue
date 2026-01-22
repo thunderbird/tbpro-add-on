@@ -22,7 +22,6 @@ const shouldShowDashboard = computed(() => {
 
 const close = useDebounceFn(() => {
   // if the url contains ?showDashboard=true, we don't close the window
-
   if (shouldShowDashboard.value) {
     return;
   }
