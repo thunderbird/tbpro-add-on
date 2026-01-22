@@ -39,12 +39,6 @@ export function useIsExtension() {
       return;
     }
     isExtension.value = true;
-    // Fallback check for extension environment
-    // try {
-    //   isExtension.value = browser?.runtime ? true : false;
-    // } catch {
-    //   isExtension.value = false;
-    // }
   });
   return {
     isExtension,
@@ -52,7 +46,7 @@ export function useIsExtension() {
     isRunningInsideThunderbird,
     isAppNameAddon,
     isUrlMozExtension,
-    // human  readable
+    // human readable
     environmentType,
   };
 }

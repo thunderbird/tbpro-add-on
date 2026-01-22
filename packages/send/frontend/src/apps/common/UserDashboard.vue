@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import LogOutButton from '@send-frontend/apps/send/elements/LogOutButton.vue';
-import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { useAuth } from '@send-frontend/lib/auth';
 import { DAYS_TO_EXPIRY, SIGN_OUT } from '@send-frontend/lib/const';
 import { trpc } from '@send-frontend/lib/trpc';
@@ -19,25 +18,20 @@ const { isExtension: isRouteMozExtension } = useConfigStore();
 const { validators } = useStatusStore();
 const { clearUserFromStorage } = useUserStore();
 const { logOutAuth } = useAuth();
-const { isRouteExtension } = useIsRouteExtension();
 
 const handleLogout = async () => {
   await clearUserFromStorage();
   await logOutAuth();
   await validators();
-  if (!isRouteMozExtension) {
-    location.reload();
-  } else {
+  if (isRouteMozExtension) {
     // Let background.ts know that we have logged out.
     browser.runtime.sendMessage({
       type: SIGN_OUT,
     });
+  } else {
+    location.reload();
   }
 };
-
-if (isRouteExtension.value) {
-  window.close();
-}
 
 const {
   data: size,

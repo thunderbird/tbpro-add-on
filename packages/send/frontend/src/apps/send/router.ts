@@ -52,7 +52,7 @@ enum META_OPTIONS {
   requiresRetryCountCheck = 'requiresRetryCountCheck',
   resolveDefaultFolder = 'resolveDefaultFolder',
   isAvailableForExtension = 'isAvailableForExtension',
-  closeOnExtension = 'closeOnExtension',
+  closeIfExtensionLoggedOut = 'closeIfExtensionLoggedOut',
 }
 
 export const routes: RouteRecordRaw[] = [
@@ -124,7 +124,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.autoRestoresKeys]: true,
-          [META_OPTIONS.closeOnExtension]: true,
+          [META_OPTIONS.closeIfExtensionLoggedOut]: true,
         },
       },
       {
@@ -214,7 +214,10 @@ router.beforeEach(async (to, from, next) => {
   );
   const resolveDefaultFolder = matchMeta(to, META_OPTIONS.resolveDefaultFolder);
   const requiresValidToken = matchMeta(to, META_OPTIONS.requiresValidToken);
-  const closeOnExtension = matchMeta(to, META_OPTIONS.closeOnExtension);
+  const closeIfExtensionLoggedOut = matchMeta(
+    to,
+    META_OPTIONS.closeIfExtensionLoggedOut
+  );
   const autoRestoresKeys = matchMeta(to, META_OPTIONS.autoRestoresKeys);
   const requiresBackedUpKeys = matchMeta(to, META_OPTIONS.requiresBackedUpKeys);
   const requiresRetryCountCheck = matchMeta(
@@ -232,21 +235,12 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // // We don't want users to navigate the web application from the extension, just log in
-  // // So if they're logged in, this window will close
-  // if (closeOnExtension && (isRouteExtension.value || isThunderbirdHost)) {
-  //   window.close();
-  // }
-
   // Check addon login state if running in extension context
   // If user is not logged in to the addon, close the window
-  if (closeOnExtension && (isRouteExtension.value || isThunderbirdHost)) {
+  if (closeIfExtensionLoggedOut && isThunderbirdHost) {
     try {
       const addonLoginState = await queryAddonLoginState();
-      console.log('[router] Addon login state:', addonLoginState);
-
       if (!addonLoginState.isLoggedIn) {
-        console.log('[router] User not logged in to addon, closing window');
         window.close();
         router.push('/force-close');
         return;

@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const { environmentType: computedEnvironmentType } = useIsExtension();
-
+// Determine if the current environment matches the props, handles array or single value
 const matches = Array.isArray(props.environmentType)
   ? props.environmentType.includes(computedEnvironmentType.value)
   : computedEnvironmentType.value === props.environmentType;
