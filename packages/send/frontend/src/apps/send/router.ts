@@ -16,6 +16,7 @@ import {
 } from '@send-frontend/lib/validations';
 
 import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
+import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import {
   useApiStore,
@@ -34,6 +35,7 @@ import LoginPage from './LoginPage.vue';
 import ManagementPage from './ManagementPage.vue';
 import PostLoginPage from './PostLoginPage.vue';
 import ClosePage from './pages/ClosePage.vue';
+import ForceClose from './pages/ForceClose.vue';
 import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
 import PromptVerification from './pages/PromptVerification.vue';
@@ -152,6 +154,10 @@ export const routes: RouteRecordRaw[] = [
     path: '/passphrase',
     component: PassphrasePage,
   },
+  {
+    path: '/force-close',
+    component: ForceClose,
+  },
 
   /* 
   TESTING ONLY
@@ -194,6 +200,7 @@ router.beforeEach(async (to, from, next) => {
   const { metrics } = useMetricsStore();
   useVerificationStore();
   const { isThunderbirdHost } = useConfigStore();
+  const { queryAddonLoginState } = useSendConfig();
 
   // We want to show the loading state when navigating to folder routes (on web)
   if (to.path.includes('/folder')) {
@@ -225,10 +232,29 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // We don't want users to navigate the web application from the extension, just log in
-  // So if they're logged in, this window will close
+  // // We don't want users to navigate the web application from the extension, just log in
+  // // So if they're logged in, this window will close
+  // if (closeOnExtension && (isRouteExtension.value || isThunderbirdHost)) {
+  //   window.close();
+  // }
+
+  // Check addon login state if running in extension context
+  // If user is not logged in to the addon, close the window
   if (closeOnExtension && (isRouteExtension.value || isThunderbirdHost)) {
-    window.close();
+    try {
+      const addonLoginState = await queryAddonLoginState();
+      console.log('[router] Addon login state:', addonLoginState);
+
+      if (!addonLoginState.isLoggedIn) {
+        console.log('[router] User not logged in to addon, closing window');
+        window.close();
+        router.push('/force-close');
+        return;
+      }
+    } catch (error) {
+      console.error('[router] Error querying addon login state:', error);
+      // Continue with navigation if we can't determine login state
+    }
   }
 
   if (redirectOnValidSession && hasLocalStorageSession) {

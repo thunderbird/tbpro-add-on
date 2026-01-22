@@ -12,6 +12,10 @@ const BRIDGE_READY = 'TB/BRIDGE_READY';
 const OIDC_USER = 'TB/OIDC_USER';
 const OIDC_TOKEN = 'TB/OIDC_TOKEN';
 const SIGN_IN_COMPLETE = 'SIGN_IN_COMPLETE';
+const SEND_MESSAGE_TO_BRIDGE = 'SEND_MESSAGE_TO_BRIDGE';
+const GET_LOGIN_STATE = 'GET_LOGIN_STATE';
+const LOGIN_STATE_RESPONSE = 'LOGIN_STATE_RESPONSE';
+const FORCE_CLOSE_WINDOW = 'FORCE_CLOSE_WINDOW';
 
 window.postMessage({ type: BRIDGE_READY }, window.location.origin);
 console.log(`[🌉 token-bridge] the token bridge has loaded.`);
@@ -74,5 +78,38 @@ window.addEventListener('message', (e) => {
       type: PING,
       text: String(e.data.text ?? ''),
     });
+  }
+
+  if (e?.data?.type === SEND_MESSAGE_TO_BRIDGE) {
+    browser.runtime.sendMessage({
+      type: SEND_MESSAGE_TO_BRIDGE,
+      value: e.data.value,
+    });
+  }
+
+  if (e?.data?.type === GET_LOGIN_STATE) {
+    browser.runtime.sendMessage({
+      type: GET_LOGIN_STATE,
+    });
+  }
+
+  if (e?.data?.type === FORCE_CLOSE_WINDOW) {
+    browser.runtime.sendMessage({
+      type: FORCE_CLOSE_WINDOW,
+    });
+  }
+});
+
+// Listen for responses from background script and forward to web app
+browser.runtime.onMessage.addListener((message) => {
+  if (message.type === LOGIN_STATE_RESPONSE) {
+    window.postMessage(
+      {
+        type: LOGIN_STATE_RESPONSE,
+        isLoggedIn: message.isLoggedIn,
+        username: message.username,
+      },
+      window.location.origin
+    );
   }
 });

@@ -1,4 +1,9 @@
 import { useAuth } from '@send-frontend/lib/auth';
+import {
+  GET_LOGIN_STATE,
+  LOGIN_STATE_RESPONSE,
+  SEND_MESSAGE_TO_BRIDGE,
+} from '@send-frontend/lib/const';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import init from '@send-frontend/lib/init';
 import { validateToken } from '@send-frontend/lib/validations';
@@ -23,7 +28,52 @@ export function useSendConfig() {
   const { initializeClientMetrics } = useMetricsStore();
   const { isLoggedIn } = useAuth();
 
+  /**
+   * Checks browser extension storage for SEND_MESSAGE_TO_BRIDGE value
+   * and transfers it to localStorage under 'lb/passphrase' key.
+   * The value is stored as an object with passPhrase property.
+   */
+  const checkAndTransferBridgeMessage = async () => {
+    try {
+      const result = await browser.storage.local.get(SEND_MESSAGE_TO_BRIDGE);
+
+      if (result[SEND_MESSAGE_TO_BRIDGE]) {
+        const value = result[SEND_MESSAGE_TO_BRIDGE];
+        const passphraseObject = {
+          passPhrase: value,
+        };
+
+        localStorage.setItem('lb/passphrase', JSON.stringify(passphraseObject));
+        console.log('✅ Transferred bridge message to localStorage');
+
+        // Delete the value from extension storage after successful transfer
+        await browser.storage.local.remove(SEND_MESSAGE_TO_BRIDGE);
+        console.log('✅ Removed bridge message from extension storage');
+
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error checking bridge message:', error);
+      return false;
+    }
+  };
+  // Set up listener for bridge message transfer trigger
+  try {
+    browser.runtime.onMessage.addListener(async (message) => {
+      if (message.type === 'TRANSFER_BRIDGE_MESSAGE') {
+        console.log('📨 Received transfer trigger from background');
+        await loadLogin();
+      }
+      return false;
+    });
+  } catch {
+    // browser.runtime not available in non-extension context
+    console.log('ℹ️ Running in non-extension context');
+  }
   const loadLogin = async () => {
+    await checkAndTransferBridgeMessage();
     // Check for data inconsistencies between local storage and api
     const { hasForcedLogin } = await validators();
     if (hasForcedLogin) {
@@ -87,6 +137,53 @@ export function useSendConfig() {
     });
   };
 
+  const clearSendStorage = async () => {
+    try {
+      localStorage.clear();
+      console.log('✅ Cleared Send localStorage');
+    } catch (error) {
+      console.error('Error clearing Send localStorage:', error);
+    }
+  };
+
+  /**
+   * Queries the addon's login state via bidirectional message passing.
+   * Returns a promise that resolves with the login state or times out after 5 seconds.
+   * @returns Promise<{isLoggedIn: boolean, username: string | null}>
+   */
+  const queryAddonLoginState = (): Promise<{
+    isLoggedIn: boolean;
+    username: string | null;
+  }> => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('Timeout waiting for addon login state response'));
+      }, 5_000);
+
+      const messageHandler = (event: MessageEvent) => {
+        if (event.data?.type === LOGIN_STATE_RESPONSE) {
+          cleanup();
+          resolve({
+            isLoggedIn: event.data.isLoggedIn,
+            username: event.data.username,
+          });
+        }
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        window.removeEventListener('message', messageHandler);
+      };
+
+      // Listen for response from addon
+      window.addEventListener('message', messageHandler);
+
+      // Send request to addon via token-bridge
+      window.postMessage({ type: GET_LOGIN_STATE }, window.location.origin);
+    });
+  };
+
   return {
     /**
      * Loads and validates user login state from local storage and backend.
@@ -105,5 +202,19 @@ export function useSendConfig() {
      * Automatically refetches on window focus, mount, and reconnect.
      */
     useLoginQuery,
+    /**
+     * Checks browser extension storage for SEND_MESSAGE_TO_BRIDGE value
+     * and transfers it to localStorage under 'lb/passphrase' key.
+     */
+    checkAndTransferBridgeMessage,
+    /**
+     * Clears Send-related data from localStorage.
+     */
+    clearSendStorage,
+    /**
+     * Queries the addon's login state via bidirectional message passing.
+     * Returns a promise that resolves with the login state or times out after 5 seconds.
+     */
+    queryAddonLoginState,
   };
 }
