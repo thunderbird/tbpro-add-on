@@ -14,14 +14,20 @@ export const useConfigStore = defineStore('config', () => {
   });
 
   /**
-   * @deprecated Use isThunderbirdHost instead
+   * Check if the URL is a moz-extension:// URL
+   * This is the case for addons/extensions running inside Thunderbird
    */
+
   const isExtension = computed(() => {
     return location.href.includes('moz-extension:');
   });
 
+  /**
+   * Checks if the name if the app is 'addon'
+   * This is helpful to differentiate between the web app and the addon
+   */
   const isTbproExtension = computed(() => {
-    return __APP_NAME__ === 'tbpro';
+    return __APP_NAME__ === 'addon';
   });
 
   const _serverUrl = ref(import.meta.env.VITE_SEND_SERVER_URL);
@@ -46,7 +52,11 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   async function openManagementPage() {
-    await browser.runtime.openOptionsPage();
+    try {
+      await browser.runtime.openOptionsPage();
+    } catch (error) {
+      console.error('Failed to open management page:', error);
+    }
   }
 
   return {

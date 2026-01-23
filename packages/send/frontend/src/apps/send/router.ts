@@ -16,6 +16,7 @@ import {
 } from '@send-frontend/lib/validations';
 
 import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
+import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import {
   useApiStore,
@@ -34,6 +35,7 @@ import LoginPage from './LoginPage.vue';
 import ManagementPage from './ManagementPage.vue';
 import PostLoginPage from './PostLoginPage.vue';
 import ClosePage from './pages/ClosePage.vue';
+import ForceClose from './pages/ForceClose.vue';
 import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
 import PromptVerification from './pages/PromptVerification.vue';
@@ -50,7 +52,7 @@ enum META_OPTIONS {
   requiresRetryCountCheck = 'requiresRetryCountCheck',
   resolveDefaultFolder = 'resolveDefaultFolder',
   isAvailableForExtension = 'isAvailableForExtension',
-  closeOnExtension = 'closeOnExtension',
+  closeIfExtensionLoggedOut = 'closeIfExtensionLoggedOut',
 }
 
 export const routes: RouteRecordRaw[] = [
@@ -122,7 +124,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.autoRestoresKeys]: true,
-          [META_OPTIONS.closeOnExtension]: true,
+          [META_OPTIONS.closeIfExtensionLoggedOut]: true,
         },
       },
       {
@@ -151,6 +153,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/passphrase',
     component: PassphrasePage,
+  },
+  {
+    path: '/force-close',
+    component: ForceClose,
   },
 
   /* 
@@ -194,6 +200,7 @@ router.beforeEach(async (to, from, next) => {
   const { metrics } = useMetricsStore();
   useVerificationStore();
   const { isThunderbirdHost } = useConfigStore();
+  const { queryAddonLoginState } = useSendConfig();
 
   // We want to show the loading state when navigating to folder routes (on web)
   if (to.path.includes('/folder')) {
@@ -207,7 +214,10 @@ router.beforeEach(async (to, from, next) => {
   );
   const resolveDefaultFolder = matchMeta(to, META_OPTIONS.resolveDefaultFolder);
   const requiresValidToken = matchMeta(to, META_OPTIONS.requiresValidToken);
-  const closeOnExtension = matchMeta(to, META_OPTIONS.closeOnExtension);
+  const closeIfExtensionLoggedOut = matchMeta(
+    to,
+    META_OPTIONS.closeIfExtensionLoggedOut
+  );
   const autoRestoresKeys = matchMeta(to, META_OPTIONS.autoRestoresKeys);
   const requiresBackedUpKeys = matchMeta(to, META_OPTIONS.requiresBackedUpKeys);
   const requiresRetryCountCheck = matchMeta(
@@ -225,10 +235,20 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // We don't want users to navigate the web application from the extension, just log in
-  // So if they're logged in, this window will close
-  if (closeOnExtension && (isRouteExtension.value || isThunderbirdHost)) {
-    window.close();
+  // Check addon login state if running in extension context
+  // If user is not logged in to the addon, close the window
+  if (closeIfExtensionLoggedOut && isThunderbirdHost) {
+    try {
+      const addonLoginState = await queryAddonLoginState();
+      if (!addonLoginState.isLoggedIn) {
+        window.close();
+        router.push('/force-close');
+        return;
+      }
+    } catch (error) {
+      console.error('[router] Error querying addon login state:', error);
+      // Continue with navigation if we can't determine login state
+    }
   }
 
   if (redirectOnValidSession && hasLocalStorageSession) {

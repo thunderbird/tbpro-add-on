@@ -51,7 +51,7 @@ async function menuManageDashboard() {
  */
 async function menuManageSend() {
   await browser.tabs.create({
-    url: BASE_URL,
+    url: `${BASE_URL}/send/profile?showDashboard=true`,
   });
 }
 
@@ -93,6 +93,7 @@ export async function menuLoggedIn({ username }: Args) {
 /**
  * Handles logout process by resetting menu to logged-out state and opening logout page.
  * Clears the username and removes authenticated menu items.
+ * Also clears all localStorage and extension storage data.
  */
 export async function menuLogout() {
   // Reset menu to display sign-in prompt
@@ -102,13 +103,30 @@ export async function menuLogout() {
     tooltip: '',
   });
 
-  // TODO: Implement proper menu item cleanup
-  console.log('🧹this should clear the menu items');
+  // Clear menu items
+  console.log('🧹 Clearing menu items and storage');
   await browser.TBProMenu.clear('root');
-  await browser.storage.local.remove(STORAGE_KEY_AUTH);
+
+  // Clear all extension storage
+  await browser.storage.local.clear();
+
+  // Clear localStorage (if running in a context that has access to it)
+  try {
+    localStorage.clear();
+    console.log('✅ Cleared localStorage');
+  } catch {
+    console.log('ℹ️ localStorage not available in this context');
+  }
+
+  console.log('✅ Cleared extension storage');
+
+  // Open logout page to complete sign-out process
+  await browser.tabs.create({
+    url: `${BASE_URL}/logout`,
+  });
 }
 
-async function getLoginState() {
+export async function getLoginState() {
   const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
   console.log(result);
   if (result[STORAGE_KEY_AUTH]) {
@@ -116,9 +134,11 @@ async function getLoginState() {
       result[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
       result[STORAGE_KEY_AUTH]?.profile?.email;
     if (username) {
-      menuLoggedIn({ username });
+      await menuLoggedIn({ username });
+      return { isLoggedIn: true, username };
     }
   }
+  return { isLoggedIn: false, username: null };
 }
 
 export async function closeLoginTab() {
@@ -128,7 +148,7 @@ export async function closeLoginTab() {
     try {
       await browser.tabs.get(loginTabId);
       await browser.tabs.remove(loginTabId);
-    } catch (e) {
+    } catch {
       console.warn(`Could not close login tab with id ${loginTabId}`);
     }
   }
