@@ -94,7 +94,12 @@ const percentageUsed = computed(() => {
         Your files expire after {{ DAYS_TO_EXPIRY }} days
       </p>
 
-      <RenderOnEnvironment :environment-type="['EXTENSION INSIDE THUNDERBIRD']">
+      <RenderOnEnvironment
+        :environment-type="[
+          'WEB APP OUTSIDE THUNDERBIRD',
+          'EXTENSION INSIDE THUNDERBIRD',
+        ]"
+      >
         <log-out-button :log-out="handleLogout" />
       </RenderOnEnvironment>
     </div>

@@ -15,7 +15,6 @@ import {
   validateToken,
 } from '@send-frontend/lib/validations';
 
-import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import {
@@ -40,6 +39,7 @@ import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
 import PromptVerification from './pages/PromptVerification.vue';
 import VerifyPage from './pages/VerifyPage.vue';
+import WelcomePage from './pages/WelcomePage.vue';
 import { useStatusStore } from './stores/status-store';
 import { useVerificationStore } from './stores/verification-store';
 import PassphrasePage from './views/PassphrasePage.vue';
@@ -74,6 +74,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/close',
     component: ClosePage,
+  },
+  {
+    path: '/ftue',
+    component: WelcomePage,
   },
   {
     path: '/post-login',
@@ -190,7 +194,6 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
-  const { isRouteExtension } = useIsRouteExtension();
   const folderStore = useFolderStore();
   const statusStore = useStatusStore();
   const { isRouterLoading } = storeToRefs(statusStore);
