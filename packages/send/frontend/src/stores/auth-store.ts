@@ -117,13 +117,16 @@ export const useAuthStore = defineStore('auth', () => {
       );
 
       // Send the access token to our backend to create/update user
-      const response = await api.call('auth/oidc/authenticate', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${user.access_token}`,
-          'Content-Type': 'application/json',
+      const response = await api.call(
+        'auth/oidc/authenticate',
+        {
+          headers: {
+            Authorization: `Bearer ${user.access_token}`,
+            'Content-Type': 'application/json',
+          },
         },
-      });
+        'POST'
+      );
 
       if (response?.user) {
         isLoggedIn.value = true;
