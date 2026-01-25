@@ -19,6 +19,48 @@ import {
 
 const router: Router = Router();
 
+const handleOIDCAuthentication = async (req: RequestWithOIDC, res) => {
+  if (!req.oidcUser) {
+    return res.status(401).json({
+      message: 'OIDC authentication required',
+      error: 'missing_oidc_user',
+    });
+  }
+
+  const { sub, email, username } = req.oidcUser;
+
+  try {
+    // Find or create user based on OIDC subject
+    const user = await findOrCreateUserByOIDC({
+      oidcSubject: sub,
+      email: email || '',
+      thundermailEmail: username || '',
+    });
+
+    const uniqueHash = createHash('sha256').update(sub).digest('hex');
+    user.uniqueHash = uniqueHash;
+    await updateUniqueHash(user.id, uniqueHash);
+
+    registerTokens(user, res);
+
+    return res.status(200).json({
+      message: 'Authentication successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        uniqueHash: user.uniqueHash,
+        tier: user.tier,
+      },
+    });
+  } catch (error) {
+    console.error('Error during OIDC authentication:', error);
+    return res.status(500).json({
+      message: 'Failed to authenticate user',
+      error: 'user_creation_failed',
+    });
+  }
+};
+
 /**
  * Endpoint for handling OIDC authentication after the frontend completes the OAuth flow
  * The frontend should call this endpoint with the access token received from OIDC
@@ -27,49 +69,15 @@ router.get(
   '/oidc/authenticate',
   requireOIDCAuth,
   addErrorHandling(AUTH_ERRORS.AUTH_FAILED),
-  wrapAsyncHandler(async (req: RequestWithOIDC, res) => {
-    if (!req.oidcUser) {
-      return res.status(401).json({
-        message: 'OIDC authentication required',
-        error: 'missing_oidc_user',
-      });
-    }
-
-    const { sub, email, username } = req.oidcUser;
-
-    try {
-      // Find or create user based on OIDC subject
-      const user = await findOrCreateUserByOIDC({
-        oidcSubject: sub,
-        email: email || '',
-        thundermailEmail: username || '',
-      });
-
-      const uniqueHash = createHash('sha256').update(sub).digest('hex');
-      user.uniqueHash = uniqueHash;
-      await updateUniqueHash(user.id, uniqueHash);
-
-      registerTokens(user, res);
-
-      return res.status(200).json({
-        message: 'Authentication successful',
-        user: {
-          id: user.id,
-          email: user.email,
-          uniqueHash: user.uniqueHash,
-          tier: user.tier,
-        },
-      });
-    } catch (error) {
-      console.error('Error during OIDC authentication:', error);
-      return res.status(500).json({
-        message: 'Failed to authenticate user',
-        error: 'user_creation_failed',
-      });
-    }
-  })
+  wrapAsyncHandler(handleOIDCAuthentication)
 );
 
+router.post(
+  '/oidc/authenticate',
+  requireOIDCAuth,
+  addErrorHandling(AUTH_ERRORS.AUTH_FAILED),
+  wrapAsyncHandler(handleOIDCAuthentication)
+);
 /**
  * Endpoint to validate the current OIDC token and return user info
  * Equivalent to the old /auth/me endpoint but using OIDC

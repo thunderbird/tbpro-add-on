@@ -261,6 +261,8 @@ const THUNDERMAIL_DISPLAY_NAME = 'Thundermail';
 
 // Handle all messages from popup.
 browser.runtime.onMessage.addListener(async (message, sender) => {
+  let ftueResponse = null;
+
   const { email, name, token } = message;
   switch (message.type) {
     case PING:
@@ -328,6 +330,26 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       console.log(
         `[onMessage] background.ts received SIGN_IN_COMPLETE. Telling menu.ts to close tab.`
       );
+
+      // Check if the user is logging in for the first time
+      try {
+        ftueResponse = await api.call<{ isFTUEComplete: boolean }>(
+          'users/ftue'
+        );
+      } catch {
+        console.error('Error fetching FTUE status');
+      }
+
+      // If FTUE is not complete, open the FTUE page and break out of the flow
+      if (!ftueResponse?.isFTUEComplete) {
+        browser.tabs.create({
+          url: `${BASE_URL}/ftue`,
+        });
+        await initCloudFile();
+        break;
+      }
+
+      // If the user has logged in previously, close the login tab and init cloud file (register send)
       try {
         await closeLoginTab();
         await initCloudFile();

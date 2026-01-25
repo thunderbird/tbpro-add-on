@@ -17,9 +17,11 @@ import { on } from 'websocket';
 import { z } from 'zod';
 import {
   createUserWithPassword,
+  getFTUEStatus,
   getHashedPassword,
   getUserByEmailV2,
   getUserById,
+  markFTUEComplete,
   resetKeys,
   updateUniqueHash,
 } from '../models/users';
@@ -357,6 +359,15 @@ export const usersRouter = router({
         });
       }
     }),
+
+  isFTUE: trpc.use(isAuthed).query(async ({ ctx }) => {
+    const isFTUEComplete = await getFTUEStatus(ctx.user.id);
+    return { isFTUEComplete };
+  }),
+
+  markFTUEComplete: trpc.use(isAuthed).mutation(async ({ ctx }) => {
+    await markFTUEComplete(ctx.user.id);
+  }),
 
   /**
    * @openapi
