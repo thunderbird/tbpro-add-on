@@ -20,16 +20,23 @@ const { clearUserFromStorage } = useUserStore();
 const { logOutAuth } = useAuth();
 
 const handleLogout = async () => {
-  await clearUserFromStorage();
-  await logOutAuth();
-  await validators();
-  if (isRouteMozExtension) {
-    // Let background.ts know that we have logged out.
-    browser.runtime.sendMessage({
-      type: SIGN_OUT,
-    });
-  } else {
-    location.reload();
+  try {
+    await clearUserFromStorage();
+    await logOutAuth();
+    await validators();
+  } catch (e) {
+    console.log(`handleLogout error`);
+    console.log(e);
+  } finally {
+    if (isRouteMozExtension) {
+      // Let background.ts know that we have logged out.
+      browser.runtime.sendMessage({
+        type: SIGN_OUT,
+      });
+    } else {
+      location.reload();
+    }
+
   }
 };
 
