@@ -13,6 +13,7 @@ import { computed, onMounted, ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { useRouter } from 'vue-router';
+import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 
 type Props = {
   words?: string[];
@@ -27,6 +28,7 @@ const { isExtension } = useConfigStore();
 const { validators } = useStatusStore();
 const { clearUserFromStorage } = useUserStore();
 const { queryAddonLoginState } = useSendConfig();
+const { isRunningInsideThunderbird } = useIsExtension();
 const router = useRouter();
 
 const onClose = () => {};
@@ -63,14 +65,16 @@ const handleLogout = async () => {
   }
 };
 
-// We want to avoid this page showing up on orphan windows if the user is not logged in
+// When running inside Thunderbird, we want to avoid this page showing up on orphan windows if the user is not logged in
 onMounted(async () => {
-  const addonLoginState = await queryAddonLoginState();
-  if (!addonLoginState.isLoggedIn) {
-    console.log('[router] User not logged in to addon, closing window');
-    window.close();
-    router.push('/force-close');
-    return;
+  if (isRunningInsideThunderbird) {
+    const addonLoginState = await queryAddonLoginState();
+    if (!addonLoginState.isLoggedIn) {
+      console.log('[router] User not logged in to addon, closing window');
+      window.close();
+      router.push('/force-close');
+      return;
+    }
   }
 });
 </script>
