@@ -27,7 +27,6 @@ jobs:
       shared-changed: ${{ steps.check.outputs.shared-changed }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: dorny/paths-filter@v3
         id: check
         with:
@@ -51,9 +50,6 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
 
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
