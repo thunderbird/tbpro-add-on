@@ -54,8 +54,11 @@ jobs:
 
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
+        shell: zsh
         run: |
-          pnpm install -g bun
+          whoami
+          echo $0
+          # npm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm i --filter "send-*"
           pnpm install --filter tbpro-shared
