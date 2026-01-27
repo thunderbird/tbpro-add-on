@@ -20,15 +20,6 @@ const { clearUserFromStorage } = useUserStore();
 const { logOutAuth } = useAuth();
 
 const handleLogout = async () => {
-  // Log out from the app and run validators to reset the app state
-  try {
-    await clearUserFromStorage();
-    await logOutAuth();
-    await validators();
-  } catch (error) {
-    console.error('Error during logout:', error);
-  }
-
   // If running inside Thunderbird, notify the background script about the logout
   try {
     if (isRunningInsideThunderbird) {
@@ -39,6 +30,15 @@ const handleLogout = async () => {
     }
   } catch (error) {
     console.error('Error during logout message sending:', error);
+  }
+
+  // Log out from the app and run validators to reset the app state
+  try {
+    await clearUserFromStorage();
+    await logOutAuth();
+    await validators();
+  } catch (error) {
+    console.error('Error during logout:', error);
   }
 };
 
