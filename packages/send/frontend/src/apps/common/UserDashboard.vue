@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import LogOutButton from '@send-frontend/apps/send/elements/LogOutButton.vue';
+import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 import { useAuth } from '@send-frontend/lib/auth';
 import { DAYS_TO_EXPIRY, SIGN_OUT } from '@send-frontend/lib/const';
 import { trpc } from '@send-frontend/lib/trpc';
@@ -8,28 +9,36 @@ import { useQuery } from '@tanstack/vue-query';
 import prettyBytes from 'pretty-bytes';
 import { computed } from 'vue';
 import ProgressBarDashboard from '../send/components/ProgressBarDashboard.vue';
-import { useConfigStore } from '../send/stores/config-store';
 import { useStatusStore } from '../send/stores/status-store';
 import LoadingComponent from './LoadingComponent.vue';
 import RenderOnEnvironment from './RenderOnEnvironment.vue';
 
 const { user } = useUserStore();
-const { isExtension: isRouteMozExtension } = useConfigStore();
+const { isRunningInsideThunderbird } = useIsExtension();
 const { validators } = useStatusStore();
 const { clearUserFromStorage } = useUserStore();
 const { logOutAuth } = useAuth();
 
 const handleLogout = async () => {
-  await clearUserFromStorage();
-  await logOutAuth();
-  await validators();
-  if (isRouteMozExtension) {
-    // Let background.ts know that we have logged out.
-    browser.runtime.sendMessage({
-      type: SIGN_OUT,
-    });
-  } else {
-    location.reload();
+  // Log out from the app and run validators to reset the app state
+  try {
+    await clearUserFromStorage();
+    await logOutAuth();
+    await validators();
+  } catch (error) {
+    console.error('Error during logout:', error);
+  }
+
+  // If running inside Thunderbird, notify the background script about the logout
+  try {
+    if (isRunningInsideThunderbird) {
+      // Let background.ts know that we have logged out.
+      browser.runtime.sendMessage({
+        type: SIGN_OUT,
+      });
+    }
+  } catch (error) {
+    console.error('Error during logout message sending:', error);
   }
 };
 
