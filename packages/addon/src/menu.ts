@@ -1,6 +1,7 @@
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { getEnvName } from '@send-frontend/lib/clientConfig';
 import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
+import { APPOINTMENT_URL } from '@send-frontend/apps/common/constants';
 
 // Determine environment-specific URLs
 const environmentName = getEnvName();
@@ -17,6 +18,7 @@ export const MENU_ACTIONS = {
   LOGOUT: 'logout',
   MANAGE_DASHBOARD: 'manageDashboard',
   MANAGE_SEND: 'manageSend',
+  OPEN_APPOINTMENT: 'openAppointment',
 } as const;
 
 export type MenuAction = (typeof MENU_ACTIONS)[keyof typeof MENU_ACTIONS];
@@ -80,6 +82,11 @@ export async function menuLoggedIn({ username }: Args) {
   // Add submenu item to access Thunderbird Send
   await browser.TBProMenu.create(MENU_ACTIONS.MANAGE_SEND, {
     title: browser.i18n.getMessage('menuManageSend'),
+    parentId: MENU_ACTIONS.ROOT,
+  });
+
+  await browser.TBProMenu.create(MENU_ACTIONS.OPEN_APPOINTMENT, {
+    title: browser.i18n.getMessage('menuOpenAppointment'),
     parentId: MENU_ACTIONS.ROOT,
   });
 
@@ -184,6 +191,12 @@ export function init() {
       case MENU_ACTIONS.MANAGE_SEND:
         // Open Thunderbird Send application
         await menuManageSend();
+        break;
+      case MENU_ACTIONS.OPEN_APPOINTMENT:
+        // Open Appointment page
+        await browser.tabs.create({
+          url: APPOINTMENT_URL,
+        });
         break;
     }
   });

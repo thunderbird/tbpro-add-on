@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 import CheckCircleIcon from '@send-frontend/apps/common/CheckCircleIcon.vue';
-import SendIcon from '@send-frontend/apps/common/SendIcon.vue';
+import {
+  BASE_URL,
+  THUNDERMAIL_URL,
+  SUPPORT_URL,
+} from '@send-frontend/apps/common/constants';
+import SendIconTBPro from '@send-frontend/apps/common/SendIconTBPro.vue';
 import ThundermailIcon from '@send-frontend/apps/common/ThundermailIcon.vue';
 import { trpc } from '@send-frontend/lib/trpc';
 import { onMounted } from 'vue';
@@ -12,6 +17,14 @@ async function setFTUEComplete() {
 onMounted(async () => {
   await setFTUEComplete();
 });
+
+async function handleOpenThundermail() {
+  window.open(THUNDERMAIL_URL, '_blank');
+}
+
+async function handleSetEncryptionPassword() {
+  window.open(`${BASE_URL}/send/profile?showDashboard=true`, '_blank');
+}
 </script>
 
 <template>
@@ -19,7 +32,7 @@ onMounted(async () => {
     <!-- Success Banner -->
     <div class="success-banner">
       <CheckCircleIcon class="check-icon" />
-      <span>Authentication and account set up is complete.</span>
+      <span>Sign-in complete.</span>
     </div>
 
     <!-- Main Heading -->
@@ -30,6 +43,30 @@ onMounted(async () => {
       <!-- Left Column - Main Content Cards -->
       <div class="left-column">
         <!-- Thundermail Card -->
+
+        <!-- Send Card -->
+        <div class="content-card">
+          <SendIconTBPro class="card-icon" />
+          <div class="card-content">
+            <div class="card-header">
+              <span class="card-label">SEND</span>
+              <h2 class="card-title">Finish setup</h2>
+            </div>
+            <p class="card-text">
+              Next, set your encryption password. Then you’re ready to send
+              encrypted files or manage them from your Thunderbird Pro account
+              menu.
+            </p>
+
+            <button
+              class="primary-button"
+              @click.prevent="handleSetEncryptionPassword"
+            >
+              Set encryption password
+            </button>
+          </div>
+        </div>
+
         <div class="content-card">
           <ThundermailIcon class="card-icon" />
           <div class="card-content">
@@ -42,23 +79,13 @@ onMounted(async () => {
               bottom of the folder pane, or open the dashboard to manage your
               accounts.
             </p>
-            <button class="manage-button">MANAGE THUNDERMAIL ACCOUNTS</button>
-          </div>
-        </div>
 
-        <!-- Send Card -->
-        <div class="content-card">
-          <SendIcon class="card-icon" />
-          <div class="card-content">
-            <div class="card-header">
-              <span class="card-label">SEND</span>
-              <h2 class="card-title">Finish set up</h2>
-            </div>
-            <p class="card-text">
-              Close this page to set up your encryption password. You can then
-              send encrypted files from a compose window or access the file
-              manager from your Thunderbird Pro account menu.
-            </p>
+            <button
+              class="secondary-button"
+              @click.prevent="handleOpenThundermail"
+            >
+              Manage Thundermail
+            </button>
           </div>
         </div>
       </div>
@@ -68,12 +95,38 @@ onMounted(async () => {
         <div class="support-card">
           <h3 class="support-heading">Need Support?</h3>
           <nav class="support-links">
-            <a href="#" class="support-link">
+            <a
+              :href="SUPPORT_URL"
+              class="support-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Need help with your account? →
             </a>
-            <a href="#" class="support-link"> Troubleshooting for desktop → </a>
-            <a href="#" class="support-link"> Learn more about encryption → </a>
-            <a href="#" class="support-link"> Export your data → </a>
+            <a
+              :href="SUPPORT_URL"
+              class="support-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Troubleshooting for desktop →
+            </a>
+            <a
+              :href="SUPPORT_URL"
+              class="support-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn more about encryption →
+            </a>
+            <a
+              :href="SUPPORT_URL"
+              class="support-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Export your data →
+            </a>
           </nav>
         </div>
       </div>
@@ -92,18 +145,19 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-  border-radius: 6px;
+  padding: 1rem 1.5rem;
+  background: var(--colour-success-soft);
+  border: 1px solid var(--colour-success-default);
+  border-radius: 8px;
   margin-bottom: 2rem;
-  color: #166534;
-  font-size: 14px;
+  color: var(--colour-success-default);
+  font-size: 0.9375rem;
   font-weight: 500;
 }
 
 .check-icon {
   flex-shrink: 0;
+  color: var(--colour-success-default);
 }
 
 .welcome-heading {
@@ -127,18 +181,19 @@ onMounted(async () => {
 }
 
 .content-card {
-  background: #f9fafb;
+  background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 2rem;
   display: flex;
   gap: 1.5rem;
   align-items: flex-start;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .card-icon {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
 }
 
@@ -149,47 +204,66 @@ onMounted(async () => {
 }
 
 .card-header {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .card-label {
   color: #3b82f6;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   display: block;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
 }
 
 .card-title {
   font-size: 1.5rem;
-  font-weight: 400;
+  font-weight: 600;
   color: #1f2937;
   margin: 0;
+  line-height: 1.3;
 }
 
 .card-text {
-  color: #4b5563;
+  color: #6b7280;
   font-size: 0.9375rem;
   line-height: 1.6;
   margin: 0 0 1.5rem 0;
 }
 
-.manage-button {
-  background: white;
-  border: 1px solid #3b82f6;
-  border-radius: 4px;
-  color: #3b82f6;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.025em;
+.primary-button {
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
+  align-self: flex-start;
 }
 
-.manage-button:hover {
-  background: #eff6ff;
+.primary-button:hover {
+  background: #1d4ed8;
+}
+
+.secondary-button {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.secondary-button:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .right-column {
