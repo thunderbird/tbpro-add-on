@@ -54,7 +54,7 @@ jobs:
 
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
-        shell: zsh
+        shell: bash
         run: |
           whoami
           echo $0
