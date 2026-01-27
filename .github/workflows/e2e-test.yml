@@ -54,7 +54,6 @@ jobs:
 
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
-        shell: bash
         run: |
           npm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
@@ -65,7 +64,6 @@ jobs:
           # Setup local environment (use public login)
           echo Y | pnpm setup:local
       - name: Add env vars for backend
-        shell: bash
         run: |
           cd packages/send/backend
           echo "OIDC_CLIENT_ID=${{ secrets.OIDC_CLIENT_ID }}" >> .env
