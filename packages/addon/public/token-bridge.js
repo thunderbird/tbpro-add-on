@@ -16,6 +16,7 @@ const SEND_MESSAGE_TO_BRIDGE = 'SEND_MESSAGE_TO_BRIDGE';
 const GET_LOGIN_STATE = 'GET_LOGIN_STATE';
 const LOGIN_STATE_RESPONSE = 'LOGIN_STATE_RESPONSE';
 const FORCE_CLOSE_WINDOW = 'FORCE_CLOSE_WINDOW';
+const OPEN_MANAGEMENT_PAGE = 'OPEN_MANAGEMENT_PAGE';
 
 window.postMessage({ type: BRIDGE_READY }, window.location.origin);
 console.log(`[🌉 token-bridge] the token bridge has loaded.`);
@@ -96,6 +97,12 @@ window.addEventListener('message', (e) => {
   if (e?.data?.type === FORCE_CLOSE_WINDOW) {
     browser.runtime.sendMessage({
       type: FORCE_CLOSE_WINDOW,
+    });
+  }
+
+  if (e?.data?.type === OPEN_MANAGEMENT_PAGE) {
+    browser.runtime.sendMessage({
+      type: OPEN_MANAGEMENT_PAGE,
     });
   }
 });

@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import CheckCircleIcon from '@send-frontend/apps/common/CheckCircleIcon.vue';
 import {
-  BASE_URL,
-  THUNDERMAIL_URL,
   SUPPORT_URL,
+  THUNDERMAIL_URL,
 } from '@send-frontend/apps/common/constants';
 import SendIconTBPro from '@send-frontend/apps/common/SendIconTBPro.vue';
 import ThundermailIcon from '@send-frontend/apps/common/ThundermailIcon.vue';
+import { OPEN_MANAGEMENT_PAGE } from '@send-frontend/lib/const';
 import { trpc } from '@send-frontend/lib/trpc';
 import { onMounted } from 'vue';
 
@@ -23,7 +23,12 @@ async function handleOpenThundermail() {
 }
 
 async function handleSetEncryptionPassword() {
-  window.open(`${BASE_URL}/send/profile?showDashboard=true`, '_blank');
+  window.postMessage(
+    {
+      type: OPEN_MANAGEMENT_PAGE,
+    },
+    window.location.origin
+  );
 }
 </script>
 

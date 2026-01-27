@@ -15,6 +15,7 @@ import {
   LOGIN_STATE_RESPONSE,
   OIDC_TOKEN,
   OIDC_USER,
+  OPEN_MANAGEMENT_PAGE,
   PING,
   POPUP_READY,
   SEND_MESSAGE_TO_BRIDGE,
@@ -411,6 +412,16 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       if (sender?.tab?.id) {
         console.log(`[onMessage] Closing tab ${sender.tab.id}`);
         await browser.tabs.remove(sender.tab.id);
+      }
+      break;
+    }
+
+    case OPEN_MANAGEMENT_PAGE: {
+      console.log(`[onMessage] Received OPEN_MANAGEMENT_PAGE request`);
+      try {
+        await browser.runtime.openOptionsPage();
+      } catch (error) {
+        console.error('[onMessage] Failed to open management page:', error);
       }
       break;
     }
