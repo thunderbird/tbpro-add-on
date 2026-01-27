@@ -47,9 +47,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-        credentials:
-            username: ${{ github.repository_owner }}
-            password: ${{ secrets.GITHUB_TOKEN }}
+        # credentials:
+        #     username: ${{ github.repository_owner }}
+        #     password: ${{ secrets.GITHUB_TOKEN }}
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
