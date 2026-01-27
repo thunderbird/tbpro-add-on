@@ -25,5 +25,8 @@
   },
   "menuCopyAppointmentLink": {
     "message": "Copy Appointment Link"
+  },
+  "menuOpenAppointment": {
+    "message": "Open Appointment"
   }
 }
