@@ -47,7 +47,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-      options: --user vscode
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
@@ -57,7 +56,7 @@ jobs:
         id: setup-and-install-dependencies
         shell: bash
         run: |
-          # npm install -g bun
+          npm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm i --filter "send-*"
           pnpm install --filter tbpro-shared

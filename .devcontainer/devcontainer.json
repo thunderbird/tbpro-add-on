@@ -33,11 +33,11 @@
   // "forwardPorts": [],
 
   // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "pnpm config set store-dir ~/.local/share/pnpm/store",
+  "postCreateCommand": "pnpm config set store-dir ~/.local/share/pnpm/store"
 
   // Configure tool-specific properties.
   // "customizations": {},
 
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-  "remoteUser": "vscode"
+  // "remoteUser": "vscode"
 }
