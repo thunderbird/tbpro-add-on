@@ -12,7 +12,7 @@ on:
       - "!main"
 
 permissions:
-  actions: read
+  packages: read
   contents: read
 
 jobs:
