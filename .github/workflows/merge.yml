@@ -188,7 +188,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest          
+          bun-version: latest
 
       # Stage build steps
       - name: Create stage .env file from secrets
@@ -335,7 +335,7 @@ jobs:
     strategy:
       matrix:
         node-version: ["22"]
-    if: needs.detect-changes.outputs.addon-changed == 'true'
+    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
