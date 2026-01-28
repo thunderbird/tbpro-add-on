@@ -1,4 +1,5 @@
 ---
+# Run the E2E tests on a local stack that is using the local file system for backend file storage
 name: e2e-tests
 
 concurrency:

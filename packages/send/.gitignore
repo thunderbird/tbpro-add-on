@@ -6,11 +6,3 @@ pulumi/venv/
 pulumi/__pycache__/
 .venv
 venv
-
-# E2E
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/data
-/frontend-source*

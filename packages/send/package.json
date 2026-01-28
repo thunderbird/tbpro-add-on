@@ -14,13 +14,18 @@
     "setup": "./scripts/setup.sh",
     "setup:local": "./scripts/setup.sh && bun run scripts/local.ts",
     "sort-package-json": "sort-package-json",
-    "test:e2e": "pnpm exec playwright test --headed",
-    "test:e2e:ui": "pnpm exec playwright test --ui"
+    "test:e2e": "pnpm exec playwright test --project=firefox --headed",
+    "test:e2e:ci": "../../scripts/e2e.sh",
+    "test:e2e:prod:nightly:browserstack:desktop:chromium": "npx browserstack-node-sdk playwright test --grep prod-desktop-nightly --project=Chromium-Win11 --browserstack.buildName 'TB Send Nightly Tests Chromium Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'",
+    "test:e2e:prod:nightly:browserstack:desktop:firefox": "npx browserstack-node-sdk playwright test --grep prod-desktop-nightly --project=Firefox-OSX --browserstack.buildName 'TB Send Nightly Tests Firefox Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'",
+    "test:e2e:prod:nightly:browserstack:desktop:safari": "npx browserstack-node-sdk playwright test --grep prod-desktop-nightly --project=Safari-OSX --browserstack.buildName 'TB Send Nightly Tests Safari Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'",
+    "test:e2e:ui": "pnpm exec playwright test --project=firefox --ui"
   },
   "devDependencies": {
-    "@playwright/test": "^1.51.1",
+    "@playwright/test": "1.56.1",
     "@types/node": "*",
-    "dotenv": "^16.4.7",
+    "browserstack-node-sdk": "1.40.8",
+    "dotenv": "^17.2.1",
     "sort-package-json": "*"
   },
   "engines": {
