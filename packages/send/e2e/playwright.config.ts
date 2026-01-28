@@ -6,7 +6,7 @@ const THREE_MINUTES = 3 * 60 * 1000;
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./tests",
   globalTimeout: THREE_MINUTES,
   timeout: THREE_MINUTES,
   /* Run tests in files in parallel */

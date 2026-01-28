@@ -1,22 +1,28 @@
-import { BrowserContext, expect, Page, test } from "@playwright/test";
-import "dotenv/config";
+import config from "dotenv";
 import fs from "fs";
 import path from "path";
+
+import { BrowserContext, expect, Page, test } from "@playwright/test";
+
+import {
+  PLAYWRIGHT_TAG_PROD_DESKTOP_NIGHTLY,
+ } from "../../const"
+
 import {
   log_out_restore_keys,
   register_and_login,
   reset_keys,
-} from "./pages/dashboard";
+} from "../../pages/dashboard"
+
 import {
   delete_file,
   download_workflow,
   share_links,
   upload_workflow,
-} from "./pages/myFiles";
-import { oidc_login } from "./pages/oidc";
-import { setup_browser } from "./testUtils";
+} from "../../pages/myFiles"
 
-import config from "dotenv";
+import { oidc_login } from "../../pages/oidc"
+import { setup_browser } from "../../testUtils"
 
 config.config({ path: path.resolve(__dirname, "./.env") });
 
@@ -52,7 +58,9 @@ test.afterAll(async () => {
   fs.writeFileSync(storageStatePath, JSON.stringify(emptyState));
 });
 
-test.describe("OIDC Flow", async () => {
+test.describe("OIDC flow", {
+  tag: [PLAYWRIGHT_TAG_PROD_DESKTOP_NIGHTLY],
+}, async () => {
   let page: Page;
   let context: BrowserContext;
 
@@ -79,7 +87,9 @@ const authTests = [
   },
 ];
 
-test.describe("Authentication", () => {
+test.describe("Authentication", {
+  tag: [PLAYWRIGHT_TAG_PROD_DESKTOP_NIGHTLY],
+}, () => {
   authTests.forEach(({ title, path, action }) => {
     test(title, async () => {
       const { context, page } = await setup_browser();
@@ -91,7 +101,9 @@ test.describe("Authentication", () => {
 });
 
 // File workflow tests with shared setup
-test.describe("File workflows", () => {
+test.describe("File workflows", {
+  tag: [PLAYWRIGHT_TAG_PROD_DESKTOP_NIGHTLY],
+}, () => {
   let page: Page;
   let context: BrowserContext;
 
@@ -116,7 +128,9 @@ test.describe("File workflows", () => {
   });
 });
 
-test.describe("Key restore", async () => {
+test.describe("Key restore", {
+  tag: [PLAYWRIGHT_TAG_PROD_DESKTOP_NIGHTLY],
+}, async () => {
   let page: Page;
   let context: BrowserContext;
 

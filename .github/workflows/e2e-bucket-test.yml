@@ -1,4 +1,5 @@
 ---
+# Run the E2E tests on a local stack that is using Backblaze for backend file storage
 name: e2e-bucket-tests
 
 concurrency:
