@@ -184,49 +184,7 @@ You can use VSCode's debugger for the backend.
 
 ### E2E testing
 
-### Setting up
-
-1. In order for the tests to run locally, you have to set up your `.env` files to match the default. This will overwrite your `.env` files. If you need to back up your keys before that you can run.
-
-```sh
-cd packages/send
-cd frontend
-cp .env .env.backup
-cd ../backend
-cp .env .env.backup
-cd ../e2e
-cp .env .env.backup
-```
-
-2. Set your environment variables by running `lerna run setup:local` To test TB Pro auth, you should add your TB Pro username and password to the `.env` file in the `e2e` directory:
-
-Then edit the `.env` file and add your TB Pro username and password
-
-3. Make sure you install playwright's dependencies by running:
-
-```sh
-pnpm --filter=send-suite exec playwright install
-```
-
-#### UI mode
-
-You can run the test suite on UI Mode. UI Mode lets you explore, run, and debug tests with a time travel experience complete with a watch mode. All test files are displayed in the testing sidebar, allowing you to expand each file and describe block to individually run, view, watch, and debug each test.
-
-1. Run `lerna run dev:detach --scope=send-suite`
-2. Run `lerna run test:e2e:ui --scope=send-suite`
-
-### Headless mode
-
-If you want to run the tests just as they run on CI (headless mode), do the following.
-
-```sh
-lerna run dev:detach --scope=send-suite
-lerna run test:e2e:ci --scope=send-suite
-```
-
-#### CI mode
-
-Our CI/CD pipeline runs the test suite on headless mode. To reproduce this locally run `pnpm test:e2e:ci`
+For details on how to run the E2E tests please see the [E2E Tests README](e2e/README.md).
 
 ## Releasing
 

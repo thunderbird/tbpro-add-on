@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
-import { credentials, PlaywrightProps } from "../send.spec";
-import { create_incognito_context } from "../testUtils";
+import { credentials, PlaywrightProps } from "../../tests/desktop/dev/send.spec";
+import { create_incognito_context } from "../../utils/dev/testUtils";
 
 export async function oidc_login({ page, context }: PlaywrightProps) {
   //  We can skip this test if we're not running in CI automation mode

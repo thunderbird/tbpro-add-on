@@ -13,14 +13,11 @@
     "predev": "./scripts/pre-flight.sh",
     "setup": "./scripts/setup.sh",
     "setup:local": "./scripts/setup.sh && bun run scripts/local.ts",
-    "sort-package-json": "sort-package-json",
-    "test:e2e": "pnpm exec playwright test --headed",
-    "test:e2e:ui": "pnpm exec playwright test --ui"
+    "sort-package-json": "sort-package-json"
   },
   "devDependencies": {
-    "@playwright/test": "^1.51.1",
     "@types/node": "*",
-    "dotenv": "^16.4.7",
+    "dotenv": "^17.2.1",
     "sort-package-json": "*"
   },
   "engines": {

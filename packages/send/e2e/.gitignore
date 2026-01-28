@@ -1,0 +1,10 @@
+# E2E tests
+/playwright-test-results/
+/playwright-report/
+/playwright/.cache/
+/blob-report/
+/data
+/frontend-source*
+
+# BrowserStack logging
+/log
