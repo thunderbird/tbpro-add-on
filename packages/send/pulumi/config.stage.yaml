@@ -103,7 +103,7 @@ resources:
           - FARGATE
         container_definitions:
           backend:
-            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:73a923bb2bda84a3858a78a3f838c8c9cbcd3500
+            image: 768512802988.dkr.ecr.us-east-1.amazonaws.com/send:a3b793bca244af28551b5c595b1d9848ba3dc167
             portMappings:
               - name: send-suite
                 containerPort: 8080
@@ -211,7 +211,7 @@ resources:
   tb:cloudwatch:CloudWatchMonitoringGroup:
     alarms: {}
     notify_emails:
-      - rjung+cloudwatch@thunderbird.net
+      - thunderbird-services-monitoring@thunderbird.net
     # alarms:
     #   send-suite-stage-fargate-service:
     #     cpu_utilization:
