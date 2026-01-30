@@ -21,12 +21,14 @@ import {
   TAG_NOT_DELETED,
   TAG_NOT_UPDATED,
   UPLOAD_NOT_DELETED,
+  UPLOAD_NOT_DELETED_FROM_STORAGE,
   UPLOAD_NOT_REPORTED,
 } from './errors/models';
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
 import { PermissionType } from './types/custom';
 import { addExpiryToContainer } from './utils';
+import storage from './storage';
 const prisma = new PrismaClient();
 
 export async function getSharesForContainer(containerId: string) {
@@ -230,17 +232,25 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
     throw new Error(ITEM_NOT_DELETED);
   }
 
+  // delete uploads
+  try {
+    await prisma.upload.deleteMany({
+      where: {
+        id: { in: uploadIdsToDelete },
+      },
+    });
+  } catch (error) {
+    console.error('Error deleting uploads associated with items:', error);
+    throw new Error(UPLOAD_NOT_DELETED);
+  }
+
   if (shouldDeleteUpload) {
-    // delete uploads
+    const deletePromises = uploadIdsToDelete.map((id) => storage.del(id));
     try {
-      await prisma.upload.deleteMany({
-        where: {
-          id: { in: uploadIdsToDelete },
-        },
-      });
+      await Promise.all(deletePromises);
     } catch (error) {
-      console.error('Error deleting uploads associated with items:', error);
-      throw new Error(UPLOAD_NOT_DELETED);
+      console.error('Error deleting files from storage:', error);
+      throw new Error(UPLOAD_NOT_DELETED_FROM_STORAGE);
     }
   }
 
