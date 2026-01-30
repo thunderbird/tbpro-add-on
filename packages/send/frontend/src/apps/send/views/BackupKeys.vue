@@ -67,7 +67,7 @@ const handleLogout = async () => {
 
 // When running inside Thunderbird, we want to avoid this page showing up on orphan windows if the user is not logged in
 onMounted(async () => {
-  if (isRunningInsideThunderbird) {
+  if (isRunningInsideThunderbird.value) {
     const addonLoginState = await queryAddonLoginState();
     if (!addonLoginState.isLoggedIn) {
       console.log('[router] User not logged in to addon, closing window');
