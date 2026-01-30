@@ -21,12 +21,14 @@ import {
   TAG_NOT_DELETED,
   TAG_NOT_UPDATED,
   UPLOAD_NOT_DELETED,
+  UPLOAD_NOT_DELETED_FROM_STORAGE,
   UPLOAD_NOT_REPORTED,
 } from './errors/models';
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
 import { PermissionType } from './types/custom';
 import { addExpiryToContainer } from './utils';
+import storage from './storage';
 const prisma = new PrismaClient();
 
 export async function getSharesForContainer(containerId: string) {
@@ -207,48 +209,60 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
     findItemQuery,
     ITEM_NOT_FOUND
   );
-  const containerId = item.containerId;
 
-  if (shouldDeleteUpload) {
-    const uploadDeleteQuery = {
-      where: {
-        id: item.uploadId,
-      },
-    };
-
-    await fromPrismaV2(
-      prisma.upload.delete,
-      uploadDeleteQuery,
-      UPLOAD_NOT_DELETED
-    );
-  }
-
-  const itemDeleteQuery = {
-    where: {
-      id,
+  // find related parts
+  const uploadIds = await prisma.item.findMany({
+    where: { wrappedKey: item.wrappedKey },
+    select: {
+      uploadId: true,
     },
-  };
+  });
 
-  const result = await fromPrismaV2(
-    prisma.item.delete,
-    itemDeleteQuery,
-    ITEM_NOT_DELETED
-  );
+  const uploadIdsToDelete = uploadIds.map(({ uploadId }) => uploadId);
 
-  // For multipart items, we need to delete all items that contain the other parts
-  if (item.multipart) {
+  // delete items associated with those uploads
+  try {
     await prisma.item.deleteMany({
       where: {
-        wrappedKey: item.wrappedKey,
+        uploadId: { in: uploadIdsToDelete },
       },
     });
+  } catch (error) {
+    console.error('Error deleting items associated with uploads:', error);
+    throw new Error(ITEM_NOT_DELETED);
   }
 
-  if (containerId && result) {
+  // delete uploads
+  try {
+    await prisma.upload.deleteMany({
+      where: {
+        id: { in: uploadIdsToDelete },
+      },
+    });
+  } catch (error) {
+    console.error('Error deleting uploads associated with items:', error);
+    throw new Error(UPLOAD_NOT_DELETED);
+  }
+
+  if (shouldDeleteUpload) {
+    const deletePromises = uploadIdsToDelete.map((id) => storage.del(id));
+    try {
+      await Promise.all(deletePromises);
+    } catch (error) {
+      console.error('Error deleting files from storage:', error);
+      throw new Error(UPLOAD_NOT_DELETED_FROM_STORAGE);
+    }
+  }
+
+  console.log(
+    `Deleted items with upload IDs: ${uploadIdsToDelete.join(', ')} and shouldDeleteUpload is ${shouldDeleteUpload}`
+  );
+
+  if (item?.containerId) {
     // touch the container's `updatedAt` date
     const updateContainerQuery = {
       where: {
-        id: containerId,
+        id: item.containerId,
       },
       data: {
         updatedAt: new Date(),
@@ -262,7 +276,8 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
     );
   }
 
-  return result;
+  // We only need to return the wrappedKey of the deleted item so that the frontend can remove it from its state
+  return { wrappedKey: item.wrappedKey };
 }
 
 export async function getContainerInfo(id: string) {
