@@ -142,7 +142,7 @@ header {
 @media (min-width: 1024px) {
   header > :first-child,
   header > :last-child {
-    padding: 1rem 3.5rem;
+    padding: 1rem 2rem;
   }
 }
 </style>
