@@ -40,10 +40,7 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
 <template>
   <header>
     <router-link to="/">
-      <img
-        src="https://send.thunderbird.net/static/svg/thunderbird-pro-dark.svg"
-        alt="Send"
-      />
+      <img src="@send-frontend/apps/send/assets/send-logo.svg" alt="Send" />
     </router-link>
 
     <template v-if="isLoggedIn">
