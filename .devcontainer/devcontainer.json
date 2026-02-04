@@ -8,9 +8,9 @@
     "PNPM_HOME": "~/.local/share/pnpm/store"
   },
   "features": {
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": 3.13
-    },
+    // "ghcr.io/devcontainers/features/python:1": {
+    //   "version": 3.13
+    // },
     // "ghcr.io/devcontainers-extra/features/pulumi:1": {},
     // // "ghcr.io/devcontainers-extra/features/ruff:2.0.0": {},
     // "ghcr.io/devcontainers/features/aws-cli:1": {},
