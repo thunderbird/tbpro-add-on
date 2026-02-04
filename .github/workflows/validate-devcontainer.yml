@@ -48,6 +48,8 @@ jobs:
     container:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer-test:latest      
     steps:
+      - name: Checkout (GitHub)
+        uses: actions/checkout@v3
       - name: devcontainer test binaries
         run: |
           ./.devcontainer/check_binaries.sh
