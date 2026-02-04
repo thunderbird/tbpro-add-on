@@ -2,7 +2,6 @@
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
-import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
 import FileInfo from '@send-frontend/apps/send/components/FileInfo.vue';
 import FolderInfo from '@send-frontend/apps/send/components/FolderInfo.vue';
 import FolderNavigation from '@send-frontend/apps/send/components/FolderNavigation.vue';
@@ -38,7 +37,6 @@ const showFileComponents = computed(() => {
       <div class="flex flex-col gap-4 px-4">
         <router-view></router-view>
       </div>
-      <FeedbackBox />
     </main>
 
     <aside

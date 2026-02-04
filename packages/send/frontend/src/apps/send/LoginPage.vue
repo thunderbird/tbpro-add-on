@@ -10,7 +10,6 @@ import useUserStore from '@send-frontend/stores/user-store';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import FeedbackBox from '../common/FeedbackBox.vue';
 
 import LoginIndicator from '../common/LoginIndicator.vue';
 import PublicLogin from '../common/PublicLogin.vue';
@@ -88,7 +87,6 @@ async function _loginToOIDC() {
         >
       </LoginIndicator>
       <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />
-      <FeedbackBox />
       <SecureSendIcon />
     </div>
   </main>
