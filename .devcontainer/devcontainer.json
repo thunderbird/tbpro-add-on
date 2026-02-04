@@ -12,7 +12,7 @@
       "version": 3.13
     },
     "ghcr.io/devcontainers-extra/features/pulumi:1": {},
-    // "ghcr.io/devcontainers-extra/features/ruff:2.0.0": {},
+    "ghcr.io/jsburckhardt/devcontainer-features/ruff:1": {},
     "ghcr.io/devcontainers/features/aws-cli:1": {},
     "ghcr.io/guiyomh/features/vim:0": {},
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
@@ -22,7 +22,7 @@
   },
   "mounts": [
     // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
-    // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
+    "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
     // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/src,target=/home/vscode/src,type=bind,consistency=cached"
   ],
 
@@ -33,7 +33,7 @@
   // "forwardPorts": [],
 
   // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "bun version",
+  "postCreateCommand": "bun ---version",
 
   // Configure tool-specific properties.
   // "customizations": {},
