@@ -18,6 +18,7 @@ import {
 import {
   getAllUserGroupContainers,
   getBackup,
+  getFTUEStatus,
   getRecentActivity,
   getUserByEmail,
   getUserById,
@@ -634,5 +635,11 @@ router.get(
     }
   })
 );
+
+router.get('/ftue', requireJWT, async (req: Request, res) => {
+  const { id } = getDataFromAuthenticatedRequest(req);
+  const isFTUEComplete = await getFTUEStatus(id);
+  res.status(200).json({ isFTUEComplete });
+});
 
 export default router;

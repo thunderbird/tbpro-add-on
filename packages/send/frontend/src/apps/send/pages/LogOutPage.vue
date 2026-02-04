@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { useConfigStore } from '@send-frontend/stores';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -7,7 +8,12 @@ const countdown = ref(5);
 const router = useRouter();
 const { isExtension } = useConfigStore();
 
-onMounted(() => {
+onMounted(async () => {
+  // clear local storage
+  const { clearSendStorage } = useSendConfig();
+  await clearSendStorage();
+  router.push('/force-close');
+
   const interval = setInterval(() => {
     countdown.value--;
 

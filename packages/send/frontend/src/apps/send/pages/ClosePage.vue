@@ -1,17 +1,28 @@
 <script lang="ts" setup>
 import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
+import { useApiStore } from '@send-frontend/stores';
+import { onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 
-// Try window.close every 3 seconds to close the window after authentication
-setInterval(() => {
-  window.close();
-  console.log('Attempting to close window...');
+const { api } = useApiStore();
+const router = useRouter();
 
-  window.postMessage(
-    { type: SIGN_IN_COMPLETE },
-    window.location.origin
+async function checkForFTUE() {
+  const ftueResponse = await api.call<{ isFTUEComplete: boolean }>(
+    'users/ftue'
   );
 
-}, 3000);
+  if (!ftueResponse?.isFTUEComplete) {
+    router.push(`/ftue`);
+    return;
+  }
+  window.close();
+  window.postMessage({ type: SIGN_IN_COMPLETE }, window.location.origin);
+}
+
+onMounted(async () => {
+  await checkForFTUE();
+});
 </script>
 
 <template>

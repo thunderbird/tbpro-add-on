@@ -2,6 +2,10 @@
 import ErrorGeneric from '@send-frontend/apps/common/errors/ErrorGeneric.vue';
 import { ref } from 'vue';
 import ProgressBar from './ProgressBar.vue';
+import {
+  SUPPORT_URL,
+  PRIVACY_POLICY_URL,
+} from '@send-frontend/apps/common/constants';
 
 const { closefn, confirm } = defineProps<{
   closefn: () => Promise<string>;
@@ -74,9 +78,9 @@ const onConfirm = async () => {
       </button>
 
       <div class="footer-links">
-        <a href="#" class="link">Support</a>
+        <a :href="SUPPORT_URL" class="link">Support</a>
         <span class="separator">•</span>
-        <a href="#" class="link">Privacy Policy</a>
+        <a :href="PRIVACY_POLICY_URL" class="link">Privacy Policy</a>
       </div>
     </div>
   </div>

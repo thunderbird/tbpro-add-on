@@ -1,13 +1,16 @@
 // stores/counter.js
 
+import { SEND_MESSAGE_TO_BRIDGE } from '@send-frontend/lib/const';
 import { defineStore } from 'pinia';
 import { useConfigStore } from './config-store';
+import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 
 const DEBUG = true;
 const SERVER = `server`;
 
 export const useExtensionStore = defineStore('extension', () => {
   const { serverUrl, setServerUrl, getAddonId } = useConfigStore();
+  const { isRunningInsideThunderbird } = useIsExtension();
 
   // This specifies the id of the provider chosen in the
   // "Composition > Attachments" window.
@@ -29,6 +32,8 @@ export const useExtensionStore = defineStore('extension', () => {
   }
 
   async function configureExtension(id = accountId) {
+    // Skip if outside TB
+    if (!isRunningInsideThunderbird.value) return;
     // Create cloud file account if it doesn't exist
     try {
       //@ts-ignore
@@ -98,8 +103,17 @@ export const useExtensionStore = defineStore('extension', () => {
       });
   }
 
+  // Send bridge message
+  const sendMessageToBridge = (message: string) => {
+    window.postMessage(
+      { type: SEND_MESSAGE_TO_BRIDGE, value: message },
+      window.location.origin
+    );
+  };
+
   return {
     configureExtension,
+    sendMessageToBridge,
     serverUrl,
     setServerUrl,
   };

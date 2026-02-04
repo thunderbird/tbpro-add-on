@@ -10,10 +10,15 @@ import {
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
   FILE_LIST,
+  FORCE_CLOSE_WINDOW,
+  GET_LOGIN_STATE,
+  LOGIN_STATE_RESPONSE,
   OIDC_TOKEN,
   OIDC_USER,
+  OPEN_MANAGEMENT_PAGE,
   PING,
   POPUP_READY,
+  SEND_MESSAGE_TO_BRIDGE,
   SIGN_IN,
   SIGN_IN_COMPLETE,
   SIGN_OUT,
@@ -26,6 +31,7 @@ import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import { useConfigStore } from '@send-frontend/stores/index.js';
 import {
   closeLoginTab,
+  getLoginState,
   init as initMenu,
   menuLoggedIn,
   menuLogout,
@@ -255,7 +261,9 @@ const THUNDERMAIL_HOST = `mail.${!isProd ? 'stage-' : ''}thundermail.com`;
 const THUNDERMAIL_DISPLAY_NAME = 'Thundermail';
 
 // Handle all messages from popup.
-browser.runtime.onMessage.addListener(async (message) => {
+browser.runtime.onMessage.addListener(async (message, sender) => {
+  let ftueResponse = null;
+
   const { email, name, token } = message;
   switch (message.type) {
     case PING:
@@ -323,11 +331,100 @@ browser.runtime.onMessage.addListener(async (message) => {
       console.log(
         `[onMessage] background.ts received SIGN_IN_COMPLETE. Telling menu.ts to close tab.`
       );
-      await closeLoginTab();
-      await initCloudFile();
-      // Open the add-on options page after successful login
+
+      // Check if the user is logging in for the first time
+      try {
+        ftueResponse = await api.call<{ isFTUEComplete: boolean }>(
+          'users/ftue'
+        );
+      } catch {
+        console.error('Error fetching FTUE status');
+      }
+
+      // If FTUE is not complete, open the FTUE page and break out of the flow
+      if (!ftueResponse?.isFTUEComplete) {
+        browser.tabs.create({
+          url: `${BASE_URL}/ftue`,
+        });
+        await initCloudFile();
+        break;
+      }
+
+      // If the user has logged in previously, close the login tab and init cloud file (register send)
+      try {
+        await closeLoginTab();
+        await initCloudFile();
+      } catch (e) {
+        console.error('Error during SIGN_IN_COMPLETE handling:', e);
+      } finally {
+        // Open the add-on options page after successful login
+        await browser.runtime.openOptionsPage();
+      }
+      break;
+
+    case SEND_MESSAGE_TO_BRIDGE: {
+      await browser.storage.local.set({
+        SEND_MESSAGE_TO_BRIDGE: message.value,
+      });
+      console.log(`✅ SEND_MESSAGE_TO_BRIDGE value stored in browser storage`);
+
+      // Notify all tabs to transfer the message to localStorage
+      const tabs = await browser.tabs.query({});
+      tabs.forEach((tab) => {
+        if (tab.id) {
+          browser.tabs
+            .sendMessage(tab.id, { type: 'TRANSFER_BRIDGE_MESSAGE' })
+            .catch(() => {
+              // Ignore errors for tabs that can't receive messages
+            });
+        }
+      });
       await browser.runtime.openOptionsPage();
       break;
+    }
+
+    case GET_LOGIN_STATE: {
+      console.log(`[onMessage] Received GET_LOGIN_STATE request`);
+      const loginState = await getLoginState();
+      console.log(`[onMessage] Login state:`, loginState);
+
+      // Send response back to the requesting tab
+      const tabs = await browser.tabs.query({});
+      tabs.forEach((tab) => {
+        if (tab.id) {
+          browser.tabs
+            .sendMessage(tab.id, {
+              type: LOGIN_STATE_RESPONSE,
+              isLoggedIn: loginState.isLoggedIn,
+              username: loginState.username,
+            })
+            .catch(() => {
+              // Ignore errors for tabs that can't receive messages
+            });
+        }
+      });
+      break;
+    }
+
+    case FORCE_CLOSE_WINDOW: {
+      console.log(`[onMessage] Received FORCE_CLOSE_WINDOW request`);
+      // Close the tab that sent the request
+      if (sender?.tab?.id) {
+        console.log(`[onMessage] Closing tab ${sender.tab.id}`);
+        await browser.tabs.remove(sender.tab.id);
+      }
+      break;
+    }
+
+    case OPEN_MANAGEMENT_PAGE: {
+      console.log(`[onMessage] Received OPEN_MANAGEMENT_PAGE request`);
+      try {
+        await browser.runtime.openOptionsPage();
+      } catch (error) {
+        console.error('[onMessage] Failed to open management page:', error);
+      }
+      break;
+    }
 
     // Popup is ready and is requesting the file list.
     case POPUP_READY:
@@ -490,13 +587,13 @@ async function addThundermailToken(
 }
 
 function initStorageWatcher() {
-  browser.storage.onChanged.addListener(async (changes, area) => {
+  browser.storage.onChanged.addListener(async (changes) => {
     if (changes[STORAGE_KEY_AUTH]) {
       if (changes[STORAGE_KEY_AUTH].newValue === undefined) {
         try {
           // OIDC logout
           await authStore.logoutFromOIDC();
-        } catch (error) {
+        } catch {
           // We really shouldn't be using the authStore here, since we don't have the right
           // env vars, but that does not interfere with logout.
         }

@@ -462,3 +462,19 @@ export async function findOrCreateUserByOIDC({
 
   return newUser;
 }
+
+export const markFTUEComplete = async (userId: string) => {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { isFTUEComplete: true },
+  });
+};
+
+export const getFTUEStatus = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isFTUEComplete: true },
+  });
+
+  return user?.isFTUEComplete;
+};
