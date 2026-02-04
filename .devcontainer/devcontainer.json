@@ -33,7 +33,7 @@
   // "forwardPorts": [],
 
   // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "bun ---version",
+  "postCreateCommand": "pnpm config set store-dir ~/.local/share/pnpm/store",
 
   // Configure tool-specific properties.
   // "customizations": {},
