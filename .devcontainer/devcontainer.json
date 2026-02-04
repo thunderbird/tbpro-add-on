@@ -22,7 +22,7 @@
   },
   "mounts": [
     // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
-    "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
+    // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
     // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/src,target=/home/vscode/src,type=bind,consistency=cached"
   ],
 
