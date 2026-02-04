@@ -16,7 +16,7 @@ const { isLoggedIn } = useAuth();
   >
     <template #default>
       <nav class="send-navigation">
-        <router-link to="/">
+        <router-link to="/send/profile">
           <img src="@send-frontend/apps/send/assets/send-logo.svg" alt="Send" />
         </router-link>
 

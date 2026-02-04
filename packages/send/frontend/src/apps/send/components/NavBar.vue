@@ -39,7 +39,7 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
 
 <template>
   <header>
-    <router-link to="/">
+    <router-link to="/send/profile">
       <img src="@send-frontend/apps/send/assets/send-logo.svg" alt="Send" />
     </router-link>
 
