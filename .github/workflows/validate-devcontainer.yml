@@ -25,7 +25,7 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
-      devcontainer-changed: ${{ steps.check.outputs.backend-changed }}
+      devcontainer-changed: ${{ steps.check.outputs.devcontainer-changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
