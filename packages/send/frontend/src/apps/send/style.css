@@ -24,6 +24,7 @@
     --colour-neutral-900: #26272a;
     --colour-neutral-base: #feffff;
     --colour-neutral-lower: #f7f7f7;
+    --colour-neutral-lower-dark: #18181B; /* Forced dark mode colour */
     --colour-neutral-border: #e4e4e7;
     --colour-neutral-border-intense: #91939f;
     --colour-primary-soft: #f0f8ff;
@@ -47,6 +48,8 @@
     --colour-danger-hover: #7f1d1d;
     --colour-danger-pressed: #7f1d1d;
     --colour-ti-base: #1a202c;
+    --colour-ti-base-dark: #EEEEF0; /* Forced dark mode colour */
+    --colour-ti-base-light: #1A202C; /* Forced light mode colour */
     --colour-ti-secondary: #4c4d58;
     --colour-ti-muted: #737584;
     --colour-ti-highlight: #1373d9;
