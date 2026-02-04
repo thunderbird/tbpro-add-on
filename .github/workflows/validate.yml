@@ -100,10 +100,10 @@ jobs:
     # if: needs.detect-changes.outputs.iac-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-      - name: Ruff checks for Pulumi code
+      - name: Ruff checks for Send Pulumi code
         run: |
-          ruff check
-          ruff format --check
+          ruff check ./packages/send/pulumi
+          ruff format --check ./packages/send/pulumi
 
   # When the frontend code changes, run these steps
   frontend-tests-and-lint:
