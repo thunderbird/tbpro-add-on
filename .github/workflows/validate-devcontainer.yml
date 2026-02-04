@@ -50,4 +50,4 @@ jobs:
     steps:
       - name: devcontainer test binaries
         run: |
-          ./devcontainer/check_binaries.sh
+          ./.devcontainer/check_binaries.sh
