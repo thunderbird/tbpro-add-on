@@ -37,8 +37,8 @@ jobs:
         uses: devcontainers/ci@v0.3
         with:
           # Change this to point to your image name
-          imageName: ${{ env.CACHE_IMAGE_PREFIX }}/cached-devcontainer
-          cacheFrom: ${{ env.CACHE_IMAGE_PREFIX }}/cached-devcontainer
+          imageName: ${{ env.CACHE_IMAGE_PREFIX }}/cached-devcontainer-test
+          cacheFrom: ${{ env.CACHE_IMAGE_PREFIX }}/cached-devcontainer-test
           push: always
           # Change this to be your CI task/script
         #   runCmd: pnpm install --filter @thunderbird/tbpro-add-on
@@ -48,5 +48,5 @@ jobs:
     container:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest      
     steps:
-        - name: test-bun
-            run: bun --version
+      - name: test-bun
+        run: bun --version
