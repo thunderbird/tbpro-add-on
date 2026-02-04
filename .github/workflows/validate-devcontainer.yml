@@ -57,8 +57,7 @@ jobs:
           # Change this to point to your image name
           imageName: ${{ env.CACHE_IMAGE_PREFIX }}/cached-devcontainer-test
           push: always
-          # Change this to be your CI task/script
-          #   runCmd: pnpm install --filter @thunderbird/tbpro-add-on
+
   test-devcontainer-binaries-exist:
   # Test that expected binaries exist in the devcontainer, using the cached devcontainer test build
     runs-on: ubuntu-latest
