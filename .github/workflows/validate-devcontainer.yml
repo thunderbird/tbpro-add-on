@@ -38,7 +38,7 @@ jobs:
   # Build and cache devcontainer test build for faster CI stages
   devcontainer-test-build:
     runs-on: ubuntu-latest
-    if: needs.detect-changes.outputs.devcontainer-changed == 'true'
+    # if: needs.detect-changes.outputs.devcontainer-changed == 'true'
     steps:
       - name: Checkout (GitHub)
         uses: actions/checkout@v3
