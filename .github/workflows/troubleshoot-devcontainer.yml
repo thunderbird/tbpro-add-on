@@ -50,6 +50,4 @@ jobs:
     steps:
       - name: test-bun
         run: |
-          ls -al /home/vscode/.bun/bin/bun
-          whoami
           bun --version
