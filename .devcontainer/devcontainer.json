@@ -20,7 +20,7 @@
     // "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     // "ghcr.io/devcontainers/features/node:1": {},
     // "ghcr.io/devcontainers-extra/features/lerna-npm:1": {},
-    "ghcr.io/devcontainer-community/devcontainer-features/bun.sh:1": {}
+    "ghcr.io/rails/devcontainer/features/bun:1": {}
   },
   "mounts": [
     // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
