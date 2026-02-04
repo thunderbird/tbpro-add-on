@@ -100,17 +100,10 @@ jobs:
     # if: needs.detect-changes.outputs.iac-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-
-      - name: Ruff formatting checks
-        uses: chartboost/ruff-action@v1
-        with:
-          src: "./packages/send/pulumi"
-          args: "format --check"
-
-      - name: Other linting with Ruff
-        uses: chartboost/ruff-action@v1
-        with:
-          src: "./packages/send/pulumi"
+      - name: Ruff checks for Pulumi code
+        run: |
+          ruff check
+          ruff format --check
 
   # When the frontend code changes, run these steps
   frontend-tests-and-lint:
