@@ -46,7 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: devcontainer-build
     container:
-        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest      
+        image: ghcr.io/${{ github.repository }}/cached-devcontainer-test:latest      
     steps:
       - name: test-bun
-        run: bun --version
+        run: |
+          bun --version
