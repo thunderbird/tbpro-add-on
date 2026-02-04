@@ -118,9 +118,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         id: install-dependencies
-        shell: bash
         run: |
-          npm install -g pnpm
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
@@ -128,7 +126,6 @@ jobs:
           lerna run db:generate --scope=send-backend
 
       - name: Create .env file so tests will work
-        shell: bash
         run: |
           cd packages/send/frontend
           cat << EOF > .env
@@ -143,7 +140,6 @@ jobs:
 
       - name: Frontend tests and lint
         id: frontend-tests-and-lint
-        shell: bash
         run: |
           lerna run ci:validate --scope=send-frontend
 
@@ -153,12 +149,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IS_CI_AUTOMATION: "yes"
-    if: needs.detect-changes.outputs.shared-changed == 'true'
+    # if: needs.detect-changes.outputs.shared-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
         id: install-dependencies
-        shell: bash
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
@@ -166,7 +161,6 @@ jobs:
 
       - name: Shared package tests and lint
         id: shared-tests
-        shell: bash
         run: |
           lerna run test --scope=tbpro-shared
 
@@ -180,7 +174,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Create .env file so tests will work
-        shell: bash
         run: |
           cd packages/addon
           cat << EOF > .env
@@ -195,9 +188,7 @@ jobs:
 
       - name: Install dependencies
         id: install-dependencies
-        shell: bash
         run: |
-          npm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
@@ -206,7 +197,6 @@ jobs:
 
       - name: Shared package tests and lint
         id: shared-tests
-        shell: bash
         run: |
           lerna run ci:validate --scope=addon
           lerna run test --scope=addon
