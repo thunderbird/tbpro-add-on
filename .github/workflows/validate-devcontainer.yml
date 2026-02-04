@@ -1,10 +1,9 @@
 ---
-name: troubleshoot
+name: validate-devcontainer
 
 permissions:
   contents: read
   packages: write
-
 
 concurrency:
   group: merge-main
@@ -14,6 +13,7 @@ on:
   push:
     branches:
       - "**"
+      - "!main"
 
 env:
   CACHE_IMAGE_PREFIX: ghcr.io/${{ github.repository }}
@@ -48,6 +48,6 @@ jobs:
     container:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer-test:latest      
     steps:
-      - name: test-bun
+      - name: devcontainer test binaries
         run: |
-          bun --version
+          ./devcontainer/check_binaries.sh

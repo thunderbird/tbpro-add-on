@@ -8,17 +8,17 @@
     "PNPM_HOME": "~/.local/share/pnpm/store"
   },
   "features": {
-    // "ghcr.io/devcontainers/features/python:1": {
-    //   "version": 3.13
-    // },
-    // "ghcr.io/devcontainers-extra/features/pulumi:1": {},
-    // // "ghcr.io/devcontainers-extra/features/ruff:2.0.0": {},
-    // "ghcr.io/devcontainers/features/aws-cli:1": {},
-    // "ghcr.io/guiyomh/features/vim:0": {},
-    // "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    // "ghcr.io/devcontainers/features/node:1": {},
-    // "ghcr.io/devcontainers-extra/features/lerna-npm:1": {},
-    "ghcr.io/michidk/devcontainers-features/bun:1": {}
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": 3.13
+    },
+    "ghcr.io/devcontainers-extra/features/pulumi:1": {},
+    // "ghcr.io/devcontainers-extra/features/ruff:2.0.0": {},
+    "ghcr.io/devcontainers/features/aws-cli:1": {},
+    "ghcr.io/guiyomh/features/vim:0": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers-extra/features/lerna-npm:1": {},
+    "ghcr.io/shyim/devcontainers-features/bun:0": {}
   },
   "mounts": [
     // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
