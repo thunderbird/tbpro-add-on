@@ -19,6 +19,7 @@ env:
   CACHE_IMAGE_PREFIX: ghcr.io/${{ github.repository }}
 
 jobs:
+  # detect changes in devcontainer files
   detect-changes:
     runs-on: ubuntu-latest
     env:
@@ -34,7 +35,7 @@ jobs:
             devcontainer-changed:
               - '.devcontainer/**'
               - '.github/workflows/validate-devcontainer.yml'
-  # Build and cache devcontainer for faster CI stages
+  # Build and cache devcontainer test build for faster CI stages
   devcontainer-test-build:
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.devcontainer-changed == 'true'
@@ -57,7 +58,7 @@ jobs:
           cacheFrom: ${{ env.CACHE_IMAGE_PREFIX }}/cached-devcontainer-test
           push: always
           # Change this to be your CI task/script
-        #   runCmd: pnpm install --filter @thunderbird/tbpro-add-on
+          #   runCmd: pnpm install --filter @thunderbird/tbpro-add-on
   test-shell:
     runs-on: ubuntu-latest
     needs: devcontainer-test-build
