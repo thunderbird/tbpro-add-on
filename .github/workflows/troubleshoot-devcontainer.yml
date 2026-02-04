@@ -50,4 +50,5 @@ jobs:
     steps:
       - name: test-bun
         run: |
+          whoami
           bun --version
