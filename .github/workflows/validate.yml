@@ -147,6 +147,8 @@ jobs:
   shared-tests:
     needs: detect-changes
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     # if: needs.detect-changes.outputs.shared-changed == 'true'
@@ -168,6 +170,8 @@ jobs:
   addon-changes:
     needs: detect-changes
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.addon-changed == 'true'
