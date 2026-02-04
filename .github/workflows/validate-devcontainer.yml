@@ -37,6 +37,7 @@ jobs:
               - '.github/workflows/validate-devcontainer.yml'
   # Build and cache devcontainer test build for faster CI stages
   devcontainer-test-build:
+    needs: detect-changes
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.devcontainer-changed == 'true'
     steps:
