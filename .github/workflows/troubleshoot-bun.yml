@@ -11,6 +11,8 @@ jobs:
   troubleshoot:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
     - name: Run make ci-build in dev container
       uses: devcontainers/ci@v0.3
       with:    
