@@ -7,6 +7,7 @@
     "packages/send",
     "packages/send/backend",
     "packages/send/frontend",
+    "packages/send/e2e",
     "packages/shared",
     "packages/addon"
   ],

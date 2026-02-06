@@ -8,8 +8,9 @@ import {
 } from "@playwright/test";
 import { readFileSync } from "fs";
 
-import { fileLocators } from "./locators";
-import { emptystatePath, storageStatePath } from "./send.spec";
+import { fileLocators } from "../../pages/dev/locators";
+import { emptystatePath, storageStatePath } from "../../tests/desktop/dev/send.spec";
+import path from "path";
 
 const sharelinks = {
   "file-no-password": null,
@@ -116,7 +117,10 @@ export const dragAndDropFile = async (
 ) => {
   // print current path
   console.log("current path: ", __dirname);
-  const buffer = readFileSync(__dirname + filePath).toString("base64");
+  const testFile = path.resolve(__dirname, filePath);
+  console.log("test file path: ", testFile);
+
+  const buffer = readFileSync(testFile).toString("base64");
 
   const dataTransfer = await page.evaluateHandle(
     async ({ bufferData, localFileName, localFileType }) => {
@@ -139,7 +143,12 @@ export const dragAndDropFile = async (
 };
 
 export async function saveStorage(context: BrowserContext) {
+  const storageStatePath = path.resolve(
+    __dirname,
+    "../../data/lockboxstate.json"
+  );
+
   await context.storageState({
-    path: `./data/lockboxstate.json`,
+    path: storageStatePath,
   });
 }
