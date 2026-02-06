@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { StandardFooter } from '@thunderbirdops/services-ui';
 import { useRoute } from 'vue-router';
-import {
-  PRIVACY_POLICY_URL,
-  TERMS_OF_SERVICE_URL,
-} from '@send-frontend/apps/common/constants';
 import NavBar from '@send-frontend/apps/send/components/NavBar.vue';
+import FooterBar from '@send-frontend/apps/send/components/FooterBar.vue';
 
 const route = useRoute();
 const isPrintMode = route.query.print !== undefined;
@@ -22,17 +18,7 @@ const isPrintMode = route.query.print !== undefined;
       <slot></slot>
     </div>
 
-    <StandardFooter
-      contribute-to-this-site-url="https://github.com/thunderbird/tbpro-add-on"
-    >
-      <template #privacyPolicy>
-        <a :href="PRIVACY_POLICY_URL" target="_blank"> Privacy Policy </a>
-      </template>
-
-      <template #legal>
-        <a :href="TERMS_OF_SERVICE_URL" target="_blank"> Legal </a>
-      </template>
-    </StandardFooter>
+    <FooterBar />
   </template>
 </template>
 
