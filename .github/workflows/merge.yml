@@ -11,6 +11,7 @@ on:
       - main
 
 permissions:
+  packages: read
   contents: read
 
 jobs:
@@ -25,10 +26,6 @@ jobs:
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
       - uses: dorny/paths-filter@v3
         id: check
         with:
@@ -49,14 +46,13 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
       # Preparation for future steps
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -74,8 +70,6 @@ jobs:
       - name: Install pnpm and build package
         id: install-pnpm-build
         run: |
-          npm install -g pnpm
-          npm install lerna -g
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter send-backend
           lerna run build-image:backend --scope=send-suite
@@ -107,30 +101,8 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.13
-
-      - name: Set up virtual environment
-        shell: bash
-        run: |
-          python -m pip install virtualenv
-          cd packages/send/pulumi
-          virtualenv ./venv
-
-      - name: Set up Pulumi environment
-        id: pulumi-env
-        shell: bash
-        run: |
-          cd packages/send/pulumi
-          source ./venv/bin/activate
-          curl -fsSL https://get.pulumi.com | sh
-          pip install -Ur requirements.txt
-
       # Deploy to stage
       - name: Deploy new image to stage
-        shell: bash
         env:
           ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
           PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
@@ -157,7 +129,6 @@ jobs:
 
           # Set up the Pulumi environment and update the service
           export PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
-          source ./venv/bin/activate
           pulumi login
           pulumi stack select stage
           pulumi up -y --diff --target \
@@ -169,14 +140,13 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
       # Preparation for future steps
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -192,7 +162,6 @@ jobs:
 
       # Stage build steps
       - name: Create stage .env file from secrets
-        shell: bash
         run: |
           cd packages/send/frontend
           cat << EOF > .env
@@ -211,12 +180,10 @@ jobs:
         id: frontend-build-stage
         env:
           BASE_URL: https://send-stage.tb.pro
-        shell: bash
         run: |
           set -x
           # Initial setup of dependencies
-          npm install -g pnpm
-          npm install -g lerna
+          npm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
@@ -245,7 +212,6 @@ jobs:
 
       # Production build steps
       - name: Create production .env file from secrets
-        shell: bash
         run: |
           cd packages/send/frontend
           cat << EOF > .env
@@ -260,11 +226,6 @@ jobs:
           VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
           EOF
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Build the production frontend's static assets
         id: frontend-build-prod
         shell: bash
@@ -272,8 +233,7 @@ jobs:
           BASE_URL: https://send.tb.pro
         run: |
           # Initial setup of dependencies
-          npm install -g pnpm
-          npm install lerna -g          
+          npm install -g bun    
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
@@ -332,15 +292,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        node-version: ["22"]
+
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
 
       # Build steps
       - name: (Send) Create production .env file from secrets
@@ -375,11 +330,6 @@ jobs:
           VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
           EOF
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Build the stage frontend's static assets
         id: frontend-build-stage
         env:
@@ -387,8 +337,7 @@ jobs:
           IS_CI_AUTOMATION: yes
         shell: bash
         run: |
-          npm install -g pnpm
-          npm install -g lerna
+          npm install -g bun
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
           pnpm install --filter addon
@@ -443,8 +392,6 @@ jobs:
           IS_CI_AUTOMATION: yes
         shell: bash
         run: |
-          npm install -g pnpm
-          npm install -g lerna
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
           pnpm install --filter addon
