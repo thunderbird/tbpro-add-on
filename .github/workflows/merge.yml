@@ -310,16 +310,7 @@ jobs:
         shell: bash
         run: |
           cd packages/send/dist-web-stage
-
-          # Upload everything except font files first
-          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive \
-            --exclude "*.woff" --exclude "*.woff2"
-
-          # Upload font files with explicit MIME types
-          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive \
-            --exclude "*" --include "*.woff" --content-type "font/woff"
-          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive \
-            --exclude "*" --include "*.woff2" --content-type "font/woff2"
+          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
 
           # Invalidate the CDN
           aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"

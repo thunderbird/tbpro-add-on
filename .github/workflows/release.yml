@@ -164,16 +164,7 @@ jobs:
         run: |
           unzip -d frontend-source dist-web-prod.zip
           cd frontend-source
-
-          # Upload everything except font files first
-          aws s3 cp . s3://tb-send-suite-prod-frontend/ --recursive \
-            --exclude "*.woff" --exclude "*.woff2"
-
-          # Upload font files with explicit MIME types
-          aws s3 cp . s3://tb-send-suite-prod-frontend/ --recursive \
-            --exclude "*" --include "*.woff" --content-type "font/woff"
-          aws s3 cp . s3://tb-send-suite-prod-frontend/ --recursive \
-            --exclude "*" --include "*.woff2" --content-type "font/woff2"
+          aws s3 cp . s3://tb-send-suite-prod-frontend/ --recursive
 
           # Invalidate the CDN
           aws cloudfront create-invalidation --distribution-id ${{ vars.PROD_CF_DISTRO_ID }} --paths "/*"
