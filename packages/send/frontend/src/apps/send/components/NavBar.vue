@@ -83,7 +83,7 @@ header {
 
   /* Without this we can't be on top of main content when we need */
   position: relative;
-  z-index: 9999;
+  z-index: 999;
 
   &:first-child {
     margin-right: auto;
