@@ -8,7 +8,7 @@ certifi==2024.7.4
 cffi==1.17.1
 charset-normalizer==3.3.2
 click==8.1.7
-cryptography==43.0.1
+cryptography==46.0.5
 dnspython==2.6.1
 email_validator==2.2.0
 fastapi==0.111.1
