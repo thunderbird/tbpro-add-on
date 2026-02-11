@@ -1,22 +1,31 @@
-import { BrowserContext, expect, Page, test } from "@playwright/test";
-import "dotenv/config";
+// All of the tests in this file are made to run against a localhost dev stack only, on a local
+// machine's dev stack or in CI on a stack built in a Github Actions worker against a branch
+
+import config from "dotenv";
 import fs from "fs";
 import path from "path";
+
+import { BrowserContext, expect, Page, test } from "@playwright/test";
+
+import {
+  PLAYWRIGHT_TAG_DEV_DESKTOP,
+ } from "../../../const/const"
+
 import {
   log_out_restore_keys,
   register_and_login,
   reset_keys,
-} from "./pages/dashboard";
+} from "../../../pages/dev/dashboard"
+
 import {
   delete_file,
   download_workflow,
   share_links,
   upload_workflow,
-} from "./pages/myFiles";
-import { oidc_login } from "./pages/oidc";
-import { setup_browser } from "./testUtils";
+} from "../../../pages/dev/myFiles"
 
-import config from "dotenv";
+import { oidc_login } from "../../../pages/dev/oidc"
+import { setup_browser } from "../../../utils/dev/testUtils"
 
 config.config({ path: path.resolve(__dirname, "./.env") });
 
@@ -32,27 +41,26 @@ export const credentials = {
 
 export const storageStatePath = path.resolve(
   __dirname,
-  "../data/lockboxstate.json"
+  "../../../data/lockboxstate.json"
 );
 
 export const emptystatePath = path.resolve(
   __dirname,
-  "../data/emptystate.json"
+    "../../../data/emptystate.json"
 );
 const emptyState = {
   cookies: [],
   origins: [],
 };
 
-// Configure tests to run serially with retries
-test.describe.configure({ mode: "serial", retries: 3 });
-
 // Cleanup storage state after all tests
 test.afterAll(async () => {
   fs.writeFileSync(storageStatePath, JSON.stringify(emptyState));
 });
 
-test.describe("OIDC Flow", async () => {
+test.describe("OIDC flow", {
+  tag: [PLAYWRIGHT_TAG_DEV_DESKTOP],
+}, async () => {
   let page: Page;
   let context: BrowserContext;
 
@@ -79,7 +87,9 @@ const authTests = [
   },
 ];
 
-test.describe("Authentication", () => {
+test.describe("Authentication", {
+  tag: [PLAYWRIGHT_TAG_DEV_DESKTOP],
+}, () => {
   authTests.forEach(({ title, path, action }) => {
     test(title, async () => {
       const { context, page } = await setup_browser();
@@ -91,7 +101,9 @@ test.describe("Authentication", () => {
 });
 
 // File workflow tests with shared setup
-test.describe("File workflows", () => {
+test.describe("File workflows", {
+  tag: [PLAYWRIGHT_TAG_DEV_DESKTOP],
+}, () => {
   let page: Page;
   let context: BrowserContext;
 
@@ -116,7 +128,9 @@ test.describe("File workflows", () => {
   });
 });
 
-test.describe("Key restore", async () => {
+test.describe("Key restore", {
+  tag: [PLAYWRIGHT_TAG_DEV_DESKTOP],
+}, async () => {
   let page: Page;
   let context: BrowserContext;
 

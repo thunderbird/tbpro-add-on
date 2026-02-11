@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
-import { dashboardLocators, fileLocators } from "../locators";
-import { PlaywrightProps } from "../send.spec";
-import { playwrightConfig, saveStorage, setup_browser } from "../testUtils";
+import { dashboardLocators, fileLocators } from "./locators";
+import { PlaywrightProps } from "../../tests/desktop/dev/send.spec";
+import { playwrightConfig, saveStorage, setup_browser } from "../../utils/dev/testUtils";
 
 const { email, password, shareLinks } = playwrightConfig;
 
@@ -56,6 +56,7 @@ export async function log_out_restore_keys() {
   secondPage.on("dialog", (dialog) => dialog.accept());
 
   await secondPage.goto("/send/profile");
+  
   // wait for network idle
   await secondPage.waitForLoadState("networkidle");
 

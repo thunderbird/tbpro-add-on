@@ -161,7 +161,7 @@ You can run any package's commands by running the following:
 
 For example, If I want to run e2e tests on send, I can run
 
-`lerna run test:e2e:ci --scope=send-suite`
+`lerna run test:e2e:ci --scope=send-suite-e2e`
 
 ### Packages
 

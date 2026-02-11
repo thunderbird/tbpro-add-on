@@ -1,0 +1,31 @@
+{
+  "name": "send-suite-e2e",
+  "version": "6.3.5",
+  "description": "",
+  "keywords": [],
+  "license": "MPL-2.0",
+  "author": "",
+  "main": "index.js",
+  "scripts": {
+    "test:e2e": "pnpm exec playwright test --grep dev-desktop --project=firefox --headed",
+    "test:e2e:ui": "pnpm exec playwright test --grep dev-desktop --project=firefox --ui",
+    "test:e2e:ci": "../../../scripts/e2e.sh",
+    "test:e2e:nightly": "pnpm exec playwright test --grep desktop-nightly --project=firefox --headed",
+    "test:e2e:nightly:ui": "pnpm exec playwright test --grep desktop-nightly --project=firefox --ui",
+    "test:e2e:nightly:prod:browserstack:desktop:chromium": "npx browserstack-node-sdk playwright test --grep desktop-nightly --project=Chromium-Win11 --browserstack.buildName 'TB Send Nightly Tests Chromium Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'",
+    "test:e2e:nightly:prod:browserstack:desktop:firefox": "npx browserstack-node-sdk playwright test --grep desktop-nightly --project=Firefox-OSX --browserstack.buildName 'TB Send Nightly Tests Firefox Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'",
+    "test:e2e:nightly:prod:browserstack:desktop:safari": "npx browserstack-node-sdk playwright test --grep desktop-nightly --project=Safari-OSX --browserstack.buildName 'TB Send Nightly Tests Safari Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "*",
+    "browserstack-node-sdk": "1.40.8",
+    "dotenv": "^17.2.1",
+    "sort-package-json": "*"
+  },
+  "engines": {
+    "bun": "1.1.13",
+    "node": ">=22.11.0",
+    "pnpm": ">=10.6.4"
+  }
+}

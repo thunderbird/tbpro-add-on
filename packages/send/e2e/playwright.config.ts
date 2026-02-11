@@ -6,19 +6,20 @@ const THREE_MINUTES = 3 * 60 * 1000;
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./tests",
+  outputDir: './playwright-test-results',
   globalTimeout: THREE_MINUTES,
   timeout: THREE_MINUTES,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.IS_CI_AUTOMATION,
-  /* Retry on CI only */
-  retries: process.env.IS_CI_AUTOMATION ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.IS_CI_AUTOMATION ? 1 : undefined,
+  /* Retries on CI only */
+  retries: process.env.IS_CI_AUTOMATION ? 1 : 0,
+  /* Run tests sequentially only */
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: "html",
+  reporter: [['html', { outputFolder: './playwright-report' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */

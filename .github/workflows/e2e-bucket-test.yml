@@ -1,4 +1,5 @@
 ---
+# Run the E2E tests on a local stack that is using Backblaze for backend file storage
 name: e2e-bucket-tests
 
 concurrency:
@@ -10,6 +11,8 @@ on:
     branches:
       - "**"
       - "!main"
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 permissions:
   packages: read
@@ -97,11 +100,11 @@ jobs:
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
           mv .env packages/send/e2e        
           lerna run build-image:backend --scope=send-suite
-          pnpm run test:e2e:ci
+          lerna run test:e2e:ci --scope=send-suite-e2e
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
-          path: packages/send/playwright-report/
+          path: packages/send/e2e/playwright-report/
           retention-days: 30

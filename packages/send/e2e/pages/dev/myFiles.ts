@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
-import { fileLocators } from "../locators";
-import { PlaywrightProps } from "../send.spec";
+import { fileLocators } from "./locators";
+import { PlaywrightProps } from "../../tests/desktop/dev/send.spec";
 import {
   clickAndWaitForIdleBuilder,
   create_incognito_context,
@@ -8,7 +8,7 @@ import {
   dragAndDropFile,
   playwrightConfig,
   saveClipboardItem,
-} from "../testUtils";
+} from "../../utils/dev/testUtils";
 
 const { password, timeout, shareLinks, fileLinks } = playwrightConfig;
 
@@ -42,7 +42,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   expect(await dropZone.textContent({ timeout })).toContain(
     "files here to upload"
   );
-  await dragAndDropFile(page, "#drop-zone", "/test.png", "test.png");
+  await dragAndDropFile(page, "#drop-zone", "../../test-files/test.png", "test.png");
   await uploadButton.click();
   // wait for network idle
   await page.waitForLoadState("networkidle");
