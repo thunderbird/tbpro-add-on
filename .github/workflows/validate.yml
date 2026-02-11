@@ -53,7 +53,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    # if: needs.detect-changes.outputs.backend-changed == 'true'
+    if: needs.detect-changes.outputs.backend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -97,7 +97,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    # if: needs.detect-changes.outputs.iac-changed == 'true'
+    if: needs.detect-changes.outputs.iac-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Ruff checks for Send Pulumi code
@@ -113,7 +113,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    # if: needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -151,7 +151,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    # if: needs.detect-changes.outputs.shared-changed == 'true'
+    if: needs.detect-changes.outputs.shared-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -174,7 +174,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    # if: needs.detect-changes.outputs.addon-changed == 'true'
+    if: needs.detect-changes.outputs.addon-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Create .env file so tests will work
