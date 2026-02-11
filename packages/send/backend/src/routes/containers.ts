@@ -409,8 +409,7 @@ router.delete(
   wrapAsyncHandler(async (req, res) => {
     const { itemId } = req.params;
     // Force req.body.shouldDeleteUpload to a boolean
-    const shouldDeleteUpload =
-      req?.body?.shouldDeleteUpload === false ? false : true;
+    const shouldDeleteUpload = !!req.body.shouldDeleteUpload;
     const result = await deleteItem(parseInt(itemId), shouldDeleteUpload);
     res.status(200).json(result);
   })

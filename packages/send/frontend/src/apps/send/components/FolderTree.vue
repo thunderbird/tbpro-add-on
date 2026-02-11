@@ -96,7 +96,7 @@ async function setDownload(item: Item) {
   </div>
 
   <div v-if="!folder?.items?.length">
-    <p data-testid="not_found">
+    <p>
       This link is no longer active. Please reach out to the sender for a new
       download link.
     </p>
