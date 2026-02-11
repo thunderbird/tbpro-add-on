@@ -57,7 +57,7 @@ jobs:
     strategy:
       matrix:
         node-version: ["22"]
-    if: needs.detect-changes.outputs.backend-changed == 'true'
+    # if: needs.detect-changes.outputs.backend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -108,7 +108,7 @@ jobs:
     strategy:
       matrix:
         node-version: ["22"]
-    if: needs.detect-changes.outputs.iac-changed == 'true'
+    # if: needs.detect-changes.outputs.iac-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -135,7 +135,7 @@ jobs:
     strategy:
       matrix:
         node-version: ["22"]
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
+    # if: needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -182,7 +182,7 @@ jobs:
     strategy:
       matrix:
         node-version: ["22"]
-    if: needs.detect-changes.outputs.shared-changed == 'true'
+    # if: needs.detect-changes.outputs.shared-changed == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
