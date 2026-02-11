@@ -12,6 +12,7 @@ on:
       - "!main"
 
 permissions:
+  packages: read
   contents: read
 
 jobs:
@@ -28,10 +29,6 @@ jobs:
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
       - uses: dorny/paths-filter@v3
         id: check
         with:
@@ -52,30 +49,23 @@ jobs:
   backend-tests:
     needs: detect-changes
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        node-version: ["22"]
     if: needs.detect-changes.outputs.backend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
         id: install-dependencies
-        shell: bash
         run: |
-          npm install -g pnpm
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           cd packages/send
           pnpm install --filter send-backend
 
       - name: Backend tests
         id: backend-tests
-        shell: bash
         run: |
           cd packages/send/backend
           cp .env.sample .env
@@ -103,50 +93,32 @@ jobs:
   iac-lint:
     needs: detect-changes
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        node-version: ["22"]
     if: needs.detect-changes.outputs.iac-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-
-      - name: Ruff formatting checks
-        uses: chartboost/ruff-action@v1
-        with:
-          src: "./packages/send/pulumi"
-          args: "format --check"
-
-      - name: Other linting with Ruff
-        uses: chartboost/ruff-action@v1
-        with:
-          src: "./packages/send/pulumi"
+      - name: Ruff checks for Send Pulumi code
+        run: |
+          ruff check ./packages/send/pulumi
+          ruff format --check ./packages/send/pulumi
 
   # When the frontend code changes, run these steps
   frontend-tests-and-lint:
     needs: detect-changes
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        node-version: ["22"]
     if: needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-
       - name: Install dependencies
         id: install-dependencies
-        shell: bash
         run: |
-          npm install -g pnpm
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
@@ -154,7 +126,6 @@ jobs:
           lerna run db:generate --scope=send-backend
 
       - name: Create .env file so tests will work
-        shell: bash
         run: |
           cd packages/send/frontend
           cat << EOF > .env
@@ -169,7 +140,6 @@ jobs:
 
       - name: Frontend tests and lint
         id: frontend-tests-and-lint
-        shell: bash
         run: |
           lerna run ci:validate --scope=send-frontend
 
@@ -177,30 +147,22 @@ jobs:
   shared-tests:
     needs: detect-changes
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        node-version: ["22"]
     if: needs.detect-changes.outputs.shared-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-
       - name: Install dependencies
         id: install-dependencies
-        shell: bash
         run: |
-          npm install -g pnpm
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-backend
 
       - name: Shared package tests and lint
         id: shared-tests
-        shell: bash
         run: |
           lerna run test --scope=tbpro-shared
 
@@ -208,20 +170,14 @@ jobs:
   addon-changes:
     needs: detect-changes
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        node-version: ["22"]
     if: needs.detect-changes.outputs.addon-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-
       - name: Create .env file so tests will work
-        shell: bash
         run: |
           cd packages/addon
           cat << EOF > .env
@@ -236,9 +192,7 @@ jobs:
 
       - name: Install dependencies
         id: install-dependencies
-        shell: bash
         run: |
-          npm install -g pnpm
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
@@ -247,7 +201,6 @@ jobs:
 
       - name: Shared package tests and lint
         id: shared-tests
-        shell: bash
         run: |
           lerna run ci:validate --scope=addon
           lerna run test --scope=addon
