@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import type { Ref } from 'vue';
-import { logger } from '@thunderbirdops/services-utils';
 import DailyBrief from '@/components/DailyBrief.vue';
 import LoginPage from '@/components/LoginPage.vue';
+import { logger } from '@thunderbirdops/services-utils';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { version as appVersion } from '../package.json';
 
-import { REMOVE_CONTENT_SCRIPT, RELOAD_CONTENT_SCRIPT, SUMMARY_CHECK_INTERVAL } from '@/const';
+import { RELOAD_CONTENT_SCRIPT, REMOVE_CONTENT_SCRIPT, SUMMARY_CHECK_INTERVAL } from '@/const';
 
 const error = ref('');
 const duration = ref(0);
@@ -197,10 +197,10 @@ async function runOnSchedule() {
   });
 
   if (isTimeToRun) {
-    logger.info(`App.vue - it's time to run!`);
+    console.info(`App.vue - it's time to run!`);
     getSummary();
   } else {
-    logger.info(`App.vue: gotta wait before another run. Showing last summary`);
+    console.info(`App.vue: gotta wait before another run. Showing last summary`);
     getPreviousSummary();
   }
 }
@@ -296,7 +296,7 @@ onMounted(async () => {
         <p><b>Improved default prompt</b></p>
         <ul>
           <li>Assist now uses an optimized prompt for summarizing emails.</li>
-	  <li>For now, we have removed the ability to customize summary and reply prompts</li>
+          <li>For now, we have removed the ability to customize summary and reply prompts</li>
         </ul>
         <p><b>Encrypted emails are excluded by default.</b></p>
         <ul>

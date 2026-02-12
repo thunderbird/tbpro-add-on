@@ -4,7 +4,6 @@ import init from '@send-frontend/lib/init';
 import { UserStoreType } from '@send-frontend/stores/user-store';
 import { Canceler, JsonResponse } from '@send-frontend/types';
 
-import logger from '@send-frontend/logger';
 import { RouteLocationNormalized } from 'vue-router';
 import {
   ECE_RECORD_SIZE,
@@ -108,7 +107,7 @@ export async function _upload(
       ws.send(buf);
 
       size += buf.length;
-      logger.info('Uploaded', size, 'bytes', '- timestamp:', Date.now());
+      console.info('Uploaded', size, 'bytes', '- timestamp:', Date.now());
       progressTracker.setProgress(size);
       state = await reader.read();
       while (
@@ -162,7 +161,7 @@ export async function encrypt(
       // progressTracker.setProgress(size);
 
       size += buf.length;
-      logger.info('Encrypted', size, 'bytes', '- timestamp:', Date.now());
+      console.info('Encrypted', size, 'bytes', '- timestamp:', Date.now());
       state = await reader.read();
     }
     const concatenated = concatenateUint8Arrays(chunks);

@@ -1,7 +1,6 @@
 /**
  * This is the client-side code that uses the inferred types from the server
  */
-import logger from '@send-frontend/logger';
 import {
   createTRPCClient,
   createWSClient,
@@ -55,10 +54,10 @@ export const trpc = createTRPCClient<AppRouter>({
                 credentials: 'include',
               })
                 .then(() => {
-                  logger.info('revalidated token');
+                  console.info('revalidated token');
                 })
                 .catch((err) => {
-                  logger.info('could not revalidate token', err);
+                  console.info('could not revalidate token', err);
                 });
               return opts.attempts <= 3;
             }
