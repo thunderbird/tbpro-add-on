@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd ./packages/send/e2e
-          npm install --cache test/e2e/package-lock.json
+          npm install
 
       - name: BrowserStack Env Setup
         uses: browserstack/github-actions/setup-env@master
