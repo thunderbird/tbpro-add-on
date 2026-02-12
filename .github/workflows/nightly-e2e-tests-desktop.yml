@@ -27,8 +27,8 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     environment: production
     env:
-      TBPRO_USERNAME: ${{ secrets.TBPRO_USERNAME }}
-      TBPRO_PASSWORD: ${{ secrets.TBPRO_PASSWORD }}
+      TBPRO_USERNAME: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_USERNAME }}
+      TBPRO_PASSWORD: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
