@@ -296,7 +296,7 @@ onMounted(async () => {
         <p><b>Improved default prompt</b></p>
         <ul>
           <li>Assist now uses an optimized prompt for summarizing emails.</li>
-          <li>For now, we have removed the ability to customize summary and reply prompts</li>
+	  <li>For now, we have removed the ability to customize summary and reply prompts</li>
         </ul>
         <p><b>Encrypted emails are excluded by default.</b></p>
         <ul>
