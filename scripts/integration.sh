@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Start dev server in background
-pnpm dev:detach
+# pnpm dev:detach
+export BUILD_ENV=development
+docker compose up -d --build
 
 # Function to cleanup dev server on script exit
 cleanup() {
