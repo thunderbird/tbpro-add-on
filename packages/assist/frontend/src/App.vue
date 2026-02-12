@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue';
+import type { Ref } from 'vue';
+import { logger } from '@thunderbirdops/services-utils';
 import DailyBrief from '@/components/DailyBrief.vue';
 import LoginPage from '@/components/LoginPage.vue';
-import { logger } from '@thunderbirdops/services-utils';
-import type { Ref } from 'vue';
-import { onMounted, ref } from 'vue';
 import { version as appVersion } from '../package.json';
 
-import { RELOAD_CONTENT_SCRIPT, REMOVE_CONTENT_SCRIPT, SUMMARY_CHECK_INTERVAL } from '@/const';
+import { REMOVE_CONTENT_SCRIPT, RELOAD_CONTENT_SCRIPT, SUMMARY_CHECK_INTERVAL } from '@/const';
 
 const error = ref('');
 const duration = ref(0);
@@ -197,10 +197,10 @@ async function runOnSchedule() {
   });
 
   if (isTimeToRun) {
-    console.info(`App.vue - it's time to run!`);
+    logger.info(`App.vue - it's time to run!`);
     getSummary();
   } else {
-    console.info(`App.vue: gotta wait before another run. Showing last summary`);
+    logger.info(`App.vue: gotta wait before another run. Showing last summary`);
     getPreviousSummary();
   }
 }
