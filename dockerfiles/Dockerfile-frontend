@@ -1,6 +1,6 @@
 # Two build arguments are possible, development and production.
 # We use these to add contitional build differences.
-ARG BUILD_ENV=production
+ARG BUILD_ENV=development
 
 FROM node:22.14.0 AS base
 
@@ -18,28 +18,38 @@ ADD package.json \
 ADD packages/send/frontend ./packages/send/frontend
 ADD packages/shared ./packages/shared
 
-# Install dependencies 
+# Install workspace dependencies so workspace links are resolved at build time
 RUN npm install -g pnpm
-RUN pnpm install --filter tbpro-shared
-RUN pnpm install --filter send-frontend
+# Run pnpm to install all workspace packages and create proper links
+RUN pnpm install
+
+# Ensure frontend node_modules directory exists and is writable by the image 'node' user
+RUN mkdir -p /app/packages/send/frontend/node_modules /app/packages/send/frontend/node_modules/.vite-temp \
+    && chown -R node:node /app/packages/send/frontend/node_modules /app/packages/send/frontend/node_modules/.vite-temp
 
 # runtime production
 FROM base AS runtime_production
 # Set environment variable for runtime container user name
-ENV runtime_user=frontend
+ENV runtime_user=send
 # Add runtime user
 ONBUILD RUN echo "Add runtime user"
 
 # Add runtime user
 RUN useradd ${runtime_user} -d /home/${runtime_user}
+RUN mkdir /home/${runtime_user}
+RUN chown -Rvf ${runtime_user} /home/${runtime_user}
+
 # Chown /app to runtime_user
-RUN chown -Rvf ${runtime_user} /app
+RUN chown -Rvf ${runtime_user} /app \
+    && chown -Rvf ${runtime_user} /app/packages/send/frontend/node_modules /app/packages/send/frontend/node_modules/.vite-temp
+
 # Switch to runtime user
 USER ${runtime_user}
 
 # runtime development
 FROM base AS runtime_development
 ONBUILD RUN echo "Don't add runtime user"
+ONBUILD RUN chown -Rvf node:node /app
 
 FROM runtime_${BUILD_ENV}
 
