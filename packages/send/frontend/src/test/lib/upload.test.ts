@@ -84,8 +84,9 @@ describe('Uploader', () => {
 
   describe('createMultipartProgressTracker', () => {
     it('should create a progress tracker that handles single file uploads', () => {
-      const fileSize = 1000;
-      const blob = new Blob(['test content'], {
+      const originalFileSize = 1000;
+      const blobContent = 'x'.repeat(100); // 100 bytes
+      const blob = new Blob([blobContent], {
         type: 'text/plain',
       }) as NamedBlob;
       blob.name = 'test.txt';
@@ -95,14 +96,14 @@ describe('Uploader', () => {
         mockProgressTracker,
         [blob],
         false,
-        fileSize
+        originalFileSize
       );
 
       const partTracker = tracker.getPartTracker(0);
 
-      // Test progress calculation for single part
-      partTracker.setProgress(500); // 50% of part
-      expect(mockProgressTracker.setProgress).toHaveBeenCalledWith(500);
+      // Test progress calculation for single part - progress directly maps for single files
+      partTracker.setProgress(50); // 50 bytes uploaded
+      expect(mockProgressTracker.setProgress).toHaveBeenCalledWith(50);
     });
 
     it('should create a progress tracker that handles multipart uploads correctly', () => {
@@ -199,7 +200,8 @@ describe('Uploader', () => {
 
     it('should ensure progress never exceeds the original file size', () => {
       const originalFileSize = 1000;
-      const blob = new Blob(['test content'], {
+      const blobContent = 'x'.repeat(100); // 100 bytes
+      const blob = new Blob([blobContent], {
         type: 'text/plain',
       }) as NamedBlob;
       blob.name = 'test.txt';
@@ -214,13 +216,11 @@ describe('Uploader', () => {
 
       const partTracker = tracker.getPartTracker(0);
 
-      // Try to set progress beyond the original file size
+      // Try to set progress beyond the blob size (it gets clamped to blob size)
       partTracker.setProgress(originalFileSize * 2);
 
-      // Should be clamped to the original file size
-      expect(mockProgressTracker.setProgress).toHaveBeenCalledWith(
-        originalFileSize
-      );
+      // Should be clamped to the blob size (100), which directly maps to progress for single files
+      expect(mockProgressTracker.setProgress).toHaveBeenCalledWith(100);
     });
   });
 
@@ -315,7 +315,7 @@ describe('Uploader', () => {
   });
 
   describe('doUpload multipart logic', () => {
-    it('should process multipart uploads sequentially', async () => {
+    it('should process multipart uploads in batches', async () => {
       // Create a large file that would trigger multipart upload
       const largeFileSize = SPLIT_SIZE + 1000;
       const largeBlob = new Blob(['x'.repeat(largeFileSize)], {
@@ -326,16 +326,28 @@ describe('Uploader', () => {
       // Mock hashFiles to return two hashes for multipart upload
       vi.mocked(hashFiles).mockResolvedValueOnce(['hash1', 'hash2']);
 
-      mockApi.call = vi
-        .fn()
-        .mockResolvedValueOnce({ upload: { id: 'upload1' } })
-        .mockResolvedValueOnce({ id: 'item1' })
-        .mockResolvedValueOnce({ upload: { id: 'upload2' } })
-        .mockResolvedValueOnce({ id: 'item2' });
+      // Mock API calls for both parts - handle concurrent calls by checking the endpoint
+      let uploadCallCount = 0;
+      let itemCallCount = 0;
+      mockApi.call = vi.fn().mockImplementation((endpoint: string) => {
+        if (endpoint === 'uploads') {
+          uploadCallCount++;
+          return Promise.resolve({
+            upload: { id: `upload${uploadCallCount}` },
+          });
+        } else if (
+          endpoint.includes('container') &&
+          endpoint.includes('item')
+        ) {
+          itemCallCount++;
+          return Promise.resolve({ id: `item${itemCallCount}` });
+        }
+        return Promise.resolve({});
+      });
 
       const containerId = 'container-id';
 
-      // The upload should process parts sequentially and track progress correctly
+      // The upload should process parts in batches and track progress correctly
       const result = await uploader.doUpload(
         largeBlob,
         containerId,
