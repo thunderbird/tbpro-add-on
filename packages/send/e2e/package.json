@@ -8,6 +8,7 @@
   "main": "index.js",
   "scripts": {
     "test:e2e": "pnpm exec playwright test --grep dev-desktop --project=firefox --headed",
+    "test:e2e:headless": "pnpm exec playwright test --grep dev-desktop --project=firefox",
     "test:e2e:ui": "pnpm exec playwright test --grep dev-desktop --project=firefox --ui",
     "test:e2e:ci": "../../../scripts/e2e.sh",
     "test:e2e:nightly": "pnpm exec playwright test --grep desktop-nightly --project=firefox --headed",
