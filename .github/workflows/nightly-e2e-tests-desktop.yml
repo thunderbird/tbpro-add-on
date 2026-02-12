@@ -13,22 +13,21 @@ on:
   workflow_dispatch:
 
 permissions:
+  packages: read
   contents: read    # This is required for actions/checkout
 
 jobs:
   nightly-prod-desktop-e2e:
     name: nightly-prod-desktop-e2e
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     environment: production
     env:
       TBPRO_USERNAME: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_USERNAME }}
       TBPRO_PASSWORD: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - name: Install dependencies
         run: |
