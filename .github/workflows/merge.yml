@@ -11,6 +11,7 @@ on:
       - main
 
 permissions:
+  packages: read
   contents: read
 
 jobs:
@@ -25,10 +26,6 @@ jobs:
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
       - uses: dorny/paths-filter@v3
         id: check
         with:
@@ -49,14 +46,13 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
       # Preparation for future steps
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -74,8 +70,6 @@ jobs:
       - name: Install pnpm and build package
         id: install-pnpm-build
         run: |
-          npm install -g pnpm
-          npm install lerna -g
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter send-backend
           lerna run build-image:backend --scope=send-suite
@@ -107,30 +101,8 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.13
-
-      - name: Set up virtual environment
-        shell: bash
-        run: |
-          python -m pip install virtualenv
-          cd packages/send/pulumi
-          virtualenv ./venv
-
-      - name: Set up Pulumi environment
-        id: pulumi-env
-        shell: bash
-        run: |
-          cd packages/send/pulumi
-          source ./venv/bin/activate
-          curl -fsSL https://get.pulumi.com | sh
-          pip install -Ur requirements.txt
-
       # Deploy to stage
       - name: Deploy new image to stage
-        shell: bash
         env:
           ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
           PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
@@ -153,6 +125,7 @@ jobs:
           EOF
 
           # Use yq to merge the stump into the main config
+          pip3 install yq
           yq -i '. *= load("newimage.yaml")' config.stage.yaml
 
           # Set up the Pulumi environment and update the service
@@ -169,14 +142,13 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
       # Preparation for future steps
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -185,14 +157,8 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       # Stage build steps
       - name: Create stage .env file from secrets
-        shell: bash
         run: |
           cd packages/send/frontend
           cat << EOF > .env
@@ -211,19 +177,17 @@ jobs:
         id: frontend-build-stage
         env:
           BASE_URL: https://send-stage.tb.pro
-        shell: bash
+          IS_CI_AUTOMATION: yes
         run: |
           set -x
           # Initial setup of dependencies
-          npm install -g pnpm
-          npm install -g lerna
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
           cd packages/send/frontend
 
           # Build static frontend assets and the .xpi
-          IS_CI_AUTOMATION=yes pnpm build
+          pnpm build
           mv dist-web ../dist-web-stage
           cd ..
           mv "$(find send-suite-*.xpi)" "send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
@@ -245,7 +209,6 @@ jobs:
 
       # Production build steps
       - name: Create production .env file from secrets
-        shell: bash
         run: |
           cd packages/send/frontend
           cat << EOF > .env
@@ -260,20 +223,13 @@ jobs:
           VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
           EOF
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Build the production frontend's static assets
         id: frontend-build-prod
-        shell: bash
         env:
           BASE_URL: https://send.tb.pro
+          IS_CI_AUTOMATION: yes
         run: |
-          # Initial setup of dependencies
-          npm install -g pnpm
-          npm install lerna -g          
+          # Initial setup of dependencies     
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
@@ -281,7 +237,7 @@ jobs:
           cd packages/send/frontend
 
           # Build static frontend assets and the .xpi
-          IS_CI_AUTOMATION=yes pnpm build
+          pnpm build
           mv dist-web ../dist-web-prod
           cd ..
           # There should be an XPI marked "stage" already here, so we exclude it to get the prod XPI instead
@@ -307,7 +263,6 @@ jobs:
       # Automatically deploy to stage, but not to prod
       - name: Deploy to stage
         id: frontend-deploy
-        shell: bash
         run: |
           cd packages/send/dist-web-stage
           aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
@@ -318,7 +273,6 @@ jobs:
       - name: Deploy to ATN
         continue-on-error: true
         id: xpi-deploy
-        shell: bash
         env:
           ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
           ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
@@ -330,21 +284,16 @@ jobs:
   addon-changes:
     needs: detect-changes
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
-      IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        node-version: ["22"]
+      IS_CI_AUTOMATION: yes
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
 
       # Build steps
       - name: (Send) Create production .env file from secrets
-        shell: bash
         run: |
           cd packages/send/frontend
           cat << EOF > .env
@@ -360,7 +309,6 @@ jobs:
           EOF
 
       - name: (Addon) Create stage .env file from secrets
-        shell: bash
         run: |
           cd packages/addon
           cat << EOF > .env
@@ -375,26 +323,17 @@ jobs:
           VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
           EOF
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Build the stage frontend's static assets
         id: frontend-build-stage
         env:
           BASE_URL: https://send-stage.tb.pro
           IS_CI_AUTOMATION: yes
-        shell: bash
         run: |
-          npm install -g pnpm
-          npm install -g lerna
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
           pnpm install --filter addon
           pnpm install --filter send-frontend
 
-          IS_CI_AUTOMATION=yes
           lerna run build --scope=addon
 
           cd packages/addon
@@ -411,7 +350,6 @@ jobs:
       - name: Deploy to ATN
         continue-on-error: true
         id: xpi-deploy
-        shell: bash
         env:
           ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
           ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
@@ -421,7 +359,6 @@ jobs:
           pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
 
       - name: (Addon) Create prod .env file from secrets
-        shell: bash
         run: |
           cd packages/addon
           cat << EOF > .env
@@ -441,16 +378,12 @@ jobs:
         env:
           BASE_URL: https://send.tb.pro
           IS_CI_AUTOMATION: yes
-        shell: bash
         run: |
-          npm install -g pnpm
-          npm install -g lerna
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
           pnpm install --filter addon
           pnpm install --filter send-frontend
 
-          IS_CI_AUTOMATION=yes
           lerna run build --scope=addon
 
           cd packages/addon
