@@ -64,14 +64,14 @@ pnpm dev:detach
 lerna run test:e2e:ui --scope=send-suite-e2e
 ```
 
-#### CI mode
+#### Headless mode
 
-The tests run automatically in CI against branches/PR in headless mode. To replicate how they run in CI (from the root folder of this repo):
-
+The tests run automatically in CI against branches/PR in headless mode. To run in headless mode:
 ```sh
 docker compose down
 lerna run setup:local --scope=send-suite
-lerna run test:e2e:ci --scope=send-suite-e2e
+pnpm dev:detach
+lerna run test:e2e:headless --scope=send-suite-e2e
 ```
 
 ### Clean up
