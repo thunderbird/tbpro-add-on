@@ -3,7 +3,7 @@
 # Start dev server in background
 # pnpm dev:detach
 export BUILD_ENV=development
-docker compose up -d --build
+docker compose up -f compose-ci.yml -d --build
 
 # Function to cleanup dev server on script exit
 cleanup() {
