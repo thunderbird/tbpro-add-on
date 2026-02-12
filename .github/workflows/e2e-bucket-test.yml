@@ -46,7 +46,7 @@ jobs:
               - 'packages/shared/**'
   end-to-end-tests:
     needs: detect-changes
-    # if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
