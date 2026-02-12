@@ -17,7 +17,7 @@ services:
 
   backend:
     build:
-      context: ./packages/send/backend/
+      context: ./packages/send/backend
       dockerfile: Dockerfile
       args:
         BUILD_ENV: ${BUILD_ENV:-development}
@@ -26,9 +26,9 @@ services:
       - "5555:5555" # for browsing db with prisma studio
       - "9229:9229" # Debugger port
     volumes:
-      - ./packages/send/backend/build:/app
+      - ./packages/send/backend:/app
       - backend-node-modules:/app/node_modules
-      - ./packages/send/backend/build/.env:/app/.env
+      - ./packages/send/backend/.env:/app/.env
     depends_on:
       db:
         condition: service_healthy
@@ -52,10 +52,9 @@ services:
     # Mount only the frontend package directory to avoid overwriting image-owned paths
     volumes:
       - ./packages/send/frontend:/app/packages/send/frontend:rw
-      - frontend-node-modules:/app/packages/send/frontend/node_modules:rw
+      - /app/packages/send/frontend/node_modules
     depends_on:
       - backend
 volumes:
   postgres-data:
   backend-node-modules: # do not create on host
-  frontend-node-modules: # do not create on host
