@@ -4,7 +4,7 @@ set -euo pipefail
 # Quick check for required CLI binaries used by this project.
 # Exits 0 if all found, non-zero if any are missing.
 
-bins=(python pulumi aws vim docker npm lerna pnpm bun ruff)
+bins=(python pulumi aws vim docker npm lerna pnpm bun ruff yq)
 
 missing=()
 for b in "${bins[@]}"; do
