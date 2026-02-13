@@ -2,7 +2,6 @@
 import FolderTree from '@send-frontend/apps/send/components/FolderTree.vue';
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
 import { organizeFiles } from '@send-frontend/lib/folderView';
-import logger from '@send-frontend/logger';
 import { Container } from '@send-frontend/types';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -15,7 +14,7 @@ const folder = ref<Container>(null);
 const containerId = ref(null);
 
 onMounted(async () => {
-  logger.info(`ViewShare ready to get folder for hash`);
+  console.info(`ViewShare ready to get folder for hash`);
   // Using route.params.linkId, get the folder contents
   const container = await sharingStore.getSharedFolder(
     route.params.linkId as string

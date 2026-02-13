@@ -3,7 +3,6 @@ import { trpc } from '@send-frontend/lib/trpc';
 import { validatePassword } from '@send-frontend/lib/validations';
 import useApiStore from '@send-frontend/stores/api-store';
 import { useMutation } from '@tanstack/vue-query';
-import { logger } from 'tbpro-shared';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useExtensionStore } from '../send/stores/extension-store';
@@ -49,7 +48,7 @@ const {
   },
 });
 
-logger.info('using shared package');
+console.info('using shared package');
 
 const validateEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

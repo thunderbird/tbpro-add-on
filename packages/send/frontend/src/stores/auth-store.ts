@@ -1,6 +1,5 @@
 // stores/auth-store.js
 
-import logger from '@send-frontend/logger';
 import { useApiStore, useConfigStore } from '@send-frontend/stores';
 import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
@@ -38,7 +37,7 @@ export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<User | null>(null);
 
   watch(isLoggedIn, (newValue) => {
-    logger.info('isLoggedIn changed', newValue);
+    console.info('isLoggedIn changed', newValue);
   });
 
   // ------- OIDC Authentication ------- //
