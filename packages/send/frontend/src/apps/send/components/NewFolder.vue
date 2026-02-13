@@ -12,7 +12,7 @@ import { useRoute } from 'vue-router';
 const folderStore = useFolderStore();
 const statusStore = useStatusStore();
 const { isRouterLoading } = storeToRefs(statusStore);
-const { isProd } = useConfigStore();
+const { isDev } = useConfigStore();
 const route = useRoute();
 
 const { mutateAsync } = useMutation({
@@ -32,11 +32,11 @@ const isInProfileView = computed(() => {
 
 const shouldShowButton = computed(() => {
   return (
-    !isRouterLoading &&
-    isInProfileView &&
+    !isInProfileView.value &&
+    !isRouterLoading.value &&
     // We're hiding the folder creation button temporaily
     // https://github.com/thunderbird/tbpro-add-on/issues/479
-    !isProd
+    isDev
   );
 });
 </script>
