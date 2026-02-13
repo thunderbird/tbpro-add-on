@@ -133,6 +133,22 @@ See the `docs/` folder for a draft of the detailed documentation.
 
 We're using jwt tokens to authenticate users. Once they go through the login flow, they get a jwt token that is stored as a secure cookie. This is passed on every request to the backend automatically. We use this token to know who is making the request and by decoding it we get user data such as userId and email. We can set how many days the token is valid for and once it expires, the user has to log in again.
 
+# Deployment
+
+## Releasing a new version (stage)
+
+Every time you merge to the `main` branch, a new version of the application is automatically deployed to our staging environments. This is done through GitHub Actions and you can see the workflow [here](./.github/workflows/merge.yml). To ensure that our deployments are consistent, you have to bump the version of the packages you changed in their respective `package.json` files. In the case of the addon, you also need to update the version in `packages/addon/manifest.json` file to match the version set on `package.json`.
+
+## Releasing a new version to production
+
+After validating that the changes work as expected on staging, you can create a new release on GitHub. This will trigger the `release.yml` workflow that will publish the new version of the application to production. You can see the workflow [here](./.github/workflows/release.yml). The release workflow requires you to upload the assets that were built by the merge workflow, you can find the artifacts [here](https://github.com/thunderbird/tbpro-add-on/actions/workflows/merge.yml). Once you create the release, the workflow will deploy the new version to production and publish the addon to ATN.
+
+If for some reason there is an issue with the add-on release, you can manually upload the xpi file to ATN [here](https://addons.thunderbird.net/).
+
+### Release versioning
+
+Although we're using semantic versioning for our packages, the release workflow is using the version set by the [send package](./packages/send/package.json). Until we have a more robust release process, we will be using the send package version as the source of truth for our releases. This means that every time we want to release a new version, we have to update the version in `packages/send/package.json` file and make sure to update the version in `packages/addon/manifest.json` file to match it.
+
 ## Monorepo
 
 ## Project management
@@ -161,7 +177,7 @@ You can run any package's commands by running the following:
 
 For example, If I want to run e2e tests on send, I can run
 
-`lerna run test:e2e:ci --scope=send-suite-e2e`
+`lerna run test:e2e:ci --scope=send-suite`
 
 ### Packages
 
