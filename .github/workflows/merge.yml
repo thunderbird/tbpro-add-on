@@ -125,7 +125,6 @@ jobs:
           EOF
 
           # Use yq to merge the stump into the main config
-          pip3 install yq
           yq -i '. *= load("newimage.yaml")' config.stage.yaml
 
           # Set up the Pulumi environment and update the service
