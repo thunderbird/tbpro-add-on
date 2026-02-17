@@ -7,20 +7,22 @@
   "author": "",
   "main": "index.js",
   "scripts": {
-    "test:e2e": "pnpm exec playwright test --grep dev-desktop --project=firefox --headed",
-    "test:e2e:headless": "pnpm exec playwright test --grep dev-desktop --project=firefox",
-    "test:e2e:ui": "pnpm exec playwright test --grep dev-desktop --project=firefox --ui",
+    "test:e2e": "pnpm exec playwright test --config playwright.config.dev.ts --grep dev-desktop --project=firefox --headed",
+    "test:e2e:headless": "pnpm exec playwright test --config playwright.config.dev.ts --grep dev-desktop --project=firefox",
+    "test:e2e:ui": "pnpm exec playwright test --config playwright.config.dev.ts --grep dev-desktop --project=firefox --ui",
     "test:e2e:ci": "../../../scripts/e2e.sh",
     "test:e2e:nightly": "pnpm exec playwright test --grep desktop-nightly --project=firefox --headed",
     "test:e2e:nightly:ui": "pnpm exec playwright test --grep desktop-nightly --project=firefox --ui",
     "test:e2e:nightly:prod:browserstack:desktop:chromium": "npx browserstack-node-sdk playwright test --grep desktop-nightly --project=Chromium-Win11 --browserstack.buildName 'TB Send Nightly Tests Chromium Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'",
     "test:e2e:nightly:prod:browserstack:desktop:firefox": "npx browserstack-node-sdk playwright test --grep desktop-nightly --project=Firefox-OSX --browserstack.buildName 'TB Send Nightly Tests Firefox Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'",
-    "test:e2e:nightly:prod:browserstack:desktop:safari": "npx browserstack-node-sdk playwright test --grep desktop-nightly --project=Safari-OSX --browserstack.buildName 'TB Send Nightly Tests Safari Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'"
+    "test:e2e:nightly:prod:browserstack:desktop:safari": "npx browserstack-node-sdk playwright test --grep desktop-nightly --project=Safari-OSX --browserstack.buildName 'TB Send Nightly Tests Safari Desktop' --browserstack.config 'browserstack-desktop-nightly.yml'",
+    "test:e2e:nightly:prod:browserstack:mobile:android:chrome": "npx browserstack-node-sdk playwright test --grep mobile-nightly --project=android-chrome --browserstack.buildName 'TB Send Nightly Tests Android Chrome' --browserstack.config 'browserstack-mobile-nightly.yml'",
+    "test:e2e:nightly:prod:browserstack:mobile:ios:safari": "npx browserstack-node-sdk playwright test --grep mobile-nightly --project=ios-safari --browserstack.buildName 'TB Send Nightly Tests iOS Safari' --browserstack.config 'browserstack-mobile-nightly.yml'"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",
     "@types/node": "*",
-    "browserstack-node-sdk": "1.40.8",
+    "browserstack-node-sdk": "1.49.10",
     "dotenv": "^17.2.1",
     "sort-package-json": "*"
   },

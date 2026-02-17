@@ -41,7 +41,7 @@ export class TBAcctsPage {
     await this.passwordInput.fill(String(TB_ACCTS_PWORD));
     await this.page.waitForTimeout(TIMEOUT_1_SECOND);
     await this.page.waitForTimeout(TIMEOUT_1_SECOND);
-    // 'force' is needed for android but doesn't work on ios
+    // 'force' is needed for android but isn't needed on ios (and doesn't work on ios)
     if (testProjectName.includes('android')) {
       await this.signInButton.click({ force: true });
     } else {
