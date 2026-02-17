@@ -358,10 +358,14 @@ export class Keychain {
   rsa: Rsa;
   challenge: Challenge;
   backup: Backup;
+  // This flag is only set explicitly when the user doesn't have the keys to decrypt a container
+  locked: boolean;
   _keys: StoredKey;
   _storage: Storage;
   constructor(storage?: Storage) {
     this._init(storage);
+    // We set this to false by default and let the logic handle if it flips to true
+    this.locked = false;
   }
 
   // A separate _init() allows us to scrub the current keychain
@@ -781,6 +785,7 @@ export async function restoreKeys(
 
     msg.value = '✅ Restore complete';
   } catch (e) {
+    keychain.locked = true;
     const KEY_RESTORE_ERROR = `⛔️ Could not restore keys. Please make sure your backup phrase is correct.`;
 
     console.error(KEY_RESTORE_ERROR, e);
