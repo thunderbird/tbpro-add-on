@@ -41,7 +41,6 @@ onMounted(() => {
   </div>
   <div v-else class="container">
     <div class="profile"><UserDashboard /></div>
-    <!-- <BackupAndRestore /> -->
   </div>
 </template>
 
