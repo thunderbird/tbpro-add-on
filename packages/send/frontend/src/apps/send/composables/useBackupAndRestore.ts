@@ -177,6 +177,7 @@ export const useBackupAndRestore = () => {
 
     try {
       await backupKeys(keychain, api, errorMessage);
+      sendMessageToBridge(passphraseString.value);
       await downloadPassPhrase(passphraseString.value, email);
       await dbUserSetup(userStore, keychain, folderStore);
     } catch (e) {

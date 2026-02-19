@@ -33,13 +33,12 @@ const {
         <StorageBar />
       </div>
     </div>
-    <!-- Row (renders only when access is locked) -->
+    <!-- USERS RESTORING SESSION (renders only when access is locked) -->
     <AccessLocked
       v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
       :on-recover="routeToKeyRestore"
     />
-    <!--  -->
-
+    <!-- FIRST TIME USERS -->
     <BackupKeys
       v-if="backupData === 'SHOULD_ENCRYPT_AND_BACKUP'"
       :make-backup="makeBackup"
@@ -50,6 +49,7 @@ const {
 
     <div class="row">
       <div class="left-column">
+        <!-- GOOD TO GO (user has restored keys from backup) -->
         <SecurityAndPrivacyV2
           v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
           :on-recover="routeToKeyRestore"
@@ -59,7 +59,6 @@ const {
           v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
           :reset-keys="resetKeys"
         />
-        <!-- <BackupAndRestore /> -->
       </div>
       <div class="right-column">
         <SupportBox />
