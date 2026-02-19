@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
 import LoadingComponent from '@send-frontend/apps/common/LoadingComponent.vue';
-import SecureSendIcon from '@send-frontend/apps/common/SecureSendIcon.vue';
 import UserDashboard from '@send-frontend/apps/common/UserDashboard.vue';
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 import { useConfigStore } from '@send-frontend/stores';
@@ -42,21 +40,14 @@ onMounted(() => {
     <LoadingComponent />
   </div>
   <div v-else class="container">
-    <UserDashboard />
-    <BackupAndRestore />
-    <SecureSendIcon />
+    <div class="profile"><UserDashboard /></div>
+    <!-- <BackupAndRestore /> -->
   </div>
 </template>
 
 <style scoped>
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: start;
-  justify-content: center;
-  gap: 1rem 0;
-  margin-top: 2rem;
-}
+@import '@send-frontend/apps/common/tbpro-styles.css';
+
 p {
   color: #000;
   font-size: 13px;

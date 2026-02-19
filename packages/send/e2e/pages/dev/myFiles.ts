@@ -18,7 +18,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
 
   const clickAndWait = await clickAndWaitForIdleBuilder(page);
 
-  const profileButton = page.getByRole("link", { name: "My Files" });
+  const profileButton = page.getByTestId("navlink-encrypted-files");
   await page.waitForSelector(folderRowSelector);
   await profileButton.click();
 
@@ -32,9 +32,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   await page.waitForLoadState("networkidle");
 
   // Find upload box and upload the file
-  expect(await dropZone.textContent({ timeout })).toContain(
-    "files here to upload"
-  );
+  expect(await dropZone.textContent({ timeout })).toContain("files here to upload");
   await dragAndDropFile(page, "#drop-zone", "../../test-files/test.png", "test.png");
   await uploadButton.click();
   // wait for network idle
@@ -95,7 +93,7 @@ export async function share_links({ page, context }: PlaywrightProps) {
   } = fileLocators(page);
   const clickAndWait = await clickAndWaitForIdleBuilder(page);
 
-  const profileButton = page.getByRole("link", { name: "My Files" });
+  const profileButton = page.getByTestId("navlink-encrypted-files");
   await page.waitForSelector(folderRowSelector);
   await clickAndWait(profileButton);
 
