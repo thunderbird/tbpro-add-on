@@ -33,13 +33,16 @@ const handleClickOutside = (event: MouseEvent) => {
 };
 
 const handleLogout = async () => {
-  // If running inside Thunderbird, notify the background script about the logout
+  // If running inside Thunderbird, notify the background script about the logout via token bridge
   try {
-    if (isRunningInsideThunderbird) {
-      // Let background.ts know that we have logged out.
-      browser.runtime.sendMessage({
-        type: SIGN_OUT,
-      });
+    if (isRunningInsideThunderbird.value) {
+      // Send logout message through token bridge to background.ts
+      window.postMessage(
+        {
+          type: SIGN_OUT,
+        },
+        window.location.origin
+      );
     }
   } catch (error) {
     console.error('Error during logout message sending:', error);
