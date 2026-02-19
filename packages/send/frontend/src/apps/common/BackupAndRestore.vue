@@ -28,11 +28,11 @@ const {
   shouldReset,
   resetKeys,
   words,
-  allGood,
+  keysInLocalStorage,
 } = useBackupAndRestore();
 
 watchEffect(() => {
-  if (allGood.value) {
+  if (keysInLocalStorage.value) {
     console.log('Backup and restore completed');
     emit('backup-completed');
   }
