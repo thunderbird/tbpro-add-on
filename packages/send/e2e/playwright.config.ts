@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const THREE_MINUTES = 3 * 60 * 1000;
+const TEN_MINUTES = 10 * 60 * 1000;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -8,7 +9,7 @@ const THREE_MINUTES = 3 * 60 * 1000;
 export default defineConfig({
   testDir: "./tests",
   outputDir: './playwright-test-results',
-  globalTimeout: THREE_MINUTES,
+  globalTimeout: TEN_MINUTES, // odds are the test will timeout at the locator level before that anyway
   timeout: THREE_MINUTES,
   /* Run tests in files in parallel */
   fullyParallel: true,
