@@ -6,7 +6,7 @@
   "applications": {
     "gecko": {
       "id": "inbox-summary@example.com",
-      "strict_min_version": "128.0"
+      "strict_min_version": "140.0"
     }
   },
   "content_security_policy": "script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com https://cdn.jsdelivr.net; object-src 'self'",
