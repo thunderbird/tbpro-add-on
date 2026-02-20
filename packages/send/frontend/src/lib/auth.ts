@@ -38,6 +38,8 @@ export function useAuth() {
       isLoggedIn.value = isValid;
       return isValid;
     },
+    // We want to refresh the data more often inside the extension.
+    // This is because there are more windows opening and closing and we want to keep the data fresh
     refetchOnMount: isExtension.value ? true : false,
     refetchOnWindowFocus: isExtension.value ? true : false,
   });
