@@ -1,4 +1,3 @@
-import { useAuth } from '@send-frontend/lib/auth';
 import {
   GET_LOGIN_STATE,
   LOGIN_STATE_RESPONSE,
@@ -9,6 +8,7 @@ import init from '@send-frontend/lib/init';
 import { validateToken } from '@send-frontend/lib/validations';
 import {
   useApiStore,
+  useAuthStore,
   useExtensionStore,
   useFolderStore,
   useKeychainStore,
@@ -17,6 +17,7 @@ import {
 } from '@send-frontend/stores';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
+import { storeToRefs } from 'pinia';
 
 export function useSendConfig() {
   const userStore = useUserStore();
@@ -26,7 +27,8 @@ export function useSendConfig() {
   const { validators } = useStatusStore();
   const { configureExtension } = useExtensionStore();
   const { initializeClientMetrics } = useMetricsStore();
-  const { isLoggedIn } = useAuth();
+  const authStore = useAuthStore();
+  const { isLoggedIn } = storeToRefs(authStore);
 
   /**
    * Checks browser extension storage for SEND_MESSAGE_TO_BRIDGE value

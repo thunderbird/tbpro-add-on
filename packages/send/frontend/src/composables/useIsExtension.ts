@@ -1,10 +1,17 @@
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { useConfigStore } from '@send-frontend/stores';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 
 export function useIsExtension() {
-  const isExtension = ref<boolean>(false);
   const { isThunderbirdHost } = useConfigStore();
+
+  const isExtension = computed(() => {
+    const urlMatchesBaseURL = window.location.href.includes(BASE_URL);
+    if (urlMatchesBaseURL && !isThunderbirdHost) {
+      return false;
+    }
+    return true;
+  });
 
   const isRunningInsideThunderbird = computed(() => {
     return isThunderbirdHost;
@@ -32,14 +39,6 @@ export function useIsExtension() {
     return 'UNKNOWN ENVIRONMENT';
   });
 
-  onMounted(() => {
-    const urlMatchesBaseURL = window.location.href.includes(BASE_URL);
-    if (urlMatchesBaseURL && !isThunderbirdHost) {
-      isExtension.value = false;
-      return;
-    }
-    isExtension.value = true;
-  });
   return {
     isExtension,
     // for debugging
