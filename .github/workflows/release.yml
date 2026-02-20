@@ -11,12 +11,15 @@ on:
       - published
 
 permissions:
+  packages: read
   contents: read
 
 jobs:
   deploy-backend:
     environment: send-prod
     runs-on: ubuntu-latest
+    container:
+        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
@@ -49,7 +52,6 @@ jobs:
       - name: Retag image
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         id: retag-image
-        shell: bash
         run: |
           # Gather info
           unzip ecr_tag.zip  # Produces ecr_tag.txt
@@ -66,20 +68,6 @@ jobs:
           docker tag $source_tag $target_tag
           docker push $target_tag
 
-      - name: Set up Python 3.13
-        if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.13
-
-      - name: Set up virtual environment
-        if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
-        shell: bash
-        run: |
-          python -m pip install virtualenv
-          cd packages/send/pulumi
-          virtualenv ./venv
-
       - name: Configure AWS credentials
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         uses: aws-actions/configure-aws-credentials@v4
@@ -88,21 +76,10 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Set up Pulumi environment
-        if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
-        id: pulumi-env
-        shell: bash
-        run: |
-          cd packages/send/pulumi
-          source ./venv/bin/activate
-          curl -fsSL https://get.pulumi.com | sh
-          pip install -Ur requirements.txt
-
       - name: Deploy version-tagged image to prod
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         env:
           PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
-        shell: bash
         run: |
           # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
           # to do with the GHA workflow "env" settings.
@@ -127,8 +104,7 @@ jobs:
           yq -i '. *= load("newimage.yaml")' config.prod.yaml
           export PULUMI_CONFIG_PASSPHRASE='${{ secrets.PULUMI_PASSPHRASE_PROD }}'
 
-          # Set up the Pulumi environment and update the service
-          source ./venv/bin/activate
+          # update the service
           pulumi login
           pulumi stack select prod
           TBPULUMI_DISABLE_PROTECTION=True \
@@ -139,6 +115,8 @@ jobs:
   deploy-frontend:
     environment: send-prod
     runs-on: ubuntu-latest
+    container:
+        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
@@ -160,7 +138,6 @@ jobs:
       - name: Deploy to production
         if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
         id: frontend-deploy
-        shell: bash
         run: |
           unzip -d frontend-source dist-web-prod.zip
           cd frontend-source
@@ -171,14 +148,11 @@ jobs:
 
   deploy-xpi-prod:
     runs-on: ubuntu-latest
+    container:
+        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
-      # Preparation for future steps
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
       - name: Check out the code
         if: contains(github.event.release.assets.*.name, 'xpi-prod.zip')
         uses: actions/checkout@v4
@@ -191,16 +165,10 @@ jobs:
           version: ${{ github.event.release.id }}
           file: xpi-prod.zip
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Deploy to ATN
         continue-on-error: true
         if: contains(github.event.release.assets.*.name, 'xpi-prod.zip')
         id: xpi-deploy
-        shell: bash
         env:
           ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
           ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
@@ -208,7 +176,6 @@ jobs:
         run: |
           # Initial setup of dependencies
           mv xpi-prod.zip packages/send
-          npm install -g pnpm
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter tbpro-shared
           pnpm i --filter send-frontend
