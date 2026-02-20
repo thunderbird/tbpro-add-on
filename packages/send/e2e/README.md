@@ -184,6 +184,18 @@ To run on Safari Desktop:
 lerna run test:e2e:nightly:prod:browserstack:desktop:safari
 ```
 
+To run on Android Chrome:
+
+```sh
+lerna run test:e2e:nightly:prod:browserstack:mobile:android:chrome
+```
+
+To run on iOS Safari:
+
+```sh
+lerna run test:e2e:nightly:prod:browserstack:mobile:ios:safari
+```
+
 ## Debugging E2E Test Failures
 
 Here is some advice for how to investigate E2E test failures.

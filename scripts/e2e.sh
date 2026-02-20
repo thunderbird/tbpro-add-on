@@ -59,7 +59,7 @@ echo "Vite dev server is ready"
 
 
 # Run tests in parallel with docker logs
-pnpm exec playwright test --grep dev-desktop --config ./send/e2e/playwright.config.ts  &
+pnpm exec playwright test --grep dev-desktop --config ./send/e2e/playwright.config.dev.ts  &
 PLAYWRIGHT_PID=$!
 
 # Wait for tests to complete
