@@ -1,14 +1,12 @@
 <script lang="ts" setup>
 import CheckCircleIcon from '@send-frontend/apps/common/CheckCircleIcon.vue';
-import {
-  SUPPORT_URL,
-  THUNDERMAIL_URL,
-} from '@send-frontend/apps/common/constants';
+import { THUNDERMAIL_URL } from '@send-frontend/apps/common/constants';
 import SendIconTBPro from '@send-frontend/apps/common/SendIconTBPro.vue';
 import ThundermailIcon from '@send-frontend/apps/common/ThundermailIcon.vue';
 import { OPEN_MANAGEMENT_PAGE } from '@send-frontend/lib/const';
 import { trpc } from '@send-frontend/lib/trpc';
 import { onMounted } from 'vue';
+import SupportBox from '../views/SupportBox.vue';
 
 async function setFTUEComplete() {
   await trpc.markFTUEComplete.mutate();
@@ -97,43 +95,7 @@ async function handleSetEncryptionPassword() {
 
       <!-- Right Column - Support Card -->
       <div class="right-column">
-        <div class="support-card">
-          <h3 class="support-heading">Need Support?</h3>
-          <nav class="support-links">
-            <a
-              :href="SUPPORT_URL"
-              class="support-link"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Need help with your account? →
-            </a>
-            <a
-              :href="SUPPORT_URL"
-              class="support-link"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Troubleshooting for desktop →
-            </a>
-            <a
-              :href="SUPPORT_URL"
-              class="support-link"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learn more about encryption →
-            </a>
-            <a
-              :href="SUPPORT_URL"
-              class="support-link"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Export your data →
-            </a>
-          </nav>
-        </div>
+        <SupportBox />
       </div>
     </div>
   </div>
@@ -273,39 +235,6 @@ async function handleSetEncryptionPassword() {
 
 .right-column {
   display: flex;
-}
-
-.support-card {
-  background: #1e293b;
-  border-radius: 8px;
-  padding: 2rem;
-  height: fit-content;
-  width: 100%;
-}
-
-.support-heading {
-  color: white;
-  font-size: 1.5rem;
-  font-weight: 400;
-  margin: 0 0 1.5rem 0;
-}
-
-.support-links {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.support-link {
-  color: #e2e8f0;
-  font-size: 0.9375rem;
-  text-decoration: none;
-  transition: color 0.2s;
-  display: block;
-}
-
-.support-link:hover {
-  color: white;
 }
 
 @media (max-width: 1024px) {

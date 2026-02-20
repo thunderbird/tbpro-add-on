@@ -6,8 +6,10 @@ import {
   CONTACT_FORM_URL,
 } from '@send-frontend/apps/common/constants';
 import { useAuth } from '@send-frontend/lib/auth';
+import { useNavigation } from '../composables/useNavigation';
 
 const { isLoggedIn } = useAuth();
+const { navLinkPaths } = useNavigation();
 </script>
 
 <template>
@@ -22,11 +24,8 @@ const { isLoggedIn } = useAuth();
 
         <div>
           <ul v-if="isLoggedIn">
-            <li>
-              <router-link to="/send">Encrypted Files</router-link>
-            </li>
-            <li>
-              <router-link to="/send/profile">Dashboard</router-link>
+            <li v-for="navLink in navLinkPaths" :key="navLink.path">
+              <router-link :to="navLink.path">{{ navLink.label }}</router-link>
             </li>
           </ul>
 

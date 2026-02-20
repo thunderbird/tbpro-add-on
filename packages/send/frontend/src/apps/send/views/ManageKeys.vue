@@ -36,7 +36,7 @@ const copyToClipboard = () => {
   <div class="keys-container">
     <KeysTemplate>
       <div class="key-section">
-        <h2 class="section-title">Manage Encryption Key</h2>
+        <h2 class="title">Manage Encryption Key</h2>
 
         <p class="section-description">
           This key restores your profile when you sign in on a new device. Your
@@ -101,6 +101,7 @@ const copyToClipboard = () => {
 </template>
 
 <style scoped>
+@import '@send-frontend/apps/common/tbpro-styles.css';
 .keys-container {
   display: flex;
   flex-direction: column;

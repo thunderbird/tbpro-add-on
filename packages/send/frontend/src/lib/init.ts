@@ -1,6 +1,7 @@
 import { INIT_ERRORS } from '@send-frontend/apps/send/const';
 import { FolderStore } from '@send-frontend/apps/send/stores/folder-store.types';
 import { Keychain } from '@send-frontend/lib/keychain';
+import { useFolderStore } from '@send-frontend/stores';
 import { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
 
 /**
@@ -13,7 +14,7 @@ import { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
 async function init(
   userStore: UserStore,
   keychain: Keychain,
-  folderStore: FolderStore
+  folderStore: FolderStore | ReturnType<typeof useFolderStore>
 ): Promise<INIT_ERRORS> {
   const hasUser = await userStore.loadFromLocalStorage();
   const hasKeychain = await keychain.load();

@@ -1,4 +1,6 @@
-import { FolderStore } from '@send-frontend/apps/send/stores/folder-store';
+import useFolderStore, {
+  FolderStore,
+} from '@send-frontend/apps/send/stores/folder-store';
 import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
 import init from '@send-frontend/lib/init';
 import { UserStoreType } from '@send-frontend/stores/user-store';
@@ -226,7 +228,7 @@ export const formatLoginURL = (url: string) => {
 export async function dbUserSetup(
   userStore: UserStoreType,
   keychain: Keychain,
-  folderStore: FolderStore
+  folderStore: FolderStore | ReturnType<typeof useFolderStore>
 ) {
   // Populate the user if they exist
   const didPopulate = await userStore.populateFromBackend();

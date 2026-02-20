@@ -19,3 +19,7 @@ const { isOverlay = false } = defineProps<Props>();
     </div>
   </div>
 </template>
+
+<style scoped>
+@import '@send-frontend/apps/common/tbpro-styles.css';
+</style>

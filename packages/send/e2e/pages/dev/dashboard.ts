@@ -32,7 +32,7 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
   await backupKeysButtonOverlay.click();
 
   // look for folder
-  const profileButton = page.getByRole("link", { name: "My Files" });
+  const profileButton = page.getByTestId("navlink-encrypted-files");
   await profileButton.click();
 
   await saveStorage(context);
@@ -43,20 +43,14 @@ export async function log_out_restore_keys() {
   // Log in with a new page to simulate a new session
   const { page } = await setup_browser({ usesEmptyStorage: true });
   const secondPage = page;
-  const {
-    emailField,
-    passwordField,
-    submitLogin,
-    restoreKeysButton,
-    restorekeyInput,
-    recoverAccessButton,
-  } = dashboardLocators(page);
+  const { emailField, passwordField, submitLogin, restoreKeysButton, restorekeyInput, recoverAccessButton } =
+    dashboardLocators(page);
   const { folderRowSelector, folderRowTestID } = fileLocators(page);
 
   secondPage.on("dialog", (dialog) => dialog.accept());
 
   await secondPage.goto("/send/profile");
-  
+
   // wait for network idle
   await secondPage.waitForLoadState("networkidle");
 
@@ -100,7 +94,7 @@ export async function reset_keys({ page }: PlaywrightProps) {
 
   const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
 
-  let profileButton = page.getByRole("link", { name: "My Files" });
+  let profileButton = page.getByTestId("navlink-encrypted-files");
   // Create a new folder
   await page.getByTestId("new-folder-button").click();
 
@@ -108,10 +102,9 @@ export async function reset_keys({ page }: PlaywrightProps) {
   // Check that the created folder exists
   await page.waitForSelector(folderRowSelector);
 
-  await page.goto("/send/profile");
+  await page.goto("/send/security-and-privacy");
 
   // Restore passphrase (account included)
-  await securityButton.click();
   await showReset.click();
   await understandCheckbox.click();
   await dangerButton.click();

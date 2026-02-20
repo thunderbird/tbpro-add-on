@@ -1,17 +1,10 @@
-const ALLOWED_ORIGINS = new Set([
-  'https://auth-stage.tb.pro',
-  'https://send-stage.tb.pro',
-  'https://send-backend-stage.tb.pro',
-  'http://localhost:5173', // dev
-  'http://127.0.0.1:5173', // dev
-]);
-
 const PING = 'TB/PING';
 const BRIDGE_PING = 'APP/PING';
 const BRIDGE_READY = 'TB/BRIDGE_READY';
 const OIDC_USER = 'TB/OIDC_USER';
 const OIDC_TOKEN = 'TB/OIDC_TOKEN';
 const SIGN_IN_COMPLETE = 'SIGN_IN_COMPLETE';
+const SIGN_OUT = 'SIGN_OUT';
 const SEND_MESSAGE_TO_BRIDGE = 'SEND_MESSAGE_TO_BRIDGE';
 const GET_LOGIN_STATE = 'GET_LOGIN_STATE';
 const LOGIN_STATE_RESPONSE = 'LOGIN_STATE_RESPONSE';
@@ -103,6 +96,12 @@ window.addEventListener('message', (e) => {
   if (e?.data?.type === OPEN_MANAGEMENT_PAGE) {
     browser.runtime.sendMessage({
       type: OPEN_MANAGEMENT_PAGE,
+    });
+  }
+
+  if (e?.data?.type === SIGN_OUT) {
+    browser.runtime.sendMessage({
+      type: SIGN_OUT,
     });
   }
 });

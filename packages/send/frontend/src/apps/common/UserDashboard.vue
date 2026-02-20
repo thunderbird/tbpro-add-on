@@ -1,134 +1,84 @@
 <script setup lang="ts">
-import LogOutButton from '@send-frontend/apps/send/elements/LogOutButton.vue';
-import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 import { useAuth } from '@send-frontend/lib/auth';
-import { DAYS_TO_EXPIRY, SIGN_OUT } from '@send-frontend/lib/const';
-import { trpc } from '@send-frontend/lib/trpc';
 import useUserStore from '@send-frontend/stores/user-store';
-import { useQuery } from '@tanstack/vue-query';
-import prettyBytes from 'pretty-bytes';
-import { computed } from 'vue';
-import ProgressBarDashboard from '../send/components/ProgressBarDashboard.vue';
-import { useStatusStore } from '../send/stores/status-store';
-import LoadingComponent from './LoadingComponent.vue';
-import RenderOnEnvironment from './RenderOnEnvironment.vue';
+import { useBackupAndRestore } from '../send/composables/useBackupAndRestore';
+import AccessLocked from '../send/views/AccessLocked.vue';
+import BackupKeys from '../send/views/BackupKeys.vue';
+import ManageEncryptionKeys from '../send/views/ManageEncryptionKeys.vue';
+import SecurityAndPrivacyV2 from '../send/views/SecurityAndPrivacyV2.vue';
+import StorageBar from '../send/views/StorageBar.vue';
+import SupportBox from '../send/views/SupportBox.vue';
 
-const { user } = useUserStore();
-const { isRunningInsideThunderbird } = useIsExtension();
-const { validators } = useStatusStore();
-const { clearUserFromStorage } = useUserStore();
 const { logOutAuth } = useAuth();
 
-const handleLogout = async () => {
-  // If running inside Thunderbird, notify the background script about the logout
-  try {
-    if (isRunningInsideThunderbird) {
-      // Let background.ts know that we have logged out.
-      browser.runtime.sendMessage({
-        type: SIGN_OUT,
-      });
-    }
-  } catch (error) {
-    console.error('Error during logout message sending:', error);
-  }
-
-  // Log out from the app and run validators to reset the app state
-  try {
-    await clearUserFromStorage();
-    await logOutAuth();
-    await validators();
-  } catch (error) {
-    console.error('Error during logout:', error);
-  }
-};
-
+const { user } = useUserStore();
 const {
-  data: size,
-  error,
-  isLoading: loadingSize,
-} = useQuery({
-  queryKey: ['getTotalSize'],
-  queryFn: async () => {
-    return trpc.getTotalUsedStorage.query();
-  },
-});
-
-const { data: u, isLoading: loadingDashboard } = useQuery({
-  queryKey: ['getUserDataDashboard'],
-  queryFn: async () => {
-    return await trpc.getUserData.query();
-  },
-});
-
-const isLoading = computed(() => {
-  return loadingSize.value || loadingDashboard.value;
-});
-
-const hasLimitedStorage = computed(() => {
-  return u?.value?.userData?.tier === 'EPHEMERAL';
-});
-
-const activeText = computed(() => {
-  const activeText = prettyBytes(size.value.active);
-  const limitText = prettyBytes(size.value.limit);
-
-  return `${activeText} of ${limitText}`;
-});
-
-const percentageUsed = computed(() => {
-  return (size.value.active * 100) / size.value.limit;
-});
+  backupData,
+  regeneratePassphrase,
+  makeBackup,
+  shouldUnlock,
+  resetKeys,
+  routeToKeyRestore,
+  words,
+} = useBackupAndRestore();
 </script>
 <template>
-  <section class="min-w-72">
-    <h1>Send Storage</h1>
-    <p v-if="error">{{ error.message }}</p>
-    <h2 class="email">{{ user.thundermailEmail }}</h2>
-
-    <LoadingComponent v-if="isLoading" />
-
-    <div v-else>
-      <p v-if="hasLimitedStorage">
-        Total storage used:
-        <span class="active">{{ size?.active }} active</span> /
-        <span class="expired">{{ size?.expired }} expired</span>
-      </p>
-
-      <div v-if="!error && !loadingSize">
-        <p class="font-bold">{{ activeText }}</p>
-        <ProgressBarDashboard :percentage="percentageUsed" />
+  <section class="content-layout">
+    <div class="row">
+      <div class="left-column">
+        <div class="email">Welcome,</div>
+        <h2 class="email">{{ user.thundermailEmail }}</h2>
       </div>
+      <div class="right-column">
+        <StorageBar />
+      </div>
+    </div>
+    <!-- USERS RESTORING SESSION (renders only when access is locked) -->
+    <AccessLocked
+      v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
+      :on-recover="routeToKeyRestore"
+    />
+    <!-- FIRST TIME USERS -->
+    <BackupKeys
+      v-if="backupData === 'SHOULD_ENCRYPT_AND_BACKUP'"
+      :make-backup="makeBackup"
+      :words="words"
+      :regenerate-passphrase="regeneratePassphrase"
+      :log-out-auth="logOutAuth"
+    />
 
-      <p v-if="hasLimitedStorage">
-        Your files expire after {{ DAYS_TO_EXPIRY }} days
-      </p>
-
-      <RenderOnEnvironment
-        :environment-type="[
-          'WEB APP OUTSIDE THUNDERBIRD',
-          'EXTENSION INSIDE THUNDERBIRD',
-        ]"
-      >
-        <log-out-button :log-out="handleLogout" />
-      </RenderOnEnvironment>
+    <div class="row">
+      <div class="left-column">
+        <!-- GOOD TO GO (user has restored keys from backup) -->
+        <SecurityAndPrivacyV2
+          v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
+          :on-recover="routeToKeyRestore"
+          :on-reset="resetKeys"
+        />
+        <ManageEncryptionKeys
+          v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
+          :reset-keys="resetKeys"
+        />
+      </div>
+      <div class="right-column">
+        <SupportBox />
+      </div>
     </div>
   </section>
 </template>
 
 <style lang="css" scoped>
-h1 {
-  font-size: 20px;
-  font-weight: 500;
+@import '@send-frontend/apps/common/tbpro-styles.css';
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
 }
-.expired {
-  color: var(--colour-ti-critical);
-}
-.active {
-  color: var(--colour-send-primary);
-}
-.email {
-  color: #737584;
-  font-weight: 400;
-  font-size: 16px;
+
+@media (max-width: 1024px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
