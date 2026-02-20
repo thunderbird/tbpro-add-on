@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "1.3.6",
+  "version": "1.3.7",
   "author": "Thunderbird Team",
   "name": "__MSG_thunderbirdPro__",
   "description": "__MSG_extensionDescription__",
