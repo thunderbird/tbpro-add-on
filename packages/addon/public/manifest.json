@@ -7,7 +7,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "tbpro-addon-stage@thunderbird.net",
-      "strict_min_version": "128.0",
+      "strict_min_version": "140.0",
       "strict_max_version": "149.*"
     }
   },
