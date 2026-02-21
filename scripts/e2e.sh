@@ -20,7 +20,7 @@ pwd
 
 # Start dev server in background
 if [ "$IS_CI_AUTOMATION" = "yes" ]; then
-  BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
+  BUILD_ENV=production docker compose -f "compose.ci.yml" up -d --build
 else
   pnpm dev:detach
 fi
@@ -56,7 +56,7 @@ echo "HTTPS server is ready"
 
 # Start docker logs in background
 if [ "$IS_CI_AUTOMATION" = "yes" ]; then
-  docker compose -f "$REPO_ROOT/compose.ci.yml" logs -f &
+  docker compose -f "compose.ci.yml" logs -f &
 else
   docker compose logs -f &
 fi
