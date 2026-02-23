@@ -51,7 +51,7 @@
     "@tweedegolf/sab-adapter-backblaze-b2": "^1.0.5",
     "@tweedegolf/sab-adapter-local": "^1.0.7",
     "@tweedegolf/storage-abstraction": "^2.1.6",
-    "axios": "^1.12.0",
+    "axios": "^1.13.5",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
