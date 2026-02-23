@@ -1,0 +1,54 @@
+services:
+  db:
+    image: "postgres:15"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=send-suite
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./packages/send/backend
+      dockerfile: Dockerfile
+      args:
+        BUILD_ENV: ${BUILD_ENV:-development}
+    ports:
+      - "8080:8080"
+      - "5555:5555" # for browsing db with prisma studio
+      - "9229:9229" # Debugger port
+    env_file:
+      - ./packages/send/backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  reverse-proxy:
+    build:
+      context: ./packages/send/backend/tls-dev-proxy/
+    ports:
+      - "8088:12345"
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: ./
+      dockerfile: ./dockerfiles/Dockerfile-frontend
+      args:
+        BUILD_ENV: ${BUILD_ENV:-development}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:

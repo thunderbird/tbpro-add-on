@@ -17,7 +17,7 @@
     "watch:assist": "nodemon --verbose  --watch packages/assist/frontend/ --ext html,css,vue,json,ts --ignore packages/assist/frontend/dist --ignore packages/assist/frontend/public --exec 'pnpm run build:assist:dev'",
     "teardown": "docker compose down",
     "dev:detach": "BUILD_ENV=production docker compose up -d --build",
-    "test:integration:ci": "./scripts/integration.sh"
+    "test:integration:ci": "IS_CI_AUTOMATION=yes ./scripts/integration.sh"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
