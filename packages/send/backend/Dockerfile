@@ -17,6 +17,7 @@ ADD prisma ./prisma
 ADD public ./public
 ADD scripts ./scripts
 ADD src ./src
+ADD vitest.integration.config.js ./
 
 # build prodction
 FROM base AS build_lockfile_production

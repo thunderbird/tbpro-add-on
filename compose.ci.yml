@@ -25,10 +25,8 @@ services:
       - "8080:8080"
       - "5555:5555" # for browsing db with prisma studio
       - "9229:9229" # Debugger port
-    volumes:
-      - ./packages/send/backend:/app
-      - backend-node-modules:/app/node_modules
-      - ./packages/send/backend/.env:/app/.env
+    env_file:
+      - ./packages/send/backend/.env
     depends_on:
       db:
         condition: service_healthy
@@ -49,12 +47,8 @@ services:
         BUILD_ENV: ${BUILD_ENV:-development}
     ports:
       - "5173:5173"
-    # Mount only the frontend package directory to avoid overwriting image-owned paths
-    volumes:
-      - ./packages/send/frontend:/app/packages/send/frontend:rw
-      - /app/packages/send/frontend/node_modules
     depends_on:
       - backend
+
 volumes:
   postgres-data:
-  backend-node-modules: # do not create on host
