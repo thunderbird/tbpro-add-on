@@ -10,6 +10,13 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
     return;
   }
 
+  // Skip if OIDC credentials are not configured
+  if (!credentials.TBPRO_USERNAME || !credentials.TBPRO_PASSWORD) {
+    console.log("Skipping OIDC login test: TBPRO_USERNAME/TBPRO_PASSWORD not set.");
+    await context.close();
+    return;
+  }
+
   const browser = context.browser();
   if (!browser) {
     throw new Error("Browser context is not available");
