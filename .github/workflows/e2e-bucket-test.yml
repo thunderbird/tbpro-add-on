@@ -46,7 +46,7 @@ jobs:
               - 'packages/send/frontend/**'
             shared-changed:
               - 'packages/shared/**'
-  end-to-end-tests:
+  end-to-end-bucket-tests:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest

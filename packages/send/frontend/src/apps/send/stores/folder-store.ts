@@ -34,7 +34,6 @@ import { blobStream } from '@send-frontend/lib/streams';
 import { trpc } from '@send-frontend/lib/trpc';
 import useMetricsStore from '@send-frontend/stores/metrics';
 
-import logger from '@send-frontend/logger';
 import type { ProcessStage } from './status-store';
 import { useStatusStore } from './status-store';
 
@@ -106,7 +105,7 @@ const useFolderStore = defineStore('folderManager', () => {
       // We want to return the value in case we need it immediately
       return result;
     } catch {
-      logger.info('No default folder set for user');
+      console.info('No default folder set for user');
       return null;
     }
   }

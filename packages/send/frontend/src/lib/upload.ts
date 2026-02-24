@@ -39,7 +39,26 @@ export default class Uploader {
     originalFileSize: number
   ) {
     const blobSizes = blobs.map((blob) => blob.size);
-    let completedParts = 0;
+    const totalBlobSize = blobSizes.reduce((sum, size) => sum + size, 0);
+    // Track progress for each part individually to handle concurrent uploads
+    const partProgress = new Array(blobs.length).fill(0);
+
+    const updateOverallProgress = () => {
+      if (!isMultipart || blobs.length === 1) {
+        // For single file uploads, use the part progress directly
+        mainTracker.setProgress(Math.min(partProgress[0], originalFileSize));
+      } else {
+        // Calculate overall progress by summing all parts' progress
+        // and scaling to the original file size
+        const totalProgress = partProgress.reduce(
+          (sum, progress) => sum + progress,
+          0
+        );
+        const overallProgress =
+          (totalProgress / totalBlobSize) * originalFileSize;
+        mainTracker.setProgress(Math.min(overallProgress, originalFileSize));
+      }
+    };
 
     return {
       getPartTracker: (partIndex: number) => {
@@ -72,32 +91,18 @@ export default class Uploader {
               mainTracker.setText(message);
             }
           },
-          setProgress: (partProgress: number) => {
-            if (!isMultipart || blobs.length === 1) {
-              // For single file uploads, use the part progress directly
-              mainTracker.setProgress(Math.min(partProgress, originalFileSize));
-            } else {
-              // Calculate overall progress based on original file size:
-              // (completed_parts / total_parts) * original_size + (current_part_progress / current_part_size) * (original_size / total_parts)
-              const completedProgress =
-                (completedParts / blobs.length) * originalFileSize;
-              const currentPartRatio = Math.min(partProgress / partSize, 1); // Ensure we don't exceed 100%
-              const currentPartProgress =
-                currentPartRatio * (originalFileSize / blobs.length);
-              const overallProgress = completedProgress + currentPartProgress;
-
-              mainTracker.setProgress(
-                Math.min(overallProgress, originalFileSize)
-              );
-            }
+          setProgress: (progress: number) => {
+            // Update this part's progress
+            partProgress[partIndex] = Math.min(progress, partSize);
+            // Recalculate overall progress based on all parts
+            updateOverallProgress();
           },
         };
       },
       markPartComplete: (partIndex: number) => {
-        completedParts = partIndex + 1;
-        // Set progress to reflect completed parts based on original file size
-        const progress = (completedParts / blobs.length) * originalFileSize;
-        mainTracker.setProgress(progress);
+        // Mark this part as fully complete
+        partProgress[partIndex] = blobSizes[partIndex];
+        updateOverallProgress();
       },
     };
   }
@@ -161,11 +166,11 @@ export default class Uploader {
       fileBlob.size // Pass original file size
     );
 
-    const uploadResponses: Item[] = [];
-
-    // Process uploads sequentially to maintain proper progress tracking
-    for (let index = 0; index < blobs.length; index++) {
-      const blob = blobs[index];
+    // Process all uploads concurrently for better performance
+    const uploadPart = async (
+      blob: NamedBlob,
+      index: number
+    ): Promise<Item | null> => {
       const filename = blob.name;
       const isBucketStorage = api.isBucketStorage;
 
@@ -279,10 +284,31 @@ export default class Uploader {
         },
       };
 
-      uploadResponses.push(item);
-
       // Mark this part as complete for progress tracking
       multipartTracker.markPartComplete(index);
+
+      return item;
+    };
+
+    // Process uploads in batches of 5 for better resource management
+    const uploadResponses: Item[] = [];
+    const BATCH_SIZE = 5;
+
+    for (let i = 0; i < blobs.length; i += BATCH_SIZE) {
+      const batch = blobs.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch.map((blob, batchIndex) => {
+        const index = i + batchIndex;
+        return uploadPart(blob, index);
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+
+      // Check if any uploads in this batch failed
+      if (batchResults.some((response) => response === null)) {
+        return null;
+      }
+
+      uploadResponses.push(...batchResults);
     }
 
     return uploadResponses;

@@ -27,7 +27,6 @@ import {
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { storeToRefs } from 'pinia';
 
-import logger from '@send-frontend/logger';
 import NotFoundPage from '../common/NotFoundPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
@@ -277,7 +276,7 @@ router.beforeEach(async (to, from, next) => {
         await userStore.populateFromBackend();
       }
     } catch (error) {
-      logger.info('Error restoring keys', error);
+      console.info('Error restoring keys', error);
     }
   }
 

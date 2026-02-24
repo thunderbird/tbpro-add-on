@@ -4,7 +4,7 @@ import { navigateToSendAndSignIn } from '../../utils/utils';
 import { DashboardPage } from '../../pages/dashboard-page';
 
 import {
-  PLAYWRIGHT_TAG_DESKTOP_NIGHTLY,
+  PLAYWRIGHT_TAG_MOBILE_NIGHTLY,
   TIMEOUT_1_SECOND,
   TIMEOUT_5_SECONDS,
  } from "../../const/const"
@@ -26,11 +26,11 @@ test.beforeEach(async ({ page }) => {
  * each time but that's fine; we just don't want the very first setup encyption keys dialog which
  * will appear the very first time a new account is signed into send.
  */
-test.describe('sign-in (desktop)', () => {
-  test('able to sign-in to tb send on desktop browser', {
-    tag: [PLAYWRIGHT_TAG_DESKTOP_NIGHTLY],
-  }, async ({ page }) => {
-    await navigateToSendAndSignIn(page);
+test.describe('sign-in (mobile)', () => {
+  test('able to sign-in to tb send on mobile browser', {
+    tag: [PLAYWRIGHT_TAG_MOBILE_NIGHTLY],
+  }, async ({ page }, testInfo) => {
+    await navigateToSendAndSignIn(page, testInfo.project.name); //ie. ios-safari
 
     // verify we're now on the tb send dashboard, give lots of time as BrowserStack can be slow
     await expect(dashboardPage.sendStorageHdr).toBeVisible();

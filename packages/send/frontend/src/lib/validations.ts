@@ -1,4 +1,3 @@
-import logger from '@send-frontend/logger';
 import type { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
 import { UserType } from '@send-frontend/types';
 import { ApiConnection } from './api';
@@ -87,7 +86,7 @@ export const validateUser = async (
       return userResponse;
     }
   } catch (error) {
-    logger.error('Error validating user', error);
+    console.error('Error validating user', error);
     return null;
   }
 };
@@ -152,7 +151,7 @@ export const validator = async ({
   } catch {
     validations.hasCorrectKeys = false;
     shouldClearSessionAndStorage = true;
-    logger.error('Incorrect passphrase. Removing local storage data.');
+    console.error('Incorrect passphrase. Removing local storage data.');
   }
 
   /* 
@@ -164,7 +163,7 @@ export const validator = async ({
     userIDFromBackend !== userIDFromStore
   ) {
     // This check prevents data corruption if the user has local storage from a different user
-    logger.error('User ID mismatch. Removing local storage data.');
+    console.error('User ID mismatch. Removing local storage data.');
     shouldClearSessionAndStorage = true;
   } else {
     /* 

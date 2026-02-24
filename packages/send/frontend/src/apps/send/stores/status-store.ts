@@ -50,7 +50,7 @@ export const useStatusStore = defineStore('status', () => {
   }
 
   function setProgress(number: number) {
-    console.log('setting progress', number);
+    console.info('setting progress', number);
     debouncedUpdate(number);
   }
 

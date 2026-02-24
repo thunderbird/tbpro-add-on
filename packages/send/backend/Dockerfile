@@ -17,6 +17,7 @@ ADD prisma ./prisma
 ADD public ./public
 ADD scripts ./scripts
 ADD src ./src
+ADD vitest.integration.config.js ./
 
 # build prodction
 FROM base AS build_lockfile_production
@@ -39,9 +40,9 @@ FROM build_app AS runtime_production
 ENV runtime_user=send
 # Add runtime user
 ONBUILD RUN echo "Add runtime user"
-ONBUILD RUN useradd ${runtime_user} -d /home/${runtime_user}
+ONBUILD RUN useradd -m ${runtime_user} -d /home/${runtime_user}
 # Chown /app to runtime_user
-ONBUILD RUN chown -Rvf ${runtime_user} /app
+ONBUILD RUN chown -Rf ${runtime_user} /app
 # Switch to runtime user
 ONBUILD USER ${runtime_user}
 

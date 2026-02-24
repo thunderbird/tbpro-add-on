@@ -9,7 +9,7 @@
   },
   "features": {
     "ghcr.io/devcontainers/features/python:1": {
-      "version": 3.13
+      "version": "3.13"
     },
     "ghcr.io/devcontainers-extra/features/pulumi:1": {},
     "ghcr.io/jsburckhardt/devcontainer-features/ruff:1": {},
@@ -18,7 +18,8 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers-extra/features/lerna-npm:1": {},
-    "ghcr.io/shyim/devcontainers-features/bun:0": {}
+    "ghcr.io/shyim/devcontainers-features/bun:0": {},
+    "ghcr.io/larsnieuwenhuizen/features/jqyq:0": {}
   },
   "mounts": [
     // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
