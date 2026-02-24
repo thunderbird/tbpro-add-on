@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { PrimaryButton } from '@thunderbirdops/services-ui';
+import ProButton from '@send-frontend/apps/common/ProButton.vue';
+import { useKeychainStore } from '@send-frontend/stores';
 import { computed, onMounted, ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 import ManageKeys from './ManageKeys.vue';
 import ResetEncryptionKey from './ResetEncryptionKey.vue';
-import { useKeychainStore } from '@send-frontend/stores';
 
-const { resetKeys } = defineProps<{
+const { resetKeys, showKeysByDefault } = defineProps<{
   resetKeys: () => void;
+  showKeysByDefault?: boolean;
 }>();
 
-const showKeys = ref(false);
+const showKeys = ref(!!showKeysByDefault);
 const willReset = ref(false);
 const { keychain } = useKeychainStore();
 const isKeychainLocked = computed(() => keychain.locked);
@@ -43,12 +44,12 @@ onMounted(() => {
       Download a backup of your active encryption key, or reset your account if
       your key becomes locked or inaccessible.
     </p>
-    <PrimaryButton
+    <ProButton
       data-testid="security-and-privacy"
-      @click.prevent="() => (showKeys = true)"
+      @click="() => (showKeys = true)"
     >
       Encryption Key
-    </PrimaryButton>
+    </ProButton>
   </KeysTemplate>
 
   <ManageKeys

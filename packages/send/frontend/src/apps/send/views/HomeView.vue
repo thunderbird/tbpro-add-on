@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import useUserStore from '@send-frontend/stores/user-store';
 
-import FeedbackBox from '@send-frontend/apps/common/FeedbackBox.vue';
 import FileInfo from '@send-frontend/apps/send/components/FileInfo.vue';
 import FolderInfo from '@send-frontend/apps/send/components/FolderInfo.vue';
 import FolderNavigation from '@send-frontend/apps/send/components/FolderNavigation.vue';
-import NewFolder from '@send-frontend/apps/send/components/NewFolder.vue';
+import { useUserStore } from '@send-frontend/stores';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import NewFolder from '../components/NewFolder.vue';
 
 const { user } = useUserStore();
 const folderStore = useFolderStore();
@@ -23,22 +22,24 @@ const showFileComponents = computed(() => {
   <div id="send-page" class="flex h-full relative">
     <!-- Router Loading Overlay -->
 
-    <aside class="w-64 border-r border-gray-300 bg-gray-50">
+    <aside
+      v-if="showFileComponents"
+      class="w-64 border-r border-gray-300 bg-gray-50"
+    >
       <FolderNavigation />
     </aside>
 
     <main class="flex flex-col gap-4 grow">
       <header
+        v-if="showFileComponents"
         class="w-full sticky top-0 flex items-center justify-between px-4 py-2 bg-white/90 border-b border-gray-300"
       >
         <span>{{ user.thundermailEmail }}</span>
         <NewFolder />
       </header>
-
-      <div class="flex flex-col gap-4 px-4">
+      <div class="flex flex-col gap-4 px-4 content-layout">
         <router-view></router-view>
       </div>
-      <FeedbackBox />
     </main>
 
     <aside

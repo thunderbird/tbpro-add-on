@@ -17,7 +17,7 @@ const createNewKey = () => {
 };
 </script>
 <template>
-  <KeysTemplate :is-overlay="true" class="overlay">
+  <KeysTemplate>
     <div class="modal-content">
       <h1 class="title">Reset Encryption Key</h1>
 
@@ -64,22 +64,6 @@ const createNewKey = () => {
   align-items: center;
   justify-content: center;
   z-index: 50;
-}
-
-.modal-content {
-  background-color: white;
-  border-radius: 0.5rem;
-  /* max-width: 32rem; */
-  width: 100%;
-  margin: 0 1rem;
-  padding: 1.5rem;
-}
-
-.title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 1rem;
 }
 
 .description {

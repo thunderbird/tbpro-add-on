@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
+import ProButton from '@send-frontend/apps/common/ProButton.vue';
+import { parsePassphrase } from '@send-frontend/lib/passphraseUtils';
 
 type Props = {
   restoreFromBackup: () => void;
@@ -12,6 +14,7 @@ type Props = {
 const { restoreFromBackup, setPassphrase, message } = defineProps<Props>();
 
 const encryptionKey = ref('');
+const validationError = ref('');
 const emit = defineEmits<{
   (e: 'cancel'): void;
   (e: 'continue'): void;
@@ -27,9 +30,16 @@ const onContinue = async () => {
     return;
   }
 
-  setPassphrase(encryptionKey.value);
-  restoreFromBackup();
-  emit('continue');
+  try {
+    const parsedPassphrase = parsePassphrase(encryptionKey.value);
+    validationError.value = '';
+    setPassphrase(parsedPassphrase);
+    restoreFromBackup();
+    emit('continue');
+  } catch (error) {
+    validationError.value =
+      error instanceof Error ? error.message : 'Invalid passphrase format';
+  }
 };
 </script>
 
@@ -37,7 +47,7 @@ const onContinue = async () => {
   <KeysTemplate>
     <div class="">
       <div class="" style="margin-bottom: 32px">
-        <h1 class="title">Recover Access with Your Encryption Key</h1>
+        <h2 class="title">Recover Access with Your Encryption Key</h2>
 
         <div class="description">
           <p>
@@ -60,25 +70,24 @@ const onContinue = async () => {
             />
           </div>
         </div>
-        <div class="error-field">{{ message }}</div>
+        <div class="error-field">{{ validationError || message }}</div>
         <div class="button-group">
-          <button
-            type="button"
+          <ProButton
             class="continue-button"
             data-testid="restore-keys-button"
             :disabled="!encryptionKey.trim()"
             @click="onContinue"
           >
             Continue
-          </button>
-          <button
-            type="button"
+          </ProButton>
+          <ProButton
+            :type="'secondary'"
             class="cancel-button"
             data-testid="cancel-restore-button"
             @click="onCancel"
           >
             Cancel
-          </button>
+          </ProButton>
         </div>
       </div>
       <button
@@ -109,11 +118,7 @@ const onContinue = async () => {
 </template>
 
 <style scoped>
-.title {
-  font-size: 24px;
-  font-weight: 500;
-  color: #3b82f6;
-}
+@import '@send-frontend/apps/common/tbpro-styles.css';
 
 .description {
   margin-bottom: 2rem;

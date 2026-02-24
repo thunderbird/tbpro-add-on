@@ -14,6 +14,7 @@ import KeysTemplate from './KeysTemplate.vue';
 import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 import { useRouter } from 'vue-router';
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
+import RenderOnEnvironment from '@send-frontend/apps/common/RenderOnEnvironment.vue';
 
 type Props = {
   words?: string[];
@@ -165,21 +166,26 @@ onMounted(async () => {
           <DownloadIcon class="button-icon" />
           Download and Continue
         </button>
-        <div class="log-out-button-container">
-          <button
-            size="small"
-            data-testid="log-out-button-overlay"
-            @click.prevent="handleLogout"
-          >
-            <span>Log out</span>
-          </button>
-        </div>
+        <RenderOnEnvironment
+          :environment-type="['WEB APP OUTSIDE THUNDERBIRD']"
+        >
+          <div class="log-out-button-container">
+            <button
+              size="small"
+              data-testid="log-out-button-overlay"
+              @click.prevent="handleLogout"
+            >
+              <span>Log out</span>
+            </button>
+          </div>
+        </RenderOnEnvironment>
       </div>
     </div>
   </KeysTemplate>
 </template>
 
 <style scoped>
+@import '@send-frontend/apps/common/tbpro-styles.css';
 .log-out-button-container {
   margin-top: 1rem;
   color: var(--primary-default);

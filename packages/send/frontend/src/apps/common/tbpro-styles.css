@@ -1,0 +1,141 @@
+/* Common Dashboard & Component Styles */
+
+/* Title styles */
+.title {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--primary-default);
+}
+
+/* Row layouts */
+.row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.row-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+/* Column layouts */
+.left-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.left-column {
+  gap: 0;
+}
+
+.right-column {
+  gap: 1.5rem;
+}
+
+/* Content layouts */
+.content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-width: 18rem;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border: solid 1px #e4e4e7;
+  border-radius: 6px;
+}
+
+/* Container styles */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: center;
+  gap: 1rem 0;
+  margin-top: 2rem;
+}
+
+/* Typography */
+.email {
+  font-family: Inter;
+  font-size: 16px;
+  font-weight: normal;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: 1.32;
+  letter-spacing: normal;
+  text-align: left;
+  color: var(--text-icon-secondary);
+}
+
+.send-storage {
+  font-family: Metropolis;
+  font-size: 20px;
+  font-weight: 500;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: 1.2;
+  letter-spacing: normal;
+  text-align: left;
+  color: var(--text-icon-secondary);
+}
+
+/* Heading styles */
+/* h1 {
+  font-size: 20px;
+  font-weight: 500;
+} */
+
+/* h2 {
+  font-size: 22px;
+} */
+
+/* Status colors */
+.expired {
+  color: var(--colour-ti-critical);
+}
+
+.active {
+  color: var(--colour-send-primary);
+}
+
+/* Toggle component */
+.toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  gap: 1rem;
+  background-color: var(--colour-neutral-border);
+}
+
+/* Recovery section */
+.recovery-main {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .content-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .right-column {
+    order: -1;
+  }
+
+  .row-grid {
+    grid-template-columns: 1fr;
+  }
+}

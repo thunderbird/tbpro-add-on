@@ -1,21 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRouter } from 'vue-router';
-import RenderOnEnvironment from '@send-frontend/apps/common/RenderOnEnvironment.vue';
 import UserMenu from '@send-frontend/apps/send/components/UserMenu.vue';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useUserStore } from '@send-frontend/stores';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useNavigation } from '../composables/useNavigation';
 
 const { currentRoute } = useRouter();
 const { isLoggedIn } = useAuth();
 const { user } = useUserStore();
+const { navLinkPaths } = useNavigation();
 
 const avatarUsername = computed(() => user?.thundermailEmail || user?.email);
-
-const navLinkPaths = [
-  { path: '/send/profile', label: 'Dashboard' },
-  { path: '/send', label: 'Encrypted Files' },
-];
 
 function isNavLinkActive(navPath: string, currentPath: string): boolean {
   if (currentPath === navPath) {
@@ -44,26 +40,26 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
     </router-link>
 
     <template v-if="isLoggedIn">
-      <RenderOnEnvironment :environment-type="['WEB APP OUTSIDE THUNDERBIRD']">
-        <nav class="desktop">
-          <ul>
-            <li>
-              <router-link
-                v-for="navLink in navLinkPaths"
-                :key="navLink.path"
-                :to="navLink.path"
-                :class="{
-                  active: isNavLinkActive(navLink.path, currentRoute.path),
-                }"
-              >
-                {{ navLink.label }}
-              </router-link>
-            </li>
-          </ul>
-        </nav>
+      <!-- <RenderOnEnvironment :environment-type="['WEB APP OUTSIDE THUNDERBIRD']"> -->
+      <nav class="desktop">
+        <ul>
+          <li>
+            <router-link
+              v-for="navLink in navLinkPaths"
+              :key="navLink.path"
+              :data-testid="`navlink-${navLink.label.toLowerCase().replace(/\s+/g, '-')}`"
+              :to="navLink.path"
+              :class="{
+                active: isNavLinkActive(navLink.path, currentRoute.path),
+              }"
+            >
+              {{ navLink.label }}
+            </router-link>
+          </li>
+        </ul>
+      </nav>
 
-        <user-menu :username="avatarUsername" />
-      </RenderOnEnvironment>
+      <user-menu :username="avatarUsername" />
     </template>
   </header>
 </template>
