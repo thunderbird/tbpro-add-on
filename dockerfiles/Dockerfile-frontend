@@ -20,7 +20,8 @@ ADD packages/shared ./packages/shared
 
 # Install dependencies 
 RUN npm install -g pnpm
-RUN pnpm install
+RUN pnpm install --filter tbpro-shared
+RUN pnpm install --filter send-frontend
 
 # runtime production
 FROM base AS runtime_production
@@ -43,4 +44,4 @@ ONBUILD RUN echo "Don't add runtime user"
 FROM runtime_${BUILD_ENV}
 
 # Run the development server
-CMD ["sh", "-c", "pnpm install && pnpm --filter send-frontend run dev"]
+CMD ["pnpm", "--filter", "send-frontend", "run", "dev"]
