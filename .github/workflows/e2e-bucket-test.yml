@@ -15,6 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  packages: read
   contents: read
 
 jobs:
@@ -29,9 +30,6 @@ jobs:
       shared-changed: ${{ steps.check.outputs.shared-changed }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - uses: dorny/paths-filter@v3
         id: check
@@ -46,27 +44,23 @@ jobs:
               - 'packages/send/frontend/**'
             shared-changed:
               - 'packages/shared/**'
+
   end-to-end-bucket-tests:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+      options: --shm-size=2gb --security-opt seccomp=unconfined
     env:
       IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        node-version: ["22"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
 
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
         shell: bash
         run: |
-          npm install -g pnpm
-          npm install -g bun
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm i --filter "send-*"
           pnpm install --filter tbpro-shared
@@ -103,13 +97,14 @@ jobs:
 
       - name: Run stack and test
         id: run-stack-and-test
-        timeout-minutes: 10
+        timeout-minutes: 20
         shell: bash
         run: |
           # Create .env file with secrets (for end to end run only)
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
-          mv .env packages/send/e2e        
+          cp .env packages/send/e2e
+          mv .env packages/send/e2e/tests/desktop/dev/
           lerna run build-image:backend --scope=send-suite
           lerna run test:e2e:ci --scope=send-suite-e2e
 
