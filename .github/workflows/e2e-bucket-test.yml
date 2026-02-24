@@ -103,6 +103,7 @@ jobs:
           # Create .env file with secrets (for end to end run only)
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
+          mv .env packages/send/e2e
           mv .env packages/send/e2e/tests/desktop/dev/
           lerna run build-image:backend --scope=send-suite
           lerna run test:e2e:ci --scope=send-suite-e2e
