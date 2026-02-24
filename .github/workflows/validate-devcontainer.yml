@@ -6,7 +6,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: merge-main
+  group: validate-devcontainer-${{ github.ref }}
   cancel-in-progress: true
 
 on:

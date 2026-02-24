@@ -2,7 +2,7 @@
 name: validate
 
 concurrency:
-  group: validate
+  group: validate-${{ github.ref }}
   cancel-in-progress: true
 
 on:
