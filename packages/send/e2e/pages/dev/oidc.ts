@@ -32,6 +32,11 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
   await otherPage.getByTestId("password-input").fill(password, { force: true });
   await otherPage.getByTestId("submit-btn").click();
 
+  // Wait for OIDC redirect chain to complete:
+  // auth-stage.tb.pro → /post-login (handleOIDCCallback + backend auth) → /send/profile (BackupKeys renders)
+  await otherPage.waitForURL("**/send/profile**", { timeout: 30000 });
+  await otherPage.waitForLoadState("networkidle", { timeout: 30000 });
+
   // Log out
   await otherPage.getByTestId("log-out-button-overlay").click();
   await otherPage.waitForLoadState("networkidle");
