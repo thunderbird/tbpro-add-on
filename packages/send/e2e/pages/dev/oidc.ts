@@ -44,9 +44,10 @@ export async function oidc_login({ page, context }: PlaywrightProps) {
   await otherPage.waitForURL("**/send/profile**", { timeout: 30000 });
   await otherPage.waitForLoadState("networkidle", { timeout: 30000 });
 
-  // Log out
+  // Log out - handleLogout fires location.reload() which redirects to /login via router guard
   await otherPage.getByTestId("log-out-button-overlay").click();
-  await otherPage.waitForLoadState("networkidle");
+  await otherPage.waitForURL("**/login**", { timeout: 15000 });
+  await otherPage.waitForLoadState("networkidle", { timeout: 15000 });
 
   await otherPage.goto("/send");
   // Expect the logout page to be visible
