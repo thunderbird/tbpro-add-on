@@ -3,7 +3,7 @@
 name: e2e-bucket-tests
 
 concurrency:
-  group: e2e-bucket-tests
+  group: e2e-bucket-tests-${{ github.ref }}
   cancel-in-progress: true
 
 on:

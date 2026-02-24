@@ -2,7 +2,7 @@
 name: integration-tests
 
 concurrency:
-  group: integration-tests
+  group: integration-tests-${{ github.ref }}
   cancel-in-progress: true
 
 on:
