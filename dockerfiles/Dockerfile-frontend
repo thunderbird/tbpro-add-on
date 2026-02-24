@@ -41,6 +41,7 @@ FROM base AS runtime_development
 ONBUILD RUN echo "Don't add runtime user"
 
 FROM runtime_${BUILD_ENV}
+ENV CI=true
 
 # Run the development server
 CMD ["sh", "-c", "pnpm install && pnpm --filter send-frontend run dev"]
