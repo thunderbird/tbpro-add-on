@@ -126,10 +126,10 @@ importers:
         version: 6.1.1
       send-frontend:
         specifier: workspace:*
-        version: file:packages/send/frontend(@trpc/server@11.8.1(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(encoding@0.1.13)(focus-trap@7.6.4)(rollup@4.52.5)(typescript@5.8.3)
+        version: file:packages/send/frontend(@trpc/server@11.8.1(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(encoding@0.1.13)(focus-trap@7.6.4)(rollup@4.52.5)(typescript@5.8.3)
       tbpro-shared:
         specifier: workspace:*
-        version: link:../shared
+        version: file:packages/shared(typescript@5.8.3)
       ua-parser-js:
         specifier: ^1.0.40
         version: 1.0.40
@@ -138,7 +138,7 @@ importers:
         version: 3.5.13(typescript@5.8.3)
       vue-final-modal:
         specifier: ^4.5.5
-        version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3))
+        version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3))
       vue-router:
         specifier: ^4.5.0
         version: 4.5.0(vue@3.5.13(typescript@5.8.3))
@@ -443,7 +443,7 @@ importers:
         version: 2.1.6
       axios:
         specifier: ^1.12.0
-        version: 1.12.2
+        version: 1.13.5
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.2
@@ -672,7 +672,7 @@ importers:
         version: 6.1.1
       tbpro-shared:
         specifier: workspace:*
-        version: link:../../shared
+        version: file:packages/shared(typescript@5.8.3)
       ua-parser-js:
         specifier: ^1.0.40
         version: 1.0.40
@@ -681,7 +681,7 @@ importers:
         version: 3.5.13(typescript@5.8.3)
       vue-final-modal:
         specifier: ^4.5.5
-        version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3))
+        version: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3))
       vue-router:
         specifier: ^4.5.0
         version: 4.5.0(vue@3.5.13(typescript@5.8.3))
@@ -1710,6 +1710,9 @@ packages:
     resolution: {integrity: sha512-DmdYgtezMkh3cpU8/1uyXakv3tJRcmcXxBOcO0tbaozPwpmh4YMsnWrQm9ZmZMfa5ocbxzbFk6O4bDPEc/iAnA==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
 
+  '@jridgewell/gen-mapping@0.3.13':
+    resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
+
   '@jridgewell/gen-mapping@0.3.8':
     resolution: {integrity: sha512-imAbBGkb+ebQyxKgzv5Hu2nmROxoDOXHh80evxdoXNOrvAnVx7zimzc1Oo5h9RlfV4vPXaE2iM5pOFbvOCClWA==}
     engines: {node: '>=6.0.0'}
@@ -1728,8 +1731,14 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.0':
     resolution: {integrity: sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==}
 
+  '@jridgewell/sourcemap-codec@1.5.5':
+    resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
+
+  '@jridgewell/trace-mapping@0.3.31':
+    resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
@@ -3637,6 +3646,11 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  acorn@8.16.0:
+    resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
+    engines: {node: '>=0.4.0'}
+    hasBin: true
+
   add-stream@1.0.0:
     resolution: {integrity: sha512-qQLMr+8o0WC4FZGQTcJiKBVC59JylcPSrTtk6usvmIDFUOCKegapy1VHQwRbFMOFyb/inzUVqHs+eMYKDM1YeQ==}
 
@@ -3786,12 +3800,13 @@ packages:
   aws-sdk@2.1693.0:
     resolution: {integrity: sha512-cJmb8xEnVLT+R6fBS5sn/EFJiX7tUnDaPtOPZ1vFbOJtd0fnZn/Ky2XGgsvvoeliWeH7mL3TWSX5zXXGSQV6gQ==}
     engines: {node: '>= 10.0.0'}
+    deprecated: The AWS SDK for JavaScript (v2) has reached end-of-support, and no longer receives updates. Please migrate your code to use AWS SDK for JavaScript (v3). More info https://a.co/cUPnyil
 
   axios-retry@3.9.1:
     resolution: {integrity: sha512-8PJDLJv7qTTMMwdnbMvrLYuvB47M81wRtxQmEdV5w4rgbTXTt+vtPkXwajOfOdSyv/wZICJOC+/UhXH4aQ/R+w==}
 
-  axios@1.12.2:
-    resolution: {integrity: sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==}
+  axios@1.13.5:
+    resolution: {integrity: sha512-cz4ur7Vb0xS4/KUN0tPWe44eqxrIu31me+fbang3ijiNscE129POzipJJA6zniq2C/Z6sJCjMimjS8Lc/GAs8Q==}
 
   b4a@1.7.3:
     resolution: {integrity: sha512-5Q2mfq2WfGuFp3uS//0s6baOJLMoVduPYVeNmDYxu5OUA1/cBfvr2RIS7vi62LdNj/urk1hfmj867I3qt6uZ7Q==}
@@ -4964,6 +4979,15 @@ packages:
   focus-trap@7.6.4:
     resolution: {integrity: sha512-xx560wGBk7seZ6y933idtjJQc1l+ck+pI3sKvhKozdBV1dRZoKhkW5xoCaFv9tQiX5RH1xfSxjuNu6g+lmN/gw==}
 
+  follow-redirects@1.15.11:
+    resolution: {integrity: sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+
   follow-redirects@1.15.9:
     resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
     engines: {node: '>=4.0'}
@@ -4991,6 +5015,10 @@ packages:
 
   form-data@4.0.4:
     resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
+    engines: {node: '>= 6'}
+
+  form-data@4.0.5:
+    resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
 
   formidable@3.5.4:
@@ -5182,7 +5210,7 @@ packages:
 
   glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
@@ -6489,6 +6517,10 @@ packages:
     resolution: {integrity: sha512-t13S540ZwFOEZKLYHJwSfITugupW4uYLwuQSSXyKH/wHwZ+7FvgHE7gnNJh1YQIZ1Yd1hKSRjqeXGSUtS0r9JA==}
     engines: {node: '>=18'}
 
+  oidc-client-ts@3.4.1:
+    resolution: {integrity: sha512-jNdst/U28Iasukx/L5MP6b274Vr7ftQs6qAhPBCvz6Wt5rPCA+Q/tUmCzfCHHWweWw5szeMy2Gfrm1rITwUKrw==}
+    engines: {node: '>=18'}
+
   oidc-token-hash@5.1.0:
     resolution: {integrity: sha512-y0W+X7Ppo7oZX6eovsRkuzcSM40Bicg2JEJkDJ4irIt1wsYAP5MLSNv+QAogO8xivMffw/9OvV3um1pxXgt1uA==}
     engines: {node: ^10.13.0 || >=12.0.0}
@@ -7681,8 +7713,8 @@ packages:
     resolution: {integrity: sha512-2pR2ubZSV64f/vqm9eLPz/KOvR9Dm+Co/5ChLgeHl0yEDRc6h5hXHoxEQH8Y5Ljycozd3p1k5TTSVdzYGkPvLw==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  tabbable@6.2.0:
-    resolution: {integrity: sha512-Cat63mxsVJlzYvN51JmVXIgNoUokrIaT2zLclCXjRd8boZ0004U4KCs/sToJ75C6sdlByWxpYnb5Boif1VSFew==}
+  tabbable@6.4.0:
+    resolution: {integrity: sha512-05PUHKSNE8ou2dwIxTngl4EzcnsCDZGJ/iCLtDflR/SHB/ny14rXc+qU5P4mG9JkusiV7EivzY9Mhm55AzAvCg==}
 
   table@6.9.0:
     resolution: {integrity: sha512-9kY+CygyYM6j02t5YFHbNz2FN5QmYGv9zAjVp4lCDjlCw7amdckXlEt/bjMhUIfj4ThGRE4gCUH5+yGnNuPo5A==}
@@ -8383,6 +8415,7 @@ packages:
   vue-i18n@11.1.12:
     resolution: {integrity: sha512-BnstPj3KLHLrsqbVU2UOrPmr0+Mv11bsUZG0PyCOzsawCivk8W00GMXHeVUWIDOgNaScCuZah47CZFE+Wnl8mw==}
     engines: {node: '>= 16'}
+    deprecated: This version is NOT deprecated. Previous deprecation was a mistake.
     peerDependencies:
       vue: ^3.0.0
 
@@ -8445,6 +8478,7 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@3.0.0:
     resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
@@ -9808,6 +9842,12 @@ snapshots:
     dependencies:
       '@sinclair/typebox': 0.34.48
 
+  '@jridgewell/gen-mapping@0.3.13':
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/trace-mapping': 0.3.31
+    optional: true
+
   '@jridgewell/gen-mapping@0.3.8':
     dependencies:
       '@jridgewell/set-array': 1.2.1
@@ -9820,16 +9860,25 @@ snapshots:
 
   '@jridgewell/source-map@0.3.11':
     dependencies:
-      '@jridgewell/gen-mapping': 0.3.8
-      '@jridgewell/trace-mapping': 0.3.25
+      '@jridgewell/gen-mapping': 0.3.13
+      '@jridgewell/trace-mapping': 0.3.31
     optional: true
 
   '@jridgewell/sourcemap-codec@1.5.0': {}
+
+  '@jridgewell/sourcemap-codec@1.5.5':
+    optional: true
 
   '@jridgewell/trace-mapping@0.3.25':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@jridgewell/trace-mapping@0.3.31':
+    dependencies:
+      '@jridgewell/resolve-uri': 3.1.2
+      '@jridgewell/sourcemap-codec': 1.5.5
+    optional: true
 
   '@jridgewell/trace-mapping@0.3.9':
     dependencies:
@@ -9970,7 +10019,7 @@ snapshots:
 
   '@nichoth/backblaze-b2@1.7.1':
     dependencies:
-      axios: 1.12.2
+      axios: 1.13.5
       axios-retry: 3.9.1
       lodash: 4.17.21
     transitivePeerDependencies:
@@ -11691,7 +11740,7 @@ snapshots:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
       '@types/node': 22.14.0
-      form-data: 4.0.4
+      form-data: 4.0.5
 
   '@types/supertest@6.0.3':
     dependencies:
@@ -12256,13 +12305,13 @@ snapshots:
       '@vueuse/shared': 13.0.0(vue@3.5.13(typescript@5.8.3))
       vue: 3.5.13(typescript@5.8.3)
 
-  '@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))':
+  '@vueuse/integrations@13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))':
     dependencies:
       '@vueuse/core': 13.0.0(vue@3.5.13(typescript@5.8.3))
       '@vueuse/shared': 13.0.0(vue@3.5.13(typescript@5.8.3))
       vue: 3.5.13(typescript@5.8.3)
     optionalDependencies:
-      axios: 1.12.2
+      axios: 1.13.5
       focus-trap: 7.6.4
       jwt-decode: 4.0.0
 
@@ -12331,6 +12380,9 @@ snapshots:
   acorn@8.14.1: {}
 
   acorn@8.15.0: {}
+
+  acorn@8.16.0:
+    optional: true
 
   add-stream@1.0.0: {}
 
@@ -12492,10 +12544,10 @@ snapshots:
       '@babel/runtime': 7.27.0
       is-retry-allowed: 2.2.0
 
-  axios@1.12.2:
+  axios@1.13.5:
     dependencies:
-      follow-redirects: 1.15.9
-      form-data: 4.0.4
+      follow-redirects: 1.15.11
+      form-data: 4.0.5
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
@@ -13854,7 +13906,9 @@ snapshots:
 
   focus-trap@7.6.4:
     dependencies:
-      tabbable: 6.2.0
+      tabbable: 6.4.0
+
+  follow-redirects@1.15.11: {}
 
   follow-redirects@1.15.9: {}
 
@@ -13879,6 +13933,14 @@ snapshots:
       safe-buffer: 5.2.1
 
   form-data@4.0.4:
+    dependencies:
+      asynckit: 0.4.0
+      combined-stream: 1.0.8
+      es-set-tostringtag: 2.1.0
+      hasown: 2.0.2
+      mime-types: 2.1.35
+
+  form-data@4.0.5:
     dependencies:
       asynckit: 0.4.0
       combined-stream: 1.0.8
@@ -15532,7 +15594,7 @@ snapshots:
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.2
       '@zkochan/js-yaml': 0.0.7
-      axios: 1.12.2
+      axios: 1.13.5
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
       cliui: 8.0.1
@@ -15593,6 +15655,10 @@ snapshots:
   object-keys@1.1.1: {}
 
   oidc-client-ts@3.3.0:
+    dependencies:
+      jwt-decode: 4.0.0
+
+  oidc-client-ts@3.4.1:
     dependencies:
       jwt-decode: 4.0.0
 
@@ -16060,7 +16126,7 @@ snapshots:
 
   posthog-node@4.11.3:
     dependencies:
-      axios: 1.12.2
+      axios: 1.13.5
     transitivePeerDependencies:
       - debug
 
@@ -16480,7 +16546,7 @@ snapshots:
 
   semver@7.7.2: {}
 
-  send-frontend@file:packages/send/frontend(@trpc/server@11.8.1(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(encoding@0.1.13)(focus-trap@7.6.4)(rollup@4.52.5)(typescript@5.8.3):
+  send-frontend@file:packages/send/frontend(@trpc/server@11.8.1(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(encoding@0.1.13)(focus-trap@7.6.4)(rollup@4.52.5)(typescript@5.8.3):
     dependencies:
       '@scure/bip39': 1.5.4
       '@sentry/vite-plugin': 5.0.0(encoding@0.1.13)(rollup@4.52.5)
@@ -16502,7 +16568,7 @@ snapshots:
       tbpro-shared: file:packages/shared(typescript@5.8.3)
       ua-parser-js: 1.0.40
       vue: 3.5.19(typescript@5.8.3)
-      vue-final-modal: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.19(typescript@5.8.3))
+      vue-final-modal: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.19(typescript@5.8.3))
       vue-router: 4.5.0(vue@3.5.19(typescript@5.8.3))
     transitivePeerDependencies:
       - '@nuxt/kit'
@@ -16838,7 +16904,7 @@ snapshots:
       cookiejar: 2.1.4
       debug: 4.4.0(supports-color@5.5.0)
       fast-safe-stringify: 2.1.1
-      form-data: 4.0.4
+      form-data: 4.0.5
       formidable: 3.5.4
       methods: 1.1.2
       mime: 2.6.0
@@ -16899,7 +16965,7 @@ snapshots:
     dependencies:
       '@pkgr/core': 0.2.4
 
-  tabbable@6.2.0: {}
+  tabbable@6.4.0: {}
 
   table@6.9.0:
     dependencies:
@@ -16975,12 +17041,12 @@ snapshots:
 
   tbpro-shared@file:packages/shared(typescript@5.8.3):
     dependencies:
-      '@tanstack/vue-query': 5.72.1(vue@3.5.19(typescript@5.8.3))
+      '@tanstack/vue-query': 5.72.1(vue@3.5.13(typescript@5.8.3))
       dayjs: 1.11.13
       get-random-values: 3.0.0
-      oidc-client-ts: 3.3.0
-      pinia: 2.3.1(typescript@5.8.3)(vue@3.5.19(typescript@5.8.3))
-      vue: 3.5.19(typescript@5.8.3)
+      oidc-client-ts: 3.4.1
+      pinia: 2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
+      vue: 3.5.13(typescript@5.8.3)
     transitivePeerDependencies:
       - '@vue/composition-api'
       - typescript
@@ -17005,7 +17071,7 @@ snapshots:
   terser@5.44.0:
     dependencies:
       '@jridgewell/source-map': 0.3.11
-      acorn: 8.15.0
+      acorn: 8.16.0
       commander: 2.20.3
       source-map-support: 0.5.21
     optional: true
@@ -17640,17 +17706,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vue-final-modal@4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3)):
+  vue-final-modal@4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.13(typescript@5.8.3)):
     dependencies:
       '@vueuse/core': 10.11.1(vue@3.5.13(typescript@5.8.3))
-      '@vueuse/integrations': 13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))
+      '@vueuse/integrations': 13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))
       focus-trap: 7.6.4
       vue: 3.5.13(typescript@5.8.3)
 
-  vue-final-modal@4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.19(typescript@5.8.3)):
+  vue-final-modal@4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.19(typescript@5.8.3)):
     dependencies:
       '@vueuse/core': 10.11.1(vue@3.5.13(typescript@5.8.3))
-      '@vueuse/integrations': 13.0.0(axios@1.12.2)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))
+      '@vueuse/integrations': 13.0.0(axios@1.13.5)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3))
       focus-trap: 7.6.4
       vue: 3.5.19(typescript@5.8.3)
 
