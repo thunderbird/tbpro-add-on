@@ -3,6 +3,7 @@ import { useApiStore, useAuthStore } from '@send-frontend/stores';
 import { useQuery } from '@tanstack/vue-query';
 import { storeToRefs } from 'pinia';
 import { validateToken } from './validations';
+import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 
 /**
  * useAuth is a composable that manages authentication state and actions.
@@ -13,6 +14,7 @@ export function useAuth() {
   // Access the API and authentication stores
   const { api } = useApiStore();
   const authStore = useAuthStore();
+  const { isExtension } = useIsExtension();
   // Get a reactive reference to the login status
   const { isLoggedIn } = storeToRefs(authStore);
 
@@ -20,7 +22,6 @@ export function useAuth() {
   const { refetch: refetchAuth, isLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => {
-      isLoggedIn.value = false;
       // Check OIDC authentication status first
       try {
         const user = await authStore.checkAuthStatus();
@@ -37,9 +38,10 @@ export function useAuth() {
       isLoggedIn.value = isValid;
       return isValid;
     },
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    // We want to refresh the data more often inside the extension.
+    // This is because there are more windows opening and closing and we want to keep the data fresh
+    refetchOnMount: isExtension.value ? true : false,
+    refetchOnWindowFocus: isExtension.value ? true : false,
   });
 
   // Log out by removing the auth token and updating login status
