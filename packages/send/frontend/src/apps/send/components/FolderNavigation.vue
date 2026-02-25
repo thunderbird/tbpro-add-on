@@ -40,8 +40,8 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
             aria-label="Drag and drop files here to upload, or click to select files"
             @keydown="handleUploadKeydown"
           >
-            Drag &amp; Drop<br />
-            files here to upload
+            Drop files here<br />
+            or tap to upload
           </div>
         </DragAndDropUpload>
       </section>
