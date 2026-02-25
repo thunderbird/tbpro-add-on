@@ -52,9 +52,6 @@ resources:
   tb:secrets:PulumiSecretsManager:
     pulumi:
       secret_names:
-        - fxa-client-id
-        - fxa-secret
-        - fxa-allow-list
         - sentry-dsn
         - flwr-mgmt-key
         - flwr-proj-id
@@ -103,12 +100,6 @@ resources:
             linuxParameters:
               initProcessEnabled: True
             secrets:
-              - name: FXA_CLIENT_ID
-                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/fxa-client-id-QtXUSW
-              - name: FXA_CLIENT_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/fxa-secret-mwGzLh
-              - name: FXA_ALLOW_LIST
-                valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/fxa-allow-list-WT7ijR
               - name: SENTRY_DSN
                 valueFrom: arn:aws:secretsmanager:us-east-2:768512802988:secret:assist/staging/sentry-dsn-K2YGIr
               - name: FLWR_MGMT_KEY
@@ -130,10 +121,6 @@ resources:
                 value: 50233b77dd78fd37510f88d62653820a060bd7f58ea00d4dd0f82a31d85636db
               - name: COOKIE_MAX_AGE
                 value: "604800"
-              - name: FXA_CALLBACK
-                value: https://assist-backend-stage.tb.pro/api/v1/auth/fxa
-              - name: FXA_OPEN_ID_CONFIG
-                value: https://accounts.stage.mozaws.net/.well-known/openid-configuration
               - name: APP_ENV
                 value: staging
 

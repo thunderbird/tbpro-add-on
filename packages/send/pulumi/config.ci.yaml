@@ -65,9 +65,6 @@ resources:
         - database-url
         - jwt-access-token-secret
         - jwt-refresh-token-secret
-        - fxa-allow-list
-        - fxa-client-id
-        - fxa-client-secret
         - posthog-api-key
         - sentry-auth-token
       recovery_window_in_days: 0
@@ -124,12 +121,6 @@ resources:
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/b2-application-key-id-2XaCVn
               - name: DATABASE_URL
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/database-url-Bjb0pI
-              - name: FXA_ALLOW_LIST
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/fxa-allow-list-DQf2Xp
-              - name: FXA_CLIENT_ID
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/fxa-client-id-3Vpjlh
-              - name: FXA_CLIENT_SECRET
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/fxa-client-secret-i5Z47w
               - name: POSTHOG_API_KEY
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/posthog-api-key-QSay4K
               - name: SENTRY_AUTH_TOKEN
@@ -157,14 +148,6 @@ resources:
                 value: sendapp
               - name: FS_LOCAL_BUCKET
                 value: send-fs-local
-              - name: FXA_ENTRYPOINT
-                value: tblockbox
-              - name: FXA_METRICS_FLOW_URL
-                value: https://accounts.stage.mozaws.net/metrics-flow
-              - name: FXA_MOZ_ISSUER
-                value: https://accounts.stage.mozaws.net
-              - name: FXA_REDIRECT_URI
-                value: https://lockbox-ci.thunderbird.dev/lockbox/fxa
               - name: NODE_ENV
                 value: dev
               - name: POSTHOG_HOST

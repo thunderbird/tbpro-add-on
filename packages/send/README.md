@@ -22,13 +22,11 @@ You can run the setup automatically with
 lerna run setup:local --scope=send-suite
 ```
 
-Or, if you wish to run this against staging FXA (requires client id and secret) do the following:
+Or, do the following to run the local setup:
 
 ```sh
 lerna run setup --scope=send-suite
 ```
-
-Then edit the `packages/send/backend/.env` file to supply values for the FXA_CLIENT_ID and FXA_CLIENT_SECRET vars
 
 Finally, run the full stack (you can use this command anytime you want to run the application back again):
 
@@ -79,9 +77,7 @@ It will also move your `.xpi` to the `packages/send` directory.
 
 ### Public login
 
-(without FXA)
-
-If you want to use the application without an FXA account, you can set these environment variables.
+If you want to use the application without an account, you can set these environment variables.
 
 `packages/send/backend/.env` to `ALLOW_PUBLIC_LOGIN=true`
 

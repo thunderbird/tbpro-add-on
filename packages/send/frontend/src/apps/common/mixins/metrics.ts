@@ -4,7 +4,7 @@ import { onBeforeUnmount, onMounted } from 'vue';
 
 /*
  * This mixin is used to update the client metrics identity when the user logs in
- * we do it on focus because after we close the fxa login window, we have to re-populate the values
+ * we do it on focus because after we close the login window, we have to re-populate the values
  */
 export function useMetricsUpdate() {
   const userStore = useUserStore();

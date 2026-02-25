@@ -62,6 +62,48 @@ const handleOIDCAuthentication = async (req: RequestWithOIDC, res) => {
 };
 
 /**
+ * @openapi
+ * /api/auth/oidc/authenticate:
+ *   get:
+ *     summary: Authenticate via OIDC token (GET)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     uniqueHash:
+ *                       type: string
+ *                     tier:
+ *                       type: string
+ *       401:
+ *         description: OIDC authentication required
+ *   post:
+ *     summary: Authenticate via OIDC token (POST)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *       401:
+ *         description: OIDC authentication required
+ */
+/**
  * Endpoint for handling OIDC authentication after the frontend completes the OAuth flow
  * The frontend should call this endpoint with the access token received from OIDC
  */
@@ -78,6 +120,40 @@ router.post(
   addErrorHandling(AUTH_ERRORS.AUTH_FAILED),
   wrapAsyncHandler(handleOIDCAuthentication)
 );
+/**
+ * @openapi
+ * /api/auth/oidc/me:
+ *   get:
+ *     summary: Validate the current OIDC token and return user info
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     uniqueHash:
+ *                       type: string
+ *                     tier:
+ *                       type: string
+ *       401:
+ *         description: OIDC authentication required
+ *       404:
+ *         description: User not found
+ */
 /**
  * Endpoint to validate the current OIDC token and return user info
  * Equivalent to the old /auth/me endpoint but using OIDC
@@ -127,6 +203,16 @@ router.get(
   })
 );
 
+/**
+ * @openapi
+ * /api/auth/oidc/logout:
+ *   post:
+ *     summary: Log out by clearing JWT cookies
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ */
 /**
  * Endpoint for logging out (no server-side action needed with stateless OIDC)
  * The frontend should clear the token and redirect to OIDC logout URL if needed

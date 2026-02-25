@@ -54,10 +54,10 @@ export function useAuth() {
     }
 
     try {
-      // FXA/JWT logout
+      // Legacy JWT logout
       await api.removeAuthToken();
     } catch (error) {
-      console.error('Legacy (fxa) logout failed:', error);
+      console.error('Legacy logout failed:', error);
     }
 
     isLoggedIn.value = false;

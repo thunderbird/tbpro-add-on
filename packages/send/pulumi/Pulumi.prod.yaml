@@ -6,12 +6,6 @@ config:
     secure: v1:Doq1OWDnSEbiy3X+:LP7S6SoTTLuoeX5jYPAARdmiwbLXqKu2SL8MRrH+cHCcKRsQ6h5QJX2vYHuwa6g=
   send-suite:database-url:
     secure: v1:CVyXHY2+QxcyNPe1:WLlLcd62+7Us+MzFbLavWH6oV7zPJ2EH/UnHQ0jDrjsgckZX3KlogLclktHQBFlbtSajwuerAvUjHRlUmF9soev4mSVFXpGjTgwak9BKAet2gw/4f+Lwb8lh4+ofwrysHmpHWvlYZ+dkSwGJBKcvpGdbIBUIBCgEv4JIpsFCY2F0IweE7OXq3CFrvd4AMwl56g==
-  send-suite:fxa-allow-list:
-    secure: v1:zh2awlDg3/zntRBc:JUHPT5lNHVceLQxl3ocjTuFT/g==
-  send-suite:fxa-client-id:
-    secure: v1:OZJ9F52rHuUAZSeL:jskOc93zyI8uZJfYn+BBmfsXjiXI4lxzan137X2eKwE=
-  send-suite:fxa-client-secret:
-    secure: v1:TijixNPiB+hjrLzG:mmdCrw1DY1JIEuri6z+PUAujUhEjIJzubPlsdnIapqDxvpSbmbrkBibso5Dbr5Sz0vpHgm3D5/oho33ScZ4zEroqpaGMDiLTneN2HwCPhv0=
   send-suite:jwt-access-token-secret:
     secure: v1:gy+Gx1fxTMaEkSmP:vKhg//vdL5i+qvmEvUtgLyZXhECKz3bM4J9MnChSVsKc/w47fMGZOQL+W7xmZXyrfEFMMiMpaFP955COef9yvu6QSoTsvMWHA41Gzp3MvxOCUE6F4s3UbBLsDIB9CaY7DvzSHFk=
   send-suite:jwt-refresh-token-secret:

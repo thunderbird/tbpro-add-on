@@ -1,7 +1,7 @@
 async function handler(event) {
   const request = event.request;
   const apiPath = "/api";
-  const ignorePaths = ['/lockbox/fxa', '/assets', '/fonts', '/sitemap.txt'];
+  const ignorePaths = ['/assets', '/fonts', '/sitemap.txt'];
   const pathCheckFn = (path) => request.uri.startsWith(path);
 
   // If our api path is the first thing that's found in the uri then remove it from the uri.

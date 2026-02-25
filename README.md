@@ -50,8 +50,6 @@ lerna run setup --scope=send-suite
 lerna run setup --scope=addon
 ```
 
-Then edit the `packages/send/backend/.env` file to supply values for the FXA_CLIENT_ID and FXA_CLIENT_SECRET vars
-
 Finally, run the full stack (you can use this command anytime you want to run the application back again):
 
 ```sh
@@ -84,11 +82,6 @@ lerna run build --scope=addon
 ## Prerequisites
 
 Make sure you install [docker](https://www.docker.com/get-started/) for local development.
-
-If you're developing changes to the our account workflow, you'll need the following to run the server and use the client:
-
-- An account on the FXA staging server
-- The client id and secret for the FXA staging server (in 1Password, in the Services vault)
 
 Finally, install the dependencies (this command will install both frontend and backend)
 
