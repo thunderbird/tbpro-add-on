@@ -265,7 +265,7 @@ async function doUpload() {
         <slot></slot>
         <!-- Call out instructions for screen readers -->
         <div id="drop-zone-instructions" class="sr-only">
-          Drop files here or <strong>tap to upload</strong>
+          Drop files here or tap to upload
         </div>
       </div>
 
