@@ -40,8 +40,8 @@ export function useAuth() {
     },
     // We want to refresh the data more often inside the extension.
     // This is because there are more windows opening and closing and we want to keep the data fresh
-    refetchOnMount: isExtension.value ? true : false,
-    refetchOnWindowFocus: isExtension.value ? true : false,
+    refetchOnMount: !isLoggedIn.value ? true : false,
+    refetchOnWindowFocus: !isLoggedIn.value ? true : false,
   });
 
   // Log out by removing the auth token and updating login status
