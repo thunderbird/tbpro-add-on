@@ -94,7 +94,6 @@
     "vite": ">=6.4.1",
     "vitest": "*",
     "vitest-localstorage-mock": "^0.0.1",
-    "vitest-websocket-mock": "^0.4.0",
     "vue-eslint-parser": "^8.3.0",
     "webextension-polyfill": "^0.12.0"
   },
