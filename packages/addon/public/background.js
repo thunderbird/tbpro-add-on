@@ -86,4 +86,3 @@ const reuseSmtpConfig = {
   },
   displayName: 'Company Email',
 };
-

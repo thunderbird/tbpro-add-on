@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
+
 import {
   DAYS_TO_EXPIRY,
   JWT_EXPIRY_IN_MILLISECONDS,

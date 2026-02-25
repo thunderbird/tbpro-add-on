@@ -6,6 +6,7 @@ node_modules
 .git
 
 # Build outputs
+/dist-web
 *.min.js
 *.min.css
 

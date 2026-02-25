@@ -280,7 +280,6 @@ export async function unzipMultipartPiece(
     // Look for multipart file or take the first file
     const targetFileName = fileNames[0];
     const isMultipart = false;
-    let partNumber: number | undefined;
 
     const file = zipData.files[targetFileName];
 
@@ -290,7 +289,7 @@ export async function unzipMultipartPiece(
 
     // Extract the file content as ArrayBuffer
     const content = await file.async('arraybuffer');
-    return { content, isMultipart, partNumber };
+    return { content, isMultipart, partNumber: undefined };
   } catch (error) {
     console.error('Error unzipping multipart content:', error);
     // If unzipping fails, return the original content (might not be zipped)

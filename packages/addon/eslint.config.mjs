@@ -4,7 +4,8 @@ import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-export default [
+/** @type {any} */
+const config = [
   {
     languageOptions: {
       parserOptions: {
@@ -31,15 +32,16 @@ export default [
       '@typescript-eslint/ban-ts-comment': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-extra-boolean-cast': 'off',
+      'preserve-caught-error': 'off',
       'vue/no-use-v-if-with-v-for': 'warn',
       '@typescript-eslint/no-unused-vars': [
-        "error",
+        'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ]
+      ],
     },
   },
   {
-    files: ["public/api/**/*.js"],
+    files: ['public/api/**/*.js'],
     languageOptions: {
       globals: {
         Cr: true,
@@ -55,7 +57,9 @@ export default [
         URL: true,
         URLSearchParams: true,
         ExtensionCommon: true,
-      }
-    }
+      },
+    },
   },
 ];
+
+export default config;

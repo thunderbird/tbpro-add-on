@@ -1,36 +1,36 @@
-"use strict";
+'use strict';
 
 (function (exports) {
   var { CreateInBackend } = ChromeUtils.importESModule(
-    "resource:///modules/accountcreation/CreateInBackend.sys.mjs"
+    'resource:///modules/accountcreation/CreateInBackend.sys.mjs'
   );
   var { OAuth2Module } = ChromeUtils.importESModule(
-    "resource:///modules/OAuth2Module.sys.mjs"
+    'resource:///modules/OAuth2Module.sys.mjs'
   );
   var { AccountConfig } = ChromeUtils.importESModule(
-    "resource:///modules/accountcreation/AccountConfig.sys.mjs"
+    'resource:///modules/accountcreation/AccountConfig.sys.mjs'
   );
   var { MailServices } = ChromeUtils.importESModule(
-    "resource:///modules/MailServices.sys.mjs"
+    'resource:///modules/MailServices.sys.mjs'
   );
 
   // Return customized account config, starting from defaults.
   function createAccountConfig(email, realname, hostname, displayName) {
     const accountConfig = new AccountConfig();
 
-    accountConfig.incoming.type = "imap";
+    accountConfig.incoming.type = 'imap';
     accountConfig.incoming.hostname = hostname;
     accountConfig.incoming.port = 993;
     accountConfig.incoming.username = email;
-    accountConfig.incoming.password = "";
+    accountConfig.incoming.password = '';
     accountConfig.incoming.socketType = 3; // SSL
     accountConfig.incoming.auth = 10; // OAuth2
 
-    accountConfig.outgoing.type = "smtp";
+    accountConfig.outgoing.type = 'smtp';
     accountConfig.outgoing.hostname = hostname;
     accountConfig.outgoing.port = 587;
     accountConfig.outgoing.username = email;
-    accountConfig.outgoing.password = "";
+    accountConfig.outgoing.password = '';
     accountConfig.outgoing.socketType = 2; // STARTTLS
     accountConfig.outgoing.auth = 10; // OAuth2
     accountConfig.outgoing.addThisServer = true;
@@ -44,11 +44,7 @@
 
   function accountExists(email, hostname) {
     try {
-      const server = MailServices.accounts.findServer(
-        email,
-        hostname,
-        "imap"
-      );
+      const server = MailServices.accounts.findServer(email, hostname, 'imap');
       return !!server;
     } catch {
       // findServer throws if not found
@@ -64,11 +60,13 @@
             try {
               // Check if account already exists
               if (accountExists(email, hostname)) {
-                console.log(`Account already exists for ${email} on ${hostname}`);
+                console.log(
+                  `Account already exists for ${email} on ${hostname}`
+                );
                 return {
                   success: true,
                   alreadyExists: true,
-                  message: "Account already exists"
+                  message: 'Account already exists',
                 };
               }
 
@@ -82,7 +80,7 @@
               console.log(`Successfully created account for ${email}`);
               return { success: true, alreadyExists: false };
             } catch (e) {
-              console.error("Error creating account:", e);
+              console.error('Error creating account:', e);
               return { success: false, error: e.message };
             }
           },
@@ -92,20 +90,20 @@
               const incomingServer = MailServices.accounts.findServer(
                 email,
                 hostname,
-                "imap"
+                'imap'
               );
 
               if (!incomingServer) {
-                console.error("Server not found");
-                return { success: false, error: "Server not found" };
+                console.error('Server not found');
+                return { success: false, error: 'Server not found' };
               }
 
               const oauth2Module = new OAuth2Module();
               const initialized = oauth2Module.initFromMail(incomingServer);
 
               if (!initialized) {
-                console.error("Failed to initialize OAuth2Module");
-                return { success: false, error: "OAuth2Module init failed" };
+                console.error('Failed to initialize OAuth2Module');
+                return { success: false, error: 'OAuth2Module init failed' };
               }
 
               await oauth2Module.setRefreshToken(refreshToken);
@@ -115,14 +113,14 @@
 
               return { success: true };
             } catch (e) {
-              console.error("Error in setToken:", e);
+              console.error('Error in setToken:', e);
               return { success: false, error: e.message };
             }
-          }
+          },
         },
       };
     }
   }
 
   exports.MailAccounts = MailAccounts;
-})(this)
+})(this);

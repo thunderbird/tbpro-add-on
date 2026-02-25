@@ -39,7 +39,11 @@ class Limiter extends Transform {
   }
 }
 
-async function handleUpload(ws, message, fileStream) {
+async function handleUpload(
+  ws,
+  message,
+  setFileStream: (s: Transform) => void
+) {
   const uploadId = uuidv4();
   const fileInfo = JSON.parse(message);
 
@@ -68,7 +72,8 @@ async function handleUpload(ws, message, fileStream) {
   const limiter = new Limiter(encryptedSize(config.max_file_size));
 
   const wsStream = ws.constructor.createWebSocketStream(ws);
-  fileStream = wsStream.pipe(eof).pipe(limiter); // limiter needs to be the last in the chain
+  const fileStream = wsStream.pipe(eof).pipe(limiter); // limiter needs to be the last in the chain
+  setFileStream(fileStream);
 
   // Remember: storage is `storage/index.js`
   // which hands off to the underlying storage mechanism.
@@ -97,7 +102,7 @@ async function handleUpload(ws, message, fileStream) {
 }
 
 export default function (ws) {
-  let fileStream;
+  let fileStream: Transform | undefined;
 
   ws.on('close', (e) => {
     if (e !== 1000 && fileStream !== undefined) {
@@ -107,7 +112,9 @@ export default function (ws) {
 
   ws.once('message', async function (message) {
     try {
-      await handleUpload(ws, message, fileStream);
+      await handleUpload(ws, message, (stream) => {
+        fileStream = stream;
+      });
     } catch (e) {
       console.error('upload', e);
       if (ws.readyState === 1) {

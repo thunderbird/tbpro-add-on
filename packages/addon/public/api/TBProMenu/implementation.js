@@ -14,8 +14,14 @@
  */
 
 (function (exports) {
-  var { ExtensionSupport } = ChromeUtils.importESModule('resource:///modules/ExtensionSupport.sys.mjs');
-  var { ExtensionUtils: { ExtensionError } } = ChromeUtils.importESModule('resource://gre/modules/ExtensionUtils.sys.mjs');
+  var { ExtensionSupport } = ChromeUtils.importESModule(
+    'resource:///modules/ExtensionSupport.sys.mjs'
+  );
+  var {
+    ExtensionUtils: { ExtensionError },
+  } = ChromeUtils.importESModule(
+    'resource://gre/modules/ExtensionUtils.sys.mjs'
+  );
 
   var gMenuItems = {};
   var gRootMenuId = null;
@@ -80,7 +86,9 @@
    * @param {string} itemId The id name of the button
    */
   function _getRootButton(window, extension, itemId) {
-    let toolbarButton = window.document.getElementById('tbpro-menu-id-' + itemId);
+    let toolbarButton = window.document.getElementById(
+      'tbpro-menu-id-' + itemId
+    );
     if (toolbarButton) {
       return toolbarButton;
     }
@@ -90,19 +98,24 @@
     toolbarButton = createElement({
       id: 'tbpro-menu-id-' + itemId,
       type: 'toolbarbutton',
-      classes: [
-        'subviewbutton',
-        'subviewbutton-iconic',
-        'tbpro-header-button',
-      ],
+      classes: ['subviewbutton', 'subviewbutton-iconic', 'tbpro-header-button'],
       attributes: { closemenu: '' },
       xul: true,
     });
 
     const divider = createElement({ type: 'div', classes: ['tbpro-divider'] });
-    const text = createElement({ type: 'span', classes: ['tbpro-menu-item-text'] });
-    const wrapper = createElement({ type: 'span', classes: ['tbpro-header-content'] });
-    const boldText = createElement({ type: 'span', classes: ['tbpro-menu-item-bold-text'] });
+    const text = createElement({
+      type: 'span',
+      classes: ['tbpro-menu-item-text'],
+    });
+    const wrapper = createElement({
+      type: 'span',
+      classes: ['tbpro-header-content'],
+    });
+    const boldText = createElement({
+      type: 'span',
+      classes: ['tbpro-menu-item-bold-text'],
+    });
 
     wrapper.appendChild(text);
     wrapper.appendChild(boldText);
@@ -129,7 +142,10 @@
    */
   function _applyForWindows(func) {
     for (const win of ExtensionSupport.openWindows) {
-      if (win.document.location.href == 'chrome://messenger/content/messenger.xhtml') {
+      if (
+        win.document.location.href ==
+        'chrome://messenger/content/messenger.xhtml'
+      ) {
         func(win, win.document);
       }
     }
@@ -146,22 +162,39 @@
    * @param {string} createProps.secondaryTitle - The secondary title of the item, if applicable
    * @param {string} createProps.parentId - The parent menu item id.
    */
-  function _createMenuItem(window, extension, id, { title, secondaryTitle, tooltip, parentId }) {
+  function _createMenuItem(
+    window,
+    extension,
+    id,
+    { title, secondaryTitle, tooltip, parentId }
+  ) {
     const document = window.document;
 
     if (parentId) {
-      const parentToolbarItem = document.getElementById('tbpro-menu-id-' + parentId);
+      const parentToolbarItem = document.getElementById(
+        'tbpro-menu-id-' + parentId
+      );
 
       let submenu;
       if (!parentToolbarItem.classList.contains('subviewbutton-nav')) {
         // Parent is an item, not a subview. Needs adapting.
-        let parentText = parentToolbarItem.querySelector('.tbpro-menu-item-text')?.textContent;
+        let parentText = parentToolbarItem.querySelector(
+          '.tbpro-menu-item-text'
+        )?.textContent;
         if (!parentText) {
           parentText = parentToolbarItem.textContent;
         }
 
-        submenu = _addSubMenu(window, extension, parentText, 'appMenu-tbpro-submenu-' + parentId);
-        parentToolbarItem.setAttribute('oncommand', `PanelUI.showSubView('appMenu-tbpro-submenu-${parentId}', this)`);
+        submenu = _addSubMenu(
+          window,
+          extension,
+          parentText,
+          'appMenu-tbpro-submenu-' + parentId
+        );
+        parentToolbarItem.setAttribute(
+          'oncommand',
+          `PanelUI.showSubView('appMenu-tbpro-submenu-${parentId}', this)`
+        );
         parentToolbarItem.classList.add('subviewbutton-nav');
         parentToolbarItem.setAttribute('closemenu', 'none');
       } else {
@@ -181,7 +214,8 @@
     } else {
       const menuItem = _getRootButton(window, extension, id);
       menuItem.querySelector('.tbpro-menu-item-text').textContent = title;
-      menuItem.querySelector('.tbpro-menu-item-bold-text').textContent = secondaryTitle;
+      menuItem.querySelector('.tbpro-menu-item-bold-text').textContent =
+        secondaryTitle;
       menuItem.setAttribute('tooltiptext', tooltip || '');
     }
   }
@@ -196,26 +230,27 @@
    * @param {string} createProps.secondaryTitle - The secondary title of the item, if applicable
    */
   function _updateMenuItem(window, id, { title, secondaryTitle, tooltip }) {
-      const document = window.document;
-      const menuItem = document.getElementById('tbpro-menu-id-' + id);
-      if (!menuItem) {
-        throw new ExtensionError('Could not find item ' + id);
+    const document = window.document;
+    const menuItem = document.getElementById('tbpro-menu-id-' + id);
+    if (!menuItem) {
+      throw new ExtensionError('Could not find item ' + id);
+    }
+
+    if (menuItem.classList.contains('tbpro-header-button')) {
+      if (title !== null) {
+        menuItem.querySelector('.tbpro-menu-item-text').textContent = title;
       }
 
-      if (menuItem.classList.contains('tbpro-header-button')) {
-        if (title !== null) {
-          menuItem.querySelector('.tbpro-menu-item-text').textContent = title;
-        }
-
-        if (secondaryTitle !== null) {
-          menuItem.querySelector('.tbpro-menu-item-bold-text').textContent = secondaryTitle;
-        }
-      } else  {
-        if (title !== null) {
-          menuItem.setAttribute('label', title);
-        }
+      if (secondaryTitle !== null) {
+        menuItem.querySelector('.tbpro-menu-item-bold-text').textContent =
+          secondaryTitle;
       }
-      menuItem.setAttribute('tooltiptext', tooltip || '');
+    } else {
+      if (title !== null) {
+        menuItem.setAttribute('label', title);
+      }
+    }
+    menuItem.setAttribute('tooltiptext', tooltip || '');
   }
 
   /**
@@ -246,15 +281,14 @@
       classes: ['panel-header', 'tbpro-panel-header'],
     });
 
-    const backLabel = document.querySelector('.subviewbutton-back[aria-label]')?.getAttribute('aria-label') || 'Back';
+    const backLabel =
+      document
+        .querySelector('.subviewbutton-back[aria-label]')
+        ?.getAttribute('aria-label') || 'Back';
 
     const backButton = createElement({
       type: 'toolbarbutton',
-      classes: [
-        'subviewbutton',
-        'subviewbutton-iconic',
-        'subviewbutton-back',
-      ],
+      classes: ['subviewbutton', 'subviewbutton-iconic', 'subviewbutton-back'],
       xul: true,
       attributes: {
         closemenu: 'none',
@@ -263,7 +297,11 @@
       },
     });
 
-    const icon = createElement({ type: 'image', xul: true, classes: ['toolbarbutton-icon'] });
+    const icon = createElement({
+      type: 'image',
+      xul: true,
+      classes: ['toolbarbutton-icon'],
+    });
 
     const label = createElement({
       type: 'label',
@@ -325,16 +363,16 @@
    *
    * @returns {HTMLElement} - The submenu item which was created.
    */
-  function _addSubMenuItem(window, extension, {
-    text,
-    close = 'none',
-    tooltip,
-    action,
-    id,
-    nav,
-    menuId,
-  }) {
-    const classes = ['subviewbutton', 'subviewbutton-iconic', 'tbpro-menu-button'];
+  function _addSubMenuItem(
+    window,
+    extension,
+    { text, close = 'none', tooltip, action, id, nav, menuId }
+  ) {
+    const classes = [
+      'subviewbutton',
+      'subviewbutton-iconic',
+      'tbpro-menu-button',
+    ];
     const attributes = {
       tabindex: '0',
       closemenu: close,
@@ -389,8 +427,13 @@
                                     createXULElement rather than createElement.
    * @returns {HTMLElement}
    */
-  function _createElement(window, extension, { attributes, classes, id, text, type, xul }) {
-    const element = window.document[xul ? 'createXULElement' : 'createElement'](type);
+  function _createElement(
+    window,
+    extension,
+    { attributes, classes, id, text, type, xul }
+  ) {
+    const element =
+      window.document[xul ? 'createXULElement' : 'createElement'](type);
 
     // We set the extension id on all elements so they can easily be cleaned up later.
     element.setAttribute('data-extension-injected', extension.id);
@@ -416,7 +459,6 @@
   }
 
   var TBProMenu = class extends ExtensionCommon.ExtensionAPI {
-
     _loadWindow(window) {
       const stylesheet = _createElement(window, this.extension, {
         type: 'style',
@@ -434,20 +476,26 @@
     _loadMenuItem(window, id, createProps) {
       _createMenuItem(window, this.extension, id, createProps);
 
-      for (let child of (createProps.children || [])) {
+      for (let child of createProps.children || []) {
         this._loadMenuItem(window, child.id, child);
       }
     }
 
     onStartup() {
-      ExtensionSupport.registerWindowListener('ext-tbpro-menu-' + this.extension.id, {
-        chromeURLs: ['chrome://messenger/content/messenger.xhtml'],
-        onLoadWindow: (win) => this._loadWindow(win, win.document)
-      })
+      ExtensionSupport.registerWindowListener(
+        'ext-tbpro-menu-' + this.extension.id,
+        {
+          chromeURLs: ['chrome://messenger/content/messenger.xhtml'],
+          onLoadWindow: (win) => this._loadWindow(win, win.document),
+        }
+      );
 
       for (const win of ExtensionSupport.openWindows) {
-        if (win.document.location.href == 'chrome://messenger/content/messenger.xhtml') {
-          this._loadWindow(win, win.document)
+        if (
+          win.document.location.href ==
+          'chrome://messenger/content/messenger.xhtml'
+        ) {
+          this._loadWindow(win, win.document);
         }
       }
     }
@@ -457,10 +505,17 @@
         return;
       }
 
-      ExtensionSupport.unregisterWindowListener('ext-tbpro-menu-' + this.extension.id);
+      ExtensionSupport.unregisterWindowListener(
+        'ext-tbpro-menu-' + this.extension.id
+      );
       for (const win of ExtensionSupport.openWindows) {
-        if (win.document.location.href == 'chrome://messenger/content/messenger.xhtml') {
-          for (const element of win.document.querySelectorAll(`[data-extension-injected="${this.extension.id}"]`)) {
+        if (
+          win.document.location.href ==
+          'chrome://messenger/content/messenger.xhtml'
+        ) {
+          for (const element of win.document.querySelectorAll(
+            `[data-extension-injected="${this.extension.id}"]`
+          )) {
             element.remove();
           }
         }
@@ -476,10 +531,12 @@
         TBProMenu: {
           create(id, createProps) {
             if (id in gMenuItems) {
-              throw new ExtensionError(`Menu item ${id} already exists`)
+              throw new ExtensionError(`Menu item ${id} already exists`);
             }
             if (createProps.parentId && !(createProps.parentId in gMenuItems)) {
-              throw new ExtensionError('Could not find parent ' + createProps.parentId);
+              throw new ExtensionError(
+                'Could not find parent ' + createProps.parentId
+              );
             }
 
             if (!createProps.parentId) {
@@ -491,7 +548,7 @@
             }
 
             gMenuItems[id] = createProps;
-            createProps.children = []
+            createProps.children = [];
             createProps.id = id;
 
             if (createProps.parentId) {
@@ -510,7 +567,6 @@
 
             Object.assign(gMenuItems[id], updateProps);
 
-
             _applyForWindows((window) => {
               _updateMenuItem(window, id, updateProps);
             });
@@ -524,7 +580,9 @@
             const item = gMenuItems[id];
             const parentItem = gMenuItems[item.parentId];
             if (parentItem) {
-              parentItem.children = parentItem.children.filter(element => element !== item);
+              parentItem.children = parentItem.children.filter(
+                (element) => element !== item
+              );
             }
             delete gMenuItems[id];
 
@@ -535,14 +593,21 @@
               }
 
               if (menu.classList.contains('subviewbutton-nav')) {
-                document.getElementById('appMenu-tbpro-submenu-' + id)?.remove();
+                document
+                  .getElementById('appMenu-tbpro-submenu-' + id)
+                  ?.remove();
                 // TODO sub-sub-menus will not be cleaned up, fix this if needed
               }
 
-              if (menu.parentNode.querySelectorAll('.tbpro-menu-button').length < 2) {
+              if (
+                menu.parentNode.querySelectorAll('.tbpro-menu-button').length <
+                2
+              ) {
                 const subview = menu.parentNode.closest('.tbpro-panel-subview');
                 const parentId = subview?.id.substring(22);
-                const parentButton = document.getElementById('tbpro-menu-id-' + parentId);
+                const parentButton = document.getElementById(
+                  'tbpro-menu-id-' + parentId
+                );
                 parentButton.classList.remove('subviewbutton-nav');
                 parentButton.setAttribute('closemenu', '');
                 parentButton.removeAttribute('oncommand');

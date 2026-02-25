@@ -745,7 +745,7 @@ export async function restoreKeys(
     console.error('Keychain is not initialized');
   }
 
-  let getBackupAPIResponse = null;
+  let getBackupAPIResponse: BackupUserStore | undefined;
   try {
     getBackupAPIResponse = await api.call<BackupUserStore>(`users/backup`);
   } catch (error) {

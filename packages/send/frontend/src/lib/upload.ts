@@ -136,7 +136,7 @@ export default class Uploader {
       wrappingKey
     );
 
-    let blobs: NamedBlob[] = [];
+    let blobs: NamedBlob[];
 
     const hashes = await hashFiles(api, fileBlob, SPLIT_SIZE);
 
