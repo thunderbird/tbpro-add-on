@@ -133,7 +133,6 @@ export async function findOrCreateUserProfileByMozillaId(
   const userFromProfile = await getUserByProfile(mozid);
   const userFromEmail = await getUserByEmailV2(email);
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-expect-error
   userResponse = userFromProfile || userFromEmail;
 

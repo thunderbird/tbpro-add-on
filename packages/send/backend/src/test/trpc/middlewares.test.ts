@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import * as jwt from '@send-backend/auth/jwt';
 import { TRPCError } from '@trpc/server';
 import { describe, expect, it, vi } from 'vitest';

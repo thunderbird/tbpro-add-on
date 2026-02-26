@@ -13,7 +13,7 @@ import { verificationEmitter } from '@send-backend/ws/verify';
 import { TRPCError } from '@trpc/server';
 import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { on } from 'websocket';
+import { on } from 'events';
 import { z } from 'zod';
 import {
   createUserWithPassword,

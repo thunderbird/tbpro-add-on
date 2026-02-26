@@ -2,8 +2,6 @@
   {
     "namespace": "MailAccounts",
     "functions": [
-
-
       {
         "name": "createAccount",
         "type": "function",

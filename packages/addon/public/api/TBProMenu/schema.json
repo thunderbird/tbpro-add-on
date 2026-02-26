@@ -8,10 +8,7 @@
         "parameters": [
           {
             "name": "id",
-            "choices": [
-              { "type": "string" },
-              { "type": "null" }
-            ]
+            "choices": [{ "type": "string" }, { "type": "null" }]
           },
           {
             "name": "createProperties",

@@ -2,6 +2,7 @@
  * This is the client-side code that uses the inferred types from the server
  */
 import {
+  type TRPCClient,
   createTRPCClient,
   createWSClient,
   httpBatchLink,
@@ -10,7 +11,7 @@ import {
   wsLink,
 } from '@trpc/client';
 
-import { AppRouter } from '@send-backend/index';
+import { AppRouter } from '@send-backend/router';
 import { TRPC_WS_PATH } from './config';
 
 // create persistent WebSocket connection
@@ -28,7 +29,7 @@ const wsClient = !isTesting
 /**
  * We only import the `AppRouter` type from the server - this is not available at runtime
  */
-export const trpc = createTRPCClient<AppRouter>({
+export const trpc: TRPCClient<AppRouter> = createTRPCClient<AppRouter>({
   links: [
     splitLink({
       condition: (op) => op.type === 'subscription',

@@ -31,6 +31,7 @@ export default [
       '@typescript-eslint/ban-ts-comment': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-extra-boolean-cast': 'off',
+      'preserve-caught-error': 'off',
       'vue/no-use-v-if-with-v-for': 'warn',
     },
   },

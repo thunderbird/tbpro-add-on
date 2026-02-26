@@ -2,7 +2,8 @@
   "extends": "tbpro-shared/tsconfig.client.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "baseUrl": "./",
+    "rootDir": "..",
+    "moduleResolution": "bundler",
     "paths": {
       "@send-frontend/*": ["./src/*"],
       "@send-backend/*": ["../backend/src/*"],

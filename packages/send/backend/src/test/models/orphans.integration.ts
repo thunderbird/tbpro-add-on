@@ -1,5 +1,15 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
-import { PrismaClient, Container, ContainerType, Group, ItemType, User, UserTier, Item, Upload } from '@prisma/client';
+import { describe, it, expect, beforeEach, beforeAll, afterEach } from 'vitest';
+import {
+  PrismaClient,
+  Container,
+  ContainerType,
+  Group,
+  ItemType,
+  User,
+  UserTier,
+  Item,
+  Upload,
+} from '@prisma/client';
 import { createItem, findOrphans } from '../../models';
 
 describe('findOrphans', () => {
@@ -14,18 +24,18 @@ describe('findOrphans', () => {
     const uploadPromises = uploads.map((upload) => {
       return prisma.upload.delete({
         where: {
-          id: upload.id
-        }
+          id: upload.id,
+        },
       });
-    })
+    });
 
     const itemPromises = items.map((item) => {
       return prisma.item.delete({
         where: {
-          id: item.id
-        }
-      })
-    })
+          id: item.id,
+        },
+      });
+    });
 
     await Promise.all(itemPromises);
     await Promise.all(uploadPromises);
@@ -33,30 +43,30 @@ describe('findOrphans', () => {
     try {
       await prisma.group.delete({
         where: {
-          id: group.id
-        }
+          id: group.id,
+        },
       });
 
       await prisma.container.delete({
         where: {
-          id: container.id
-        }
+          id: container.id,
+        },
       });
 
       await prisma.user.delete({
         where: {
-          id: user.id
-        }
+          id: user.id,
+        },
       });
     } catch {
-
+      // cleanup errors are intentionally ignored
     }
 
     items = [];
     uploads = [];
   }
 
-  async function deleteAll() {
+  async function _deleteAll() {
     console.warn(`💥💥💥 destroying all Items and all Uploads 💥💥💥`);
     await prisma.item.deleteMany({});
     await prisma.upload.deleteMany({});
@@ -77,7 +87,7 @@ describe('findOrphans', () => {
     });
 
     group = await prisma.group.create({
-      data: {}
+      data: {},
     });
 
     container = await prisma.container.create({
@@ -89,8 +99,8 @@ describe('findOrphans', () => {
         shareOnly: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }
-    })
+      },
+    });
   });
 
   afterEach(async () => {
@@ -100,7 +110,7 @@ describe('findOrphans', () => {
   beforeAll(async () => {
     // Be careful with this.
     // Make sure you're not running this test against a database with real data.
-    // await deleteAll();
+    // await _deleteAll();
   });
 
   it('should return uploads without associated items', async () => {
@@ -165,8 +175,24 @@ describe('findOrphans', () => {
     uploads.push(orphanedUpload);
 
     // Create items for the first two uploads
-    items.push(await createItem('item1', container.id, upload1.id, ItemType.FILE, 'abc123'));
-    items.push(await createItem('item2', container.id, upload2.id, ItemType.FILE, 'abc123'));
+    items.push(
+      await createItem(
+        'item1',
+        container.id,
+        upload1.id,
+        ItemType.FILE,
+        'abc123'
+      )
+    );
+    items.push(
+      await createItem(
+        'item2',
+        container.id,
+        upload2.id,
+        ItemType.FILE,
+        'abc123'
+      )
+    );
 
     const result = await findOrphans();
     expect(result.uploadIds).toEqual([orphanedUpload.id]);

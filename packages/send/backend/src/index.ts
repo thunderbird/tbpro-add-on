@@ -35,10 +35,8 @@ import { addVersionHeader } from './middleware';
 import { originsHandler } from './origins';
 import metricsRoute from './routes/metrics';
 import { openapiSpecification } from './swagger';
-import { containersRouter } from './trpc/containers';
 import { createContext } from './trpc/context';
-import { sharingRouter } from './trpc/sharing';
-import { usersRouter } from './trpc/users';
+import { appRouter } from './router';
 import { wsHandler } from './ws/setup';
 
 const PORT = 8080;
@@ -104,13 +102,6 @@ export const publicProcedure = t.publicProcedure;
 export const mergeRouters = t.mergeRouters;
 
 /* tRPC */
-// Put together all our routers
-const appRouter = mergeRouters(
-  usersRouter,
-  containersRouter,
-  sharingRouter
-  /* Add more routers here */
-);
 
 const trpcWebsocket = applyWSSHandler({
   wss,
@@ -176,5 +167,3 @@ const server = app.listen(PORT, HOST, async () => {
 });
 
 wsHandler(server);
-
-export type AppRouter = typeof appRouter;

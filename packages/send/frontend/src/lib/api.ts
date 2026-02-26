@@ -70,9 +70,8 @@ export class ApiConnection {
     if (!requestHeaders['Authorization']) {
       try {
         // Dynamically import to avoid circular dependency
-        const { useAuthStore } = await import(
-          '@send-frontend/stores/auth-store'
-        );
+        const { useAuthStore } =
+          await import('@send-frontend/stores/auth-store');
         const authStore = useAuthStore();
         const accessToken = await authStore.getAccessToken();
 
@@ -114,9 +113,8 @@ export class ApiConnection {
       // If we're using OIDC and get 401, try to refresh the token
       if (requestHeaders['Authorization']) {
         try {
-          const { useAuthStore } = await import(
-            '@send-frontend/stores/auth-store'
-          );
+          const { useAuthStore } =
+            await import('@send-frontend/stores/auth-store');
           const authStore = useAuthStore();
           const newToken = await authStore.refreshToken();
 

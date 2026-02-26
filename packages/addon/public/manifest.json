@@ -12,9 +12,7 @@
     }
   },
   "background": {
-    "scripts": [
-      "background.js"
-    ],
+    "scripts": ["background.js"],
     "type": "module"
   },
   "default_locale": "en",
@@ -50,77 +48,43 @@
     "MailAccounts": {
       "schema": "api/MailAccounts/schema.json",
       "parent": {
-        "scopes": [
-          "addon_parent"
-        ],
-        "paths": [
-          [
-            "MailAccounts"
-          ]
-        ],
+        "scopes": ["addon_parent"],
+        "paths": [["MailAccounts"]],
         "script": "api/MailAccounts/implementation.js"
       }
     },
     "CloudFileAccounts": {
       "schema": "api/CloudFileAccounts/schema.json",
       "parent": {
-        "scopes": [
-          "addon_parent"
-        ],
-        "paths": [
-          [
-            "CloudFileAccounts"
-          ]
-        ],
+        "scopes": ["addon_parent"],
+        "paths": [["CloudFileAccounts"]],
         "script": "api/CloudFileAccounts/implementation.js",
-        "events": [
-          "startup"
-        ]
+        "events": ["startup"]
       }
     },
     "TBProMenu": {
       "schema": "api/TBProMenu/schema.json",
       "parent": {
-        "scopes": [
-          "addon_parent"
-        ],
-        "paths": [
-          [
-            "TBProMenu"
-          ]
-        ],
+        "scopes": ["addon_parent"],
+        "paths": [["TBProMenu"]],
         "script": "api/TBProMenu/implementation.js",
-        "events": [
-          "startup"
-        ]
+        "events": ["startup"]
       }
     },
     "ProTweaks": {
       "schema": "api/ProTweaks/schema.json",
       "parent": {
-        "scopes": [
-          "addon_parent"
-        ],
-        "paths": [
-          [
-            "ProTweaks"
-          ]
-        ],
+        "scopes": ["addon_parent"],
+        "paths": [["ProTweaks"]],
         "script": "api/ProTweaks/implementation.js",
-        "events": [
-          "startup"
-        ]
+        "events": ["startup"]
       }
     }
   },
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "token-bridge.js"
-      ],
+      "matches": ["<all_urls>"],
+      "js": ["token-bridge.js"],
       "run_at": "document_start"
     }
   ]
