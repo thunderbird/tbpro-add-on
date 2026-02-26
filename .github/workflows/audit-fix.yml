@@ -1,0 +1,118 @@
+---
+name: Automated Dependency Audit
+
+concurrency:
+  group: audit-fix-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  schedule:
+    # Run every Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: read
+
+jobs:
+  audit-and-test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    outputs:
+      has-changes: ${{ steps.check-changes.outputs.has-changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+
+      - name: Run pnpm audit --fix
+        id: audit-fix
+        run: |
+          echo "Running pnpm audit --fix..."
+          pnpm audit --fix || true
+          echo "Audit fix completed"
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if git diff --exit-code pnpm-lock.yaml; then
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in lockfile"
+          else
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in lockfile"
+          fi
+
+      - name: Install dependencies after audit fix
+        if: steps.check-changes.outputs.has-changes == 'true'
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+
+      - name: Test send/backend
+        if: steps.check-changes.outputs.has-changes == 'true'
+        run: |
+          cd packages/send/backend
+          pnpm install --filter send-backend
+          cp .env.sample .env
+          pnpm prisma generate
+          pnpm ci:validate
+
+      - name: Test send/frontend
+        if: steps.check-changes.outputs.has-changes == 'true'
+        run: |
+          lerna run ci:validate --scope=send-frontend
+
+      - name: Test addon
+        if: steps.check-changes.outputs.has-changes == 'true'
+        run: |
+          lerna run ci:validate --scope=addon
+
+      - name: Test shared
+        if: steps.check-changes.outputs.has-changes == 'true'
+        run: |
+          lerna run test --scope=tbpro-shared
+
+      - name: Test assist/frontend
+        if: steps.check-changes.outputs.has-changes == 'true'
+        run: |
+          lerna run test:unit --scope=assist-frontend
+
+      - name: Create Pull Request
+        if: steps.check-changes.outputs.has-changes == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: fix security vulnerabilities via pnpm audit --fix'
+          branch: automated/dependency-audit-${{ github.run_number }}
+          delete-branch: true
+          title: '[Automated] Fix Security Vulnerabilities'
+          body: |
+            ## Automated Dependency Audit
+            
+            This PR was automatically created by the dependency audit workflow.
+            
+            ### Changes
+            - Ran `pnpm audit --fix` to address security vulnerabilities
+            - All unit tests passed successfully
+            
+            ### Workflow Details
+            - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - **Triggered**: ${{ github.event_name == 'schedule' && 'Scheduled (Weekly)' || 'Manual' }}
+            - **Date**: ${{ github.event.head_commit.timestamp }}
+            
+            Please review the changes in `pnpm-lock.yaml` and merge if appropriate.
+          labels: |
+            dependencies
+            security
+            automated
+          base: main
+          assignees: ${{ github.actor }}
