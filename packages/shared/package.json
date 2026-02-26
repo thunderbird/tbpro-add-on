@@ -33,7 +33,7 @@
     "@vitejs/plugin-vue": "^6.0.3",
     "@vitest/coverage-v8": "*",
     "dotenv": "*",
-    "eslint": "^10.0.2",
+    "eslint": "^9.26.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.8.0",
     "globals": "^17.3.0",
