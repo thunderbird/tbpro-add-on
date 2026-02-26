@@ -89,7 +89,7 @@
     "@types/websocket": "npm:@types/ws@^8.18.1",
     "@typescript-eslint/parser": "^8.56.1",
     "@vitest/coverage-v8": "^4.0.18",
-    "eslint": "^10.0.2",
+    "eslint": "^9.26.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.3.0",
     "lint-staged": "^15.5.2",
