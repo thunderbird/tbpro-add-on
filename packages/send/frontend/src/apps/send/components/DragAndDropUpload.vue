@@ -37,6 +37,26 @@ const completedFiles = ref<
 const isUploading = ref(false);
 const isError = ref(false);
 
+// Mobile support: HTML file input
+const fileInputEl = ref<HTMLInputElement | null>(null);
+
+function openFilePicker() {
+  fileInputEl.value?.click();
+}
+
+// Handle changes to HTML file input
+function onFileInputChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+
+  // Convert to actual File[] to pass to onDrop
+  const files = target.files ? Array.from(target.files) : null;
+
+  onDrop(files);
+
+  // Reset after adding files.
+  if (target) target.value = '';
+}
+
 function onDrop(files: File[] | null) {
   filesMetadata.value = [];
   fileBlobs.value = [];
@@ -240,13 +260,23 @@ async function doUpload() {
         tabindex="0"
         aria-label="Drop files here or click to select files for upload"
         aria-describedby="drop-zone-instructions"
+        @click="openFilePicker"
       >
         <slot></slot>
         <!-- Call out instructions for screen readers -->
         <div id="drop-zone-instructions" class="sr-only">
-          Drop files here to upload them
+          Drop files here or tap to upload
         </div>
       </div>
+
+      <input
+        ref="fileInputEl"
+        type="file"
+        class="sr-only"
+        multiple
+        @change="onFileInputChange"
+      />
+
 
       <!-- Display dropped files and completed files -->
       <div

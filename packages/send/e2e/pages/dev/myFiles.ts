@@ -32,7 +32,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   await page.waitForLoadState("networkidle");
 
   // Find upload box and upload the file
-  expect(await dropZone.textContent({ timeout })).toContain("files here to upload");
+  expect(await dropZone.textContent({ timeout })).toContain("files here or tap to upload");
   await dragAndDropFile(page, "#drop-zone", "../../test-files/test.png", "test.png");
   await uploadButton.click();
   // wait for network idle
