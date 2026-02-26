@@ -2,6 +2,7 @@
  * This is the client-side code that uses the inferred types from the server
  */
 import {
+  type TRPCClient,
   createTRPCClient,
   createWSClient,
   httpBatchLink,
@@ -28,7 +29,7 @@ const wsClient = !isTesting
 /**
  * We only import the `AppRouter` type from the server - this is not available at runtime
  */
-export const trpc = createTRPCClient<AppRouter>({
+export const trpc: TRPCClient<AppRouter> = createTRPCClient<AppRouter>({
   links: [
     splitLink({
       condition: (op) => op.type === 'subscription',
