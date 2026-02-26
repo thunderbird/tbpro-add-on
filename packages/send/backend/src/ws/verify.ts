@@ -1,5 +1,5 @@
 import { logger } from '@send-backend/utils/logger';
-import { EventEmitter } from 'websocket';
+import { EventEmitter } from 'events';
 
 export const verificationEmitter = new EventEmitter();
 
