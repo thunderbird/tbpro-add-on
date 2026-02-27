@@ -597,13 +597,6 @@ function initStorageWatcher() {
           // We really shouldn't be using the authStore here, since we don't have the right
           // env vars, but that does not interfere with logout.
         }
-
-        try {
-          // FXA/JWT logout
-          await api.removeAuthToken();
-        } catch (error) {
-          console.error('Legacy (fxa) logout failed:', error);
-        }
       }
       // Optionally, we can check if they've just logged in:
       // typeof changes[STORAGE_KEY_AUTH].newValue === 'object'

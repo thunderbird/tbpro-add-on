@@ -136,7 +136,7 @@ export async function findOrCreateUserProfileByMozillaId(
   // @ts-expect-error
   userResponse = userFromProfile || userFromEmail;
 
-  // If a user hasn't been created via OIDC or previousliy by fxa, we create one
+  // If a user hasn't been created via OIDC, we create one
   if (!userFromProfile?.id && !userFromEmail) {
     userResponse = await createUser('', email, UserTier.FREE);
   }

@@ -37,7 +37,7 @@ export class ApiConnection {
   }
 
   async removeAuthToken() {
-    await this.call('lockbox/fxa/logout');
+    await this.call('api/auth/oidc/logout');
   }
 
   /**

@@ -39,7 +39,6 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // `secure: false` seems to do nothing
         // secure: false,
-        '/lockbox/fxa': SERVER_BASE_URL, // Using `backend` per the docker network name
         '/login-success.html': SERVER_BASE_URL, // Using `backend` per the docker network name
         '/login-failed.html': SERVER_BASE_URL, // Using `backend` per the docker network name
       },

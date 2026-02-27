@@ -64,9 +64,6 @@ resources:
         - b2-application-key-id
         - b2-application-key
         - database-url
-        - fxa-allow-list
-        - fxa-client-id
-        - fxa-client-secret
         - jwt-access-token-secret
         - jwt-refresh-token-secret
         - posthog-api-key
@@ -125,12 +122,6 @@ resources:
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/b2-application-key-id-IQl58V
               - name: DATABASE_URL
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/database-url-a53Vqt
-              - name: FXA_ALLOW_LIST
-                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/fxa-allow-list-THXxQZ
-              - name: FXA_CLIENT_ID
-                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/fxa-client-id-vAhXfg
-              - name: FXA_CLIENT_SECRET
-                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/fxa-client-secret-KI0EPu
               - name: POSTHOG_API_KEY
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/posthog-api-key-lVtOJy
               - name: SENTRY_AUTH_TOKEN
@@ -164,14 +155,6 @@ resources:
                 value: sendapp
               - name: FS_LOCAL_BUCKET
                 value: send-fs-local
-              - name: FXA_ENTRYPOINT
-                value: tblockbox
-              - name: FXA_METRICS_FLOW_URL
-                value: https://accounts.firefox.com/metrics-flow
-              - name: FXA_MOZ_ISSUER
-                value: https://accounts.firefox.com
-              - name: FXA_REDIRECT_URI
-                value: https://send-backend.tb.pro/fxa
               - name: NODE_ENV
                 value: production
               - name: POSTHOG_HOST
