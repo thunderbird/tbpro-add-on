@@ -6,7 +6,7 @@ import { DashboardPage } from '../../pages/dashboard-page';
 import {
   PLAYWRIGHT_TAG_MOBILE_NIGHTLY,
   TIMEOUT_1_SECOND,
-  TIMEOUT_5_SECONDS,
+  TIMEOUT_30_SECONDS,
  } from "../../const/const"
 
 var tbAcctsPage: TBAcctsPage;
@@ -33,12 +33,10 @@ test.describe('sign-in (mobile)', () => {
     await navigateToSendAndSignIn(page, testInfo.project.name); //ie. ios-safari
 
     // verify we're now on the tb send dashboard, give lots of time as BrowserStack can be slow
-    await expect(dashboardPage.sendStorageHdr).toBeVisible();
-    await expect(dashboardPage.logoutBtn).toBeVisible();
+    await expect(dashboardPage.sendHdrLogoLink).toBeVisible({ timeout: TIMEOUT_30_SECONDS });
 
-    // now that we're done, wait a second and sign out
+    // now that we're done, wait a second and sign out via user avatar menu
     await page.waitForTimeout(TIMEOUT_1_SECOND);
-    await dashboardPage.logoutBtn.click();
-    await page.waitForTimeout(TIMEOUT_5_SECONDS);
+    await dashboardPage.signOut(testInfo.project.name);
   });
 });

@@ -32,7 +32,7 @@ export class TBAcctsPage {
    * test project name (i.e. 'android-chrome') as some actions differ on different mobile platforms.
    */
   async signIn(testProjectName: string = 'desktop') {
-    console.log('signing in to TB Accounts');
+    console.log('signing in to tb accounts');
     expect(TB_ACCTS_EMAIL, 'getting TB_ACCTS_EMAIL env var').toBeTruthy();
     expect(TB_ACCTS_PWORD, 'getting TB_ACCTS_PWORD env var').toBeTruthy();
     await expect(this.emailInput).toBeVisible({ timeout: TIMEOUT_30_SECONDS });
