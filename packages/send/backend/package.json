@@ -46,7 +46,7 @@
     "@sentry/cli": "^2.58.5",
     "@sentry/node": "^8.55.0",
     "@sentry/profiling-node": "^8.55.0",
-    "@trpc/server": "^11.10.0",
+    "@trpc/server": ">=11.1.1",
     "@tweedegolf/sab-adapter-amazon-s3": "^1.0.20",
     "@tweedegolf/sab-adapter-backblaze-b2": "^1.0.7",
     "@tweedegolf/sab-adapter-local": "^1.0.9",
