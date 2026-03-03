@@ -47,6 +47,20 @@ async function handleSetEncryptionPassword() {
       <div class="left-column">
         <!-- Thundermail Card -->
 
+        <div class="content-card">
+          <ThundermailIcon class="card-icon" />
+          <div class="card-content">
+            <div class="card-header">
+              <span class="card-label">THUNDERMAIL</span>
+              <h2 class="card-title">Account added</h2>
+            </div>
+            <p class="card-text">
+              Your Thundermail account has been automatically added to
+              Thunderbird Desktop.
+            </p>
+          </div>
+        </div>
+
         <!-- Send Card -->
         <div class="content-card">
           <SendIconTBPro class="card-icon" />
@@ -66,28 +80,6 @@ async function handleSetEncryptionPassword() {
               @click.prevent="handleSetEncryptionPassword"
             >
               Set encryption password
-            </button>
-          </div>
-        </div>
-
-        <div class="content-card">
-          <ThundermailIcon class="card-icon" />
-          <div class="card-content">
-            <div class="card-header">
-              <span class="card-label">THUNDERMAIL</span>
-              <h2 class="card-title">Account added</h2>
-            </div>
-            <p class="card-text">
-              Your Thundermail account has been added. Find the new inbox at the
-              bottom of the folder pane, or open the dashboard to manage your
-              accounts.
-            </p>
-
-            <button
-              class="secondary-button"
-              @click.prevent="handleOpenThundermail"
-            >
-              Manage Thundermail
             </button>
           </div>
         </div>

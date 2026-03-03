@@ -3,52 +3,65 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
 </script>
 
 <template>
-  <div class="support-card">
-    <h3 class="support-heading">Need Support?</h3>
-    <nav class="support-links">
-      <a
-        :href="SUPPORT_URL"
-        class="support-link"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Need help with your account? →
-      </a>
-      <a
-        :href="SUPPORT_URL"
-        class="support-link"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Troubleshooting for desktop →
-      </a>
-      <a
-        :href="SUPPORT_URL"
-        class="support-link"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Learn more about encryption →
-      </a>
-      <a
-        :href="SUPPORT_URL"
-        class="support-link"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Export your data →
-      </a>
-    </nav>
+  <div class="border-thing">
+    <div class="support-card">
+      <h3 class="support-heading">Need Support?</h3>
+      <nav class="support-links">
+        <a
+          :href="SUPPORT_URL"
+          class="support-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Need help with your account? →
+        </a>
+        <a
+          :href="SUPPORT_URL"
+          class="support-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Troubleshooting for desktop →
+        </a>
+        <a
+          :href="SUPPORT_URL"
+          class="support-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn more about encryption →
+        </a>
+        <a
+          :href="SUPPORT_URL"
+          class="support-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Export your data →
+        </a>
+      </nav>
+    </div>
   </div>
 </template>
 
 <style lang="css" scoped>
-.support-card {
-  background: #1e293b;
+.border-thing {
+  background-image: linear-gradient(
+    163deg,
+    rgb(22, 57, 95) 7%,
+    rgb(23, 27, 36) 47%
+  );
   border-radius: 16px;
   padding: 2rem;
   height: fit-content;
   width: 100%;
+}
+.support-card {
+  background: #1e293b;
+  padding: 1rem;
+  border-radius: 16px;
+  border: solid 1px rgba(88, 201, 255, 0.2);
+  background-color: rgba(0, 0, 0, 0.4);
 }
 
 .support-heading {
