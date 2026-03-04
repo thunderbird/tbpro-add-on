@@ -138,7 +138,7 @@ jobs:
   frontend-merge:
     environment: send-stage
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
+    # if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -258,15 +258,15 @@ jobs:
           name: xpi-prod
           path: packages/send/send-suite-prod-*.xpi
 
-      # Automatically deploy to stage, but not to prod
-      - name: Deploy to stage
-        id: frontend-deploy
-        run: |
-          cd packages/send/dist-web-stage
-          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
+      # # Automatically deploy to stage, but not to prod
+      # - name: Deploy to stage
+      #   id: frontend-deploy
+      #   run: |
+      #     cd packages/send/dist-web-stage
+      #     aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
 
-          # Invalidate the CDN
-          aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
+      #     # Invalidate the CDN
+      #     aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
       - name: Deploy to ATN
         continue-on-error: true
