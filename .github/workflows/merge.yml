@@ -246,6 +246,8 @@ jobs:
           mv $XPI $PROD_XPI
           echo "xpi_file=packages/send/$PROD_XPI" >> "$GITHUB_OUTPUT"
 
+          # cp ./pacakges/addon/public/metadata.json .
+
       - name: Archive the production frontend build
         id: frontend-archive-prod
         uses: actions/upload-artifact@v4
