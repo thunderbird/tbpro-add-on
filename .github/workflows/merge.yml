@@ -7,8 +7,8 @@ concurrency:
 
 on:
   push:
-    branches:
-      - main
+    # branches:
+    #   - main
 
 permissions:
   packages: read
@@ -295,7 +295,7 @@ jobs:
           metaDataFile: packages/sendaddon/public/metadata.json
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
-          
+
   addon-changes:
     needs: detect-changes
     runs-on: ubuntu-latest
