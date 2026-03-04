@@ -280,11 +280,6 @@ jobs:
       #   run: |
       #     cd packages/send/frontend
       #     pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
-      - name: debug 
-        id: debug-workspace
-        run: |
-          ls -al
-          pwd
 
       - name: Deploy to ATN via web-ext
         continue-on-error: true
@@ -379,7 +374,7 @@ jobs:
           source:  ${{ steps.frontend-build-stage.outputs.xpi_file }}
           channel: unlisted
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
-          metaDataFile: packages/addon/public/metadata.json
+          # metaDataFile: packages/addon/public/metadata.json
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
 
