@@ -292,7 +292,7 @@ jobs:
           source:  ${{ steps.frontend-build-prod.outputs.xpi_file }}
           channel: unlisted
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
-          metaDataFile: packages/sendaddon/public/metadata.json
+          metaDataFile: packages/addon/public/metadata.json
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
 
