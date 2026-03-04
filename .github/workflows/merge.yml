@@ -138,7 +138,7 @@ jobs:
   frontend-merge:
     environment: send-stage
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
+    # if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -290,7 +290,6 @@ jobs:
           source:  ${{ steps.frontend-build-prod.outputs.xpi_file }}
           channel: unlisted
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
-          metaDataFile: metadata.json
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
 
