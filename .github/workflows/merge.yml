@@ -290,7 +290,6 @@ jobs:
         continue-on-error: true
         id: web-ext-sign
         uses: kewisch/action-web-ext@v1
-        env:
         with:
           cmd: sign
           source:  ${{ steps.frontend-build-prod.outputs.xpi_file }}
