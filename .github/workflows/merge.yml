@@ -138,7 +138,7 @@ jobs:
   frontend-merge:
     environment: send-stage
     needs: detect-changes
-    # if: needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -291,7 +291,6 @@ jobs:
         id: web-ext-sign
         uses: kewisch/action-web-ext@v1
         env:
-          BASE_URL: https://send-stage.tb.pro
         with:
           cmd: sign
           source:  ${{ steps.frontend-build-prod.outputs.xpi_file }}
@@ -308,7 +307,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: yes
-    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    # if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -355,10 +354,13 @@ jobs:
           pnpm install --filter send-frontend
 
           lerna run build --scope=addon
+          
+          cd packages/addon/
+          XPI="$(find tbpro-addon-*.xpi)"
+          STAGE_XPI="tbpro-addon-stage-$(basename "$XPI" | cut -d'-' -f3-)"
 
-          cd packages/addon
-
-          mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-stage-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
+          mv "$XPI" "$STAGE_XPI"
+          echo "xpi_file=packages/addon/$STAGE_XPI" >> "$GITHUB_OUTPUT"
 
       - name: Archive the stage XPI
         id: xpi-archive-stage
@@ -367,16 +369,31 @@ jobs:
           name: addon-xpi-stage
           path: packages/addon/tbpro-addon-stage-*.xpi
 
-      - name: Deploy to ATN
+      - name: Deploy addon stage to ATN via web-ext
         continue-on-error: true
-        id: xpi-deploy
+        id: web-ext-sign
+        uses: kewisch/action-web-ext@v1
         env:
-          ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-          ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
           BASE_URL: https://send-stage.tb.pro
-        run: |
-          cd packages/addon
-          pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
+        with:
+          cmd: sign
+          source:  ${{ steps.frontend-build-stage.outputs.xpi_file }}
+          channel: unlisted
+          apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
+          metaDataFile: packages/addon/public/metadata.json
+          apiKey: ${{ secrets.ATN_API_KEY }}
+          apiSecret: ${{ secrets.ATN_API_SECRET }}
+
+      # - name: Deploy to ATN
+      #   continue-on-error: true
+      #   id: xpi-deploy
+      #   env:
+      #     ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
+      #     ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
+      #     BASE_URL: https://send-stage.tb.pro
+      #   run: |
+      #     cd packages/addon
+      #     pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
 
       - name: (Addon) Create prod .env file from secrets
         run: |
