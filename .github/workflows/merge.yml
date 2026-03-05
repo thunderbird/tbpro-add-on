@@ -188,7 +188,11 @@ jobs:
           pnpm build
           mv dist-web ../dist-web-stage
           cd ..
-          mv "$(find send-suite-*.xpi)" "send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+          XPI="$(find send-suite-*.xpi)"
+          STAGE_XPI="send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+          PROD_XPI=send-suite-stage-$VERSION_STRING.xpi
+          mv $XPI $STAGE_XPI
+          echo "xpi_file=packages/send/$PROD_XPI" >> "$GITHUB_OUTPUT"
 
       - name: Archive the stage frontend build
         id: frontend-archive-stage
@@ -281,9 +285,9 @@ jobs:
       #     cd packages/send/frontend
       #     pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
 
-      - name: Deploy to ATN via web-ext
+      - name: Deploy Stage frontend to ATN via web-ext
         continue-on-error: true
-        id: web-ext-sign
+        id: web-ext-sign-stage-frontend
         uses: kewisch/action-web-ext@v1
         with:
           cmd: sign
@@ -373,7 +377,6 @@ jobs:
           source:  ${{ steps.frontend-build-stage.outputs.xpi_file }}
           channel: unlisted
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
-          # metaDataFile: packages/addon/public/metadata.json
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
 
