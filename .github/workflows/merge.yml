@@ -7,8 +7,8 @@ concurrency:
 
 on:
   push:
-    branches:
-      - main
+    # branches:
+    #   - main
 
 permissions:
   packages: read
@@ -138,7 +138,7 @@ jobs:
   frontend-merge:
     environment: send-stage
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
+    # if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -188,7 +188,11 @@ jobs:
           pnpm build
           mv dist-web ../dist-web-stage
           cd ..
-          mv "$(find send-suite-*.xpi)" "send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+          XPI="$(find send-suite-*.xpi)"
+          STAGE_XPI="send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+          PROD_XPI=send-suite-stage-$VERSION_STRING.xpi
+          mv $XPI $STAGE_XPI
+          echo "xpi_file=packages/send/$PROD_XPI" >> "$GITHUB_OUTPUT"
 
       - name: Archive the stage frontend build
         id: frontend-archive-stage
@@ -242,7 +246,9 @@ jobs:
           XPI=$(find send-suite-*.xpi | grep -v stage | grep -v prod)
           # The filename is something like "send-suite-0-2-1.xpi"; use cut to pull just the version string
           VERSION_STRING=$(echo $XPI | cut -d- -f3- | cut -d. -f1)
-          mv $XPI send-suite-prod-$VERSION_STRING.xpi
+          PROD_XPI=send-suite-prod-$VERSION_STRING.xpi
+          mv $XPI $PROD_XPI
+          echo "xpi_file=packages/send/$PROD_XPI" >> "$GITHUB_OUTPUT"
 
       - name: Archive the production frontend build
         id: frontend-archive-prod
@@ -256,28 +262,40 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: xpi-prod
-          path: packages/send/send-suite-prod-*.xpi
+          path: ${{ steps.frontend-build-prod.outputs.xpi_file }}
 
-      # Automatically deploy to stage, but not to prod
-      - name: Deploy to stage
-        id: frontend-deploy
-        run: |
-          cd packages/send/dist-web-stage
-          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
+      # # Automatically deploy to stage, but not to prod
+      # - name: Deploy to stage
+      #   id: frontend-deploy
+      #   run: |
+      #     cd packages/send/dist-web-stage
+      #     aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
 
-          # Invalidate the CDN
-          aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
+      #     # Invalidate the CDN
+      #     aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
-      - name: Deploy to ATN
+      # - name: Deploy to ATN
+      #   continue-on-error: true
+      #   id: xpi-deploy
+      #   env:
+      #     ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
+      #     ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
+      #     BASE_URL: https://send-stage.tb.pro
+      #   run: |
+      #     cd packages/send/frontend
+      #     pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
+
+      - name: Deploy Stage frontend to ATN via web-ext
         continue-on-error: true
-        id: xpi-deploy
-        env:
-          ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-          ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
-          BASE_URL: https://send-stage.tb.pro
-        run: |
-          cd packages/send/frontend
-          pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
+        id: web-ext-sign-stage-frontend
+        uses: kewisch/action-web-ext@v1
+        with:
+          cmd: sign
+          source:  ${{ steps.frontend-build-prod.outputs.xpi_file }}
+          channel: unlisted
+          apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
+          apiKey: ${{ secrets.ATN_API_KEY }}
+          apiSecret: ${{ secrets.ATN_API_SECRET }}
 
   addon-changes:
     needs: detect-changes
@@ -286,7 +304,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: yes
-    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    # if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -322,7 +340,7 @@ jobs:
           EOF
 
       - name: Build the stage frontend's static assets
-        id: frontend-build-stage
+        id: addon-frontend-build-stage
         env:
           BASE_URL: https://send-stage.tb.pro
           IS_CI_AUTOMATION: yes
@@ -333,28 +351,46 @@ jobs:
           pnpm install --filter send-frontend
 
           lerna run build --scope=addon
+          
+          cd packages/addon/
+          XPI="$(find tbpro-addon-*.xpi)"
+          STAGE_XPI="tbpro-addon-stage-$(basename "$XPI" | cut -d'-' -f3-)"
 
-          cd packages/addon
-
-          mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-stage-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
+          mv "$XPI" "$STAGE_XPI"
+          echo "xpi_file=packages/addon/$STAGE_XPI" >> "$GITHUB_OUTPUT"
 
       - name: Archive the stage XPI
-        id: xpi-archive-stage
+        id: xpi-archive-stage-addon
         uses: actions/upload-artifact@v4
         with:
           name: addon-xpi-stage
           path: packages/addon/tbpro-addon-stage-*.xpi
 
-      - name: Deploy to ATN
+      - name: Deploy addon stage to ATN via web-ext
         continue-on-error: true
-        id: xpi-deploy
+        id: web-ext-sign-stage-addon
+        uses: kewisch/action-web-ext@v1
         env:
-          ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-          ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
           BASE_URL: https://send-stage.tb.pro
-        run: |
-          cd packages/addon
-          pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
+        with:
+          cmd: sign
+          source:  ${{ steps.addon-frontend-build-stage.outputs.xpi_file }}
+          channel: unlisted
+          apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
+          apiKey: ${{ secrets.ATN_API_KEY }}
+          apiSecret: ${{ secrets.ATN_API_SECRET }}
+
+
+      # - name: Deploy to ATN
+      #   continue-on-error: true
+      #   id: xpi-deploy
+      #   env:
+      #     ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
+      #     ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
+      #     BASE_URL: https://send-stage.tb.pro
+      #   run: |
+      #     cd packages/addon
+      #     pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
 
       - name: (Addon) Create prod .env file from secrets
         run: |
