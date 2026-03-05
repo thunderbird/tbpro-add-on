@@ -340,7 +340,7 @@ jobs:
           EOF
 
       - name: Build the stage frontend's static assets
-        id: frontend-build-stage
+        id: addon-frontend-build-stage
         env:
           BASE_URL: https://send-stage.tb.pro
           IS_CI_AUTOMATION: yes
@@ -360,7 +360,7 @@ jobs:
           echo "xpi_file=packages/addon/$STAGE_XPI" >> "$GITHUB_OUTPUT"
 
       - name: Archive the stage XPI
-        id: xpi-archive-stage
+        id: xpi-archive-stage-addon
         uses: actions/upload-artifact@v4
         with:
           name: addon-xpi-stage
@@ -368,13 +368,13 @@ jobs:
 
       - name: Deploy addon stage to ATN via web-ext
         continue-on-error: true
-        id: web-ext-sign
+        id: web-ext-sign-stage-addon
         uses: kewisch/action-web-ext@v1
         env:
           BASE_URL: https://send-stage.tb.pro
         with:
           cmd: sign
-          source:  ${{ steps.frontend-build-stage.outputs.xpi_file }}
+          source:  ${{ steps.addon-frontend-build-stage.outputs.xpi_file }}
           channel: unlisted
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
           apiKey: ${{ secrets.ATN_API_KEY }}
