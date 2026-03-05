@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import ProButton from '@send-frontend/apps/common/ProButton.vue';
-import { useKeychainStore } from '@send-frontend/stores';
-import { computed, onMounted, ref } from 'vue';
+import { ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 import ManageKeys from './ManageKeys.vue';
 import ResetEncryptionKey from './ResetEncryptionKey.vue';
@@ -13,30 +12,9 @@ const { resetKeys, showKeysByDefault } = defineProps<{
 
 const showKeys = ref(!!showKeysByDefault);
 const willReset = ref(false);
-const { keychain } = useKeychainStore();
-const isKeychainLocked = computed(() => keychain.locked);
-
-onMounted(() => {
-  if (isKeychainLocked.value) {
-    window.alert(
-      'Your keys are incorrect. This may happen if you reset your passphrase on a different device. Please log out and log back in to restore access to your keys.'
-    );
-    showKeys.value = true;
-  }
-});
 </script>
 
 <template>
-  <!-- Key Management Error -->
-  <KeysTemplate v-if="isKeychainLocked">
-    <h2 class="section-title text-red-700">Warning</h2>
-    <p class="description">
-      Your keys are incorrect. This may happen if you reset your passphrase on a
-      different device. Please log out and log back in to restore access to your
-      keys.
-    </p>
-  </KeysTemplate>
-
   <!-- Key Management Happy Path ✅ -->
   <KeysTemplate v-if="!showKeys">
     <h2 class="section-title">Security and Privacy</h2>
@@ -52,10 +30,7 @@ onMounted(() => {
     </ProButton>
   </KeysTemplate>
 
-  <ManageKeys
-    v-if="showKeys && !isKeychainLocked"
-    @confirm="() => (willReset = true)"
-  />
+  <ManageKeys v-if="showKeys" @confirm="() => (willReset = true)" />
 
   <ResetEncryptionKey
     v-if="willReset"
