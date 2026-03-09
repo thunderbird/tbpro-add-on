@@ -281,7 +281,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: yes
-    # if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -356,18 +356,6 @@ jobs:
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
-
-
-      # - name: Deploy to ATN
-      #   continue-on-error: true
-      #   id: xpi-deploy
-      #   env:
-      #     ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-      #     ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
-      #     BASE_URL: https://send-stage.tb.pro
-      #   run: |
-      #     cd packages/addon
-      #     pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
 
       - name: (Addon) Create prod .env file from secrets
         run: |
