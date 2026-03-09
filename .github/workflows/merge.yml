@@ -51,44 +51,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm and build package
-        id: install-pnpm-build
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-backend
-          lerna run build-image:backend --scope=send-suite
+      # - name: Install pnpm and build package
+      #   id: install-pnpm-build
+      #   run: |
+      #     pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+      #     pnpm install --filter send-backend
+      #     lerna run build-image:backend --scope=send-suite
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: us-east-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-region: us-east-1
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          mask-password: "true"
+      # - name: Login to Amazon ECR
+      #   id: login-ecr
+      #   uses: aws-actions/amazon-ecr-login@v2
+      #   with:
+      #     mask-password: "true"
 
-      # Produce a container image
-      - name: Build, tag, and push backend image to Amazon ECR
-        id: build-backend
-        env:
-          ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
-        run: |
-          # Build a docker container and push it to ECR so that it can be deployed to ECS.
-          docker build -t $ECR_TAG ./packages/send/backend/build
-          docker push $ECR_TAG
-          echo "backend-image=$ECR_TAG" >> $GITHUB_OUTPUT
-          echo -n "$ECR_TAG" > ecr_tag.txt
+      # # Produce a container image
+      # - name: Build, tag, and push backend image to Amazon ECR
+      #   id: build-backend
+      #   env:
+      #     ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
+      #   run: |
+      #     # Build a docker container and push it to ECR so that it can be deployed to ECS.
+      #     docker build -t $ECR_TAG ./packages/send/backend/build
+      #     docker push $ECR_TAG
+      #     echo "backend-image=$ECR_TAG" >> $GITHUB_OUTPUT
+      #     echo -n "$ECR_TAG" > ecr_tag.txt
 
-      - name: Archive the ECR tag
-        id: tag-archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: ecr_tag
-          path: ecr_tag.txt
+      # - name: Archive the ECR tag
+      #   id: tag-archive
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: ecr_tag
+      #     path: ecr_tag.txt
 
   backend-deploy:
     needs: backend-build
@@ -98,10 +98,11 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
-      - name: test test for deploy
-         run: echo "Deploying to stage environment with image ${{ needs.backend-build.outputs.backend-image }}"
-        uses: actions/checkout@v4
-     
+      - uses: actions/checkout@v4
+      
+      - name: "test echo"
+        run: echo "Deploying backend with image ${{ needs.backend-build.outputs.backend-image }}"
+
       # - name: Configure AWS credentials
       #   uses: aws-actions/configure-aws-credentials@v4
       #   with:
