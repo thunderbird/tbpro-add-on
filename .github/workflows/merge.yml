@@ -58,6 +58,86 @@ jobs:
           pnpm install --filter send-backend
           lerna run build-image:backend --scope=send-suite
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: "true"
+
+      # Produce a container image
+      - name: Build, tag, and push backend image to Amazon ECR
+        id: build-backend
+        env:
+          ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
+        run: |
+          # Build a docker container and push it to ECR so that it can be deployed to ECS.
+          docker build -t $ECR_TAG ./packages/send/backend/build
+          docker push $ECR_TAG
+          echo "backend-image=$ECR_TAG" >> $GITHUB_OUTPUT
+          echo -n "$ECR_TAG" > ecr_tag.txt
+
+      - name: Archive the ECR tag
+        id: tag-archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecr_tag
+          path: ecr_tag.txt
+
+  backend-deploy:
+    needs: backend-build
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: eu-central-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy new image to stage
+        env:
+          ECR_TAG: "${{ needs.backend-build.outputs.backend-image }}"
+          PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
+        run: |
+          # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
+          # to do with the GHA workflow "env" settings above.
+          export PATH="/home/runner/.pulumi/bin:$PATH"
+
+          cd packages/send/pulumi
+
+          # Create a YAML config stump containing only the nested tree leading to the image tag update
+          cat << EOF > newimage.yaml
+          resources:
+            tb:fargate:FargateClusterWithLogging:
+              backend:
+                task_definition:
+                  container_definitions:
+                    backend:
+                      image: "$ECR_TAG"
+          EOF
+
+          # Use yq to merge the stump into the main config
+          yq -i '. *= load("newimage.yaml")' config.stage.yaml
+
+          # Set up the Pulumi environment and update the service
+          export PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
+          pulumi login
+          pulumi stack select stage
+          pulumi up -y --diff --target \
+            'urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef' \
+            --target-dependents
+
+      - name: Wait for ecs to update the service
+        run: |
+          aws ecs wait services-stable --cluster send-stage-fargate-cluster --services send-stage-fargate-service
+
+
 
 
   frontend-build:
@@ -154,6 +234,18 @@ jobs:
         with:
           name: xpi-${{ matrix.env }}
           path: packages/send/send-suite-${{ matrix.env }}-*.xpi
+
+      - name: deploy to aws, stage only
+        if: matrix.env == 'stage'
+        id: frontend-deploy-aws
+        run: |
+          echo "Deploying to AWS ${{ matrix.env }}"
+          # unzip -d frontend-source packages/send/dist-web-prod
+          # cd frontend-source
+          # aws s3 cp . s3://tb-send-suite-prod-frontend/ --recursive
+
+          # # Invalidate the CDN
+          # aws cloudfront create-invalidation --distribution-id ${{ vars.PROD_CF_DISTRO_ID }} --paths "/*"
       
 
 
