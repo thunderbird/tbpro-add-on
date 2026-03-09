@@ -118,8 +118,8 @@ jobs:
           VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
           EOF
 
-        # build frontend assets
-        id: frontend-build-${{ matrix.env }}
+      - name: Build frontend assets
+        id: frontend-build
         env:
           BASE_URL: ${{ matrix.base_url }}
           IS_CI_AUTOMATION: yes
