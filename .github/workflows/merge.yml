@@ -98,49 +98,53 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: eu-central-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: test test for deploy
+         run: echo "Deploying to stage environment with image ${{ needs.backend-build.outputs.backend-image }}"
+        uses: actions/checkout@v4
+     
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-region: eu-central-1
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Deploy new image to stage
-        env:
-          ECR_TAG: "${{ needs.backend-build.outputs.backend-image }}"
-          PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
-        run: |
-          # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
-          # to do with the GHA workflow "env" settings above.
-          export PATH="/home/runner/.pulumi/bin:$PATH"
+      # - name: Deploy new image to stage
+      #   env:
+      #     ECR_TAG: "${{ needs.backend-build.outputs.backend-image }}"
+      #     PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
+      #   run: |
+      #     # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
+      #     # to do with the GHA workflow "env" settings above.
+      #     export PATH="/home/runner/.pulumi/bin:$PATH"
 
-          cd packages/send/pulumi
+      #     cd packages/send/pulumi
 
-          # Create a YAML config stump containing only the nested tree leading to the image tag update
-          cat << EOF > newimage.yaml
-          resources:
-            tb:fargate:FargateClusterWithLogging:
-              backend:
-                task_definition:
-                  container_definitions:
-                    backend:
-                      image: "$ECR_TAG"
-          EOF
+      #     # Create a YAML config stump containing only the nested tree leading to the image tag update
+      #     cat << EOF > newimage.yaml
+      #     resources:
+      #       tb:fargate:FargateClusterWithLogging:
+      #         backend:
+      #           task_definition:
+      #             container_definitions:
+      #               backend:
+      #                 image: "$ECR_TAG"
+      #     EOF
 
-          # Use yq to merge the stump into the main config
-          yq -i '. *= load("newimage.yaml")' config.stage.yaml
+      #     # Use yq to merge the stump into the main config
+      #     yq -i '. *= load("newimage.yaml")' config.stage.yaml
 
-          # Set up the Pulumi environment and update the service
-          export PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
-          pulumi login
-          pulumi stack select stage
-          pulumi up -y --diff --target \
-            'urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef' \
-            --target-dependents
+      #     # Set up the Pulumi environment and update the service
+      #     export PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
+      #     pulumi login
+      #     pulumi stack select stage
+      #     pulumi up -y --diff --target \
+      #       'urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef' \
+      #       --target-dependents
 
-      - name: Wait for ecs to update the service
-        run: |
-          aws ecs wait services-stable --cluster send-stage-fargate-cluster --services send-stage-fargate-service
+      # - name: Wait for ecs to update the service
+      #   run: |
+      #     aws ecs wait services-stable --cluster send-stage-fargate-cluster --services send-stage-fargate-service
 
 
 
@@ -203,52 +207,58 @@ jobs:
           VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
           EOF
 
-      - name: Build frontend assets
-        id: frontend-build
-        env:
-          BASE_URL: ${{ matrix.base_url }}
-          IS_CI_AUTOMATION: yes
-        run: |
-          echo "Building for environment: ${{ matrix.env }}"
-          set -x
-          # Initial setup of dependencies
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-          cd packages/send/frontend
+      # - name: Build frontend assets
+      #   id: frontend-build
+      #   env:
+      #     BASE_URL: ${{ matrix.base_url }}
+      #     IS_CI_AUTOMATION: yes
+      #   run: |
+      #     echo "Building for environment: ${{ matrix.env }}"
+      #     set -x
+      #     # Initial setup of dependencies
+      #     pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+      #     pnpm install --filter tbpro-shared
+      #     pnpm install --filter send-frontend
+      #     cd packages/send/frontend
 
-          # Build static frontend assets and the .xpi
-          pnpm build
-          mv dist-web ../dist-web-${{ matrix.env }}
-          cd ..
-          mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+      #     # Build static frontend assets and the .xpi
+      #     pnpm build
+      #     mv dist-web ../dist-web-${{ matrix.env }}
+      #     cd ..
+      #     mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
 
-          ls -l send-suite-${{ matrix.env }}-*.xpi
+      #     ls -l send-suite-${{ matrix.env }}-*.xpi
 
-      - name: Archive the ${{ matrix.env }} frontend build
-        id: frontend-archive-stage
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-web-${{ matrix.env }}
-          path: packages/send/dist-web-${{ matrix.env }}
-          compression-level: 0
+      # - name: Archive the ${{ matrix.env }} frontend build
+      #   id: frontend-archive-stage
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: dist-web-${{ matrix.env }}
+      #     path: packages/send/dist-web-${{ matrix.env }}
+      #     compression-level: 0
 
-      - name: Archive the ${{ matrix.env }} XPI
-        id: xpi-archive-stage
-        uses: actions/upload-artifact@v4
-        with:
-          name: xpi-${{ matrix.env }}
-          path: packages/send/send-suite-${{ matrix.env }}-*.xpi
+      # - name: Archive the ${{ matrix.env }} XPI
+      #   id: xpi-archive-stage
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: xpi-${{ matrix.env }}
+      #     path: packages/send/send-suite-${{ matrix.env }}-*.xpi
 
-      - name: deploy to aws, stage only
+      # - name: deploy to aws, stage only
+      #   if: matrix.env == 'stage'
+      #   id: frontend-deploy-aws
+      #   run: |
+      #     echo "Deploying to AWS ${{ matrix.env }}"
+      #     # unzip -d frontend-source packages/send/dist-web-prod
+      #     # cd frontend-source
+      #     # aws s3 cp . s3://tb-send-suite-prod-frontend/ --recursive
+
+
+      - name: invalidate CDN, stage only
         if: matrix.env == 'stage'
-        id: frontend-deploy-aws
+        needs: backend-deploy
         run: |
-          echo "Deploying to AWS ${{ matrix.env }}"
-          # unzip -d frontend-source packages/send/dist-web-prod
-          # cd frontend-source
-          # aws s3 cp . s3://tb-send-suite-prod-frontend/ --recursive
-
+          echo "Invalidating CDN for environment: ${{ matrix.env }}"
           # # Invalidate the CDN
           # aws cloudfront create-invalidation --distribution-id ${{ vars.PROD_CF_DISTRO_ID }} --paths "/*"
       
