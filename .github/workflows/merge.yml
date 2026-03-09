@@ -104,7 +104,7 @@ jobs:
           SEND_SERVER_URL:   ${{ matrix.send_server_url }}
           SEND_CLIENT_URL:   ${{ matrix.send_client_url }}
         run: |
-          echo "Environment: ${matrix.env}"
+          echo "Environment: ${{ matrix.env }}"
           cd packages/send/frontend
           cat <<EOF > .env
           VUE_BASE_URL=${BASE_URL}
