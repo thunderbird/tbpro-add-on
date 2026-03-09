@@ -71,13 +71,13 @@ jobs:
 
     strategy:
       matrix:
-        env: ["STAGE", "PROD"]
+        env: ["stage", "prod"]
         include:
-          - env: "STAGE"
+          - env: "stage"
             base_url: "https://send-stage.tb.pro"
             send_server_url: "https://send-backend-stage.tb.pro"
             send_client_url: "https://send-stage.tb.pro"
-          - env: "PROD"
+          - env: "prod"
             base_url: "https://send.tb.pro"
             send_server_url: "https://send-backend.tb.pro"
             send_client_url: "https://send.tb.pro"
@@ -94,12 +94,12 @@ jobs:
       # Front end build env configuration
       - name: Create .env file from secrets
         env:
-          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'STAGE' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN:        ${{ matrix.env == 'STAGE' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
-          POSTHOG_KEY:       ${{ matrix.env == 'STAGE' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          POSTHOG_HOST:      ${{ matrix.env == 'STAGE' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
-          OIDC_CLIENT_ID:    ${{ matrix.env == 'STAGE' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          OIDC_ROOT_URL:     ${{ matrix.env == 'STAGE' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
+          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          SENTRY_DSN:        ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
+          POSTHOG_KEY:       ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          POSTHOG_HOST:      ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
+          OIDC_CLIENT_ID:    ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          OIDC_ROOT_URL:     ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
           BASE_URL:          ${{ matrix.base_url }}
           SEND_SERVER_URL:   ${{ matrix.send_server_url }}
           SEND_CLIENT_URL:   ${{ matrix.send_client_url }}
@@ -117,6 +117,28 @@ jobs:
           VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
           VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
           EOF
+
+        # build frontend assets
+        id: frontend-build-${{ matrix.env }}
+        env:
+          BASE_URL: ${{ matrix.base_url }}
+          IS_CI_AUTOMATION: yes
+        run: |
+          echo "Building for environment: ${{ matrix.env }}"
+          set -x
+          # Initial setup of dependencies
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter tbpro-shared
+          pnpm install --filter send-frontend
+          cd packages/send/frontend
+
+          # Build static frontend assets and the .xpi
+          pnpm build
+          mv dist-web ../dist-web-${{ matrix.env }}
+          cd ..
+          mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+
+          ls -l send-suite-${{ matrix.env }}-*.xpi
       
 
 
