@@ -139,6 +139,21 @@ jobs:
           mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
 
           ls -l send-suite-${{ matrix.env }}-*.xpi
+
+      - name: Archive the ${{ matrix.env }} frontend build
+        id: frontend-archive-stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-web-${{ matrix.env }}
+          path: packages/send/dist-web-${{ matrix.env }}
+          compression-level: 0
+
+      - name: Archive the ${{ matrix.env }} XPI
+        id: xpi-archive-stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: xpi-${{ matrix.env }}
+          path: packages/send/send-suite-${{ matrix.env }}-*.xpi
       
 
 
