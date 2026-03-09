@@ -71,28 +71,16 @@ jobs:
 
     strategy:
       matrix:
-        env: ["stage", "prod"]
+        env: ["STAGE", "PROD"]
         include:
-          - env: "stage"
+          - env: "STAGE"
             base_url: "https://send-stage.tb.pro"
             send_server_url: "https://send-backend-stage.tb.pro"
             send_client_url: "https://send-stage.tb.pro"
-            sentry_auth_token: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_STAGE }}
-            sentry_dsn: ${{ vars.VITE_SENTRY_DSN_STAGE }}
-            posthog_project_key: ${{ secrets.VITE_POSTHOG_PROJECT_KEY_STAGE }}
-            posthog_host: ${{ vars.VITE_POSTHOG_HOST_STAGE }}
-            oidc_client_id: ${{ secrets.VITE_OIDC_CLIENT_ID_STAGE }}
-            oidc_root_url: ${{ secrets.VITE_OIDC_ROOT_URL_STAGE }}
-          - env: "prod"
+          - env: "PROD"
             base_url: "https://send.tb.pro"
             send_server_url: "https://send-backend.tb.pro"
             send_client_url: "https://send.tb.pro"
-            sentry_auth_token: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-            sentry_dsn: ${{ vars.VITE_SENTRY_DSN_PROD }}
-            posthog_project_key: ${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-            posthog_host: ${{ vars.VITE_POSTHOG_HOST_PROD }}
-            oidc_client_id: ${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
-            oidc_root_url: ${{ secrets.VITE_OIDC_ROOT_URL_PROD }}
     steps:
       - uses: actions/checkout@v4
       # install deps
@@ -104,19 +92,30 @@ jobs:
           lerna run build --scope=send-suite
 
       # Front end build env configuration
-      - name: Create stage .env file from secrets
+      - name: Create .env file from secrets
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets['VITE_SENTRY_AUTH_TOKEN_' + matrix.env ] }}
+          SENTRY_DSN:        ${{ vars['VITE_SENTRY_DSN_' + matrix.env ] }}
+          POSTHOG_KEY:      ${{ secrets['VITE_POSTHOG_PROJECT_KEY_' + matrix.env ] }}
+          POSTHOG_HOST:     ${{ vars['VITE_POSTHOG_HOST_' + matrix.env ] }}
+          OIDC_CLIENT_ID:   ${{ secrets['VITE_OIDC_CLIENT_ID_' + matrix.env ] }}
+          OIDC_ROOT_URL:    ${{ secrets['VITE_OIDC_ROOT_URL_' + matrix.env ] }}
+          BASE_URL:         ${{ matrix.base_url }}
+          SEND_SERVER_URL:  ${{ matrix.send_server_url }}
+          SEND_CLIENT_URL:  ${{ matrix.send_client_url }}
         run: |
+          echo "Environment: ${matrix.env}"
           cd packages/send/frontend
-          cat << EOF > .env
-          VUE_BASE_URL= {{ matrix.base_url }}
-          VITE_SEND_SERVER_URL={{ matrix.send_server_url }}
-          VITE_SEND_CLIENT_URL={{ matrix.send_client_url }}
-          VITE_SENTRY_AUTH_TOKEN=${{ matrix.sentry_auth_token }}
-          VITE_SENTRY_DSN=${{ matrix.sentry_dsn }}
-          VITE_POSTHOG_PROJECT_KEY=${{ matrix.posthog_project_key }}
-          VITE_POSTHOG_HOST=${{ matrix.posthog_host }}
-          VITE_OIDC_CLIENT_ID=${{ matrix.oidc_client_id }}
-          VITE_OIDC_ROOT_URL=${{ matrix.oidc_root_url }}          
+          cat <<EOF > .env
+          VUE_BASE_URL=${BASE_URL}
+          VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
+          VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
+          VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+          VITE_SENTRY_DSN=${SENTRY_DSN}
+          VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
+          VITE_POSTHOG_HOST=${POSTHOG_HOST}
+          VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+          VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
           EOF
       
 
@@ -216,267 +215,268 @@ jobs:
             'urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef' \
             --target-dependents
 
-  frontend-merge:
-    environment: send-stage
-    needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    env:
-      IS_CI_AUTOMATION: "yes"
-    strategy:
-      matrix:
-        include:
-          - name: "stage"
-    steps:
-      # Preparation for future steps
-      - uses: actions/checkout@v4
+  # frontend-merge:
+  #   environment: send-stage
+  #   needs: detect-changes
+  #   if: needs.detect-changes.outputs.frontend-changed == 'true'
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+  #   env:
+  #     IS_CI_AUTOMATION: "yes"
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - name: "stage"
+  #   steps:
+  #     # Preparation for future steps
+  #     - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: eu-central-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: eu-central-1
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Stage build steps
-      - name: Create stage .env file from secrets
-        run: |
-          cd packages/send/frontend
-          cat << EOF > .env
-          VUE_BASE_URL=https://send-stage.tb.pro
-          VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
-          VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
-          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_STAGE }}
-          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_STAGE }}
-          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_STAGE }}
-          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_STAGE }}
-          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_STAGE }}
-          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_STAGE }}          
-          EOF
+  #     # Stage build steps
+  #     - name: Create .env file from secrets
 
-      - name: Build the stage frontend's static assets
-        id: frontend-build-stage
-        env:
-          BASE_URL: https://send-stage.tb.pro
-          IS_CI_AUTOMATION: yes
-        run: |
-          set -x
-          # Initial setup of dependencies
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-          cd packages/send/frontend
+  #       run: |
+  #         cd packages/send/frontend
+  #         cat <<EOF > .env
+  #         VUE_BASE_URL=${BASE_URL}
+  #         VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
+  #         VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
+  #         VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+  #         VITE_SENTRY_DSN=${SENTRY_DSN}
+  #         VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
+  #         VITE_POSTHOG_HOST=${POSTHOG_HOST}
+  #         VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+  #         VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
+  #         EOF
 
-          # Build static frontend assets and the .xpi
-          pnpm build
-          mv dist-web ../dist-web-stage
-          cd ..
-          mv "$(find send-suite-*.xpi)" "send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+  #     - name: Build the stage frontend's static assets
+  #       id: frontend-build-stage
+  #       env:
+  #         BASE_URL: https://send-stage.tb.pro
+  #         IS_CI_AUTOMATION: yes
+  #       run: |
+  #         set -x
+  #         # Initial setup of dependencies
+  #         pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+  #         pnpm install --filter tbpro-shared
+  #         pnpm install --filter send-frontend
+  #         cd packages/send/frontend
 
-      - name: Archive the stage frontend build
-        id: frontend-archive-stage
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-web-stage
-          path: packages/send/dist-web-stage
-          compression-level: 0
+  #         # Build static frontend assets and the .xpi
+  #         pnpm build
+  #         mv dist-web ../dist-web-stage
+  #         cd ..
+  #         mv "$(find send-suite-*.xpi)" "send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
 
-      - name: Archive the stage XPI
-        id: xpi-archive-stage
-        uses: actions/upload-artifact@v4
-        with:
-          name: xpi-stage
-          path: packages/send/send-suite-*.xpi
+  #     - name: Archive the stage frontend build
+  #       id: frontend-archive-stage
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: dist-web-stage
+  #         path: packages/send/dist-web-stage
+  #         compression-level: 0
 
-      # Production build steps
-      - name: Create production .env file from secrets
-        run: |
-          cd packages/send/frontend
-          cat << EOF > .env
-          VUE_BASE_URL=https://send.tb.pro
-          VITE_SEND_SERVER_URL=https://send-backend.tb.pro
-          VITE_SEND_CLIENT_URL=https://send.tb.pro
-          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
-          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
-          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
-          EOF
+  #     - name: Archive the stage XPI
+  #       id: xpi-archive-stage
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: xpi-stage
+  #         path: packages/send/send-suite-*.xpi
 
-      - name: Build the production frontend's static assets
-        id: frontend-build-prod
-        env:
-          BASE_URL: https://send.tb.pro
-          IS_CI_AUTOMATION: yes
-        run: |
-          # Initial setup of dependencies     
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
+  #     # Production build steps
+  #     - name: Create production .env file from secrets
+  #       run: |
+  #         cd packages/send/frontend
+  #         cat << EOF > .env
+  #         VUE_BASE_URL=https://send.tb.pro
+  #         VITE_SEND_SERVER_URL=https://send-backend.tb.pro
+  #         VITE_SEND_CLIENT_URL=https://send.tb.pro
+  #         VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+  #         VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
+  #         VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+  #         VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
+  #         VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+  #         VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
+  #         EOF
 
-          cd packages/send/frontend
+  #     - name: Build the production frontend's static assets
+  #       id: frontend-build-prod
+  #       env:
+  #         BASE_URL: https://send.tb.pro
+  #         IS_CI_AUTOMATION: yes
+  #       run: |
+  #         # Initial setup of dependencies     
+  #         pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+  #         pnpm install --filter tbpro-shared
+  #         pnpm install --filter send-frontend
 
-          # Build static frontend assets and the .xpi
-          pnpm build
-          mv dist-web ../dist-web-prod
-          cd ..
-          # There should be an XPI marked "stage" already here, so we exclude it to get the prod XPI instead
-          XPI=$(find send-suite-*.xpi | grep -v stage | grep -v prod)
-          # The filename is something like "send-suite-0-2-1.xpi"; use cut to pull just the version string
-          VERSION_STRING=$(echo $XPI | cut -d- -f3- | cut -d. -f1)
-          mv $XPI send-suite-prod-$VERSION_STRING.xpi
+  #         cd packages/send/frontend
 
-      - name: Archive the production frontend build
-        id: frontend-archive-prod
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-web-prod
-          path: packages/send/dist-web-prod
+  #         # Build static frontend assets and the .xpi
+  #         pnpm build
+  #         mv dist-web ../dist-web-prod
+  #         cd ..
+  #         # There should be an XPI marked "stage" already here, so we exclude it to get the prod XPI instead
+  #         XPI=$(find send-suite-*.xpi | grep -v stage | grep -v prod)
+  #         # The filename is something like "send-suite-0-2-1.xpi"; use cut to pull just the version string
+  #         VERSION_STRING=$(echo $XPI | cut -d- -f3- | cut -d. -f1)
+  #         mv $XPI send-suite-prod-$VERSION_STRING.xpi
 
-      - name: Archive the prod XPI
-        id: xpi-archive-prod
-        uses: actions/upload-artifact@v4
-        with:
-          name: xpi-prod
-          path: packages/send/send-suite-prod-*.xpi
+  #     - name: Archive the production frontend build
+  #       id: frontend-archive-prod
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: dist-web-prod
+  #         path: packages/send/dist-web-prod
 
-      # Automatically deploy to stage, but not to prod
-      - name: Deploy to stage
-        id: frontend-deploy
-        run: |
-          cd packages/send/dist-web-stage
-          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
+  #     - name: Archive the prod XPI
+  #       id: xpi-archive-prod
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: xpi-prod
+  #         path: packages/send/send-suite-prod-*.xpi
 
-          # Invalidate the CDN
-          aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
+  #     # Automatically deploy to stage, but not to prod
+  #     - name: Deploy to stage
+  #       id: frontend-deploy
+  #       run: |
+  #         cd packages/send/dist-web-stage
+  #         aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
 
-      - name: Deploy to ATN
-        continue-on-error: true
-        id: xpi-deploy
-        env:
-          ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-          ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
-          BASE_URL: https://send-stage.tb.pro
-        run: |
-          cd packages/send/frontend
-          pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
+  #         # Invalidate the CDN
+  #         aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
-  addon-changes:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    env:
-      IS_CI_AUTOMATION: yes
-    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
-    steps:
-      - uses: actions/checkout@v4
+  #     - name: Deploy to ATN
+  #       continue-on-error: true
+  #       id: xpi-deploy
+  #       env:
+  #         ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
+  #         ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
+  #         BASE_URL: https://send-stage.tb.pro
+  #       run: |
+  #         cd packages/send/frontend
+  #         pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
 
-      # Build steps
-      - name: (Send) Create production .env file from secrets
-        run: |
-          cd packages/send/frontend
-          cat << EOF > .env
-          VUE_BASE_URL=https://send-stage.tb.pro
-          VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
-          VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
-          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
-          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
-          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
-          EOF
+  # addon-changes:
+  #   needs: detect-changes
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+  #   env:
+  #     IS_CI_AUTOMATION: yes
+  #   if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: (Addon) Create stage .env file from secrets
-        run: |
-          cd packages/addon
-          cat << EOF > .env
-          VUE_BASE_URL=https://send-stage.tb.pro
-          VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
-          VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
-          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
-          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
-          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
-          EOF
+  #     # Build steps
+  #     - name: (Send) Create production .env file from secrets
+  #       run: |
+  #         cd packages/send/frontend
+  #         cat << EOF > .env
+  #         VUE_BASE_URL=https://send-stage.tb.pro
+  #         VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
+  #         VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
+  #         VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+  #         VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
+  #         VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+  #         VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
+  #         VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+  #         VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
+  #         EOF
 
-      - name: Build the stage frontend's static assets
-        id: frontend-build-stage
-        env:
-          BASE_URL: https://send-stage.tb.pro
-          IS_CI_AUTOMATION: yes
-        run: |
-          # install packages that addon depends on
-          pnpm install --filter tbpro-shared
-          pnpm install --filter addon
-          pnpm install --filter send-frontend
+  #     - name: (Addon) Create stage .env file from secrets
+  #       run: |
+  #         cd packages/addon
+  #         cat << EOF > .env
+  #         VUE_BASE_URL=https://send-stage.tb.pro
+  #         VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
+  #         VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
+  #         VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+  #         VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
+  #         VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+  #         VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
+  #         VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+  #         VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
+  #         EOF
 
-          lerna run build --scope=addon
+  #     - name: Build the stage frontend's static assets
+  #       id: frontend-build-stage
+  #       env:
+  #         BASE_URL: https://send-stage.tb.pro
+  #         IS_CI_AUTOMATION: yes
+  #       run: |
+  #         # install packages that addon depends on
+  #         pnpm install --filter tbpro-shared
+  #         pnpm install --filter addon
+  #         pnpm install --filter send-frontend
 
-          cd packages/addon
+  #         lerna run build --scope=addon
 
-          mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-stage-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
+  #         cd packages/addon
 
-      - name: Archive the stage XPI
-        id: xpi-archive-stage
-        uses: actions/upload-artifact@v4
-        with:
-          name: addon-xpi-stage
-          path: packages/addon/tbpro-addon-stage-*.xpi
+  #         mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-stage-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
 
-      - name: Deploy to ATN
-        continue-on-error: true
-        id: xpi-deploy
-        env:
-          ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-          ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
-          BASE_URL: https://send-stage.tb.pro
-        run: |
-          cd packages/addon
-          pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
+  #     - name: Archive the stage XPI
+  #       id: xpi-archive-stage
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: addon-xpi-stage
+  #         path: packages/addon/tbpro-addon-stage-*.xpi
 
-      - name: (Addon) Create prod .env file from secrets
-        run: |
-          cd packages/addon
-          cat << EOF > .env
-          VUE_BASE_URL=https://send.tb.pro
-          VITE_SEND_SERVER_URL=https://send-backend.tb.pro
-          VITE_SEND_CLIENT_URL=https://send.tb.pro
-          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
-          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
-          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                  
-          EOF
+  #     - name: Deploy to ATN
+  #       continue-on-error: true
+  #       id: xpi-deploy
+  #       env:
+  #         ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
+  #         ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
+  #         BASE_URL: https://send-stage.tb.pro
+  #       run: |
+  #         cd packages/addon
+  #         pnpm deploy-xpi $(find .. -name 'tbpro-addon-stage-*.xpi')
 
-      - name: Build the prod frontend's static assets
-        id: frontend-build-prod
-        env:
-          BASE_URL: https://send.tb.pro
-          IS_CI_AUTOMATION: yes
-        run: |
-          # install packages that addon depends on
-          pnpm install --filter tbpro-shared
-          pnpm install --filter addon
-          pnpm install --filter send-frontend
+  #     - name: (Addon) Create prod .env file from secrets
+  #       run: |
+  #         cd packages/addon
+  #         cat << EOF > .env
+  #         VUE_BASE_URL=https://send.tb.pro
+  #         VITE_SEND_SERVER_URL=https://send-backend.tb.pro
+  #         VITE_SEND_CLIENT_URL=https://send.tb.pro
+  #         VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+  #         VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
+  #         VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+  #         VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
+  #         VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+  #         VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                  
+  #         EOF
 
-          lerna run build --scope=addon
+  #     - name: Build the prod frontend's static assets
+  #       id: frontend-build-prod
+  #       env:
+  #         BASE_URL: https://send.tb.pro
+  #         IS_CI_AUTOMATION: yes
+  #       run: |
+  #         # install packages that addon depends on
+  #         pnpm install --filter tbpro-shared
+  #         pnpm install --filter addon
+  #         pnpm install --filter send-frontend
 
-          cd packages/addon
-          # Delete any existing stage XPI to avoid confusion
-          rm -f tbpro-addon-stage-*.xpi
-          mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-prod-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
+  #         lerna run build --scope=addon
 
-      - name: Archive the prod XPI
-        id: xpi-archive-prod
-        uses: actions/upload-artifact@v4
-        with:
-          name: addon-xpi-prod
-          path: packages/addon/tbpro-addon-prod-*.xpi
+  #         cd packages/addon
+  #         # Delete any existing stage XPI to avoid confusion
+  #         rm -f tbpro-addon-stage-*.xpi
+  #         mv "$(find tbpro-addon-*.xpi)" "tbpro-addon-prod-$(basename "$(find tbpro-addon-*.xpi)" | cut -d'-' -f3-)"
+
+  #     - name: Archive the prod XPI
+  #       id: xpi-archive-prod
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: addon-xpi-prod
+  #         path: packages/addon/tbpro-addon-prod-*.xpi
