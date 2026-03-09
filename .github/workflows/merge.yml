@@ -40,6 +40,87 @@ jobs:
             addon-changed:
               - 'packages/addon/**'
 
+  backend-build:
+    needs: detect-changes
+    # if: needs.detect-changes.outputs.backend-changed == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm and build package
+        id: install-pnpm-build
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter send-backend
+          lerna run build-image:backend --scope=send-suite
+
+
+
+  frontend-build:
+    needs: detect-changes
+    # if: needs.detect-changes.outputs.frontend-changed == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+
+    strategy:
+      matrix:
+        env: ["stage", "prod"]
+        include:
+          - env: "stage"
+            base_url: "https://send-stage.tb.pro"
+            send_server_url: "https://send-backend-stage.tb.pro"
+            send_client_url: "https://send-stage.tb.pro"
+            sentry_auth_token: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_STAGE }}
+            sentry_dsn: ${{ vars.VITE_SENTRY_DSN_STAGE }}
+            posthog_project_key: ${{ secrets.VITE_POSTHOG_PROJECT_KEY_STAGE }}
+            posthog_host: ${{ vars.VITE_POSTHOG_HOST_STAGE }}
+            oidc_client_id: ${{ secrets.VITE_OIDC_CLIENT_ID_STAGE }}
+            oidc_root_url: ${{ secrets.VITE_OIDC_ROOT_URL_STAGE }}
+          - env: "prod"
+            base_url: "https://send.tb.pro"
+            send_server_url: "https://send-backend.tb.pro"
+            send_client_url: "https://send.tb.pro"
+            sentry_auth_token: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+            sentry_dsn: ${{ vars.VITE_SENTRY_DSN_PROD }}
+            posthog_project_key: ${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+            posthog_host: ${{ vars.VITE_POSTHOG_HOST_PROD }}
+            oidc_client_id: ${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+            oidc_root_url: ${{ secrets.VITE_OIDC_ROOT_URL_PROD }}
+    steps:
+      - uses: actions/checkout@v4
+      # install deps
+      - name: Install pnpm and build package
+        id: install-pnpm-build
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter send-frontend
+          lerna run build --scope=send-suite
+
+      # Front end build env configuration
+      - name: Create stage .env file from secrets
+        run: |
+          cd packages/send/frontend
+          cat << EOF > .env
+          VUE_BASE_URL= {{ matrix.base_url }}
+          VITE_SEND_SERVER_URL={{ matrix.send_server_url }}
+          VITE_SEND_CLIENT_URL={{ matrix.send_client_url }}
+          VITE_SENTRY_AUTH_TOKEN=${{ matrix.sentry_auth_token }}
+          VITE_SENTRY_DSN=${{ matrix.sentry_dsn }}
+          VITE_POSTHOG_PROJECT_KEY=${{ matrix.posthog_project_key }}
+          VITE_POSTHOG_HOST=${{ matrix.posthog_host }}
+          VITE_OIDC_CLIENT_ID=${{ matrix.oidc_client_id }}
+          VITE_OIDC_ROOT_URL=${{ matrix.oidc_root_url }}          
+          EOF
+      
+
+
   # When backend changes are merged in, build and push a new Docker image
   backend-merge:
     environment: send-stage
@@ -144,6 +225,10 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
+    strategy:
+      matrix:
+        include:
+          - name: "stage"
     steps:
       # Preparation for future steps
       - uses: actions/checkout@v4
