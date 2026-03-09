@@ -138,7 +138,7 @@ jobs:
   frontend-merge:
     environment: send-stage
     needs: detect-changes
-    # if: needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -264,38 +264,15 @@ jobs:
           name: xpi-prod
           path: ${{ steps.frontend-build-prod.outputs.xpi_file }}
 
-      # # Automatically deploy to stage, but not to prod
-      # - name: Deploy to stage
-      #   id: frontend-deploy
-      #   run: |
-      #     cd packages/send/dist-web-stage
-      #     aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
+      # Automatically deploy to stage, but not to prod
+      - name: Deploy to stage
+        id: frontend-deploy
+        run: |
+          cd packages/send/dist-web-stage
+          aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
 
-      #     # Invalidate the CDN
-      #     aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
-
-      # - name: Deploy to ATN
-      #   continue-on-error: true
-      #   id: xpi-deploy
-      #   env:
-      #     ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-      #     ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
-      #     BASE_URL: https://send-stage.tb.pro
-      #   run: |
-      #     cd packages/send/frontend
-      #     pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
-
-      - name: Deploy Stage frontend to ATN via web-ext
-        continue-on-error: true
-        id: web-ext-sign-stage-frontend
-        uses: kewisch/action-web-ext@v1
-        with:
-          cmd: sign
-          source:  ${{ steps.frontend-build-prod.outputs.xpi_file }}
-          channel: unlisted
-          apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
-          apiKey: ${{ secrets.ATN_API_KEY }}
-          apiSecret: ${{ secrets.ATN_API_SECRET }}
+          # Invalidate the CDN
+          aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
   addon-changes:
     needs: detect-changes
@@ -375,7 +352,7 @@ jobs:
         with:
           cmd: sign
           source:  ${{ steps.addon-frontend-build-stage.outputs.xpi_file }}
-          channel: unlisted
+          channel: listed
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
