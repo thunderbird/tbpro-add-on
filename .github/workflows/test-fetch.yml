@@ -3,7 +3,7 @@ name: test-fetch
 
 on:
   push:
-    branches: [**]
+    branches: ['**']
 
 permissions:
   packages: read
