@@ -92,6 +92,11 @@ jobs:
 
   backend-deploy:
     needs: backend-build
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    env:
+      IS_CI_AUTOMATION: "yes"
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
