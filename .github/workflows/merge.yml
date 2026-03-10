@@ -40,7 +40,7 @@ jobs:
             addon-changed:
               - 'packages/addon/**'
 
-  backend-build:
+  backend-build-stage:
     needs: detect-changes
     # if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
@@ -53,14 +53,15 @@ jobs:
           run: |
             echo "Building backend with changes: ${{ needs.detect-changes.outputs.backend-changed }} and iac changes: ${{ needs.detect-changes.outputs.iac-changed }}"
             echo $(date)
-      # - uses: actions/checkout@v4
 
-      # - name: Install pnpm and build package
-      #   id: install-pnpm-build
-      #   run: |
-      #     pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-      #     pnpm install --filter send-backend
-      #     lerna run build-image:backend --scope=send-suite
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm and build package
+        id: install-pnpm-build
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter send-backend
+          lerna run build-image:backend --scope=send-suite
 
       # - name: Configure AWS credentials
       #   uses: aws-actions/configure-aws-credentials@v4
@@ -95,7 +96,7 @@ jobs:
       #     path: ecr_tag.txt
 
   backend-deploy-stage-aws:
-    needs: backend-build
+    needs: backend-build-stage
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -105,7 +106,9 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: "test echo"
-        run: echo "Deploying backend with image ${{ needs.backend-build.outputs.backend-image }}"
+        run: |
+          echo "Deploying backend with image ${{ needs.backend-build.outputs.backend-image }}"
+          echo $(date)
 
       # - name: Configure AWS credentials
       #   uses: aws-actions/configure-aws-credentials@v4
@@ -181,78 +184,77 @@ jobs:
           echo "Building frontend for environment ${{ matrix.env }} with base URL ${{ matrix.base_url }}"
           echo $(date)
 
-      # - uses: actions/checkout@v4
-      # install deps
-      # - name: Install pnpm and build package
-      #   id: install-pnpm-build
-      #   run: |
-      #     pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-      #     pnpm install --filter send-frontend
-      #     lerna run build --scope=send-suite
+      - uses: actions/checkout@v4
+      - name: Install pnpm and build package
+        id: install-pnpm-build
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter send-frontend
+          lerna run build --scope=send-suite
 
-      # # Front end build env configuration
-      # - name: Create .env file from secrets
-      #   env:
-      #     SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-      #     SENTRY_DSN:        ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
-      #     POSTHOG_KEY:       ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-      #     POSTHOG_HOST:      ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
-      #     OIDC_CLIENT_ID:    ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-      #     OIDC_ROOT_URL:     ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
-      #     BASE_URL:          ${{ matrix.base_url }}
-      #     SEND_SERVER_URL:   ${{ matrix.send_server_url }}
-      #     SEND_CLIENT_URL:   ${{ matrix.send_client_url }}
-      #   run: |
-      #     echo "Environment: ${{ matrix.env }}"
-      #     cd packages/send/frontend
-      #     cat <<EOF > .env
-      #     VUE_BASE_URL=${BASE_URL}
-      #     VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
-      #     VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
-      #     VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
-      #     VITE_SENTRY_DSN=${SENTRY_DSN}
-      #     VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
-      #     VITE_POSTHOG_HOST=${POSTHOG_HOST}
-      #     VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
-      #     VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
-      #     EOF
+      # Front end build env configuration
+      - name: Create .env file from secrets
+        env:
+          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          SENTRY_DSN:        ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
+          POSTHOG_KEY:       ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          POSTHOG_HOST:      ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
+          OIDC_CLIENT_ID:    ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          OIDC_ROOT_URL:     ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
+          BASE_URL:          ${{ matrix.base_url }}
+          SEND_SERVER_URL:   ${{ matrix.send_server_url }}
+          SEND_CLIENT_URL:   ${{ matrix.send_client_url }}
+        run: |
+          echo "Environment: ${{ matrix.env }}"
+          cd packages/send/frontend
+          cat <<EOF > .env
+          VUE_BASE_URL=${BASE_URL}
+          VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
+          VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
+          VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+          VITE_SENTRY_DSN=${SENTRY_DSN}
+          VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
+          VITE_POSTHOG_HOST=${POSTHOG_HOST}
+          VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+          VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
+          EOF
 
-      # - name: Build frontend assets
-      #   id: frontend-build
-      #   env:
-      #     BASE_URL: ${{ matrix.base_url }}
-      #     IS_CI_AUTOMATION: yes
-      #   run: |
-      #     echo "Building for environment: ${{ matrix.env }}"
-      #     set -x
-      #     # Initial setup of dependencies
-      #     pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-      #     pnpm install --filter tbpro-shared
-      #     pnpm install --filter send-frontend
-      #     cd packages/send/frontend
+      - name: Build frontend assets
+        id: frontend-build
+        env:
+          BASE_URL: ${{ matrix.base_url }}
+          IS_CI_AUTOMATION: yes
+        run: |
+          echo "Building for environment: ${{ matrix.env }}"
+          set -x
+          # Initial setup of dependencies
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter tbpro-shared
+          pnpm install --filter send-frontend
+          cd packages/send/frontend
 
-      #     # Build static frontend assets and the .xpi
-      #     pnpm build
-      #     mv dist-web ../dist-web-${{ matrix.env }}
-      #     cd ..
-      #     mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+          # Build static frontend assets and the .xpi
+          pnpm build
+          mv dist-web ../dist-web-${{ matrix.env }}
+          cd ..
+          mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
 
-      #     ls -l send-suite-${{ matrix.env }}-*.xpi
+          ls -l send-suite-${{ matrix.env }}-*.xpi
 
-      # - name: Archive the ${{ matrix.env }} frontend build
-      #   id: frontend-archive-stage
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: dist-web-${{ matrix.env }}
-      #     path: packages/send/dist-web-${{ matrix.env }}
-      #     compression-level: 0
+      - name: Archive the ${{ matrix.env }} frontend build
+        id: frontend-archive-stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-web-${{ matrix.env }}
+          path: packages/send/dist-web-${{ matrix.env }}
+          compression-level: 0
 
-      # - name: Archive the ${{ matrix.env }} XPI
-      #   id: xpi-archive-stage
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: xpi-${{ matrix.env }}
-      #     path: packages/send/send-suite-${{ matrix.env }}-*.xpi
+      - name: Archive the ${{ matrix.env }} XPI
+        id: xpi-archive-stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: xpi-${{ matrix.env }}
+          path: packages/send/send-suite-${{ matrix.env }}-*.xpi
 
       # - name: deploy to aws, stage only
       #   if: matrix.env == 'stage'
@@ -273,6 +275,19 @@ jobs:
         run: |
           echo "Deploying frontend to AWS for environment ${{ matrix.env }}"
           echo $(date)
+
+      - name: Download frontend-archive-stage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-web-stage
+          path: frontend-source-stage
+
+      - name: check for artifact
+        run: |
+          ls -al
+          unzip -d frontend-source packages/send/dist-web-stage
+          cd frontend-source
+
       # - uses: actions/checkout@v4
 
       # - name: Configure AWS credentials
