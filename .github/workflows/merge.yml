@@ -299,6 +299,8 @@ jobs:
         run: |
           cd frontend-source
           aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
+          echo "s3_deployed=true" >> $GITHUB_OUTPUT
+
 
   frontend-invalidate-stage-cdn:
     needs: [frontend-deploy-stage-aws, backend-deploy-stage-aws]
@@ -309,7 +311,7 @@ jobs:
           echo "Invalidating CDN for stage environment"
           echo $(date)
       - name: Invalidate CDN, stage only
-        if: needs.frontend-deploy-stage-aws.outputs.ecs_deployed == 'true'
+        if: needs.frontend-deploy-stage-aws.outputs.s3_deployed == 'true'
         run: |
           echo "Invalidating CDN for environment: ${{ matrix.env }}"
           # # Invalidate the CDN
