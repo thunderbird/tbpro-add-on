@@ -7,8 +7,8 @@ concurrency:
 
 on:
   push:
-    # branches:
-    #   - main
+    branches:
+      - main
 
 permissions:
   packages: read
@@ -42,7 +42,6 @@ jobs:
 
   backend-build-stage:
     needs: detect-changes
-    # if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -164,7 +163,6 @@ jobs:
 
   frontend-build:
     needs: detect-changes
-    # if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
