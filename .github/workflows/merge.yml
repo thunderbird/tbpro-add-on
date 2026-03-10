@@ -291,7 +291,7 @@ jobs:
       - name: check for artifact
         run: |
           ls -al
-          unzip -d frontend-source
+          unzip frontend-source
           cd frontend-source
 
       # - uses: actions/checkout@v4
