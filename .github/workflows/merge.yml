@@ -310,12 +310,13 @@ jobs:
   frontend-invalidate-stage-cdn:
     needs: [frontend-deploy-stage-aws, backend-deploy-stage-aws]
     runs-on: ubuntu-latest
+    environment: send-stage
     steps:
       - name: Test echo
         run: |
           echo "Invalidating CDN for stage environment"
           echo $(date)
-          
+
       - name: Configure AWS credentials
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
