@@ -162,7 +162,7 @@ jobs:
       - name: Wait for ecs to update the service
         # if: needs.detect-changes.outputs.backend-changed == 'true'
         run: |
-          aws ecs wait services-stable --region eu-central-1 --cluster send-stage-fargate-cluster --services send-stage-fargate-service
+          aws ecs wait services-stable --region eu-central-1 --cluster send-suite-stage-fargate --services send-stage-fargate-service
           echo "ecs_deployed=true" >> $GITHUB_OUTPUT
 
   frontend-build:
