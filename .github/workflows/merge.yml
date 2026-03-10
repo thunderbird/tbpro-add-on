@@ -42,7 +42,7 @@ jobs:
 
   backend-build-stage:
     needs: detect-changes
-    # if: needs.detect-changes.outputs.backend-changed == 'true'
+    if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -160,12 +160,9 @@ jobs:
         run: |
           aws ecs wait services-stable --cluster send-stage-fargate-cluster --services send-stage-fargate-service
 
-
-
-
   frontend-build:
     needs: detect-changes
-    # if: needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
