@@ -105,6 +105,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
+    environment: send-stage
     steps:
       - uses: actions/checkout@v4
       
