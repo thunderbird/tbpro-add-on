@@ -49,10 +49,10 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
-        - name: test echo
-          run: |
-            echo "Building backend with changes: ${{ needs.detect-changes.outputs.backend-changed }} and iac changes: ${{ needs.detect-changes.outputs.iac-changed }}"
-            echo $(date)
+      - name: test echo
+        run: |
+          echo "Building backend with changes: ${{ needs.detect-changes.outputs.backend-changed }} and iac changes: ${{ needs.detect-changes.outputs.iac-changed }}"
+          echo $(date)
 
       - uses: actions/checkout@v4
 
