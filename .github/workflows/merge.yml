@@ -288,7 +288,7 @@ jobs:
           path: frontend-source
 
       - name: Configure AWS credentials
-        if: if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: eu-central-1
