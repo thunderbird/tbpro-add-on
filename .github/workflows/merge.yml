@@ -114,7 +114,7 @@ jobs:
           echo $(date)
 
       - name: Configure AWS credentials
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: eu-central-1
