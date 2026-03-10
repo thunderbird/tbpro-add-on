@@ -43,6 +43,8 @@ jobs:
   backend-build-stage:
     needs: detect-changes
     runs-on: ubuntu-latest
+    outputs:
+      backend-image: ${{ steps.build-backend.outputs.backend-image }}
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
@@ -112,7 +114,7 @@ jobs:
       
       - name: "test echo"
         run: |
-          echo "Deploying backend with image ${{ needs.backend-build.outputs.backend-image }}"
+          echo "Deploying backend with image ${{ needs.backend-build-stage.outputs.backend-image }}"
           echo $(date)
 
       - name: Configure AWS credentials
@@ -126,7 +128,7 @@ jobs:
       - name: Deploy new image to stage
         # if: needs.detect-changes.outputs.backend-changed == 'true'
         env:
-          ECR_TAG: "${{ needs.backend-build.outputs.backend-image }}"
+          ECR_TAG: "${{ needs.backend-build-stage.outputs.backend-image }}"
           PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
         run: |
           # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
