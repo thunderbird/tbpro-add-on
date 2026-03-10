@@ -286,13 +286,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist-web-stage
-          # path: frontend-source
+          path: frontend-source
 
       - name: check for artifact
         run: |
-          ls -alR
+          # ls -alR
           # unzip frontend-source
-          # cd frontend-source
+          cd frontend-source
+          pwd
+          ls -al
 
       # - uses: actions/checkout@v4
 
