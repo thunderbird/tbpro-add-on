@@ -321,7 +321,7 @@ jobs:
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: eu-central-1 
+          aws-region: eu-c 
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
@@ -329,7 +329,7 @@ jobs:
         # if: needs.frontend-deploy-stage-aws.outputs.s3_deployed == 'true'
         run: |
           echo "Invalidating CDN for environment: ${{ matrix.env }}"
-          aws cloudfront create-invalidation --distribution-id ${{ vars.PROD_CF_DISTRO_ID }} --paths "/*"
+          aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
   addon-changes:
     needs: detect-changes
