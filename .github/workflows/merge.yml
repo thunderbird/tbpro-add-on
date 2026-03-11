@@ -102,7 +102,7 @@ jobs:
           path: ecr_tag.txt
 
   backend-deploy-stage-aws:
-    needs: backend-build-stage
+    needs: ["backend-build-stage", "detect-changes"]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -270,7 +270,7 @@ jobs:
           path: packages/send/send-suite-${{ matrix.env }}-*.xpi
 
   frontend-deploy-stage-aws:
-    needs: frontend-build
+    needs: ["frontend-build","detect-changes"]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
