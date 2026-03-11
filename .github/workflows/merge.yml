@@ -8,7 +8,7 @@ concurrency:
 on:
   push:
     branches:
-      - main
+    - main
 
 permissions:
   packages: read
@@ -40,21 +40,34 @@ jobs:
             addon-changed:
               - 'packages/addon/**'
 
-  # When backend changes are merged in, build and push a new Docker image
-  backend-merge:
-    environment: send-stage
+  backend-build-stage:
     needs: detect-changes
-    if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      backend-image: ${{ steps.build-backend.outputs.backend-image }}
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
+    environment: send-stage
     steps:
-      # Preparation for future steps
+      - name: test echo
+        run: |
+          echo "Building backend with changes: ${{ needs.detect-changes.outputs.backend-changed }} and iac changes: ${{ needs.detect-changes.outputs.iac-changed }}"
+          echo $(date)
+
       - uses: actions/checkout@v4
 
+      - name: Install pnpm and build package
+        if: needs.detect-changes.outputs.backend-changed == 'true'
+        id: install-pnpm-build
+        run: |
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter send-backend
+          lerna run build-image:backend --scope=send-suite
+
       - name: Configure AWS credentials
+        if: needs.detect-changes.outputs.backend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-1
@@ -62,20 +75,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Login to Amazon ECR
+        if: needs.detect-changes.outputs.backend-changed == 'true'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: "true"
 
-      - name: Install pnpm and build package
-        id: install-pnpm-build
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-backend
-          lerna run build-image:backend --scope=send-suite
-
-      # Produce a container image
       - name: Build, tag, and push backend image to Amazon ECR
+        if: needs.detect-changes.outputs.backend-changed == 'true'
         id: build-backend
         env:
           ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
@@ -87,24 +94,41 @@ jobs:
           echo -n "$ECR_TAG" > ecr_tag.txt
 
       - name: Archive the ECR tag
+        if: needs.detect-changes.outputs.backend-changed == 'true'
         id: tag-archive
         uses: actions/upload-artifact@v4
         with:
           name: ecr_tag
           path: ecr_tag.txt
 
-      # --- ECR section ----
+  backend-deploy-stage-aws:
+    needs: backend-build-stage
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    environment: send-stage
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: "Test echo"
+        run: |
+          echo "Deploying backend with image ${{ needs.backend-build-stage.outputs.backend-image }}"
+          echo $(date)
+
       - name: Configure AWS credentials
+        if: needs.detect-changes.outputs.backend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: eu-central-1
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Deploy to stage
       - name: Deploy new image to stage
+        if: needs.detect-changes.outputs.backend-changed == 'true'
         env:
-          ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
+          ECR_TAG: "${{ needs.backend-build-stage.outputs.backend-image }}"
           PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
         run: |
           # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
@@ -135,48 +159,84 @@ jobs:
             'urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef' \
             --target-dependents
 
-  frontend-merge:
-    environment: send-stage
+      - name: Wait for ecs to update the service
+        if: needs.detect-changes.outputs.backend-changed == 'true'
+        run: |
+          aws ecs wait services-stable --region eu-central-1 --cluster send-suite-stage-fargate --services send-suite-stage-fargate
+          echo "ecs_deployed=true" >> $GITHUB_OUTPUT
+
+  frontend-build:
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
+    environment: send-stage
+    strategy:
+      matrix:
+        env: ["stage", "prod"]
+        include:
+          - env: "stage"
+            base_url: "https://send-stage.tb.pro"
+            send_server_url: "https://send-backend-stage.tb.pro"
+            send_client_url: "https://send-stage.tb.pro"
+          - env: "prod"
+            base_url: "https://send.tb.pro"
+            send_server_url: "https://send-backend.tb.pro"
+            send_client_url: "https://send.tb.pro"
     steps:
-      # Preparation for future steps
+      - name: test echo
+        run: |
+          echo "Building frontend for environment ${{ matrix.env }} with base URL ${{ matrix.base_url }}"
+          echo $(date)
+
       - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: eu-central-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      # Stage build steps
-      - name: Create stage .env file from secrets
+      - name: Install pnpm and build package
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        id: install-pnpm-build
         run: |
+          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --filter send-frontend
+          lerna run build --scope=send-suite
+
+      # Front end build env configuration
+      - name: Create .env file from secrets
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          SENTRY_DSN:        ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
+          POSTHOG_KEY:       ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          POSTHOG_HOST:      ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
+          OIDC_CLIENT_ID:    ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          OIDC_ROOT_URL:     ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
+          BASE_URL:          ${{ matrix.base_url }}
+          SEND_SERVER_URL:   ${{ matrix.send_server_url }}
+          SEND_CLIENT_URL:   ${{ matrix.send_client_url }}
+        run: |
+          echo "Environment: ${{ matrix.env }}"
           cd packages/send/frontend
-          cat << EOF > .env
-          VUE_BASE_URL=https://send-stage.tb.pro
-          VITE_SEND_SERVER_URL=https://send-backend-stage.tb.pro
-          VITE_SEND_CLIENT_URL=https://send-stage.tb.pro
-          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_STAGE }}
-          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_STAGE }}
-          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_STAGE }}
-          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_STAGE }}
-          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_STAGE }}
-          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_STAGE }}          
+          cat <<EOF > .env
+          VUE_BASE_URL=${BASE_URL}
+          VITE_SEND_SERVER_URL=${SEND_SERVER_URL}
+          VITE_SEND_CLIENT_URL=${SEND_CLIENT_URL}
+          VITE_SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+          VITE_SENTRY_DSN=${SENTRY_DSN}
+          VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
+          VITE_POSTHOG_HOST=${POSTHOG_HOST}
+          VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+          VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
           EOF
 
-      - name: Build the stage frontend's static assets
-        id: frontend-build-stage
+      - name: Build frontend assets
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        id: frontend-build
         env:
-          BASE_URL: https://send-stage.tb.pro
+          BASE_URL: ${{ matrix.base_url }}
           IS_CI_AUTOMATION: yes
         run: |
+          echo "Building for environment: ${{ matrix.env }}"
           set -x
           # Initial setup of dependencies
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
@@ -186,98 +246,90 @@ jobs:
 
           # Build static frontend assets and the .xpi
           pnpm build
-          mv dist-web ../dist-web-stage
+          mv dist-web ../dist-web-${{ matrix.env }}
           cd ..
-          mv "$(find send-suite-*.xpi)" "send-suite-stage-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
+          mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
 
-      - name: Archive the stage frontend build
+          ls -l send-suite-${{ matrix.env }}-*.xpi
+
+      - name: Archive the ${{ matrix.env }} frontend build
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
         id: frontend-archive-stage
         uses: actions/upload-artifact@v4
         with:
-          name: dist-web-stage
-          path: packages/send/dist-web-stage
+          name: dist-web-${{ matrix.env }}
+          path: packages/send/dist-web-${{ matrix.env }}
           compression-level: 0
 
-      - name: Archive the stage XPI
+      - name: Archive the ${{ matrix.env }} XPI
+        # if: needs.detect-changes.outputs.frontend-changed == 'true'
         id: xpi-archive-stage
         uses: actions/upload-artifact@v4
         with:
-          name: xpi-stage
-          path: packages/send/send-suite-*.xpi
+          name: xpi-${{ matrix.env }}
+          path: packages/send/send-suite-${{ matrix.env }}-*.xpi
 
-      # Production build steps
-      - name: Create production .env file from secrets
+  frontend-deploy-stage-aws:
+    needs: frontend-build
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    environment: send-stage
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test echo
         run: |
-          cd packages/send/frontend
-          cat << EOF > .env
-          VUE_BASE_URL=https://send.tb.pro
-          VITE_SEND_SERVER_URL=https://send-backend.tb.pro
-          VITE_SEND_CLIENT_URL=https://send.tb.pro
-          VITE_SENTRY_AUTH_TOKEN=${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN_PROD }}
-          VITE_POSTHOG_PROJECT_KEY=${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          VITE_POSTHOG_HOST=${{ vars.VITE_POSTHOG_HOST_PROD }}
-          VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL_PROD }}                    
-          EOF
+          echo "Deploying frontend to AWS for environment ${{ matrix.env }}"
+          echo $(date)
 
-      - name: Build the production frontend's static assets
-        id: frontend-build-prod
-        env:
-          BASE_URL: https://send.tb.pro
-          IS_CI_AUTOMATION: yes
-        run: |
-          # Initial setup of dependencies     
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-
-          cd packages/send/frontend
-
-          # Build static frontend assets and the .xpi
-          pnpm build
-          mv dist-web ../dist-web-prod
-          cd ..
-          # There should be an XPI marked "stage" already here, so we exclude it to get the prod XPI instead
-          XPI=$(find send-suite-*.xpi | grep -v stage | grep -v prod)
-          # The filename is something like "send-suite-0-2-1.xpi"; use cut to pull just the version string
-          VERSION_STRING=$(echo $XPI | cut -d- -f3- | cut -d. -f1)
-          mv $XPI send-suite-prod-$VERSION_STRING.xpi
-
-      - name: Archive the production frontend build
-        id: frontend-archive-prod
-        uses: actions/upload-artifact@v4
+      - name: Download frontend-archive-stage artifact
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        uses: actions/download-artifact@v4
         with:
-          name: dist-web-prod
-          path: packages/send/dist-web-prod
+          name: dist-web-stage
+          path: frontend-source
 
-      - name: Archive the prod XPI
-        id: xpi-archive-prod
-        uses: actions/upload-artifact@v4
+      - name: Configure AWS credentials
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          name: xpi-prod
-          path: packages/send/send-suite-prod-*.xpi
+          aws-region: eu-central-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Automatically deploy to stage, but not to prod
       - name: Deploy to stage
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
         id: frontend-deploy
         run: |
-          cd packages/send/dist-web-stage
+          cd frontend-source
           aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
+          echo "s3_deployed=true" >> $GITHUB_OUTPUT
 
-          # Invalidate the CDN
-          aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
-      - name: Deploy to ATN
-        continue-on-error: true
-        id: xpi-deploy
-        env:
-          ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-          ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
-          BASE_URL: https://send-stage.tb.pro
+  frontend-invalidate-stage-cdn:
+    needs: [frontend-deploy-stage-aws, backend-deploy-stage-aws]
+    runs-on: ubuntu-latest
+    environment: send-stage
+    steps:
+      - name: Test echo
         run: |
-          cd packages/send/frontend
-          pnpm deploy-xpi $(find .. -name 'send-suite-stage-*.xpi')
+          echo "Invalidating CDN for stage environment"
+          echo $(date)
+
+      - name: Configure AWS credentials
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: eu-central-1 
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Invalidate CDN, stage only
+        if: needs.frontend-deploy-stage-aws.outputs.s3_deployed == 'true'
+        run: |
+          echo "Invalidating CDN for environment: ${{ matrix.env }}"
+          aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
 
   addon-changes:
     needs: detect-changes
