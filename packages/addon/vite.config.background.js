@@ -1,10 +1,26 @@
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { fileURLToPath, URL } from 'node:url';
 import { resolve } from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import { packageJson, sharedViteConfig, removeEmptySourcemapsPlugin } from './sharedViteConfig';
 
 export default defineConfig(({ mode }) => {
-  // const env = loadEnv(mode, process.cwd());
+  const env = loadEnv(mode, process.cwd());
   return {
+    ...sharedViteConfig,
+    plugins: [
+      removeEmptySourcemapsPlugin(),
+      sentryVitePlugin({
+        org: 'thunderbird',
+        project: 'tbpro-addon',
+        authToken: env.VITE_SENTRY_AUTH_TOKEN,
+        release: packageJson.version,
+        moduleMetadata: {
+          version: packageJson.version,
+          appHost: 'background',
+        },
+      }),
+    ],
     define: {
       'process.env.NODE_ENV': JSON.stringify(mode),
     },
@@ -21,21 +37,9 @@ export default defineConfig(({ mode }) => {
         fileName: () => 'background.js', // Ensure output is background.js
         formats: ['es'],
       },
-      minify: true,
-      sourcemap: true,
+      minify: false,
+      sourcemap: 'inline',
       outDir: 'dist/background',
-      // rollupOptions: {
-      //     output: {
-      //         manualChunks: (id) => {
-      //             if (id.includes('node_modules')) {
-      //                 // Split vendor modules into separate chunks
-      //                 const parts = id.split('/');
-      //                 const length = parts.length;
-      //                 return `vendor_${parts[length - 3]}-${parts[length - 2]}-${parts[length - 1]}`;
-      //             }
-      //         },
-      //     },
-      // },
     },
   };
 });
