@@ -2,7 +2,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
-import { packageJson, sharedViteConfig } from './sharedViteConfig';
+import { packageJson, sharedViteConfig, removeEmptySourcemapsPlugin } from './sharedViteConfig';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   return {
     ...sharedViteConfig,
     plugins: [
+      removeEmptySourcemapsPlugin(),
       vue(),
       sentryVitePlugin({
         org: 'thunderbird',
@@ -33,8 +34,8 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist/pages',
-      sourcemap: true,
-      minify: true,
+      sourcemap: mode === 'production' ? true : 'inline',
+      minify: false,
       rollupOptions: {
         input: {
           management: path.resolve(__dirname, 'index.management.html'),

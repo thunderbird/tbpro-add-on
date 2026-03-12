@@ -1,8 +1,10 @@
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
+import { removeEmptySourcemapsPlugin } from './sharedViteConfig';
 
 export default defineConfig(({ mode }) => {
   return {
+    plugins: [removeEmptySourcemapsPlugin()],
     define: {
       'process.env.NODE_ENV': JSON.stringify(mode),
     },
