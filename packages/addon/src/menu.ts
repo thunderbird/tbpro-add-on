@@ -134,18 +134,56 @@ export async function menuLogout() {
 }
 
 export async function getLoginState() {
-  const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
-  console.log(result);
-  if (result[STORAGE_KEY_AUTH]) {
-    const username =
-      result[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
-      result[STORAGE_KEY_AUTH]?.profile?.email;
-    if (username) {
-      await menuLoggedIn({ username });
-      return { isLoggedIn: true, username };
+  try {
+    const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
+    console.log(result);
+    if (result[STORAGE_KEY_AUTH]) {
+      const username =
+        result[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
+        result[STORAGE_KEY_AUTH]?.profile?.email;
+      const expiration = result[STORAGE_KEY_AUTH]?.expires_at * 1000; // Convert to milliseconds
+      const now = Date.now();
+      if (typeof expiration !== 'number' || isNaN(expiration)) {
+        throw new Error('Invalid expiration time in auth data');
+      }
+      console.log(
+        'Time until token expiration (s):',
+        (expiration - now) / 1000
+      );
+      // If the token is expired, treat as logged out
+      if (expiration && now >= expiration) {
+        console.warn('Auth token is expired. Treating as logged out.');
+        const openWindows = await browser.windows.getAll({ populate: true });
+
+        // Close those tabs
+        for (const window of openWindows) {
+          for (const tab of window.tabs) {
+            if (tab.url?.includes(`${BASE_URL}`)) {
+              try {
+                await browser.tabs.remove(tab.id!);
+                console.log(`Closed expired session tab with id ${tab.id}`);
+              } catch {
+                console.warn(`Could not close tab with id ${tab.id}`);
+              }
+            }
+          }
+        }
+
+        await browser.storage.local.remove(STORAGE_KEY_AUTH);
+        await menuLogout();
+        return { isLoggedIn: false, username: null };
+      }
+
+      if (username) {
+        await menuLoggedIn({ username });
+        return { isLoggedIn: true, username };
+      }
     }
+    return { isLoggedIn: false, username: null };
+  } catch (error) {
+    console.error('Error retrieving auth state from storage:', error);
+    return { isLoggedIn: false, username: null };
   }
-  return { isLoggedIn: false, username: null };
 }
 
 export async function closeLoginTab() {
@@ -159,6 +197,13 @@ export async function closeLoginTab() {
       console.warn(`Could not close login tab with id ${loginTabId}`);
     }
   }
+}
+
+function checkLoginStateOnInterval() {
+  const CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
+  setInterval(async () => {
+    await getLoginState();
+  }, CHECK_INTERVAL_MS);
 }
 
 /**
@@ -211,4 +256,35 @@ export function init() {
   // Technically this is an async function.
   // But we do not need to wait for it synchronously.
   getLoginState();
+
+  // Start interval to check login state periodically
+  checkLoginStateOnInterval();
 }
+
+/**
+ * DEBUG ONLY: Forces the stored auth token to appear expired by setting expires_at to the past.
+ * Call this from the browser/Thunderbird debug console to test expiration behaviour:
+ *   await debugExpireToken()
+ * Then call getLoginState() to observe how the extension responds.
+ */
+export async function debugExpireToken() {
+  const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
+  const authData = result[STORAGE_KEY_AUTH];
+  if (!authData) {
+    console.warn('[debugExpireToken] No auth data found in storage.');
+    return;
+  }
+  // Set expires_at to 1 second in the past (stored in seconds, not ms)
+  authData.expires_at = Math.floor(Date.now() / 1000) - 1;
+  await browser.storage.local.set({ [STORAGE_KEY_AUTH]: authData });
+  console.log(
+    '[debugExpireToken] Token expiration overridden to the past:',
+    authData.expires_at
+  );
+}
+
+// Expose debug helpers on globalThis so they can be called from the debug console
+(globalThis as unknown as Record<string, unknown>).debugExpireToken =
+  debugExpireToken;
+(globalThis as unknown as Record<string, unknown>).debugGetLoginState =
+  getLoginState;

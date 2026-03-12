@@ -75,6 +75,10 @@ export const useBackupAndRestore = () => {
     queryFn: async () => {
       // 1. We check if the user has previously encrypted and downloaded keys
       const hasBackupInServer = await getBackup();
+      if (hasBackupInServer === null) {
+        return 'AUTH_ERROR';
+      }
+
       if (!hasBackupInServer?.backupKeypair) {
         // No backup found, we need to backup (first time user)
         return 'SHOULD_ENCRYPT_AND_BACKUP';

@@ -3,6 +3,7 @@ import {
   registerAuthToken,
   registerTokens,
 } from '@send-backend/auth/client';
+import { extractBearerToken, introspectToken } from '@send-backend/auth/oidc';
 import {
   findOrCreateUserByOIDC,
   getUserByOIDCSubject,
@@ -20,6 +21,22 @@ import {
 const router: Router = Router();
 
 const handleOIDCAuthentication = async (req: RequestWithOIDC, res) => {
+  // We override a valid token with the accounts expiration time if available to ensure our JWT matches the OIDC token's validity
+  let expirationOverride: number | undefined = undefined;
+  try {
+    const authHeader = req.headers.authorization;
+    const token = extractBearerToken(authHeader);
+    const introspectionResult = await introspectToken(token);
+    if (introspectionResult.active && introspectionResult.exp) {
+      expirationOverride = introspectionResult.exp;
+    }
+  } catch (error) {
+    console.log(
+      'Not using Bearer token format, skipping OIDC authentication',
+      error
+    );
+  }
+
   if (!req.oidcUser) {
     return res.status(401).json({
       message: 'OIDC authentication required',
@@ -41,7 +58,7 @@ const handleOIDCAuthentication = async (req: RequestWithOIDC, res) => {
     user.uniqueHash = uniqueHash;
     await updateUniqueHash(user.id, uniqueHash);
 
-    registerTokens(user, res);
+    registerTokens(user, res, expirationOverride);
 
     return res.status(200).json({
       message: 'Authentication successful',

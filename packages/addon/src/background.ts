@@ -384,7 +384,6 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     }
 
     case GET_LOGIN_STATE: {
-      console.log(`[onMessage] Received GET_LOGIN_STATE request`);
       const loginState = await getLoginState();
       console.log(`[onMessage] Login state:`, loginState);
 
@@ -591,11 +590,12 @@ function initStorageWatcher() {
     if (changes[STORAGE_KEY_AUTH]) {
       if (changes[STORAGE_KEY_AUTH].newValue === undefined) {
         try {
-          // OIDC logout
-          await authStore.logoutFromOIDC();
+          await browser.storage.local.remove(STORAGE_KEY_AUTH);
+          browser.runtime.sendMessage({
+            type: SIGN_OUT,
+          });
         } catch {
-          // We really shouldn't be using the authStore here, since we don't have the right
-          // env vars, but that does not interfere with logout.
+          console.error(`Error during sign-out cleanup in background.js`);
         }
       }
       // Optionally, we can check if they've just logged in:
