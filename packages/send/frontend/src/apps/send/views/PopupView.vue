@@ -25,6 +25,11 @@ import useApiStore from '@send-frontend/stores/api-store';
 import { useQuery } from '@tanstack/vue-query';
 import UploadPage from '../pages/UploadPage.vue';
 import { useStatusStore } from '../stores/status-store';
+import { useAuth } from '@send-frontend/lib/auth';
+import WithLoader from '@send-frontend/apps/common/WithLoader.vue';
+import PromptPopupLogin from '@send-frontend/apps/send/views/PromptLogin.vue';
+import { useAuthStore } from '@send-frontend/stores';
+import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 
 interface FileItem {
   id: number;
@@ -36,6 +41,7 @@ const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 const { validators, progress } = useStatusStore();
+const { isLoggedIn, refetchAuth, isLoadingAuth } = useAuth();
 
 const folderStore = useFolderStore();
 const { isError: uploadingError, uploadAndShare } = useUploadAndShare();
@@ -68,6 +74,7 @@ const { error: uploadBlockedDuetoSize } = useQuery({
 const { data: isConfigured, refetch } = useQuery({
   queryKey: ['is-configured-for-upload'],
   queryFn: async () => {
+    await refetchAuth();
     // At the very end we have to validate that everything is in order for the upload to happen
     const { hasBackedUpKeys, isTokenValid, hasForcedLogin } =
       await validators();
@@ -133,24 +140,29 @@ const initialize = async () => {
 </script>
 
 <template>
-  <div v-if="!isConfigured">
-    <BackupAndRestore @backup-completed="refetch" />
-  </div>
-  <div v-else>
-    <!-- We only show the error message when storage limit has been exceeded -->
-    <h1 v-if="uploadBlockedDuetoSize">{{ uploadBlockedDuetoSize }}</h1>
-
-    <div v-if="!uploadBlockedDuetoSize">
-      <div v-if="uploadingError">
-        <ErrorUploading />
+  <WithLoader :is-loading="isLoadingAuth">
+    <PromptPopupLogin v-if="!isLoggedIn" />
+    <div v-else>
+      <div v-if="!isConfigured">
+        <BackupAndRestore @backup-completed="refetch" />
       </div>
+      <div v-else>
+        <!-- We only show the error message when storage limit has been exceeded -->
+        <h1 v-if="uploadBlockedDuetoSize">{{ uploadBlockedDuetoSize }}</h1>
 
-      <div>
-        <UploadPage
-          :files="files"
-          :on-upload-and-share="handleUploadAndShare"
-        />
+        <div v-if="!uploadBlockedDuetoSize">
+          <div v-if="uploadingError">
+            <ErrorUploading />
+          </div>
+
+          <div>
+            <UploadPage
+              :files="files"
+              :on-upload-and-share="handleUploadAndShare"
+            />
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  </WithLoader>
 </template>
