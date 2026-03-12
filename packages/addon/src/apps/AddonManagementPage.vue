@@ -16,13 +16,10 @@ async function _loginToOIDC() {
   loginToOIDC({ onSuccess: refetchAuth, isExtension: true });
 }
 
-function _loginToOIDCForExtension() {
-  const managementUrl = `${BASE_URL}/login?isExtension=true`;
-  window.open(
-    managementUrl,
-    '_blank',
-    'width=800,height=600,scrollbars=yes,resizable=yes'
-  );
+async function openLoginPage() {
+  await browser.tabs.create({
+    url: `${BASE_URL}/login?isExtension=true`,
+  });
 }
 </script>
 
@@ -38,7 +35,7 @@ function _loginToOIDCForExtension() {
         <AuthButtons
           :is-extension="true"
           :login-to-oidc="_loginToOIDC"
-          :login-to-oidc-for-extension="_loginToOIDCForExtension"
+          :login-to-oidc-for-extension="openLoginPage"
         />
       </div>
       <AdminPage v-else />
