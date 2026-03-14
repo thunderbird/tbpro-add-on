@@ -32,7 +32,7 @@ pydantic_core==2.20.1
 Pygments==2.18.0
 python-dotenv==1.0.1
 python-multipart==0.0.9
-PyJWT==2.9.0
+PyJWT==2.12.0
 pytoml==0.1.21
 PyYAML==6.0.1
 requests==2.32.3
