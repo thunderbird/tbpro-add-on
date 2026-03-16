@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import { getHeadersForEnvironment } from './csp.config.js';
-import { packageJson, sharedViteConfig } from './sharedViteConfig';
+import { packageJson, sharedViteConfig, removeEmptySourcemapsPlugin } from './sharedViteConfig';
 import { getEnvironmentName } from './src/lib/config';
 
 // https://vitejs.dev/config/
@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
   return {
     ...sharedViteConfig,
     plugins: [
+      removeEmptySourcemapsPlugin(),
       vue(),
       sentryVitePlugin({
         org: 'thunderbird',
