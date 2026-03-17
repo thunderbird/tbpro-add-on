@@ -24,14 +24,22 @@ echo "=============== extension UI ==================================="
 vite build --config vite.config.extension.js
 cp -R dist/extension/assets/* dist/assets/
 cp -R dist/extension/*.* dist/
+if [ -d dist/extension/chunks ]; then
+    mkdir -p dist/chunks
+    cp -R dist/extension/chunks/* dist/chunks/
+fi
 rm -rf dist/extension
+
 echo "================================================================"
-
-
+echo "=============== management page================================="
 ### Management page, commenting out for now
 vite build --config vite.config.management.js
 cp -R dist/pages/assets/* dist/assets/
 cp -R dist/pages/*.* dist/
+if [ -d dist/pages/chunks ]; then
+    mkdir -p dist/chunks
+    cp -R dist/pages/chunks/* dist/chunks/
+fi
 
 
 echo "================================================================"

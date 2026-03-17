@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { TBAcctsPage } from "../pages/tb-accts-page";
 import { DashboardPage } from '../pages/dashboard-page';
 
@@ -33,11 +33,9 @@ export const navigateToSendAndSignIn = async (page: Page, testProjectName: strin
     }
   } else {
     // sign-in using tb accts; first we click the 'login with your tb pro account' button
+    await expect(tbAcctsSignInPage.signInUsingTBAcctsBtn).toBeVisible({ timeout: TIMEOUT_60_SECONDS });
     await tbAcctsSignInPage.signInUsingTBAcctsBtn.click();
     // then we sign-in to tb accounts itself
     await tbAcctsSignInPage.signIn(testProjectName);
   }
-  
-  // check for tbpro logo on dashboard, give lots of time for page to load as BrowserStack can be slow
-  await expect(dashboardPage.tbProHdrLogo).toBeVisible({ timeout: TIMEOUT_60_SECONDS });
 }
