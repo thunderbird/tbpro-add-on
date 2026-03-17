@@ -133,6 +133,24 @@ export async function menuLogout() {
   });
 }
 
+async function closeAllTbProTabs() {
+  const openWindows = await browser.windows.getAll({ populate: true });
+
+  // Close all the tabs that are still open to the BASE_URL, as they may be in a bad state due to the expired token
+  for (const window of openWindows) {
+    for (const tab of window.tabs) {
+      if (tab.url?.includes(`${BASE_URL}`)) {
+        try {
+          await browser.tabs.remove(tab.id!);
+          console.log(`Closed expired session tab with id ${tab.id}`);
+        } catch {
+          console.warn(`Could not close tab with id ${tab.id}`);
+        }
+      }
+    }
+  }
+}
+
 export async function getLoginState() {
   try {
     const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
@@ -143,31 +161,11 @@ export async function getLoginState() {
         result[STORAGE_KEY_AUTH]?.profile?.email;
       const expiration = result[STORAGE_KEY_AUTH]?.expires_at * 1000; // Convert to milliseconds
       const now = Date.now();
-      if (typeof expiration !== 'number' || isNaN(expiration)) {
-        throw new Error('Invalid expiration time in auth data');
-      }
-      console.log(
-        'Time until token expiration (s):',
-        (expiration - now) / 1000
-      );
+      console.log('Token expires in (s):', (expiration - now) / 1000);
       // If the token is expired, treat as logged out
       if (expiration && now >= expiration) {
         console.warn('Auth token is expired. Treating as logged out.');
-        const openWindows = await browser.windows.getAll({ populate: true });
-
-        // Close those tabs
-        for (const window of openWindows) {
-          for (const tab of window.tabs) {
-            if (tab.url?.includes(`${BASE_URL}`)) {
-              try {
-                await browser.tabs.remove(tab.id!);
-                console.log(`Closed expired session tab with id ${tab.id}`);
-              } catch {
-                console.warn(`Could not close tab with id ${tab.id}`);
-              }
-            }
-          }
-        }
+        await closeAllTbProTabs();
 
         await browser.storage.local.remove(STORAGE_KEY_AUTH);
         await menuLogout();

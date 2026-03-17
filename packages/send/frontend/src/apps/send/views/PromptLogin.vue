@@ -1,19 +1,10 @@
 <script lang="ts" setup>
-import { BASE_URL } from '@send-frontend/apps/common/constants';
-import { useSendConfig } from '@send-frontend/composables/useSendConfig';
-import { useAuthStore } from '@send-frontend/stores';
+import { SIGN_IN } from '@send-frontend/lib/const';
 import { onMounted } from 'vue';
 
-const { loginToOIDC } = useAuthStore();
-const { finishLogin } = useSendConfig();
-
 onMounted(async () => {
-  const managementUrl = `${BASE_URL}/login?isExtension=true`;
-  window.open(
-    managementUrl,
-    '_blank',
-    'width=800,height=600,scrollbars=yes,resizable=yes'
-  );
+  // send the bridge a login message to trigger SIGN_IN from background
+  await browser.runtime.sendMessage({ type: SIGN_IN });
 });
 </script>
 
