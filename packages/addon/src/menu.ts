@@ -151,15 +151,18 @@ async function closeAllTbProTabs() {
   }
 }
 
+/* 
+  Checks if the add-on is logged in, this is separate from the web context.
+  It's useful for the web context to figure out if the add-on is logged in or not, and also for the add-on to check if the token is expired and log out if necessary.
+ */
 export async function getLoginState() {
   try {
-    const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
-    console.log(result);
-    if (result[STORAGE_KEY_AUTH]) {
-      const username =
-        result[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
-        result[STORAGE_KEY_AUTH]?.profile?.email;
-      const expiration = result[STORAGE_KEY_AUTH]?.expires_at * 1000; // Convert to milliseconds
+    // Get the auth token from browser storage (this is a copy of the auth token stored in the web context, used to determine login state in the add-on context)
+    const authStorageData = await browser.storage.local.get(STORAGE_KEY_AUTH);
+    console.log(authStorageData);
+    if (authStorageData[STORAGE_KEY_AUTH]) {
+      // Check token expiration
+      const expiration = authStorageData[STORAGE_KEY_AUTH]?.expires_at * 1000; // Convert to milliseconds
       const now = Date.now();
       console.log('Token expires in (s):', (expiration - now) / 1000);
       // If the token is expired, treat as logged out
@@ -171,6 +174,10 @@ export async function getLoginState() {
         await menuLogout();
         return { isLoggedIn: false, username: null };
       }
+
+      const username =
+        authStorageData[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
+        authStorageData[STORAGE_KEY_AUTH]?.profile?.email;
 
       if (username) {
         await menuLoggedIn({ username });
@@ -197,6 +204,7 @@ export async function closeLoginTab() {
   }
 }
 
+// To make sure that the login state is in sync with the web context token, we run this every minute
 function checkLoginStateOnInterval() {
   const CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
   setInterval(async () => {
@@ -258,31 +266,3 @@ export function init() {
   // Start interval to check login state periodically
   checkLoginStateOnInterval();
 }
-
-/**
- * DEBUG ONLY: Forces the stored auth token to appear expired by setting expires_at to the past.
- * Call this from the browser/Thunderbird debug console to test expiration behaviour:
- *   await debugExpireToken()
- * Then call getLoginState() to observe how the extension responds.
- */
-export async function debugExpireToken() {
-  const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
-  const authData = result[STORAGE_KEY_AUTH];
-  if (!authData) {
-    console.warn('[debugExpireToken] No auth data found in storage.');
-    return;
-  }
-  // Set expires_at to 1 second in the past (stored in seconds, not ms)
-  authData.expires_at = Math.floor(Date.now() / 1000) - 1;
-  await browser.storage.local.set({ [STORAGE_KEY_AUTH]: authData });
-  console.log(
-    '[debugExpireToken] Token expiration overridden to the past:',
-    authData.expires_at
-  );
-}
-
-// Expose debug helpers on globalThis so they can be called from the debug console
-(globalThis as unknown as Record<string, unknown>).debugExpireToken =
-  debugExpireToken;
-(globalThis as unknown as Record<string, unknown>).debugGetLoginState =
-  getLoginState;
