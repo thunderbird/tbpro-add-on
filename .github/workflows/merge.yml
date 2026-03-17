@@ -282,6 +282,19 @@ jobs:
     env:
       IS_CI_AUTOMATION: yes
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    environment: send-stage
+    strategy:
+      matrix:
+      env: ["stage","prod"]
+      include:
+        - env: "stage"
+          base_url: "https://send-stage.tb.pro"
+          send_server_url: "https://send-backend-stage.tb.pro"
+          send_client_url: "https://send-stage.tb.pro"
+        - env: "prod"
+          base_url: "https://send.tb.pro"
+          send_server_url: "https://send-backend.tb.pro"
+          send_client_url: "https://send.tb.pro"
     steps:
       - uses: actions/checkout@v4
 
