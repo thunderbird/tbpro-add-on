@@ -109,6 +109,9 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     environment: send-stage
+    outputs:
+      ecs_deployed: ${{ steps.wait-deployment.ecs_deployed }}
+
     steps:
       - uses: actions/checkout@v4
       
@@ -160,6 +163,7 @@ jobs:
             --target-dependents
 
       - name: Wait for ecs to update the service
+        id: wait-deployment
         if: needs.detect-changes.outputs.backend-changed == 'true'
         run: |
           aws ecs wait services-stable --region eu-central-1 --cluster send-suite-stage-fargate --services send-suite-stage-fargate
@@ -275,6 +279,8 @@ jobs:
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     environment: send-stage
+    outputs:
+      s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
     steps:
       - uses: actions/checkout@v4
 
