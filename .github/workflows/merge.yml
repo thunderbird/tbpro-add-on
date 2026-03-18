@@ -6,6 +6,18 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  workflow_dispatch:
+    inputs:
+      force_backend:
+        description: Force backend build and deploy for this manual run
+        required: false
+        type: boolean
+        default: false
+      force_frontend:
+        description: Force frontend build, deploy, and CDN invalidation for this manual run
+        required: false
+        type: boolean
+        default: false
   push:
     # branches:
     # - main
@@ -20,9 +32,9 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
-      backend-changed: ${{ steps.check.outputs.backend-changed }}
+      backend-changed: ${{ steps.check.outputs.backend-changed == 'true' || github.event.inputs.force_backend == 'true' }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
-      frontend-changed: ${{ steps.check.outputs.frontend-changed }}
+      frontend-changed: ${{ steps.check.outputs.frontend-changed == 'true' || github.event.inputs.force_frontend == 'true' }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +54,7 @@ jobs:
 
   backend-build-stage:
     needs: detect-changes
+    if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
     outputs:
       backend-image: ${{ steps.build-backend.outputs.backend-image }}
@@ -103,6 +116,7 @@ jobs:
 
   backend-deploy-stage-aws:
     needs: ["backend-build-stage", "detect-changes"]
+    if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -171,6 +185,7 @@ jobs:
 
   frontend-build:
     needs: detect-changes
+    if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -275,6 +290,7 @@ jobs:
 
   frontend-deploy-stage-aws:
     needs: ["frontend-build","detect-changes"]
+    if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
