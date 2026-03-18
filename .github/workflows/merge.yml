@@ -45,7 +45,7 @@ jobs:
           filters: |
             backend-changed:
               - 'packages/send/backend/**'
-              - '.github/workflows/merge.yml'
+              # - '.github/workflows/merge.yml'
             iac-changed:
               - 'packages/send/pulumi/**'
               - '.github/workflows/validate.yml'
