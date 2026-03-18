@@ -110,7 +110,7 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     environment: send-stage
     outputs:
-      ecs_deployed: ${{ steps.wait-deployment.ecs_deployed }}
+      ecs_deployed: ${{ steps.wait-deployment.outputs.ecs_deployed }}
 
     steps:
       - uses: actions/checkout@v4
