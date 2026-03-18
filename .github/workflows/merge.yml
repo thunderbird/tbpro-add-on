@@ -332,7 +332,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Invalidate CDN, stage only
-        # if: needs.frontend-deploy-stage-aws.outputs.s3_deployed == 'true'
+        if: needs.frontend-deploy-stage-aws.outputs.s3_deployed == 'true'
         run: |
           echo "Invalidating CDN for environment: ${{ matrix.env }}"
           aws cloudfront create-invalidation --distribution-id ${{ vars.STAGE_CF_DISTRO_ID }} --paths "/*"
