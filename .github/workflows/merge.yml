@@ -1,5 +1,4 @@
 ---
-# dummy change
 name: deploy-stage-and-create-release
 
 concurrency:
@@ -20,8 +19,8 @@ on:
         type: boolean
         default: false
   push:
-    # branches:
-    # - main
+    branches:
+    - main
 
 permissions:
   packages: read
@@ -45,7 +44,7 @@ jobs:
           filters: |
             backend-changed:
               - 'packages/send/backend/**'
-              - '.github/workflows/merge.yml'
+              # - '.github/workflows/merge.yml'
             iac-changed:
               - 'packages/send/pulumi/**'
               - '.github/workflows/validate.yml'
