@@ -6,6 +6,18 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  workflow_dispatch:
+    inputs:
+      force_backend:
+        description: Force backend build and deploy for this manual run
+        required: false
+        type: boolean
+        default: false
+      force_frontend:
+        description: Force frontend build, deploy, and CDN invalidation for this manual run
+        required: false
+        type: boolean
+        default: false
   push:
     branches:
     - main
@@ -20,9 +32,9 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
-      backend-changed: ${{ steps.check.outputs.backend-changed }}
+      backend-changed: ${{ steps.check.outputs.backend-changed == 'true' || github.event.inputs.force_backend == 'true' }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
-      frontend-changed: ${{ steps.check.outputs.frontend-changed }}
+      frontend-changed: ${{ steps.check.outputs.frontend-changed == 'true' || github.event.inputs.force_frontend == 'true' }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
@@ -32,16 +44,19 @@ jobs:
           filters: |
             backend-changed:
               - 'packages/send/backend/**'
+              # - '.github/workflows/merge.yml'
             iac-changed:
               - 'packages/send/pulumi/**'
               - '.github/workflows/validate.yml'
             frontend-changed:
               - 'packages/send/frontend/**'
+              # - '.github/workflows/merge.yml'
             addon-changed:
               - 'packages/addon/**'
 
   backend-build-stage:
     needs: detect-changes
+    if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
     outputs:
       backend-image: ${{ steps.build-backend.outputs.backend-image }}
@@ -59,7 +74,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install pnpm and build package
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         id: install-pnpm-build
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
@@ -67,7 +82,7 @@ jobs:
           lerna run build-image:backend --scope=send-suite
 
       - name: Configure AWS credentials
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-1
@@ -75,14 +90,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Login to Amazon ECR
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: "true"
 
       - name: Build, tag, and push backend image to Amazon ECR
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         id: build-backend
         env:
           ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
@@ -94,7 +109,7 @@ jobs:
           echo -n "$ECR_TAG" > ecr_tag.txt
 
       - name: Archive the ECR tag
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         id: tag-archive
         uses: actions/upload-artifact@v4
         with:
@@ -103,12 +118,16 @@ jobs:
 
   backend-deploy-stage-aws:
     needs: ["backend-build-stage", "detect-changes"]
+    if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     environment: send-stage
+    outputs:
+      ecs_deployed: ${{ steps.wait-deployment.outputs.ecs_deployed }}
+
     steps:
       - uses: actions/checkout@v4
       
@@ -118,7 +137,7 @@ jobs:
           echo $(date)
 
       - name: Configure AWS credentials
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: eu-central-1
@@ -126,7 +145,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Deploy new image to stage
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         env:
           ECR_TAG: "${{ needs.backend-build-stage.outputs.backend-image }}"
           PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
@@ -160,13 +179,15 @@ jobs:
             --target-dependents
 
       - name: Wait for ecs to update the service
-        if: needs.detect-changes.outputs.backend-changed == 'true'
+        id: wait-deployment
+        # if: needs.detect-changes.outputs.backend-changed == 'true'
         run: |
           aws ecs wait services-stable --region eu-central-1 --cluster send-suite-stage-fargate --services send-suite-stage-fargate
           echo "ecs_deployed=true" >> $GITHUB_OUTPUT
 
   frontend-build:
     needs: detect-changes
+    if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -194,7 +215,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install pnpm and build package
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        # if: needs.detect-changes.outputs.frontend-changed == 'true'
         id: install-pnpm-build
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
@@ -203,7 +224,7 @@ jobs:
 
       # Front end build env configuration
       - name: Create .env file from secrets
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        # if: needs.detect-changes.outputs.frontend-changed == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
           SENTRY_DSN:        ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
@@ -262,7 +283,7 @@ jobs:
           compression-level: 0
 
       - name: Archive the ${{ matrix.env }} XPI
-        # if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
         id: xpi-archive-stage
         uses: actions/upload-artifact@v4
         with:
@@ -271,10 +292,13 @@ jobs:
 
   frontend-deploy-stage-aws:
     needs: ["frontend-build","detect-changes"]
+    if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     environment: send-stage
+    outputs:
+      s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -309,6 +333,7 @@ jobs:
 
   frontend-invalidate-stage-cdn:
     needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
+    if: ${{ always() && needs.detect-changes.outputs.frontend-changed == 'true' && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
     runs-on: ubuntu-latest
     environment: send-stage
     steps:
@@ -318,7 +343,7 @@ jobs:
           echo $(date)
 
       - name: Configure AWS credentials
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        # if: needs.detect-changes.outputs.frontend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: eu-central-1 
