@@ -165,22 +165,4 @@ jobs:
           version: ${{ github.event.release.id }}
           file: xpi-prod.zip
 
-      - name: Deploy to ATN
-        continue-on-error: true
-        if: contains(github.event.release.assets.*.name, 'xpi-prod.zip')
-        id: xpi-deploy
-        env:
-          ATN_API_KEY: "${{ secrets.ATN_API_KEY }}"
-          ATN_API_SECRET: "${{ secrets.ATN_API_SECRET }}"
-          BASE_URL: https://send.tb.pro/
-        run: |
-          # Initial setup of dependencies
-          mv xpi-prod.zip packages/send
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm i --filter send-frontend
-          cd packages/send
-          unzip xpi-prod.zip
-          rm -f xpi-prod.zip
-          cd frontend
-          pnpm deploy-xpi $(find .. -name 'send-suite-*.xpi')
+
