@@ -191,6 +191,24 @@ export async function createItem(
   return await fromPrismaV2(prisma.item.create, query, ITEM_NOT_CREATED);
 }
 
+export async function getWrappedKeyFromId(itemId: number) {
+  const query = {
+    where: {
+      id: itemId,
+    },
+    select: {
+      wrappedKey: true,
+    },
+  };
+
+  const item = await fromPrismaV2(
+    prisma.item.findUniqueOrThrow,
+    query,
+    ITEM_NOT_FOUND
+  );
+  return item.wrappedKey;
+}
+
 export async function deleteItem(id: number, shouldDeleteUpload = false) {
   const findItemQuery = {
     where: {
@@ -683,10 +701,23 @@ export async function deleteOrphans() {
   };
 }
 
+const getUploadSizesForUser = async (userId: string) => {
+  const result = await prisma.upload.aggregate({
+    where: { ownerId: userId },
+    _sum: { size: true },
+  });
+  return Number(result._sum.size ?? 0);
+};
+
 export const getUsedStorage = async (
   userId: string,
   hasLimitedStorage = false
 ) => {
+  if (!hasLimitedStorage) {
+    const uploads = await getUploadSizesForUser(userId);
+    return { active: uploads, expired: 0 };
+  }
+
   const folders = await getAllUserGroupContainers(userId, ContainerType.FOLDER);
 
   // If the user has a limited storage, we need to calculate the total size of the active uploads and the expired uploads
@@ -722,6 +753,7 @@ export const getUsedStorage = async (
       expired,
     };
   }
+  // This won't run, we'll keep in case we go back to calculating storage without the hasLimitedStorage flag, but for now we calculate storage based on the flag and ignore expiry
   const active = folders
     // Make a sum of all the sizes that haven't expired
     .flatMap((folder) => folder.items.map((item) => item.upload.size))

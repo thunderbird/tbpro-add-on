@@ -71,6 +71,8 @@ defineEmits<{
   font-weight: normal;
   line-height: 1.23;
   text-shadow: 0.5px 0.5px 0 rgba(255, 255, 255, 0.1);
+  border-style: solid;
+  border-width: 1px;
 }
 
 .pro-button--secondary:hover {

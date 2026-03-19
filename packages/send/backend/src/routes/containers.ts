@@ -8,6 +8,7 @@ import {
   getContainerWithDescendants,
   getContainerWithMembers,
   getSharesForContainer,
+  getWrappedKeyFromId,
   removeGroupMember,
   removeInvitationAndGroup,
   reportUpload,
@@ -411,8 +412,10 @@ router.delete(
     // Force req.body.shouldDeleteUpload to a boolean
     const shouldDeleteUpload =
       req?.body?.shouldDeleteUpload === false ? false : true;
-    const result = await deleteItem(parseInt(itemId), shouldDeleteUpload);
-    res.status(200).json(result);
+    const wrappedKey = await getWrappedKeyFromId(parseInt(itemId));
+    // We don't await the deleteItem promise because we want to return a response immediately after initiating the delete.
+    deleteItem(parseInt(itemId), shouldDeleteUpload);
+    return res.status(202).json({ wrappedKey });
   })
 );
 

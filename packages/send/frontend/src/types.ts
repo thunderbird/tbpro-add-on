@@ -54,6 +54,7 @@ export interface Api {
 export interface UserType {
   id: string;
   email: string;
+  name?: string;
   thundermailEmail?: string;
   tier?: UserTier;
   createdAt?: Date;

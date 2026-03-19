@@ -23,6 +23,7 @@ const router = useRouter();
         <ProButton
           data-testid="recover-access-button"
           @click="() => router.push('/send/security-and-privacy')"
+          type="secondary"
         >
           Encryption Key
         </ProButton>
