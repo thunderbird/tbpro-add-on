@@ -124,6 +124,30 @@
   gap: 0.75rem;
 }
 
+.section-title {
+  font-family: Metropolis;
+  font-size: 24px;
+  font-weight: 500;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: 1.2;
+  letter-spacing: normal;
+  text-align: left;
+  color: #1373d9;
+}
+
+.title {
+  font-family: Metropolis;
+  font-size: 24px;
+  font-weight: 500;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: 1.2;
+  letter-spacing: normal;
+  text-align: left;
+  color: #1373d9;
+}
+
 /* Responsive design */
 @media (max-width: 1024px) {
   .content-layout {

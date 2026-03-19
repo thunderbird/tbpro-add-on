@@ -17,36 +17,44 @@ const {
 } = useBackupAndRestore();
 </script>
 <template>
-  <h1 class="title">Security & Privacy</h1>
-  <div class="row">
-    <!-- Backup and Restore Section -->
-    <section>
-      <RestoreKeys
-        v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldReset"
-        :restore-from-backup="restoreFromBackup"
-        :set-passphrase="setPassphrase"
-        :message="errorMessage"
-        :on-reset="() => (shouldReset = true)"
-        @cancel="() => router.push('/send/profile?showDashboard=true')"
-      />
-      <!-- RESET -->
-      <ResetEncryptionKeyV2
-        v-if="shouldReset"
-        @confirm="resetKeys"
-        @cancel="() => (shouldReset = false)"
-      />
-      <SecurityAndPrivacy
-        v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
-        :show-keys-by-default="true"
-        :reset-keys="resetKeys"
-      />
-    </section>
-    <SupportBox />
+  <div class="container">
+    <h1 class="title top">Security & Privacy</h1>
+    <div class="row">
+      <!-- Backup and Restore Section -->
+      <section>
+        <RestoreKeys
+          v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldReset"
+          :restore-from-backup="restoreFromBackup"
+          :set-passphrase="setPassphrase"
+          :message="errorMessage"
+          :on-reset="() => (shouldReset = true)"
+          @cancel="() => router.push('/send/profile?showDashboard=true')"
+        />
+        <!-- RESET -->
+        <ResetEncryptionKeyV2
+          v-if="shouldReset"
+          @confirm="resetKeys"
+          @cancel="() => (shouldReset = false)"
+        />
+        <SecurityAndPrivacy
+          v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
+          :show-keys-by-default="true"
+          :reset-keys="resetKeys"
+        />
+      </section>
+      <SupportBox />
+    </div>
   </div>
 </template>
 
 <style lang="css" scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 2rem;
+}
+
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;

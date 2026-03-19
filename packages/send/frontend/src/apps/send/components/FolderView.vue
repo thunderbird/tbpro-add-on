@@ -192,7 +192,7 @@ function handleFolderClick(uuid: string) {
 
 <template>
   <div class="w-full flex flex-col gap-3">
-    <h2 class="font-bold">Your Files</h2>
+    <h2>Your Files</h2>
     <span
       v-if="folderStore.rootFolder?.items.length"
       data-testid="file-count"

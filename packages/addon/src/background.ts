@@ -1,7 +1,7 @@
 /// <reference types="thunderbird-webext-browser" />
 import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-store';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import { useApiStore, useAuthStore } from '@send-frontend/stores';
+import { useApiStore } from '@send-frontend/stores';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
@@ -28,6 +28,7 @@ import {
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
+import { initSharedPinia } from '@send-frontend/lib/shared-pinia';
 import { useConfigStore } from '@send-frontend/stores/index.js';
 import {
   closeLoginTab,
@@ -36,7 +37,6 @@ import {
   menuLoggedIn,
   menuLogout,
 } from './menu';
-import { initSharedPinia } from '@send-frontend/lib/shared-pinia';
 
 // Initialize the shared Pinia instance that will be used by both
 // background and extension contexts
@@ -51,7 +51,6 @@ const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 const { configureExtension } = useExtensionStore();
 const { isProd, getAddonId } = useConfigStore();
-const authStore = useAuthStore();
 
 console.log('hello from the background.js!', new Date().getTime());
 

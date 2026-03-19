@@ -400,6 +400,7 @@ export async function getUserByOIDCSubject(oidcSubject: string) {
       createdAt: true,
       updatedAt: true,
       thundermailEmail: true,
+      name: true,
     },
   });
 }
@@ -408,33 +409,37 @@ export async function findOrCreateUserByOIDC({
   oidcSubject,
   email,
   thundermailEmail,
+  name,
 }: {
   oidcSubject: string;
   email: string;
   thundermailEmail?: string;
+  name?: string;
 }) {
   // First try to find existing user by OIDC subject
   const userFromPrisma = await getUserByOIDCSubject(oidcSubject);
 
   if (userFromPrisma) {
-    // Update entry with thundermailEmail if it's missing
-    if (!userFromPrisma?.thundermailEmail && thundermailEmail) {
-      const updatedUser = await prisma.user.update({
-        where: { id: userFromPrisma.id },
-        data: { thundermailEmail },
-        select: {
-          id: true,
-          email: true,
-          uniqueHash: true,
-          tier: true,
-          oidcSubject: true,
-          createdAt: true,
-          updatedAt: true,
-          thundermailEmail: true,
-        },
-      });
+    if (!userFromPrisma.thundermailEmail || !userFromPrisma.name) {
+      if (!userFromPrisma.name && name) {
+        await prisma.user.update({
+          where: { id: userFromPrisma.id },
+          data: { name },
+        });
+      }
+
+      // Update entry with thundermailEmail if it's missing
+      if (!userFromPrisma?.thundermailEmail && thundermailEmail) {
+        await prisma.user.update({
+          where: { id: userFromPrisma.id },
+          data: { thundermailEmail },
+        });
+      }
+
+      const updatedUser = await getUserByOIDCSubject(oidcSubject);
       return updatedUser;
     }
+
     return userFromPrisma;
   }
 
@@ -447,6 +452,7 @@ export async function findOrCreateUserByOIDC({
       createdAt: new Date(),
       updatedAt: new Date(),
       thundermailEmail,
+      name,
     },
     select: {
       id: true,
@@ -456,6 +462,8 @@ export async function findOrCreateUserByOIDC({
       oidcSubject: true,
       createdAt: true,
       updatedAt: true,
+      thundermailEmail: true,
+      name: true,
     },
   });
 

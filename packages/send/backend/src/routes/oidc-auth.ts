@@ -44,7 +44,7 @@ const handleOIDCAuthentication = async (req: RequestWithOIDC, res) => {
     });
   }
 
-  const { sub, email, username } = req.oidcUser;
+  const { sub, email, username, name } = req.oidcUser;
 
   try {
     // Find or create user based on OIDC subject
@@ -52,6 +52,7 @@ const handleOIDCAuthentication = async (req: RequestWithOIDC, res) => {
       oidcSubject: sub,
       email: email || '',
       thundermailEmail: username || '',
+      name: name || '',
     });
 
     const uniqueHash = createHash('sha256').update(sub).digest('hex');
@@ -67,6 +68,7 @@ const handleOIDCAuthentication = async (req: RequestWithOIDC, res) => {
         email: user.email,
         uniqueHash: user.uniqueHash,
         tier: user.tier,
+        name: user.name,
       },
     });
   } catch (error) {
@@ -208,6 +210,7 @@ router.get(
           email: user.email,
           uniqueHash: user.uniqueHash,
           tier: user.tier,
+          name: user.name,
         },
       });
     } catch (error) {

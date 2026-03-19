@@ -26,7 +26,7 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
     const storage = new FileStore(config);
 
     it('should write a file to b2 bucket', async () => {
-      const fileName = `write-${new Date().getTime()}.txt`;
+      const fileName = `${new Date().getTime()}-write.txt`;
 
       const result = await storage.set(
         fileName,
@@ -36,7 +36,7 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
     });
 
     it('should read a file from b2 bucket', async () => {
-      const fileName = `read-${new Date().getTime()}.txt`;
+      const fileName = `${new Date().getTime()}-read.txt`;
 
       const writeResult = await storage.set(
         fileName,
@@ -49,7 +49,7 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
     });
 
     it('should delete a file from b2 bucket', async () => {
-      const fileName = `delete-${new Date().getTime()}.txt`;
+      const fileName = `${new Date().getTime()}-delete.txt`;
 
       const writeResult = await storage.set(
         fileName,

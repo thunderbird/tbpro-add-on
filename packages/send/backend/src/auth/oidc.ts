@@ -5,6 +5,7 @@ import 'dotenv/config';
 export interface TokenIntrospectionResponse {
   active: boolean;
   username?: string;
+  name?: string;
   email?: string;
   sub?: string;
   exp?: number;
@@ -112,6 +113,7 @@ export async function validateOIDCToken(token: string): Promise<{
     email?: string;
     username?: string;
     thundermailEmail?: string;
+    name?: string;
   };
 }> {
   try {
@@ -135,6 +137,7 @@ export async function validateOIDCToken(token: string): Promise<{
         sub: introspectionResult.sub || introspectionResult.username || '',
         email: introspectionResult.email,
         username: introspectionResult.username,
+        name: introspectionResult.name,
       },
     };
   } catch (error) {

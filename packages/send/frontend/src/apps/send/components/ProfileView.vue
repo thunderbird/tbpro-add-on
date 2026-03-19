@@ -47,6 +47,12 @@ onMounted(() => {
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
 
+.profile {
+  max-width: 1200px;
+  margin: auto;
+  padding: 2rem;
+}
+
 p {
   color: #000;
   font-size: 13px;

@@ -657,8 +657,8 @@ importers:
         specifier: '*'
         version: 5.72.1(vue@3.5.13(typescript@5.8.3))
       '@thunderbirdops/services-ui':
-        specifier: ^1.3.0
-        version: 1.3.0(typescript@5.8.3)
+        specifier: ^1.5.1
+        version: 1.5.1(typescript@5.8.3)
       '@trpc/client':
         specifier: '>=11.1.1'
         version: 11.5.1(@trpc/server@11.10.0(typescript@5.8.3))(typescript@5.8.3)
@@ -3089,6 +3089,9 @@ packages:
 
   '@thunderbirdops/services-ui@1.3.0':
     resolution: {integrity: sha512-a5M2UxJJjiSH8wqeo571CXUpTS9QianQ63pB7ZhpW0YhckhpHDAZrpi3bogeebAQZEmDoE7FhIApwJDaxe4ukw==}
+
+  '@thunderbirdops/services-ui@1.5.1':
+    resolution: {integrity: sha512-Sz7yue4BqWfj93DRrN9aZqyG3g2aIsSYfsxdsz3Lyca6ePsV8t1/3YlFdyFWrkhEtiC5H4120z6fmRpPIlGpdg==}
 
   '@thunderbirdops/services-utils@0.1.3':
     resolution: {integrity: sha512-yT7ILgoHFEqhXVJSHWaot1tiEiwSvcSHTrDwV4caoCHGpX0mZ+0Y8ymOdLJSIE7lvkxhHEG+v6bWI8LSjhePUQ==}
@@ -11866,6 +11869,13 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
+  '@thunderbirdops/services-ui@1.5.1(typescript@5.8.3)':
+    dependencies:
+      vue: 3.5.19(typescript@5.8.3)
+      vue-i18n: 11.1.12(vue@3.5.19(typescript@5.8.3))
+    transitivePeerDependencies:
+      - typescript
+
   '@thunderbirdops/services-utils@0.1.3': {}
 
   '@tootallnate/once@2.0.0': {}
@@ -17226,7 +17236,7 @@ snapshots:
       '@sentry/vue': 8.55.0(pinia@2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3)))(vue@3.5.19(typescript@5.8.3))
       '@tabler/icons-vue': 2.47.0(vue@3.5.19(typescript@5.8.3))
       '@tanstack/vue-query': 5.72.1(vue@3.5.19(typescript@5.8.3))
-      '@thunderbirdops/services-ui': 1.3.0(typescript@5.8.3)
+      '@thunderbirdops/services-ui': 1.5.1(typescript@5.8.3)
       '@trpc/client': 11.5.1(@trpc/server@11.10.0(typescript@5.8.3))(typescript@5.8.3)
       '@types/ua-parser-js': 0.7.39
       dayjs: 1.11.13
