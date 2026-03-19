@@ -8,10 +8,11 @@ import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FeedbackBox from '../common/FeedbackBox.vue';
 
+import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 import LoginIndicator from '../common/LoginIndicator.vue';
 import PublicLogin from '../common/PublicLogin.vue';
 import SecureSendIcon from '../common/SecureSendIcon.vue';
@@ -19,24 +20,28 @@ import TBBanner from '../common/TBBanner.vue';
 import { useConfigStore } from './stores/config-store';
 import useFolderStore from './stores/folder-store';
 
+const sessionInfo = ref(null);
+
 const { api } = useApiStore();
+const router = useRouter();
 const { user } = useUserStore();
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
 const { isPublicLogin } = useConfigStore();
-const { isExtension, openManagementPage, isThunderbirdHost } = useConfigStore();
+const { openManagementPage, isThunderbirdHost } = useConfigStore();
 const { loginToOIDC } = useAuthStore();
 const { isRouteExtension } = useIsRouteExtension();
 
-const router = useRouter();
-
-const sessionInfo = ref(null);
+const shouldRedirectToAccountLogin = computed(() => {
+  const isAutoLoginRoute = router?.currentRoute?.value.path === '/auto-login';
+  return isRouteExtension.value || isAutoLoginRoute;
+});
 
 onMounted(async () => {
   // We route the extension login to this page to handle the OIDC login
   // To make this as smooth as possible, we automatically trigger the login
-  if (isRouteExtension.value) {
+  if (shouldRedirectToAccountLogin.value) {
     console.log('Extension mode detected, redirecting to OIDC login...');
     await _loginToOIDC();
   }
@@ -73,14 +78,13 @@ async function _loginToOIDC() {
 </script>
 <template>
   <main class="container">
-    <div v-if="isRouteExtension">
+    <div v-if="shouldRedirectToAccountLogin">
       <p>Redirecting to TB Pro login...</p>
     </div>
     <div v-else>
       <TBBanner />
       <LoginIndicator v-if="!isPublicLogin" :id="user.id">
         <PrimaryButton
-          v-if="!isExtension"
           primary
           data-testid="login-button-tbpro"
           @click.capture="_loginToOIDC"

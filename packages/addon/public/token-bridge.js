@@ -8,6 +8,7 @@ const SIGN_OUT = 'SIGN_OUT';
 const SEND_MESSAGE_TO_BRIDGE = 'SEND_MESSAGE_TO_BRIDGE';
 const GET_LOGIN_STATE = 'GET_LOGIN_STATE';
 const LOGIN_STATE_RESPONSE = 'LOGIN_STATE_RESPONSE';
+const SIGN_IN = 'SIGN_IN';
 const FORCE_CLOSE_WINDOW = 'FORCE_CLOSE_WINDOW';
 const OPEN_MANAGEMENT_PAGE = 'OPEN_MANAGEMENT_PAGE';
 
@@ -59,6 +60,12 @@ window.addEventListener('message', (e) => {
         user: userData,
       });
     }
+  }
+
+  if (e?.data?.type === SIGN_IN) {
+    browser.runtime.sendMessage({
+      type: SIGN_IN,
+    });
   }
 
   if (e?.data?.type === SIGN_IN_COMPLETE) {

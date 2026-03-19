@@ -99,8 +99,13 @@ export const getStorageLimit = (req: Request) => {
   return { hasLimitedStorage, daysToExpiry: DAYS_TO_EXPIRY };
 };
 
-export function registerTokens(signedData: AuthResponse, res: Response) {
-  const expiration = Date.now() + refreshTokenExpiration.milliseconds;
+export function registerTokens(
+  signedData: AuthResponse,
+  res: Response,
+  expirationOverride?: number
+) {
+  const expiration =
+    Date.now() + (expirationOverride ?? refreshTokenExpiration.milliseconds);
   const refreshTokenToken = jwt.sign(
     {
       ...signedData,
