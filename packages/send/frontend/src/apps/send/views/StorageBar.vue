@@ -41,7 +41,7 @@ const isLoading = computed(() => {
   <div v-if="!isLoading">
     <div class="row">
       <h3 class="send-storage">Send Storage</h3>
-      <p class="font-bold">{{ activeText }}</p>
+      <p class="storage-remaining">{{ activeText }}</p>
     </div>
 
     <div v-if="!error && !loadingSize">
@@ -52,4 +52,27 @@ const isLoading = computed(() => {
 
 <style lang="css" scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
+.send-storage {
+  font-family: Metropolis;
+  font-size: 20px;
+  font-weight: 500;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: 1.2;
+  letter-spacing: normal;
+  text-align: left;
+  color: #4c4d58;
+}
+
+.storage-remaining {
+  font-family: Inter;
+  font-size: 16px;
+  font-weight: 600;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: normal;
+  letter-spacing: normal;
+  text-align: right;
+  color: #4c4d58;
+}
 </style>
