@@ -234,7 +234,7 @@ export async function delete_file({ page }: PlaywrightProps) {
   // Wait for DELETE request to complete
   await responsePromise;
 
-  expect((await responsePromise).status()).toBe(200);
+  expect((await responsePromise).status()).toBe(202);
   expect(await page.getByTestId(fileCountID).isVisible()).toBeFalsy();
 
   // Check that the share links are no longer accessible
