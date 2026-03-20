@@ -445,7 +445,7 @@ jobs:
           cd packages/addon/
 
           # Find build addon xpi file
-          XPI="$(find tbpro-addpn-*.xpi)"
+          XPI="$(find tbpro-addon-*.xpi)"
 
           # create now file name for env
           RENAMED_XPI="tbpro-addon-${ENV}-$(basename "$XPI" | cut -d "-" -f3-)"
