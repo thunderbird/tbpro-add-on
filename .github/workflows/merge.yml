@@ -18,6 +18,11 @@ on:
         required: false
         type: boolean
         default: false
+      force_addon:
+        description: Force addon build, artifact upload, ATN upload
+        required: false
+        type: boolean
+        default: false
   push:
     branches:
     - main
@@ -361,7 +366,8 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: yes
-    # if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' | github.event.inputs.force_addon == 'true'
+
     environment: send-stage
     strategy:
       matrix:
