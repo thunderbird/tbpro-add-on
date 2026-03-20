@@ -172,10 +172,49 @@ jobs:
           aws-region: eu-central-1 
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
+          
       - name: Invalidate CDN, prod only
         run: |
           # Invalidate the CDN
           aws cloudfront create-invalidation --distribution-id ${{ vars.PROD_CF_DISTRO_ID }} --paths "/*"
 
+  deploy-addon-prod-atn:
+    runs-on: ubuntu-latest
+    container:
+        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    env:
+      IS_CI_AUTOMATION: "yes"
+    steps:
+      - name: Find addon XPI asset
+        id: find-addon
+        if: contains(join(github.event.release.assets.*.name, ','), 'tbpro-addon-prod-')
+        run: |
+          name=$(jq -r '.release.assets[] | select(.name | test("tbpro-addon-prod-.*\\.xpi")) | .name' "$GITHUB_EVENT_PATH" | head -n1 || true)
+          echo "xpi_name=$name" >> $GITHUB_OUTPUT
+
+      - name: Check out the code
+        if: steps.find-addon.outputs.xpi_name != ''
+        uses: actions/checkout@v4
+
+      - name: Download addon XPI artifact
+        if: steps.find-addon.outputs.xpi_name != ''
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          version: ${{ github.event.release.id }}
+          file: ${{ steps.find-addon.outputs.xpi_name }}
+        
+      - name: Deploy addon prod to ATN via web-ext
+        if: steps.find-addon.outputs.xpi_name != ''
+        continue-on-error: true
+        id: web-ext-sign-prod-addon
+        uses: kewisch/action-web-ext@v1
+        env:
+          BASE_URL: https://send.tb.pro
+        with:
+          cmd: sign
+          source:  ${{ steps.find-addon.outputs.xpi_name }}
+          channel: listed
+          apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
+          apiKey: ${{ secrets.ATN_API_KEY }}
+          apiSecret: ${{ secrets.ATN_API_SECRET }}
 
