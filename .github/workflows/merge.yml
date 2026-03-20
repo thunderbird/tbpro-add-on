@@ -388,7 +388,7 @@ jobs:
       - name: (Addon) Create .env file from secrets
         env:
           SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN:  $$ {{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
+          SENTRY_DSN:  ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
           POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
           POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}} 
           OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
@@ -413,6 +413,16 @@ jobs:
           EOF
 
       - name: (Addon) Create .env file from secrets
+        env:
+          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          SENTRY_DSN:  ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
+          POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}}
+          OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD}}
+          BASE_URL: ${{ matrix.base_url }}
+          SEND_SERVER_URL: ${{ matrix.send_server_url }}
+          SEND_CLIENT_URL: ${{ matrix.send_client_url }}
         run: |
           echo "Environment: ${{ matrix.env }}"
           cd packages/addon
