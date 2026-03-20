@@ -9,6 +9,7 @@ export default [
     languageOptions: {
       parserOptions: {
         parser: '@typescript-eslint/parser',
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
         ...globals.browser, // Existing browser globals

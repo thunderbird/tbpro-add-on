@@ -9,6 +9,7 @@ overrides:
   '@eslint/plugin-kit@<0.3.4': '>=0.3.4'
   '@isaacs/brace-expansion@<=5.0.0': '>=5.0.1'
   '@smithy/config-resolver@<4.4.0': '>=4.4.0'
+  '@tootallnate/once@<3.0.1': '>=3.0.1'
   '@trpc/server@>=11.0.0 <11.8.0': '>=11.8.0'
   ajv@<6.14.0: '>=6.14.0'
   ajv@>=7.0.0-alpha.0 <8.18.0: '>=8.18.0'
@@ -17,9 +18,13 @@ overrides:
   browserstack-local@<=1.5.8: '>=1.5.9'
   diff@<4.0.4: '>=4.0.4'
   esbuild@<=0.24.2: '>=0.25.0'
+  fast-xml-parser@>=4.0.0-beta.3 <=5.5.5: '>=5.5.6'
+  fast-xml-parser@>=4.0.0-beta.3 <=5.5.6: '>=5.5.7'
   fast-xml-parser@>=4.1.3 <5.3.5: '>=5.3.5'
   fast-xml-parser@>=4.1.3 <5.3.6: '>=5.3.6'
   fast-xml-parser@>=5.0.0 <5.3.8: '>=5.3.8'
+  flatted@<3.4.0: '>=3.4.0'
+  flatted@<=3.4.1: '>=3.4.2'
   glob@>=10.2.0 <10.5.0: '>=10.5.0'
   happy-dom@<20.0.0: '>=20.0.0'
   happy-dom@<20.0.2: '>=20.0.2'
@@ -43,7 +48,9 @@ overrides:
   rollup@>=4.0.0 <4.59.0: '>=4.59.0'
   tar@<7.5.7: '>=7.5.7'
   tar@<7.5.8: '>=7.5.8'
+  tar@<=7.5.10: '>=7.5.11'
   tar@<=7.5.2: '>=7.5.3'
+  tar@<=7.5.9: '>=7.5.10'
   tmp@<=0.2.3: '>=0.2.4'
   validator@<13.15.20: '>=13.15.20'
   validator@<13.15.22: '>=13.15.22'
@@ -3096,8 +3103,8 @@ packages:
   '@thunderbirdops/services-utils@0.1.3':
     resolution: {integrity: sha512-yT7ILgoHFEqhXVJSHWaot1tiEiwSvcSHTrDwV4caoCHGpX0mZ+0Y8ymOdLJSIE7lvkxhHEG+v6bWI8LSjhePUQ==}
 
-  '@tootallnate/once@2.0.0':
-    resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}
+  '@tootallnate/once@3.0.1':
+    resolution: {integrity: sha512-VyMVKRrpHTT8PnotUeV8L/mDaMwD5DaAKCFLP73zAqAtvF0FCqky+Ki7BYbFCYQmqFyTe9316Ed5zS70QUR9eg==}
     engines: {node: '>= 10'}
 
   '@tootallnate/quickjs-emscripten@0.23.0':
@@ -5225,8 +5232,8 @@ packages:
     resolution: {integrity: sha512-b6suED+5/3rTpUBdG1gupIl8MPFCAMA0QXwmljLhvCUKcUvdE4gWky9zpuGCcXHOsz4J9wPGNWq6OKpmIzz3hQ==}
     hasBin: true
 
-  flatted@3.3.3:
-    resolution: {integrity: sha512-GX+ysw4PBCz0PzosHDepZGANEuFCMLrnRTiEy9McGjmkCQYwRq4A/X786G/fjM/+OjsWSU1ZrY5qyARZmO/uwg==}
+  flatted@3.4.2:
+    resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
 
   floating-vue@5.2.2:
     resolution: {integrity: sha512-afW+h2CFafo+7Y9Lvw/xsqjaQlKLdJV7h1fCHfcYQ1C4SVMlu7OAekqWgu5d4SgvkBVU0pVpLlVsrSTBURFRkg==}
@@ -8011,8 +8018,8 @@ packages:
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
 
-  tar@7.5.9:
-    resolution: {integrity: sha512-BTLcK0xsDh2+PUe9F6c2TlRp4zOOBMTkoQHQIWSIzI0R7KG46uEwq4OPk2W7bZcprBMsuaeFsqwYr7pjh6CuHg==}
+  tar@7.5.12:
+    resolution: {integrity: sha512-9TsuLcdhOn4XztcQqhNyq1KOwOOED/3k58JAvtULiYqbO8B/0IBAAIE1hj0Svmm58k27TmcigyDI0deMlgG3uw==}
     engines: {node: '>=18'}
 
   tbpro-shared@file:packages/shared:
@@ -10427,7 +10434,7 @@ snapshots:
       slash: 3.0.0
       ssri: 12.0.0
       string-width: 4.2.3
-      tar: 7.5.9
+      tar: 7.5.12
       temp-dir: 1.0.0
       through: 2.3.8
       tinyglobby: 0.2.12
@@ -11878,7 +11885,7 @@ snapshots:
 
   '@thunderbirdops/services-utils@0.1.3': {}
 
-  '@tootallnate/once@2.0.0': {}
+  '@tootallnate/once@3.0.1': {}
 
   '@tootallnate/quickjs-emscripten@0.23.0': {}
 
@@ -14480,18 +14487,18 @@ snapshots:
 
   flat-cache@3.2.0:
     dependencies:
-      flatted: 3.3.3
+      flatted: 3.4.2
       keyv: 4.5.4
       rimraf: 3.0.2
 
   flat-cache@4.0.1:
     dependencies:
-      flatted: 3.3.3
+      flatted: 3.4.2
       keyv: 4.5.4
 
   flat@5.0.2: {}
 
-  flatted@3.3.3: {}
+  flatted@3.4.2: {}
 
   floating-vue@5.2.2(vue@3.5.13(typescript@5.8.3)):
     dependencies:
@@ -14998,7 +15005,7 @@ snapshots:
 
   http-proxy-agent@5.0.0:
     dependencies:
-      '@tootallnate/once': 2.0.0
+      '@tootallnate/once': 3.0.1
       agent-base: 6.0.2
       debug: 4.4.3(supports-color@5.5.0)
     transitivePeerDependencies:
@@ -15573,7 +15580,7 @@ snapshots:
       slash: 3.0.0
       ssri: 12.0.0
       string-width: 4.2.3
-      tar: 7.5.9
+      tar: 7.5.12
       temp-dir: 1.0.0
       through: 2.3.8
       tinyglobby: 0.2.12
@@ -16106,7 +16113,7 @@ snapshots:
       nopt: 9.0.0
       proc-log: 6.1.0
       semver: 7.7.4
-      tar: 7.5.9
+      tar: 7.5.12
       tinyglobby: 0.2.15
       which: 6.0.1
     transitivePeerDependencies:
@@ -16526,7 +16533,7 @@ snapshots:
       promise-retry: 2.0.1
       sigstore: 4.1.0
       ssri: 12.0.0
-      tar: 7.5.9
+      tar: 7.5.12
     transitivePeerDependencies:
       - supports-color
 
@@ -16548,7 +16555,7 @@ snapshots:
       promise-retry: 2.0.1
       sigstore: 4.1.0
       ssri: 13.0.1
-      tar: 7.5.9
+      tar: 7.5.12
     transitivePeerDependencies:
       - supports-color
 
@@ -17723,7 +17730,7 @@ snapshots:
       - bare-abort-controller
       - react-native-b4a
 
-  tar@7.5.9:
+  tar@7.5.12:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
