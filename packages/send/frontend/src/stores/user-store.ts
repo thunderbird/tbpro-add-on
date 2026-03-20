@@ -22,6 +22,7 @@ const useUserStore = defineStore('user', () => {
     user.tier = userData.tier;
     user.email = userData.email;
     user.thundermailEmail = userData.thundermailEmail;
+    user.name = userData.name;
 
     if (userData.uniqueHash) {
       user.uniqueHash = userData.uniqueHash;
@@ -82,9 +83,9 @@ const useUserStore = defineStore('user', () => {
       if (!userFromStorage) {
         return false;
       }
-      const { id, tier, email, thundermailEmail } = userFromStorage;
+      const { id, tier, email, thundermailEmail, name } = userFromStorage;
 
-      populateUser({ id, email, tier, thundermailEmail });
+      populateUser({ id, email, tier, thundermailEmail, name });
 
       return true;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -97,12 +98,14 @@ const useUserStore = defineStore('user', () => {
     newId?: string,
     newTier?: UserTier,
     newEmail?: string,
-    newThundermailEmail?: string
+    newThundermailEmail?: string,
+    newName?: string
   ): Promise<void> {
-    let { id, tier, email, thundermailEmail } = user;
+    let { id, tier, email, thundermailEmail, name } = user;
     id = newId ?? id;
     tier = newTier ?? tier;
     email = newEmail ?? email;
+    name = newName ?? name;
     thundermailEmail = newThundermailEmail ?? thundermailEmail;
     // TODO: this is confusing.
     // we could be storing new values, but we're not setting them
@@ -111,7 +114,7 @@ const useUserStore = defineStore('user', () => {
     if (!id) {
       return;
     }
-    await storage.storeUser({ id, tier, email, thundermailEmail });
+    await storage.storeUser({ id, tier, email, thundermailEmail, name });
   }
 
   // After login, get user from backend and save it locally.

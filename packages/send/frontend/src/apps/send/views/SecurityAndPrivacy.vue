@@ -65,6 +65,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+@import '@send-frontend/apps/common/tbpro-styles.css';
 h2 {
   font-size: 22px;
 }

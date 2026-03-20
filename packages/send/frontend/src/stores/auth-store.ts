@@ -42,6 +42,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ------- OIDC Authentication ------- //
 
+  async function getOIDCUser() {
+    try {
+      const user = await userManager.getUser();
+      return user;
+    } catch (error) {
+      console.error('Failed to get OIDC user:', error);
+      return null;
+    }
+  }
+
   /**
    * Start the OIDC login process
    */
@@ -271,5 +281,6 @@ export const useAuthStore = defineStore('auth', () => {
 
     // add-on specific
     loadUser,
+    getOIDCUser,
   };
 });

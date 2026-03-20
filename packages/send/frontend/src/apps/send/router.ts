@@ -52,13 +52,17 @@ enum META_OPTIONS {
   requiresRetryCountCheck = 'requiresRetryCountCheck',
   resolveDefaultFolder = 'resolveDefaultFolder',
   isAvailableForExtension = 'isAvailableForExtension',
-  closeIfExtensionLoggedOut = 'closeIfExtensionLoggedOut',
+  requiresExtensionLogin = 'requiresExtensionLogin',
 }
 
 export const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: '/send',
+  },
+  {
+    path: '/auto-login',
+    component: LoginPage,
   },
   {
     path: '/login',
@@ -128,7 +132,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.autoRestoresKeys]: true,
-          [META_OPTIONS.closeIfExtensionLoggedOut]: true,
+          [META_OPTIONS.requiresExtensionLogin]: true,
         },
       },
       {
@@ -137,7 +141,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.autoRestoresKeys]: true,
-          [META_OPTIONS.closeIfExtensionLoggedOut]: true,
+          [META_OPTIONS.requiresExtensionLogin]: true,
         },
       },
       {
@@ -226,9 +230,9 @@ router.beforeEach(async (to, from, next) => {
   );
   const resolveDefaultFolder = matchMeta(to, META_OPTIONS.resolveDefaultFolder);
   const requiresValidToken = matchMeta(to, META_OPTIONS.requiresValidToken);
-  const closeIfExtensionLoggedOut = matchMeta(
+  const requiresExtensionLogin = matchMeta(
     to,
-    META_OPTIONS.closeIfExtensionLoggedOut
+    META_OPTIONS.requiresExtensionLogin
   );
   const autoRestoresKeys = matchMeta(to, META_OPTIONS.autoRestoresKeys);
   const requiresBackedUpKeys = matchMeta(to, META_OPTIONS.requiresBackedUpKeys);
@@ -249,13 +253,11 @@ router.beforeEach(async (to, from, next) => {
 
   // Check addon login state if running in extension context
   // If user is not logged in to the addon, close the window
-  if (closeIfExtensionLoggedOut && isThunderbirdHost) {
+  if (requiresExtensionLogin && isThunderbirdHost) {
     try {
       const addonLoginState = await queryAddonLoginState();
       if (!addonLoginState.isLoggedIn) {
-        window.close();
-        router.push('/force-close');
-        return;
+        return next('/auto-login');
       }
     } catch (error) {
       console.error('[router] Error querying addon login state:', error);

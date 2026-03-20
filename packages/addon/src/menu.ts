@@ -133,19 +133,62 @@ export async function menuLogout() {
   });
 }
 
-export async function getLoginState() {
-  const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
-  console.log(result);
-  if (result[STORAGE_KEY_AUTH]) {
-    const username =
-      result[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
-      result[STORAGE_KEY_AUTH]?.profile?.email;
-    if (username) {
-      await menuLoggedIn({ username });
-      return { isLoggedIn: true, username };
+async function closeAllTbProTabs() {
+  const openWindows = await browser.windows.getAll({ populate: true });
+
+  // Close all the tabs that are still open to the BASE_URL, as they may be in a bad state due to the expired token
+  for (const window of openWindows) {
+    for (const tab of window.tabs) {
+      if (tab.url?.includes(`${BASE_URL}`)) {
+        try {
+          await browser.tabs.remove(tab.id!);
+          console.log(`Closed expired session tab with id ${tab.id}`);
+        } catch {
+          console.warn(`Could not close tab with id ${tab.id}`);
+        }
+      }
     }
   }
-  return { isLoggedIn: false, username: null };
+}
+
+/* 
+  Checks if the add-on is logged in, this is separate from the web context.
+  It's useful for the web context to figure out if the add-on is logged in or not, and also for the add-on to check if the token is expired and log out if necessary.
+ */
+export async function getLoginState() {
+  try {
+    // Get the auth token from browser storage (this is a copy of the auth token stored in the web context, used to determine login state in the add-on context)
+    const authStorageData = await browser.storage.local.get(STORAGE_KEY_AUTH);
+    console.log(authStorageData);
+    if (authStorageData[STORAGE_KEY_AUTH]) {
+      // Check token expiration
+      const expiration = authStorageData[STORAGE_KEY_AUTH]?.expires_at * 1000; // Convert to milliseconds
+      const now = Date.now();
+      console.log('Token expires in (s):', (expiration - now) / 1000);
+      // If the token is expired, treat as logged out
+      if (expiration && now >= expiration) {
+        console.warn('Auth token is expired. Treating as logged out.');
+        await closeAllTbProTabs();
+
+        await browser.storage.local.remove(STORAGE_KEY_AUTH);
+        await menuLogout();
+        return { isLoggedIn: false, username: null };
+      }
+
+      const username =
+        authStorageData[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
+        authStorageData[STORAGE_KEY_AUTH]?.profile?.email;
+
+      if (username) {
+        await menuLoggedIn({ username });
+        return { isLoggedIn: true, username };
+      }
+    }
+    return { isLoggedIn: false, username: null };
+  } catch (error) {
+    console.error('Error retrieving auth state from storage:', error);
+    return { isLoggedIn: false, username: null };
+  }
 }
 
 export async function closeLoginTab() {
@@ -159,6 +202,14 @@ export async function closeLoginTab() {
       console.warn(`Could not close login tab with id ${loginTabId}`);
     }
   }
+}
+
+// To make sure that the login state is in sync with the web context token, we run this every minute
+function checkLoginStateOnInterval() {
+  const CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
+  setInterval(async () => {
+    await getLoginState();
+  }, CHECK_INTERVAL_MS);
 }
 
 /**
@@ -211,4 +262,7 @@ export function init() {
   // Technically this is an async function.
   // But we do not need to wait for it synchronously.
   getLoginState();
+
+  // Start interval to check login state periodically
+  checkLoginStateOnInterval();
 }

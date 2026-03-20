@@ -1,7 +1,7 @@
 /// <reference types="thunderbird-webext-browser" />
 import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-store';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import { useApiStore, useAuthStore } from '@send-frontend/stores';
+import { useApiStore } from '@send-frontend/stores';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
@@ -28,6 +28,7 @@ import {
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
+import { initSharedPinia } from '@send-frontend/lib/shared-pinia';
 import { useConfigStore } from '@send-frontend/stores/index.js';
 import {
   closeLoginTab,
@@ -36,7 +37,6 @@ import {
   menuLoggedIn,
   menuLogout,
 } from './menu';
-import { initSharedPinia } from '@send-frontend/lib/shared-pinia';
 
 // Initialize the shared Pinia instance that will be used by both
 // background and extension contexts
@@ -51,7 +51,6 @@ const { keychain } = useKeychainStore();
 const { api } = useApiStore();
 const { configureExtension } = useExtensionStore();
 const { isProd, getAddonId } = useConfigStore();
-const authStore = useAuthStore();
 
 console.log('hello from the background.js!', new Date().getTime());
 
@@ -384,7 +383,6 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     }
 
     case GET_LOGIN_STATE: {
-      console.log(`[onMessage] Received GET_LOGIN_STATE request`);
       const loginState = await getLoginState();
       console.log(`[onMessage] Login state:`, loginState);
 
@@ -591,11 +589,12 @@ function initStorageWatcher() {
     if (changes[STORAGE_KEY_AUTH]) {
       if (changes[STORAGE_KEY_AUTH].newValue === undefined) {
         try {
-          // OIDC logout
-          await authStore.logoutFromOIDC();
+          await browser.storage.local.remove(STORAGE_KEY_AUTH);
+          browser.runtime.sendMessage({
+            type: SIGN_OUT,
+          });
         } catch {
-          // We really shouldn't be using the authStore here, since we don't have the right
-          // env vars, but that does not interfere with logout.
+          console.error(`Error during sign-out cleanup in background.js`);
         }
       }
       // Optionally, we can check if they've just logged in:

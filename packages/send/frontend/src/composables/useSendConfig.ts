@@ -157,12 +157,7 @@ export function useSendConfig() {
     isLoggedIn: boolean;
     username: string | null;
   }> => {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error('Timeout waiting for addon login state response'));
-      }, 5_000);
-
+    return new Promise((resolve) => {
       const messageHandler = (event: MessageEvent) => {
         if (event.data?.type === LOGIN_STATE_RESPONSE) {
           cleanup();
@@ -174,7 +169,6 @@ export function useSendConfig() {
       };
 
       const cleanup = () => {
-        clearTimeout(timeout);
         window.removeEventListener('message', messageHandler);
       };
 

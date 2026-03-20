@@ -5,6 +5,7 @@ export interface OIDCUserInfo {
   sub: string;
   email?: string;
   username?: string;
+  name?: string;
 }
 
 export interface RequestWithOIDC extends Request {

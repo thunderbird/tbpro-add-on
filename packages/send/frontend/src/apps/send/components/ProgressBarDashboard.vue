@@ -18,11 +18,19 @@ const { percentage } = defineProps<{
   background-color: #e0e0e0;
   border-radius: 10px;
   overflow: hidden;
+  margin-top: 0.5rem;
 }
 
 .progress-bar {
   height: 100%;
-  background-color: #4caf50;
+  box-shadow: inset 0 3px 3px 0 rgba(255, 255, 255, 0.2);
+  border: solid 1px rgba(255, 255, 255, 0.1);
+  background-image: linear-gradient(
+    to right,
+    #58c9ff 58%,
+    #ae55f7 118%,
+    #e247c4 118%
+  );
   transition: width 0.3s ease;
 }
 </style>
