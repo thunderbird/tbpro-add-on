@@ -463,6 +463,7 @@ jobs:
         with:
           name: ${{ steps.addon-frontend-build.outputs.xpi_filename }}
           path: ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
+          compression-level: 0 # <-- don't zip!
 
       - name: Deploy addon stage to ATN via web-ext
         if: matrix.env == 'stage'
