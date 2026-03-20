@@ -437,18 +437,26 @@ jobs:
           lerna run build --scope=addon
           
           cd packages/addon/
-          XPI="$(find tbpro-addon-*.xpi)"
-          ${ENV}_XPI="tbpro-addon-${ENV}-$(basename "$XPI" | cut -d'-' -f3-)"
 
-          mv "$XPI" "$ENV_XPI"
-          echo "${ENV}_xpi_file=packages/addon/$ENV_XPI" >> "$GITHUB_OUTPUT"
+          # Find build addon xpi file
+          XPI="$(find tbpro-addpn-*.xpi)"
+
+          # create now file name for env
+          RENAMED_XPI="tbpro-addon-${ENV}-$(basename "$XPI" | cut -d "-" -f3-)"
+
+          # rename the file by moving
+          mv -v ${XPI} ${RENAMED_XPI}
+
+          # export outputs for use in next steps
+          echo "xpi_filename=$RENAMED_XPI" >> $GITHUB_OUTPUT
+          echo "xpi_file_path=packages/addon/$RENAMED_XPI" >> $GITHUB_OUTPUT
 
       - name: Archive the XPI
         id: xpi-archive-addon
         uses: actions/upload-artifact@v4
         with:
-          name: addon-xpi-${{ matrix.env }}
-          path: packages/addon/tbpro-addon-${{ matrix.env }}-*.xpi
+          name: ${{ steps.addon-frontend-build.outputs.xpi_filename }}
+          path: ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
 
       - name: Deploy addon stage to ATN via web-ext
         if: matrix.env == 'stage'
@@ -459,7 +467,7 @@ jobs:
           BASE_URL: https://send-stage.tb.pro
         with:
           cmd: sign
-          source:  ${{ steps.addon-frontend-build.outputs.stage_xpi_file }}
+          source:  ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
           channel: listed
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
           apiKey: ${{ secrets.ATN_API_KEY }}
