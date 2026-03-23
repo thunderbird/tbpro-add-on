@@ -134,7 +134,15 @@ Every time you merge to the `main` branch, a new version of the application is a
 
 ## Releasing a new version to production
 
-After validating that the changes work as expected on staging, you can create a new release on GitHub. This will trigger the `release.yml` workflow that will publish the new version of the application to production. You can see the workflow [here](./.github/workflows/release.yml). The release workflow requires you to upload the assets that were built by the merge workflow, you can find the artifacts [here](https://github.com/thunderbird/tbpro-add-on/actions/workflows/merge.yml). Once you create the release, the workflow will deploy the new version to production and publish the addon to ATN.
+After validating that the changes work as expected on staging, you can create a new release on GitHub. This is currently a manual process. Creating the release will trigger the `release.yml` workflow that publishes the new version of the application to production. You can see the workflow [here](./.github/workflows/release.yml).
+
+Before publishing the release, upload the production assets built by the merge workflow. You can find the artifacts [here](https://github.com/thunderbird/tbpro-add-on/actions/workflows/merge.yml). The release workflow currently expects these assets to be attached to the manually created GitHub release:
+
+- `ecr_tag.zip`
+- `dist-web-prod.zip`
+- `tbpro-addon-prod-*.xpi`
+
+Once you create the release with those assets attached, the workflow will deploy the new version to production and publish the addon to ATN.
 
 If for some reason there is an issue with the add-on release, you can manually upload the xpi file to ATN [here](https://addons.thunderbird.net/).
 
