@@ -38,8 +38,8 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist/pages',
-      sourcemap: 'inline',
-      minify: false,
+      sourcemap: true,
+      minify: true,
       rollupOptions: {
         input: {
           management: path.resolve(__dirname, 'index.management.html'),
