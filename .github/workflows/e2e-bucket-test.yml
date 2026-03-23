@@ -84,9 +84,11 @@ jobs:
         shell: bash
         run: |
           cd packages/send/backend
-          echo "OIDC_CLIENT_ID=${{ secrets.OIDC_CLIENT_ID }}" >> .env
-          echo "OIDC_CLIENT_SECRET=${{ secrets.OIDC_CLIENT_SECRET }}" >> .env
-          echo "OIDC_TOKEN_INTROSPECTION_URL=${{ secrets.OIDC_TOKEN_INTROSPECTION_URL }}" >> .env
+          {
+            echo "OIDC_CLIENT_ID=${{ secrets.OIDC_CLIENT_ID }}"
+            echo "OIDC_CLIENT_SECRET=${{ secrets.OIDC_CLIENT_SECRET }}"
+            echo "OIDC_TOKEN_INTROSPECTION_URL=${{ secrets.OIDC_TOKEN_INTROSPECTION_URL }}"
+          } >> .env
 
       - name: Add env vars for frontend
         shell: bash

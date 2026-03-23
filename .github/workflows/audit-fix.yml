@@ -45,10 +45,10 @@ jobs:
         id: check-changes
         run: |
           if git diff --exit-code pnpm-lock.yaml; then
-            echo "has-changes=false" >> $GITHUB_OUTPUT
+            echo "has-changes=false" >> "$GITHUB_OUTPUT"
             echo "No changes detected in lockfile"
           else
-            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "has-changes=true" >> "$GITHUB_OUTPUT"
             echo "Changes detected in lockfile"
           fi
 

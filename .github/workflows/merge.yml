@@ -74,7 +74,7 @@ jobs:
       - name: test echo
         run: |
           echo "Building backend with changes: ${{ needs.detect-changes.outputs.backend-changed }} and iac changes: ${{ needs.detect-changes.outputs.iac-changed }}"
-          echo $(date)
+          date
 
       - uses: actions/checkout@v4
 
@@ -108,9 +108,9 @@ jobs:
           ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
         run: |
           # Build a docker container and push it to ECR so that it can be deployed to ECS.
-          docker build -t $ECR_TAG ./packages/send/backend/build
-          docker push $ECR_TAG
-          echo "backend-image=$ECR_TAG" >> $GITHUB_OUTPUT
+          docker build -t "$ECR_TAG" ./packages/send/backend/build
+          docker push "$ECR_TAG"
+          echo "backend-image=$ECR_TAG" >> "$GITHUB_OUTPUT"
           echo -n "$ECR_TAG" > ecr_tag.txt
 
       - name: Archive the ECR tag
@@ -139,7 +139,7 @@ jobs:
       - name: "Test echo"
         run: |
           echo "Deploying backend with image ${{ needs.backend-build-stage.outputs.backend-image }}"
-          echo $(date)
+          date
 
       - name: Configure AWS credentials
         # if: needs.detect-changes.outputs.backend-changed == 'true'
@@ -180,7 +180,7 @@ jobs:
           pulumi login
           pulumi stack select stage
           pulumi up -y --diff --target \
-            'urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef' \
+            "urn:pulumi:stage::send-suite::tb:fargate:FargateClusterWithLogging\$aws:ecs/taskDefinition:TaskDefinition::send-suite-stage-fargate-taskdef" \
             --target-dependents
 
       - name: Wait for ecs to update the service
@@ -188,7 +188,7 @@ jobs:
         # if: needs.detect-changes.outputs.backend-changed == 'true'
         run: |
           aws ecs wait services-stable --region eu-central-1 --cluster send-suite-stage-fargate --services send-suite-stage-fargate
-          echo "ecs_deployed=true" >> $GITHUB_OUTPUT
+          echo "ecs_deployed=true" >> "$GITHUB_OUTPUT"
 
   frontend-build:
     needs: detect-changes
@@ -215,7 +215,7 @@ jobs:
       - name: test echo
         run: |
           echo "Building frontend for environment ${{ matrix.env }} with base URL ${{ matrix.base_url }}"
-          echo $(date)
+          date
 
       - uses: actions/checkout@v4
 
@@ -309,7 +309,7 @@ jobs:
       - name: Test echo
         run: |
           echo "Deploying frontend to AWS for environment stage"
-          echo $(date)
+          date
 
       - name: Download frontend-archive-stage artifact
         if: needs.detect-changes.outputs.frontend-changed == 'true'
@@ -332,7 +332,7 @@ jobs:
         run: |
           cd frontend-source
           aws s3 cp . s3://tb-send-suite-stage-frontend/ --recursive
-          echo "s3_deployed=true" >> $GITHUB_OUTPUT
+          echo "s3_deployed=true" >> "$GITHUB_OUTPUT"
 
   frontend-invalidate-stage-cdn:
     needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
@@ -343,7 +343,7 @@ jobs:
       - name: Test echo
         run: |
           echo "Invalidating CDN for stage environment"
-          echo $(date)
+          date
 
       - name: Configure AWS credentials
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
@@ -461,11 +461,11 @@ jobs:
           RENAMED_XPI="tbpro-addon-${ENV}-$(basename "$XPI" | cut -d "-" -f3-)"
 
           # rename the file by moving
-          mv -v ${XPI} ${RENAMED_XPI}
+          mv -v "${XPI}" "${RENAMED_XPI}"
 
           # export outputs for use in next steps
-          echo "xpi_filename=$RENAMED_XPI" >> $GITHUB_OUTPUT
-          echo "xpi_file_path=packages/addon/$RENAMED_XPI" >> $GITHUB_OUTPUT
+          echo "xpi_filename=$RENAMED_XPI" >> "$GITHUB_OUTPUT"
+          echo "xpi_file_path=packages/addon/$RENAMED_XPI" >> "$GITHUB_OUTPUT"
 
       - name: Archive the XPI
         id: xpi-archive-addon
