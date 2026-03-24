@@ -28,6 +28,7 @@ jobs:
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
+    environment:
       deployment: false
     steps:
       - uses: actions/checkout@v4

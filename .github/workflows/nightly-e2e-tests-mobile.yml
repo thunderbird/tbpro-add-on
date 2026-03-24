@@ -22,11 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    environment: production
+    environment:
+      name: production
+      deployment: false
     env:
       TBPRO_USERNAME: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_USERNAME }}
       TBPRO_PASSWORD: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_PASSWORD }}
-    deployment: false
     steps:
       - uses: actions/checkout@v4
 

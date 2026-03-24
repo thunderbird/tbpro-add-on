@@ -19,7 +19,8 @@ permissions:
 jobs:
   actionlint:
     runs-on: ubuntu-latest
-    deployment: false
+    environment:
+      deployment: false
     steps:
       - uses: actions/checkout@v4
 

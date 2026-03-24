@@ -25,6 +25,7 @@ jobs:
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
+    environment:
       deployment: false
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +50,9 @@ jobs:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    deployment: false
+    environment:
+      name: integration-tests
+      deployment: false
     steps:
       - uses: actions/checkout@v4
       - name: Set up environments and install dependencies

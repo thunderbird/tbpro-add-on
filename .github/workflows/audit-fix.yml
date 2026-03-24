@@ -25,6 +25,7 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     outputs:
       has-changes: ${{ steps.check-changes.outputs.has-changes }}
+    environment:
       deployment: false
     steps:
       - uses: actions/checkout@v4

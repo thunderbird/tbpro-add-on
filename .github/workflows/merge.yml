@@ -41,7 +41,8 @@ jobs:
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed == 'true' || github.event.inputs.force_frontend == 'true' }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
-      deployment: false
+      environment:
+        deployment: false
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -70,8 +71,9 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    environment: send-stage
-    deployment: true
+    environment:
+      name: send-stage
+      deployment: true
     steps:
       - name: test echo
         run: |
@@ -131,10 +133,11 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    environment: send-stage
+    environment:
+      name: send-stage
+      deployment: true
     outputs:
       ecs_deployed: ${{ steps.wait-deployment.outputs.ecs_deployed }}
-    deployment: true
     steps:
       - uses: actions/checkout@v4
       
@@ -200,8 +203,9 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
-    environment: send-stage
-    deployment: true
+    environment:
+      name: send-stage
+      deployment: true
     strategy:
       matrix:
         env: ["stage", "prod"]
@@ -303,10 +307,11 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    environment: send-stage
+    environment:
+      name: send-stage
+      deployment: true
     outputs:
       s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
-      deployment: true
     steps:
       - uses: actions/checkout@v4
 
@@ -342,8 +347,9 @@ jobs:
     needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
     if: ${{ always() && needs.detect-changes.outputs.frontend-changed == 'true' && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
     runs-on: ubuntu-latest
-    environment: send-stage
-    deployment: true
+    environment:
+      name: send-stage
+      deployment: true
     steps:
       - name: Test echo
         run: |
@@ -372,8 +378,9 @@ jobs:
     env:
       IS_CI_AUTOMATION: yes
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
-    deployment: true
-    environment: send-stage
+    environment:
+      name: send-stage
+      deployment: true
     strategy:
       matrix:
         env: ["stage", "prod"]
