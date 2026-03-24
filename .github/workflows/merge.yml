@@ -23,6 +23,11 @@ on:
         required: false
         type: boolean
         default: false
+      allow_draft_release:
+        description: Allow draft release creation for manual branch tests
+        required: false
+        type: boolean
+        default: false
   push:
     branches:
     - main
@@ -492,7 +497,7 @@ jobs:
 
   create-draft-release:
     needs: [detect-changes, backend-build-stage, frontend-build, addon-changes]
-    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.addon-changed == 'true') && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-build-stage.result == 'success') && (needs.detect-changes.outputs.frontend-changed != 'true' || needs.frontend-build.result == 'success') && ((needs.detect-changes.outputs.frontend-changed != 'true' && needs.detect-changes.outputs.addon-changed != 'true') || needs.addon-changes.result == 'success') }}
+    if: ${{ always() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.allow_draft_release == 'true')) && (needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.addon-changed == 'true') && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-build-stage.result == 'success') && (needs.detect-changes.outputs.frontend-changed != 'true' || needs.frontend-build.result == 'success') && ((needs.detect-changes.outputs.frontend-changed != 'true' && needs.detect-changes.outputs.addon-changed != 'true') || needs.addon-changes.result == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -507,6 +512,12 @@ jobs:
         id: release-version
         run: |
           version="$(jq -r .version packages/send/package.json)"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.allow_draft_release }}" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            safe_ref="${GITHUB_REF_NAME//\//-}"
+            version="${version}-test-${safe_ref}-${GITHUB_SHA::7}"
+          fi
+
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Download backend release artifact
