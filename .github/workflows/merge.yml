@@ -41,8 +41,9 @@ jobs:
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed == 'true' || github.event.inputs.force_frontend == 'true' }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
-      environment:
-        deployment: false
+    environment:
+      name: detect-changes
+      deployment: false
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3

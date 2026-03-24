@@ -27,7 +27,6 @@ jobs:
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
-    deplyment: false
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -55,7 +54,6 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.backend-changed == 'true'
-    deployment: false
     steps:
       - uses: actions/checkout@v4
 
@@ -100,7 +98,6 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.iac-changed == 'true'
-    deployment: false
     steps:
       - uses: actions/checkout@v4
       - name: Ruff checks for Send Pulumi code
@@ -117,7 +114,6 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.frontend-changed == 'true'
-    deployment: false
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -156,7 +152,6 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.shared-changed == 'true'
-    deployment: false
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -180,7 +175,6 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.addon-changed == 'true'
-    deployment: false
     steps:
       - uses: actions/checkout@v4
       - name: Create .env file so tests will work

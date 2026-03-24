@@ -29,6 +29,7 @@ jobs:
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
     environment:
+      name: detect-changes
       deployment: false
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +55,8 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
+    environment:
+      name: send-stage
       deployment: false
     steps:
       - uses: actions/checkout@v4

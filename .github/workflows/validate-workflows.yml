@@ -20,6 +20,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     environment:
+      name: validate-workflows
       deployment: false
     steps:
       - uses: actions/checkout@v4

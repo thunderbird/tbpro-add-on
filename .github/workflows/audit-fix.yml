@@ -26,6 +26,7 @@ jobs:
     outputs:
       has-changes: ${{ steps.check-changes.outputs.has-changes }}
     environment:
+      name: audit-fix 
       deployment: false
     steps:
       - uses: actions/checkout@v4
