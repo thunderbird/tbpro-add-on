@@ -490,3 +490,111 @@ jobs:
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
 
+  create-draft-release:
+    needs: [detect-changes, backend-build-stage, frontend-build, addon-changes]
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.addon-changed == 'true') && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-build-stage.result == 'success') && (needs.detect-changes.outputs.frontend-changed != 'true' || needs.frontend-build.result == 'success') && ((needs.detect-changes.outputs.frontend-changed != 'true' && needs.detect-changes.outputs.addon-changed != 'true') || needs.addon-changes.result == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    env:
+      IS_CI_AUTOMATION: yes
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: release-version
+        run: |
+          version="$(jq -r .version packages/send/package.json)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Download backend release artifact
+        if: needs.detect-changes.outputs.backend-changed == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: ecr_tag
+          path: release-assets/ecr_tag
+
+      - name: Download frontend production artifact
+        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-web-prod
+          path: release-assets/dist-web-prod
+
+      - name: Download addon production artifact
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.addon-changed == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tbpro-addon-prod-*
+          path: release-assets/addon
+          merge-multiple: true
+
+      - name: Package release assets
+        run: |
+          mkdir -p packaged-assets
+
+          if [ -f release-assets/ecr_tag/ecr_tag.txt ]; then
+            (
+              cd release-assets/ecr_tag
+              zip -r "$GITHUB_WORKSPACE/packaged-assets/ecr_tag.zip" ecr_tag.txt
+            )
+          fi
+
+          if [ -d release-assets/dist-web-prod ] && [ -n "$(find release-assets/dist-web-prod -mindepth 1 -print -quit)" ]; then
+            (
+              cd release-assets/dist-web-prod
+              zip -r "$GITHUB_WORKSPACE/packaged-assets/dist-web-prod.zip" .
+            )
+          fi
+
+          addon_xpi="$(find release-assets/addon -maxdepth 1 -type f -name 'tbpro-addon-prod-*.xpi' | head -n1 || true)"
+          if [ -n "$addon_xpi" ]; then
+            cp "$addon_xpi" packaged-assets/
+          fi
+
+          find packaged-assets -maxdepth 1 -type f | sort
+
+      - name: Check existing release state
+        id: release-state
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ steps.release-version.outputs.version }}';
+
+            try {
+              const { data } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+
+              if (!data.draft) {
+                core.setFailed(`Release ${tag} already exists and is not a draft.`);
+                return;
+              }
+
+              core.setOutput('exists', 'true');
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              core.setOutput('exists', 'false');
+            }
+
+      - name: Create or update draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release-version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.release-version.outputs.version }}
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            packaged-assets/*
+          fail_on_unmatched_files: true
+          overwrite_files: true
+
