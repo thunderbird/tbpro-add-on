@@ -40,6 +40,7 @@ jobs:
     needs: detect-changes
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.devcontainer-changed == 'true'
+    deployment: false
     steps:
       - name: Checkout (GitHub)
         uses: actions/checkout@v4
@@ -63,7 +64,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: devcontainer-test-build
     container:
-        image: ghcr.io/${{ github.repository }}/cached-devcontainer-test:latest      
+        image: ghcr.io/${{ github.repository }}/cached-devcontainer-test:ubuntu-latest
+    deployment: false
     steps:
       - name: Checkout (GitHub)
         uses: actions/checkout@v4

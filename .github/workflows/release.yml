@@ -24,6 +24,7 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     outputs:
       ecs_deployed: ${{ steps.wait-deployment.outputs.ecs_deployed }}
+    deployment: true
     steps:
       - name: Check out the code
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
@@ -130,6 +131,7 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     outputs:
       s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
+    deployment: true
     steps:
       - name: Download frontend source
         if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
@@ -160,6 +162,7 @@ jobs:
     if: ${{ needs.frontend-deploy-prod-aws.outputs.s3_deployed == 'true' && needs.backend-deploy-prod-aws.outputs.ecs_deployed == 'true' }}
     runs-on: ubuntu-latest
     environment: send-prod
+    deployment: true
     steps:
       - name: Test echo
         run: |
@@ -184,6 +187,7 @@ jobs:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
+    deployment: true
     steps:
       - name: Find addon XPI asset
         id: find-addon
