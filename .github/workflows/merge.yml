@@ -517,7 +517,6 @@ jobs:
             safe_ref="${GITHUB_REF_NAME//\//-}"
             version="${version}-test-${safe_ref}-${GITHUB_SHA::7}"
           fi
-gi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Download backend release artifact
