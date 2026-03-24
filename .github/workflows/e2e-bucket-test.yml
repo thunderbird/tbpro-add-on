@@ -58,7 +58,7 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     environment:
-      name: send-stage
+      name: send-prod
       deployment: false
     steps:
       - uses: actions/checkout@v4

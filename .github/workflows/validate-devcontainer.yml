@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.devcontainer-changed == 'true'
     environment:
-      name: send-stage
+      name: validate-devcontainer
       deployment: false
     steps:
       - name: Checkout (GitHub)
@@ -71,7 +71,7 @@ jobs:
     container:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer-test:latest
     environment:
-      name: send-stage
+      name: validate-devcontainer
       deployment: false
     steps:
       - name: Checkout (GitHub)
