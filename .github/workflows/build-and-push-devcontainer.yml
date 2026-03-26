@@ -22,14 +22,14 @@ jobs:
   devcontainer-build:
     runs-on: ubuntu-latest
     environment:
-      name: build-devcontainer
+      name: default
       deployment: false
     steps:
       - name: Checkout (GitHub)
         uses: actions/checkout@v4
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3 
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}

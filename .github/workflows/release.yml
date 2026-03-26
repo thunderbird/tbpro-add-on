@@ -18,10 +18,9 @@ jobs:
   backend-deploy-prod-aws:
     environment:
       name: send-prod
-      deployment: true
     runs-on: ubuntu-latest
     container:
-        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
@@ -122,14 +121,13 @@ jobs:
         run: |
           aws ecs wait services-stable --region eu-central-1 --cluster send-suite-prod-fargate --services send-suite-prod-fargate
           echo "ecs_deployed=true" >> "$GITHUB_OUTPUT"
-          
+
   frontend-deploy-prod-aws:
     environment:
       name: send-prod
-      deployment: true
     runs-on: ubuntu-latest
     container:
-        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
@@ -165,7 +163,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: send-prod
-      deployment: true
     steps:
       - name: Test echo
         run: |
@@ -175,10 +172,10 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: eu-central-1 
+          aws-region: eu-central-1
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          
+
       - name: Invalidate CDN, prod only
         run: |
           # Invalidate the CDN
@@ -187,12 +184,11 @@ jobs:
   deploy-addon-prod-atn:
     runs-on: ubuntu-latest
     container:
-        image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: "yes"
     environment:
       name: send-prod
-      deployment: true
     steps:
       - name: Find addon XPI asset
         id: find-addon
@@ -211,7 +207,7 @@ jobs:
         with:
           version: ${{ github.event.release.id }}
           file: ${{ steps.find-addon.outputs.xpi_name }}
-        
+
       - name: Deploy addon prod to ATN via web-ext
         if: steps.find-addon.outputs.xpi_name != ''
         continue-on-error: true
@@ -221,9 +217,8 @@ jobs:
           BASE_URL: https://send.tb.pro
         with:
           cmd: sign
-          source:  ${{ steps.find-addon.outputs.xpi_name }}
+          source: ${{ steps.find-addon.outputs.xpi_name }}
           channel: listed
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
-

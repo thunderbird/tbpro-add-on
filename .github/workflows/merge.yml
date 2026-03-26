@@ -25,7 +25,7 @@ on:
         default: false
   push:
     branches:
-    - main
+      - main
 
 permissions:
   packages: read
@@ -42,7 +42,7 @@ jobs:
       frontend-changed: ${{ steps.check.outputs.frontend-changed == 'true' || github.event.inputs.force_frontend == 'true' }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     environment:
-      name: detect-changes
+      name: default
       deployment: false
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +74,6 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     environment:
       name: send-stage
-      deployment: true
     steps:
       - name: test echo
         run: |
@@ -136,12 +135,11 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     environment:
       name: send-stage
-      deployment: true
     outputs:
       ecs_deployed: ${{ steps.wait-deployment.outputs.ecs_deployed }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: "Test echo"
         run: |
           echo "Deploying backend with image ${{ needs.backend-build-stage.outputs.backend-image }}"
@@ -206,7 +204,6 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     environment:
       name: send-stage
-      deployment: true
     strategy:
       matrix:
         env: ["stage", "prod"]
@@ -240,14 +237,14 @@ jobs:
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN:        ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
-          POSTHOG_KEY:       ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          POSTHOG_HOST:      ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
-          OIDC_CLIENT_ID:    ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          OIDC_ROOT_URL:     ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
-          BASE_URL:          ${{ matrix.base_url }}
-          SEND_SERVER_URL:   ${{ matrix.send_server_url }}
-          SEND_CLIENT_URL:   ${{ matrix.send_client_url }}
+          SENTRY_DSN: ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD }}
+          POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
+          OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
+          BASE_URL: ${{ matrix.base_url }}
+          SEND_SERVER_URL: ${{ matrix.send_server_url }}
+          SEND_CLIENT_URL: ${{ matrix.send_client_url }}
         run: |
           echo "Environment: ${{ matrix.env }}"
           cd packages/send/frontend
@@ -303,14 +300,13 @@ jobs:
           path: packages/send/send-suite-${{ matrix.env }}-*.xpi
 
   frontend-deploy-stage-aws:
-    needs: ["frontend-build","detect-changes"]
+    needs: ["frontend-build", "detect-changes"]
     if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     environment:
       name: send-stage
-      deployment: true
     outputs:
       s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
     steps:
@@ -350,7 +346,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: send-stage
-      deployment: true
     steps:
       - name: Test echo
         run: |
@@ -361,7 +356,7 @@ jobs:
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: eu-central-1 
+          aws-region: eu-central-1
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
@@ -381,7 +376,6 @@ jobs:
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
     environment:
       name: send-stage
-      deployment: true
     strategy:
       matrix:
         env: ["stage", "prod"]
@@ -401,9 +395,9 @@ jobs:
       - name: (Addon) Create .env file from secrets
         env:
           SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN:  ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
+          SENTRY_DSN: ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
           POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}} 
+          POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}}
           OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
           OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD}}
           BASE_URL: ${{ matrix.base_url }}
@@ -428,7 +422,7 @@ jobs:
       - name: (Addon) Create .env file from secrets
         env:
           SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN:  ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
+          SENTRY_DSN: ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
           POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
           POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}}
           OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
@@ -464,7 +458,7 @@ jobs:
           pnpm install --filter send-frontend
 
           lerna run build --scope=addon
-          
+
           cd packages/addon/
 
           # Find build addon xpi file
@@ -497,9 +491,8 @@ jobs:
           BASE_URL: https://send-stage.tb.pro
         with:
           cmd: sign
-          source:  ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
+          source: ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
           channel: listed
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
-
