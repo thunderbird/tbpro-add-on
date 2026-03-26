@@ -29,7 +29,7 @@ jobs:
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
     environment:
-      name: detect-changes
+      name: default
       deployment: false
     steps:
       - uses: actions/checkout@v4
