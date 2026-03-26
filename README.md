@@ -62,59 +62,6 @@ In order to login, you must create a new account. Click the "Or register" link a
 
 This will install all the dependencies for all the packages in the monorepo.
 
-## Makefile
-
-A root-level `Makefile` mirrors every CI workflow stage so you can reproduce them locally with a single command. Run `make help` to see all available targets.
-
-### Common targets
-
-| Target | Description |
-|---|---|
-| `make install` | Install root dependencies and bootstrap monorepo |
-| `make validate` | Run all validation checks (backend, frontend, shared, addon, IAC) |
-| `make clean` | Remove node_modules, build artifacts, test outputs, and caches |
-| `make help` | List all available targets with descriptions |
-
-### Validation
-
-| Target | Description |
-|---|---|
-| `make validate-backend` | Full backend validation (install → env → prisma generate → ci:validate) |
-| `make validate-frontend` | Full frontend validation (install → ci:validate) |
-| `make validate-shared` | Full shared package validation (install → test) |
-| `make validate-addon` | Full addon validation (install → ci:validate → test) |
-| `make iac-lint` | Lint Send Pulumi code with ruff |
-
-### Testing
-
-| Target | Description |
-|---|---|
-| `make integration-test` | Full integration test flow (install → setup → build → test) |
-| `make e2e-test` | Full E2E test flow (install → setup → build → test) |
-
-### Building
-
-| Target | Description |
-|---|---|
-| `make build-backend` | Build backend package and Docker image |
-| `make build-frontend` | Build Send frontend assets |
-| `make build-addon` | Build addon XPI |
-
-### Granular targets
-
-Each composite target is built from smaller steps you can run independently:
-
-```sh
-# Run just the backend tests (assumes deps are installed)
-make backend-test
-
-# Install only addon dependencies
-make install-addon
-
-# Build the backend Docker image
-make build-backend-image
-```
-
 ## Addon
 
 ### Building locally
