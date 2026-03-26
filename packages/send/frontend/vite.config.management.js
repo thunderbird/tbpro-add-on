@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist/pages',
       sourcemap: mode === 'production' ? true : 'inline',
-      minify: false,
+      minify: true,
       rollupOptions: {
         input: {
           management: path.resolve(__dirname, 'index.management.html'),
