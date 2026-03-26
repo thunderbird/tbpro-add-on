@@ -57,14 +57,7 @@ jobs:
 
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm i --filter "send-*"
-          pnpm install --filter tbpro-shared
-
-          cd packages/send
-          # Setup local environment (use public login)
-          echo Y | pnpm setup:local
+        run: make install install-e2e setup-local
       - name: Add env vars for backend
         run: |
           cd packages/send/backend
@@ -88,8 +81,7 @@ jobs:
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
           mv .env packages/send/e2e        
-          lerna run build-image:backend --scope=send-suite
-          lerna run test:e2e:ci --scope=send-suite-e2e
+          make build-backend-image run-e2e-test
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

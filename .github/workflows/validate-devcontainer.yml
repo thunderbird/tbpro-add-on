@@ -68,5 +68,4 @@ jobs:
       - name: Checkout (GitHub)
         uses: actions/checkout@v4
       - name: devcontainer test binaries
-        run: |
-          ./.devcontainer/check_binaries.sh
+        run: make devcontainer-check

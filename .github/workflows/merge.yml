@@ -81,10 +81,7 @@ jobs:
       - name: Install pnpm and build package
         # if: needs.detect-changes.outputs.backend-changed == 'true'
         id: install-pnpm-build
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-backend
-          lerna run build-image:backend --scope=send-suite
+        run: make install build-backend
 
       - name: Configure AWS credentials
         # if: needs.detect-changes.outputs.backend-changed == 'true'
@@ -223,7 +220,7 @@ jobs:
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
         id: install-pnpm-build
         run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          make install
           pnpm install --filter send-frontend
           lerna run build --scope=send-suite
 
@@ -265,14 +262,10 @@ jobs:
           echo "Building for environment: ${{ matrix.env }}"
           set -x
           # Initial setup of dependencies
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-          cd packages/send/frontend
+          make install build-frontend
+          cd packages/send
 
-          # Build static frontend assets and the .xpi
-          pnpm build
-          mv dist-web ../dist-web-${{ matrix.env }}
+          mv frontend/dist-web dist-web-${{ matrix.env }}
           cd ..
           mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
           ls -l send-suite-${{ matrix.env }}-*.xpi
@@ -445,12 +438,7 @@ jobs:
           ENV: ${{ matrix.env }}
           IS_CI_AUTOMATION: yes
         run: |
-          # install packages that addon depends on
-          pnpm install --filter tbpro-shared
-          pnpm install --filter addon
-          pnpm install --filter send-frontend
-
-          lerna run build --scope=addon
+          make build-addon
           
           cd packages/addon/
 

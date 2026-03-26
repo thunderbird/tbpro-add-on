@@ -31,15 +31,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+        run: make install
 
       - name: Run pnpm audit --fix
         id: audit-fix
-        run: |
-          echo "Running pnpm audit --fix..."
-          pnpm audit --fix || true
-          echo "Audit fix completed"
+        run: make audit-fix
 
       - name: Check for changes
         id: check-changes
@@ -54,37 +50,27 @@ jobs:
 
       - name: Install dependencies after audit fix
         if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+        run: make install
 
       - name: Test send/backend
         if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          cd packages/send/backend
-          pnpm install --filter send-backend
-          cp .env.sample .env
-          pnpm prisma generate
-          pnpm ci:validate
+        run: make install-backend backend-env backend-test
 
       - name: Test send/frontend
         if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          lerna run ci:validate --scope=send-frontend
+        run: make frontend-test
 
       - name: Test addon
         if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          lerna run ci:validate --scope=addon
+        run: make addon-test
 
       - name: Test shared
         if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          lerna run test --scope=tbpro-shared
+        run: make shared-test
 
       - name: Test assist/frontend
         if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          lerna run test:unit --scope=assist-frontend
+        run: make assist-frontend-test
 
       - name: Create Pull Request
         if: steps.check-changes.outputs.has-changes == 'true'
