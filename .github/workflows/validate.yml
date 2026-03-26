@@ -28,7 +28,7 @@ jobs:
       shared-changed: ${{ steps.check.outputs.shared-changed }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     environment:
-      name: change-detection
+      name: default
       deployment: false
     steps:
       - uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.backend-changed == 'true'
     environment:
-      name: send-prod
+      name: default
       deployment: false
     steps:
       - uses: actions/checkout@v4
