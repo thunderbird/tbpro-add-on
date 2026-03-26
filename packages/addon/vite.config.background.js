@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
         fileName: () => 'background.js', // Ensure output is background.js
         formats: ['es'],
       },
-      minify: false,
+      minify: true,
       sourcemap: 'inline',
       outDir: 'dist/background',
     },
