@@ -125,4 +125,18 @@ browser.runtime.onMessage.addListener((message) => {
       window.location.origin
     );
   }
+
+  // Forward an OIDC token obtained by the background (e.g. from the Accounts Hub)
+  // to the web app so it can log the user in automatically.
+  if (message.type === OIDC_TOKEN) {
+    window.postMessage(
+      {
+        type: OIDC_TOKEN,
+        token: message.token,
+        email: message.email,
+        name: message.name,
+      },
+      window.location.origin
+    );
+  }
 });

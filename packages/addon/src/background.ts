@@ -605,10 +605,61 @@ function initStorageWatcher() {
   });
 }
 
+// ==============================================
+// Listen for accounts added via Thunderbird's Accounts Hub.
+// When a Thundermail account is created through the Hub, the experiment API
+// fires onAccountAdded with the OIDC token so we can log the add-on in
+// automatically without requiring a second login through the web UI.
+function initAccountHubListener() {
+  browser.AccountHub.onAccountAdded.addListener(
+    async ({ token, email, name }) => {
+      console.log(
+        `[AccountHub] onAccountAdded fired for ${email}. Logging in add-on.`
+      );
+
+      // Ensure the OAuth2 token is registered against the TB mail account.
+      try {
+        await addThundermailToken(token, email, THUNDERMAIL_HOST);
+      } catch (e) {
+        console.error('[AccountHub] Failed to store OIDC token:', e);
+      }
+
+      // Update the add-on menu to reflect the logged-in state.
+      menuLoggedIn({ username: email });
+
+      // Forward the OIDC token to every open tab through the token bridge so
+      // the web app (management page) can also log the user in automatically.
+      try {
+        const tabs = await browser.tabs.query({});
+        tabs.forEach((tab) => {
+          if (tab.id) {
+            browser.tabs
+              .sendMessage(tab.id, {
+                type: OIDC_TOKEN,
+                token,
+                email,
+                name,
+              })
+              .catch(() => {
+                // Ignore tabs that do not have the token bridge injected.
+              });
+          }
+        });
+      } catch (e) {
+        console.error(
+          '[AccountHub] Failed to forward OIDC token to bridge:',
+          e
+        );
+      }
+    }
+  );
+}
+
 (async function main() {
   initMenu();
   initCloudFile();
   initStorageWatcher();
+  initAccountHubListener();
 })().catch((error) => {
   console.error('Error initializing background.js', error);
 });
