@@ -28,6 +28,7 @@ import useMetricsStore from '@send-frontend/stores/metrics';
 import { storeToRefs } from 'pinia';
 
 import NotFoundPage from '../common/NotFoundPage.vue';
+import AddonAuthPage from './AddonAuthPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
 import ManagementPage from './ManagementPage.vue';
@@ -86,6 +87,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/post-login',
     component: PostLoginPage,
+  },
+  {
+    path: '/addon-auth',
+    component: AddonAuthPage,
   },
   {
     path: '/verify',

@@ -11,6 +11,8 @@ const LOGIN_STATE_RESPONSE = 'LOGIN_STATE_RESPONSE';
 const SIGN_IN = 'SIGN_IN';
 const FORCE_CLOSE_WINDOW = 'FORCE_CLOSE_WINDOW';
 const OPEN_MANAGEMENT_PAGE = 'OPEN_MANAGEMENT_PAGE';
+const GET_PENDING_ADDON_TOKEN = 'TB/GET_PENDING_ADDON_TOKEN';
+const PENDING_ADDON_TOKEN_RESPONSE = 'TB/PENDING_ADDON_TOKEN_RESPONSE';
 
 window.postMessage({ type: BRIDGE_READY }, window.location.origin);
 console.log(`[🌉 token-bridge] the token bridge has loaded.`);
@@ -111,6 +113,12 @@ window.addEventListener('message', (e) => {
       type: SIGN_OUT,
     });
   }
+
+  if (e?.data?.type === GET_PENDING_ADDON_TOKEN) {
+    browser.runtime.sendMessage({
+      type: GET_PENDING_ADDON_TOKEN,
+    });
+  }
 });
 
 // Listen for responses from background script and forward to web app
@@ -135,6 +143,17 @@ browser.runtime.onMessage.addListener((message) => {
         token: message.token,
         email: message.email,
         name: message.name,
+      },
+      window.location.origin
+    );
+  }
+
+  // Forward the pending addon token set back to the /addon-auth page.
+  if (message.type === PENDING_ADDON_TOKEN_RESPONSE) {
+    window.postMessage(
+      {
+        type: PENDING_ADDON_TOKEN_RESPONSE,
+        tokenSet: message.tokenSet,
       },
       window.location.origin
     );

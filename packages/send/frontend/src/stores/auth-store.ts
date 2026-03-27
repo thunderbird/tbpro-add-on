@@ -7,8 +7,10 @@ import { defineStore } from 'pinia';
 import {
   BRIDGE_PING,
   BRIDGE_READY,
+  GET_PENDING_ADDON_TOKEN,
   OIDC_TOKEN,
   OIDC_USER,
+  PENDING_ADDON_TOKEN_RESPONSE,
   SIGN_OUT,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
@@ -261,6 +263,131 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Scenario B: Authenticate using a token set provided by the add-on.
+   *
+   * The add-on stores a full OIDC token set in browser.storage.local under
+   * PENDING_ADDON_TOKEN, then opens the /addon-auth page. This method reads
+   * that token set, constructs a User, authenticates with the backend, and
+   * notifies the background script to keep its state in sync.
+   */
+  async function authenticateWithAddonToken() {
+    // 1. Request the pending token set from the background script via the
+    //    token-bridge. The /addon-auth page runs as a normal web tab, so
+    //    browser.storage.local is not available here — we use message passing.
+    const tokenSet = await new Promise<{
+      refresh_token: string;
+      access_token?: string;
+      id_token?: string;
+      expires_at?: number;
+      scope?: string;
+    } | null>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        window.removeEventListener('message', handler);
+        reject(new Error('Timed out waiting for pending addon token'));
+      }, 5000);
+
+      function handler(e: MessageEvent) {
+        if (
+          e.origin === window.location.origin &&
+          e.data?.type === PENDING_ADDON_TOKEN_RESPONSE
+        ) {
+          clearTimeout(timeout);
+          window.removeEventListener('message', handler);
+          resolve(e.data.tokenSet ?? null);
+        }
+      }
+
+      window.addEventListener('message', handler);
+      window.postMessage(
+        { type: GET_PENDING_ADDON_TOKEN },
+        window.location.origin
+      );
+    });
+
+    if (!tokenSet?.refresh_token) {
+      throw new Error('No pending addon token found in storage');
+    }
+
+    let user: User;
+
+    if (tokenSet.access_token && tokenSet.id_token) {
+      // 2a. Full token set available — decode the id_token payload to build
+      //     the User directly without a network round-trip.
+      const idTokenPayload = JSON.parse(
+        atob(
+          tokenSet.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+        )
+      );
+
+      user = new User({
+        access_token: tokenSet.access_token,
+        refresh_token: tokenSet.refresh_token,
+        id_token: tokenSet.id_token,
+        token_type: 'Bearer',
+        scope: tokenSet.scope ?? 'openid profile email offline_access',
+        expires_at: tokenSet.expires_at ?? idTokenPayload.exp,
+        profile: idTokenPayload,
+      });
+
+      await userManager.storeUser(user);
+    } else {
+      // 2b. Only a refresh token is available (e.g. from AccountHub).
+      //     Store a minimal expired User so signinSilent picks up the
+      //     refresh_token and exchanges it for a full token set.
+      await userManager.storeUser(
+        new User({
+          access_token: '',
+          token_type: 'Bearer',
+          refresh_token: tokenSet.refresh_token,
+          scope: tokenSet.scope ?? 'openid profile email offline_access',
+          expires_at: 0, // force expired so silent renew triggers
+          profile: {
+            sub: '',
+            iss: settings.authority ?? '',
+            aud: settings.client_id ?? '',
+            exp: 0,
+            iat: 0,
+          },
+        })
+      );
+
+      user = await userManager.signinSilent();
+    }
+
+    currentUser.value = user;
+
+    // 5. Notify the background script so it stores STORAGE_KEY_AUTH and
+    //    sets up the Thundermail account (mirrors handleOIDCCallback).
+    window.postMessage(
+      {
+        type: OIDC_TOKEN,
+        token: user.refresh_token,
+        email: user.profile.preferred_username ?? user.profile.email,
+        name: user.profile.name ?? user.profile.given_name,
+      },
+      window.location.origin
+    );
+
+    window.postMessage({ type: OIDC_USER, user }, window.location.origin);
+
+    // 7. Authenticate with the backend (same as handleOIDCCallback).
+    const response = await api.call('auth/oidc/authenticate', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${user.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response?.user) {
+      isLoggedIn.value = true;
+      return response.user;
+    } else {
+      throw new Error('Backend authentication failed');
+    }
+  }
+
   // Legacy alias for backward compatibility
   const loginToKeyCloak = loginToOIDC;
 
@@ -282,5 +409,6 @@ export const useAuthStore = defineStore('auth', () => {
     // add-on specific
     loadUser,
     getOIDCUser,
+    authenticateWithAddonToken,
   };
 });

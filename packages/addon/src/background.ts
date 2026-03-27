@@ -12,10 +12,13 @@ import {
   FILE_LIST,
   FORCE_CLOSE_WINDOW,
   GET_LOGIN_STATE,
+  GET_PENDING_ADDON_TOKEN,
   LOGIN_STATE_RESPONSE,
   OIDC_TOKEN,
   OIDC_USER,
   OPEN_MANAGEMENT_PAGE,
+  PENDING_ADDON_TOKEN,
+  PENDING_ADDON_TOKEN_RESPONSE,
   PING,
   POPUP_READY,
   SEND_MESSAGE_TO_BRIDGE,
@@ -404,6 +407,21 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       break;
     }
 
+    case GET_PENDING_ADDON_TOKEN: {
+      const pendingToken = await browser.storage.local.get(PENDING_ADDON_TOKEN);
+      if (sender?.tab?.id) {
+        browser.tabs
+          .sendMessage(sender.tab.id, {
+            type: PENDING_ADDON_TOKEN_RESPONSE,
+            tokenSet: pendingToken[PENDING_ADDON_TOKEN] ?? null,
+          })
+          .catch(() => {});
+      }
+      // Clean up the staging key now that it has been consumed.
+      await browser.storage.local.remove(PENDING_ADDON_TOKEN);
+      break;
+    }
+
     case FORCE_CLOSE_WINDOW: {
       console.log(`[onMessage] Received FORCE_CLOSE_WINDOW request`);
       // Close the tab that sent the request
@@ -488,6 +506,27 @@ browser.cloudFile.onFileUploadAbort.addListener((_, id) => {
     uploadInfo.abortController.abort();
   }
 });
+
+/**
+ * Scenario B: Initiate an add-on-driven login.
+ *
+ * Called when the add-on has already obtained a full OIDC token set from
+ * accounts.tb.pro (e.g. via a native login prompt). It stages the token set
+ * in browser.storage.local and opens the web app's /addon-auth page, which
+ * reads the tokens and finalizes authentication against the backend.
+ *
+ * @param tokenSet - Full OIDC token set received from accounts.tb.pro.
+ */
+export async function triggerAddonLogin(tokenSet: {
+  refresh_token: string;
+  access_token?: string;
+  id_token?: string;
+  expires_at?: number;
+  scope?: string;
+}) {
+  await browser.storage.local.set({ [PENDING_ADDON_TOKEN]: tokenSet });
+  await browser.tabs.create({ url: `${BASE_URL}/addon-auth` });
+}
 
 /**
  * Helper function to clean up pending uploads if something goes wrong.
@@ -627,29 +666,13 @@ function initAccountHubListener() {
       // Update the add-on menu to reflect the logged-in state.
       menuLoggedIn({ username: email });
 
-      // Forward the OIDC token to every open tab through the token bridge so
-      // the web app (management page) can also log the user in automatically.
+      // Trigger Scenario B: stage the token in storage and open /addon-auth.
+      // AccountHub provides a refresh token only; authenticateWithAddonToken
+      // will exchange it for a full token set via signinSilent.
       try {
-        const tabs = await browser.tabs.query({});
-        tabs.forEach((tab) => {
-          if (tab.id) {
-            browser.tabs
-              .sendMessage(tab.id, {
-                type: OIDC_TOKEN,
-                token,
-                email,
-                name,
-              })
-              .catch(() => {
-                // Ignore tabs that do not have the token bridge injected.
-              });
-          }
-        });
+        await triggerAddonLogin({ refresh_token: token });
       } catch (e) {
-        console.error(
-          '[AccountHub] Failed to forward OIDC token to bridge:',
-          e
-        );
+        console.error('[AccountHub] Failed to trigger addon login:', e);
       }
     }
   );
