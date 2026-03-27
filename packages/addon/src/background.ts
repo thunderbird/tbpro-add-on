@@ -272,6 +272,14 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       console.log('[background] got the ping from the bridge');
       break;
 
+    // ----- Web to add-on: Step 7a — persist the full OIDC User object -----
+    // Forwarded from token-bridge.js after handleOIDCCallback() posts OIDC_USER
+    // (Step 6c in auth-store.ts). The entire oidc-client-ts User object is
+    // stored under STORAGE_KEY_AUTH so that:
+    //   • The extension popup can call loadUser() to restore the session without
+    //     going through accounts.tb.pro again.
+    //   • Scenario B's authenticateWithAddonToken() can call signinSilent() when
+    //     it only has a refresh token and needs a fresh access_token.
     case OIDC_USER:
       await browser.storage.local.set({
         [STORAGE_KEY_AUTH]: message.user,
@@ -283,6 +291,15 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
 
       break;
 
+    // ----- Web to add-on: Step 7b — provision the Thundermail account -----
+    // Forwarded from token-bridge.js after handleOIDCCallback() posts OIDC_TOKEN
+    // (Step 6b in auth-store.ts). The refresh_token is used as an OAuth2
+    // password-grant credential to either:
+    //   • createThundermailAccount — register the mail account for the first time.
+    //   • addThundermailToken      — update the stored credential if the account
+    //                                already exists (idempotent).
+    // Both calls are wrapped in individual try/catch so that a Thundermail
+    // failure doesn’t block the rest of the login flow.
     case OIDC_TOKEN:
       if (!email || !token) {
         console.log(`Did not get info back from login`);
@@ -407,6 +424,13 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       break;
     }
 
+    // ----- Add-On to Web — Step 6: Read staged token and respond to tab -----
+    // The /addon-auth page (running as a normal web tab) cannot call
+    // browser.storage.local directly. It sends GET_PENDING_ADDON_TOKEN via
+    // the token-bridge, which lands here. We:
+    //  a) read the staged token set that triggerAddonLogin() stored,
+    //  b) send it back to the requesting tab as PENDING_ADDON_TOKEN_RESPONSE,
+    //  c) remove the staging key so it can only be consumed once.
     case GET_PENDING_ADDON_TOKEN: {
       const pendingToken = await browser.storage.local.get(PENDING_ADDON_TOKEN);
       if (sender?.tab?.id) {
@@ -508,14 +532,32 @@ browser.cloudFile.onFileUploadAbort.addListener((_, id) => {
 });
 
 /**
- * Scenario B: Initiate an add-on-driven login.
+ * Add-On to Web — Step 1: Initiate an add-on-driven login.
  *
- * Called when the add-on has already obtained a full OIDC token set from
- * accounts.tb.pro (e.g. via a native login prompt). It stages the token set
- * in browser.storage.local and opens the web app's /addon-auth page, which
- * reads the tokens and finalizes authentication against the backend.
+ * ┌─────────────────── Add-On to Web flow ───────────────────────────────┐
+ * │ 1. add-on obtains a full OIDC token set from accounts.tb.pro      │
+ * │    (e.g. via AccountHub.onAccountAdded).                          │
+ * │ 2. triggerAddonLogin() stages the token set in                    │
+ * │    browser.storage.local[PENDING_ADDON_TOKEN] and opens a new     │
+ * │    browser tab pointing at BASE_URL/addon-auth.                   │
+ * │ 3. The /addon-auth page loads and AddonAuthPage.vue calls         │
+ * │    authenticateWithAddonToken() in the auth store.                │
+ * │ 4. auth-store posts GET_PENDING_ADDON_TOKEN via window.postMessage.│
+ * │ 5. token-bridge.js (content script) receives it and forwards it   │
+ * │    to background via browser.runtime.sendMessage.                 │
+ * │ 6. Background reads PENDING_ADDON_TOKEN from storage, sends       │
+ * │    PENDING_ADDON_TOKEN_RESPONSE back to the tab, then cleans up.  │
+ * │ 7. token-bridge.js relays the response to the page.               │
+ * │ 8. auth-store reconstructs the User, hits POST auth/oidc/auth-    │
+ * │    enticate, and marks the user as logged in.                     │
+ * │ 9. AddonAuthPage posts SIGN_IN_COMPLETE → background closes the   │
+ * │    tab, runs initCloudFile, and opens the options page.           │
+ * └───────────────────────────────────────────────────────────────────┘
  *
- * @param tokenSet - Full OIDC token set received from accounts.tb.pro.
+ * @param tokenSet - OIDC token set received from accounts.tb.pro.
+ *   access_token and id_token are optional: when only a refresh_token is
+ *   available (AccountHub case), auth-store will call signinSilent() to
+ *   exchange it for a full token set before hitting the backend.
  */
 export async function triggerAddonLogin(tokenSet: {
   refresh_token: string;
@@ -666,7 +708,7 @@ function initAccountHubListener() {
       // Update the add-on menu to reflect the logged-in state.
       menuLoggedIn({ username: email });
 
-      // Trigger Scenario B: stage the token in storage and open /addon-auth.
+      // Trigger Add-On to Web: stage the token in storage and open /addon-auth.
       // AccountHub provides a refresh token only; authenticateWithAddonToken
       // will exchange it for a full token set via signinSilent.
       try {

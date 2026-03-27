@@ -1,4 +1,13 @@
 <script setup lang="ts">
+/**
+ * PostLoginPage — Web to add-on, Steps 5–9.
+ *
+ * This is the OIDC redirect_uri (/post-login). accounts.tb.pro redirects here
+ * after the user authenticates, appending the authorization code to the URL.
+ * handleOIDCCallback() exchanges that code for tokens, notifies the background
+ * script, and authenticates with the backend. On success the user is sent to
+ * /send/profile; on failure (after 3 retries) they are redirected to /login.
+ */
 import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { useAuthStore } from '@send-frontend/stores/auth-store';
 import { useQuery } from '@tanstack/vue-query';
@@ -13,12 +22,15 @@ const { isRouteExtension } = useIsRouteExtension();
 const { error: queryError, isLoading } = useQuery({
   queryKey: ['oidc-callback'],
   queryFn: async () => {
-    // Handle the OIDC callback
+    // Step 5: Exchange the authorization code for tokens and finalize login.
+    // handleOIDCCallback() calls oidc-client-ts signinCallback(), which reads
+    // the code from the URL, POSTs to the token endpoint, and returns a User.
     const user = await authStore.handleOIDCCallback();
 
     if (user) {
-      // Authentication successful, redirect to main app
-      // We add the isExtension query parameter to the URL so that the extension will close the web version and open the extension
+      // Steps 6–8 have already run inside handleOIDCCallback().
+      // isExtension=true tells the router guard to skip the key-backup check
+      // so the extension popup can open immediately after login.
       router.push(`/send/profile?isExtension=${isRouteExtension.value}`);
       return user;
     } else {

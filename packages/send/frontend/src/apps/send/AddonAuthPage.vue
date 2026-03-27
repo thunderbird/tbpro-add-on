@@ -1,4 +1,22 @@
 <script setup lang="ts">
+/**
+ * AddonAuthPage — Add-On to Web entry point (Step 3 of the flow).
+ *
+ * This page is opened as a new browser tab by background.ts via
+ * triggerAddonLogin() after the add-on has received an OIDC token set from
+ * accounts.tb.pro (e.g. through AccountHub.onAccountAdded).
+ *
+ * Responsibilities:
+ *  1. Call authenticateWithAddonToken(), which fetches the staged token set
+ *     from the background (via the token-bridge), reconstructs the OIDC User,
+ *     and authenticates with the backend.
+ *  2. On success: post SIGN_IN_COMPLETE so the background closes this tab
+ *     and runs its post-login setup (initCloudFile, open options page).
+ *  3. On failure: redirect to /login after a short delay.
+ *
+ * This page mirrors the structure of PostLoginPage.vue, which handles the
+ * equivalent step in the Web to add-on (web-initiated) OIDC redirect flow.
+ */
 import { useAuthStore } from '@send-frontend/stores/auth-store';
 import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
 import { useQuery } from '@tanstack/vue-query';
@@ -12,11 +30,14 @@ const router = useRouter();
 const { error: queryError, isLoading } = useQuery({
   queryKey: ['addon-auth'],
   queryFn: async () => {
+    // Step 3: Kick off token retrieval + backend authentication.
+    // authenticateWithAddonToken() handles the full Steps 3–8 internally.
     const user = await authStore.authenticateWithAddonToken();
 
     if (user) {
-      // Signal the background script to finalize post-login setup
-      // (close the auth tab, run initCloudFile, open options page).
+      // Step 9: Signal the background to finalize post-login setup.
+      // The token-bridge forwards SIGN_IN_COMPLETE to background.ts, which
+      // closes this tab, calls initCloudFile(), and opens the options page.
       window.postMessage({ type: SIGN_IN_COMPLETE }, window.location.origin);
       router.push('/send/profile?isExtension=true');
       return user;
@@ -35,6 +56,8 @@ const error = computed(() =>
       : null
 );
 
+// After all retries are exhausted, give the user 3 seconds to read the error
+// then redirect back to the manual login page.
 watchEffect(() => {
   if (queryError.value) {
     setTimeout(() => {
