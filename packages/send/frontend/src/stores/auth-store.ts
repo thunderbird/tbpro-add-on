@@ -201,7 +201,31 @@ export const useAuthStore = defineStore('auth', () => {
         await loadUser();
       }
 
-      const user = await userManager.getUser();
+      let user = await userManager.getUser();
+
+      // If the stored access token has expired (common when the extension is
+      // reopened after being idle for longer than the token lifetime, typically
+      // ~5 minutes), attempt a silent refresh using the refresh_token before
+      // giving up.  automaticSilentRenew only fires while the page is open, so
+      // we cannot rely on it for cold starts.
+      if (user?.expired) {
+        try {
+          user = await userManager.signinSilent();
+          // Sync the fresh token back to extension storage so the next cold
+          // start doesn't need another round-trip to the token endpoint.
+          if (isExtension) {
+            await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
+          }
+        } catch (refreshError) {
+          console.warn(
+            'Silent token refresh failed during checkAuthStatus:',
+            refreshError
+          );
+          isLoggedIn.value = false;
+          currentUser.value = null;
+          return null;
+        }
+      }
 
       if (user && !user.expired) {
         currentUser.value = user;
@@ -231,11 +255,22 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Get the current access token for API requests
+   * Get the current access token for API requests.
+   * Transparently refreshes the token if it has expired.
    */
   async function getAccessToken() {
     try {
-      const user = await userManager.getUser();
+      let user = await userManager.getUser();
+      if (!user) return null;
+      if (user.expired) {
+        // Access token has expired — use the refresh_token to obtain a new one
+        // rather than returning a stale value that will be rejected by every API.
+        user = await userManager.signinSilent();
+        currentUser.value = user;
+        if (isExtension) {
+          await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
+        }
+      }
       return user?.access_token || null;
     } catch (error) {
       console.error('Failed to get access token:', error);
@@ -399,6 +434,14 @@ export const useAuthStore = defineStore('auth', () => {
       });
 
       await userManager.storeUser(user);
+
+      // The access_token may have already expired if there was a delay between
+      // the add-on capturing the token set and this tab loading (e.g. the tab
+      // was opened while Thunderbird was offline, or the token lifetime is short).
+      // Refresh silently so we always hand a valid token to the backend.
+      if (user.expired) {
+        user = await userManager.signinSilent();
+      }
     } else {
       // Step 6b — Refresh-token only (AccountHub path).
       // AccountHub's onAccountAdded event provides only a single OAuth2 token.
