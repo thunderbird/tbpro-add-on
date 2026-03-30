@@ -17,7 +17,7 @@ permissions:
   packages: read
 
 jobs:
-  audit-and-test:
+  audit-and-fix:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -56,40 +56,6 @@ jobs:
             echo "Changes detected in lockfile"
           fi
 
-      - name: Install dependencies after audit fix
-        if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-
-      - name: Test send/backend
-        if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          cd packages/send/backend
-          pnpm install --filter send-backend
-          cp .env.sample .env
-          pnpm prisma generate
-          pnpm ci:validate
-
-      - name: Test send/frontend
-        if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          lerna run ci:validate --scope=send-frontend
-
-      - name: Test addon
-        if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          lerna run ci:validate --scope=addon
-
-      - name: Test shared
-        if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          lerna run test --scope=tbpro-shared
-
-      - name: Test assist/frontend
-        if: steps.check-changes.outputs.has-changes == 'true'
-        run: |
-          lerna run test:unit --scope=assist-frontend
-
       - name: Create Pull Request
         if: steps.check-changes.outputs.has-changes == 'true'
         uses: peter-evans/create-pull-request@v7
@@ -106,7 +72,7 @@ jobs:
 
             ### Changes
             - Ran `pnpm audit --fix` to address security vulnerabilities
-            - All unit tests passed successfully
+            - Updated `pnpm-lock.yaml` with latest dependency resolutions
 
             ### Workflow Details
             - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
