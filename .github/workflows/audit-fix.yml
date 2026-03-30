@@ -8,7 +8,7 @@ concurrency:
 on:
   schedule:
     # Run every Monday at 00:00 UTC
-    - cron: '0 0 * * 1'
+    - cron: "0 0 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -40,6 +40,10 @@ jobs:
           echo "Running pnpm audit --fix..."
           pnpm audit --fix || true
           echo "Audit fix completed"
+
+      - name: Install deps
+        id: install-deps
+        run: pnpm i
 
       - name: Check for changes
         id: check-changes
@@ -91,24 +95,24 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: 'chore: fix security vulnerabilities via pnpm audit --fix'
+          commit-message: "chore: fix security vulnerabilities via pnpm audit --fix"
           branch: automated/dependency-audit-${{ github.run_number }}
           delete-branch: true
-          title: '[Automated] Fix Security Vulnerabilities'
+          title: "[Automated] Fix Security Vulnerabilities"
           body: |
             ## Automated Dependency Audit
-            
+
             This PR was automatically created by the dependency audit workflow.
-            
+
             ### Changes
             - Ran `pnpm audit --fix` to address security vulnerabilities
             - All unit tests passed successfully
-            
+
             ### Workflow Details
             - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             - **Triggered**: ${{ github.event_name == 'schedule' && 'Scheduled (Weekly)' || 'Manual' }}
             - **Date**: ${{ github.event.head_commit.timestamp }}
-            
+
             Please review the changes in `pnpm-lock.yaml` and merge if appropriate.
           labels: |
             dependencies
