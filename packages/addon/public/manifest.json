@@ -47,6 +47,20 @@
     "http://localhost:5173/*"
   ],
   "experiment_apis": {
+    "AccountHub": {
+      "schema": "api/AccountHub/schema.json",
+      "parent": {
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "AccountHub"
+          ]
+        ],
+        "script": "api/AccountHub/implementation.js"
+      }
+    },
     "MailAccounts": {
       "schema": "api/MailAccounts/schema.json",
       "parent": {
