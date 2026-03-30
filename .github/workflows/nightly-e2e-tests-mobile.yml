@@ -30,9 +30,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: |
-          cd ./packages/send/e2e
-          npm install
+        run: make install-nightly-e2e
 
       - name: BrowserStack Env Setup
         uses: browserstack/github-actions/setup-env@master
@@ -45,15 +43,9 @@ jobs:
       - name: Prod E2E Tests on Android Chrome
         # don't send GHA failure email if any of the E2E tests fail, can be annoying (check the jobs each day in BrowserStack)
         continue-on-error: true
-        run: |
-          cd ./packages/send/e2e
-          cp .env.prod.sample .env
-          npm run test:e2e:nightly:prod:browserstack:mobile:android:chrome
+        run: make nightly-e2e-mobile-android
 
       - name: Prod E2E Tests on iOS Safari
         # don't send GHA failure email if any of the E2E tests fail, can be annoying (check the jobs each day in BrowserStack)
         continue-on-error: true
-        run: |
-          cd ./packages/send/e2e
-          cp .env.prod.sample .env
-          npm run test:e2e:nightly:prod:browserstack:mobile:ios:safari
+        run: make nightly-e2e-mobile-ios

@@ -52,18 +52,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm i --filter "send-*"
-
-          cd packages/send
-          # Setup local environment (use public login)
-          echo Y | pnpm setup:local
+        run: make install install-integration setup-local
 
       - name: Run stack and test
         id: run-stack-and-test
         timeout-minutes: 10
-        run: |
-          lerna run build-image:backend --scope=send-suite
-          pnpm run test:integration:ci
+        run: make build-backend-image run-integration-test

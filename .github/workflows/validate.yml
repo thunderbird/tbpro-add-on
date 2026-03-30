@@ -59,10 +59,7 @@ jobs:
 
       - name: Install dependencies
         id: install-dependencies
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          cd packages/send
-          pnpm install --filter send-backend
+        run: make install install-backend
 
       - name: Backend tests
         id: backend-tests
@@ -101,9 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Ruff checks for Send Pulumi code
-        run: |
-          ruff check ./packages/send/pulumi
-          ruff format --check ./packages/send/pulumi
+        run: make iac-lint
 
   # When the frontend code changes, run these steps
   frontend-tests-and-lint:
@@ -118,12 +113,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         id: install-dependencies
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-          pnpm install --filter send-backend
-          lerna run db:generate --scope=send-backend
+        run: make install install-frontend
 
       - name: Create .env file so tests will work
         run: |
@@ -140,8 +130,7 @@ jobs:
 
       - name: Frontend tests and lint
         id: frontend-tests-and-lint
-        run: |
-          lerna run ci:validate --scope=send-frontend
+        run: make frontend-test
 
   # When the shared package code changes, run these steps
   shared-tests:
@@ -156,15 +145,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         id: install-dependencies
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-backend
+        run: make install install-shared
 
       - name: Shared package tests and lint
         id: shared-tests
-        run: |
-          lerna run test --scope=tbpro-shared
+        run: make shared-test
 
   # When the addon package code changes, run these steps
   addon-changes:
@@ -192,15 +177,8 @@ jobs:
 
       - name: Install dependencies
         id: install-dependencies
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          # install packages that addon depends on
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-frontend
-          pnpm install --filter addon
+        run: make install install-addon
 
       - name: Shared package tests and lint
         id: shared-tests
-        run: |
-          lerna run ci:validate --scope=addon
-          lerna run test --scope=addon
+        run: make addon-test
