@@ -6,7 +6,7 @@ if [ "$IS_CI_AUTOMATION" != "yes" ]; then
 else
     # *IS* CI automation
     echo 'installing backend deps 🤖'
-    pnpm install --no-frozen-lockfile
+    pnpm install --dir /app --no-frozen-lockfile
 fi
 
 # Check if environment NODE_ENV has been set to production
