@@ -35,13 +35,10 @@ import { useAuthStore } from '@send-frontend/stores';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
-import { PrimaryButton } from '@thunderbirdops/services-ui';
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FeedbackBox from '../common/FeedbackBox.vue';
 
-import { useIsExtension } from '@send-frontend/composables/useIsExtension';
-import LoginIndicator from '../common/LoginIndicator.vue';
 import PublicLogin from '../common/PublicLogin.vue';
 import SecureSendIcon from '../common/SecureSendIcon.vue';
 import TBBanner from '../common/TBBanner.vue';
@@ -52,7 +49,6 @@ const sessionInfo = ref(null);
 
 const { api } = useApiStore();
 const router = useRouter();
-const { user } = useUserStore();
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
@@ -61,15 +57,10 @@ const { openManagementPage, isThunderbirdHost } = useConfigStore();
 const { loginToOIDC } = useAuthStore();
 const { isRouteExtension } = useIsRouteExtension();
 
-const shouldRedirectToAccountLogin = computed(() => {
-  const isAutoLoginRoute = router?.currentRoute?.value.path === '/auto-login';
-  return isRouteExtension.value || isAutoLoginRoute;
-});
-
 onMounted(async () => {
   // We route the extension login to this page to handle the OIDC login
   // To make this as smooth as possible, we automatically trigger the login
-  if (shouldRedirectToAccountLogin.value) {
+  if (!isPublicLogin) {
     console.log('Extension mode detected, redirecting to OIDC login...');
     await _loginToOIDC();
   }
@@ -106,19 +97,11 @@ async function _loginToOIDC() {
 </script>
 <template>
   <main class="container">
-    <div v-if="shouldRedirectToAccountLogin">
+    <div v-if="!isPublicLogin">
       <p>Redirecting to TB Pro login...</p>
     </div>
     <div v-else>
       <TBBanner />
-      <LoginIndicator v-if="!isPublicLogin" :id="user.id">
-        <PrimaryButton
-          primary
-          data-testid="login-button-tbpro"
-          @click.capture="_loginToOIDC"
-          >Log in using your TB Pro Account</PrimaryButton
-        >
-      </LoginIndicator>
       <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />
       <FeedbackBox />
       <SecureSendIcon />
