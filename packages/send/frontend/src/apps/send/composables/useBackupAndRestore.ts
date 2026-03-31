@@ -53,6 +53,10 @@ export const useBackupAndRestore = () => {
   const { metrics } = useMetricsStore();
 
   onMounted(() => {
+    if (keychain.locked) {
+      router.push('/passphrase-changed');
+      return;
+    }
     configureExtension();
     // Initialize words if empty (generate a new passphrase on first load)
     if (words.value.length === 0) {
