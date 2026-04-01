@@ -272,6 +272,12 @@ export const uploadWithTracker = ({
     blob: Blob,
     attempt: number
   ): Promise<string> => {
+    // Reset progress on retry so the UI gets a clean signal
+    // rather than silently jumping backwards
+    if (attempt > 0) {
+      setProgress(0);
+    }
+
     return new Promise<string>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', url, true);
