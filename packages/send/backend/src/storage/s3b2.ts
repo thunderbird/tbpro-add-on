@@ -16,6 +16,8 @@ export async function getClientFromAWSSDK() {
       accessKeyId: process.env.B2_APPLICATION_KEY_ID,
       secretAccessKey: process.env.B2_APPLICATION_KEY,
     },
+    requestHandler: { requestTimeout: 30000 },
+    maxAttempts: 3,
   });
 
   return s3Client;
