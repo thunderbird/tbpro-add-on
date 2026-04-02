@@ -1,4 +1,32 @@
 <script setup lang="ts">
+/**
+ * LoginPage — Web to add-on entry point (Step 1 of the flow).
+ *
+ * Web to add-on is the standard web-initiated OIDC login:
+ *
+ * ┌─────────────────── Web to add-on flow ──────────────────────────────────┐
+ * │ 1. User lands on /login (web) or the extension opens this page      │
+ * │    at /auto-login.                                                  │
+ * │ 2. loginToOIDC() calls userManager.signinRedirect(), which          │
+ * │    redirects the browser to accounts.tb.pro for authentication.     │
+ * │ 3. The user authenticates on accounts.tb.pro.                       │
+ * │ 4. accounts.tb.pro redirects back to /post-login with an auth code. │
+ * │ 5. PostLoginPage.vue calls handleOIDCCallback(), which exchanges    │
+ * │    the code for tokens (access + refresh + id).                     │
+ * │ 6. handleOIDCCallback() posts OIDC_TOKEN + OIDC_USER via            │
+ * │    window.postMessage so the token-bridge content script can        │
+ * │    forward them to the background script.                           │
+ * │ 7. background.ts receives OIDC_USER → stores full User object in    │
+ * │    browser.storage.local[STORAGE_KEY_AUTH] (so the extension popup  │
+ * │    and other web pages can read it back later via loadUser()).       │
+ * │    background.ts receives OIDC_TOKEN → creates/updates the          │
+ * │    Thundermail mail account using the refresh token.                │
+ * │ 8. handleOIDCCallback() POSTs the access_token to                   │
+ * │    auth/oidc/authenticate. The backend introspects it, finds/       │
+ * │    creates the user, and issues httpOnly JWT session cookies.        │
+ * │ 9. PostLoginPage redirects to /send/profile.                        │
+ * └──────────────────────────────────────────────────────────────────────┘
+ */
 import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
@@ -7,13 +35,10 @@ import { useAuthStore } from '@send-frontend/stores';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
-import { PrimaryButton } from '@thunderbirdops/services-ui';
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FeedbackBox from '../common/FeedbackBox.vue';
 
-import { useIsExtension } from '@send-frontend/composables/useIsExtension';
-import LoginIndicator from '../common/LoginIndicator.vue';
 import PublicLogin from '../common/PublicLogin.vue';
 import SecureSendIcon from '../common/SecureSendIcon.vue';
 import TBBanner from '../common/TBBanner.vue';
@@ -24,7 +49,6 @@ const sessionInfo = ref(null);
 
 const { api } = useApiStore();
 const router = useRouter();
-const { user } = useUserStore();
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const folderStore = useFolderStore();
@@ -33,15 +57,10 @@ const { openManagementPage, isThunderbirdHost } = useConfigStore();
 const { loginToOIDC } = useAuthStore();
 const { isRouteExtension } = useIsRouteExtension();
 
-const shouldRedirectToAccountLogin = computed(() => {
-  const isAutoLoginRoute = router?.currentRoute?.value.path === '/auto-login';
-  return isRouteExtension.value || isAutoLoginRoute;
-});
-
 onMounted(async () => {
   // We route the extension login to this page to handle the OIDC login
   // To make this as smooth as possible, we automatically trigger the login
-  if (shouldRedirectToAccountLogin.value) {
+  if (!isPublicLogin) {
     console.log('Extension mode detected, redirecting to OIDC login...');
     await _loginToOIDC();
   }
@@ -78,19 +97,11 @@ async function _loginToOIDC() {
 </script>
 <template>
   <main class="container">
-    <div v-if="shouldRedirectToAccountLogin">
+    <div v-if="!isPublicLogin">
       <p>Redirecting to TB Pro login...</p>
     </div>
     <div v-else>
       <TBBanner />
-      <LoginIndicator v-if="!isPublicLogin" :id="user.id">
-        <PrimaryButton
-          primary
-          data-testid="login-button-tbpro"
-          @click.capture="_loginToOIDC"
-          >Log in using your TB Pro Account</PrimaryButton
-        >
-      </LoginIndicator>
       <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />
       <FeedbackBox />
       <SecureSendIcon />

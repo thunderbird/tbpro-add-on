@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "1.6.0",
+  "version": "1.7.0",
   "author": "Thunderbird Team",
   "name": "__MSG_thunderbirdPro__",
   "description": "__MSG_extensionDescription__",
@@ -8,7 +8,7 @@
     "gecko": {
       "id": "tbpro-addon-stage@thunderbird.net",
       "strict_min_version": "140.0",
-      "strict_max_version": "150.*"
+      "strict_max_version": "151.*"
     }
   },
   "background": {
@@ -47,6 +47,20 @@
     "http://localhost:5173/*"
   ],
   "experiment_apis": {
+    "AccountHub": {
+      "schema": "api/AccountHub/schema.json",
+      "parent": {
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "AccountHub"
+          ]
+        ],
+        "script": "api/AccountHub/implementation.js"
+      }
+    },
     "MailAccounts": {
       "schema": "api/MailAccounts/schema.json",
       "parent": {

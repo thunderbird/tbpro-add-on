@@ -28,6 +28,7 @@ import useMetricsStore from '@send-frontend/stores/metrics';
 import { storeToRefs } from 'pinia';
 
 import NotFoundPage from '../common/NotFoundPage.vue';
+import AddonAuthPage from './AddonAuthPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
 import ManagementPage from './ManagementPage.vue';
@@ -43,6 +44,7 @@ import WelcomePage from './pages/WelcomePage.vue';
 import { useStatusStore } from './stores/status-store';
 import { useVerificationStore } from './stores/verification-store';
 import PassphrasePage from './views/PassphrasePage.vue';
+import PassphraseChanged from './pages/PassphraseChanged.vue';
 
 enum META_OPTIONS {
   redirectOnValidSession = 'redirectOnValidSession',
@@ -88,6 +90,10 @@ export const routes: RouteRecordRaw[] = [
     component: PostLoginPage,
   },
   {
+    path: '/addon-auth',
+    component: AddonAuthPage,
+  },
+  {
     path: '/verify',
     component: VerifyPage,
     meta: {
@@ -102,6 +108,10 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       [META_OPTIONS.requiresValidToken]: true,
     },
+  },
+  {
+    path: '/passphrase-changed',
+    component: PassphraseChanged,
   },
   {
     path: '/send',
@@ -217,6 +227,7 @@ router.beforeEach(async (to, from, next) => {
   useVerificationStore();
   const { isThunderbirdHost } = useConfigStore();
   const { queryAddonLoginState } = useSendConfig();
+  const keychainIsLocked = keychain?.locked;
 
   // We want to show the loading state when navigating to folder routes (on web)
   if (to.path.includes('/folder')) {
@@ -271,6 +282,10 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (requiresBackedUpKeys) {
+    // Instead of trying to backup keys, we should tell the user that the passphrase changed
+    if (keychainIsLocked) {
+      return next('/passphrase-changed');
+    }
     const hasBackedUpKeys = await validateBackedUpKeys(
       userStore.getBackup,
       keychain
@@ -281,7 +296,10 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  if (autoRestoresKeys) {
+  if (
+    autoRestoresKeys &&
+    !keychainIsLocked /* no point of restoring if keys are locked */
+  ) {
     try {
       await restoreKeysUsingLocalStorage(keychain, api);
       if (!userStore?.user?.email) {

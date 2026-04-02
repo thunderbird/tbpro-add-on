@@ -11,6 +11,8 @@ import ManageEncryptionKeys from '../send/views/ManageEncryptionKeys.vue';
 import SecurityAndPrivacyV2 from '../send/views/SecurityAndPrivacyV2.vue';
 import StorageBar from '../send/views/StorageBar.vue';
 import SupportBox from '../send/views/SupportBox.vue';
+import DownloadTB from './DownloadTB.vue';
+import RenderOnEnvironment from './RenderOnEnvironment.vue';
 
 type OIDCUser = typeof getOIDCUser extends () => Promise<infer U> ? U : never;
 
@@ -76,6 +78,9 @@ const {
       </div>
       <div class="right-column">
         <SupportBox />
+        <RenderOnEnvironment :environment-type="'WEB APP OUTSIDE THUNDERBIRD'">
+          <DownloadTB />
+        </RenderOnEnvironment>
       </div>
     </div>
   </section>
@@ -112,7 +117,7 @@ const {
 
 .row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
   gap: 2rem;
 }
 

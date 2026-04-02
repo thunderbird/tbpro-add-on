@@ -3,12 +3,17 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default [
   {
     languageOptions: {
       parserOptions: {
         parser: '@typescript-eslint/parser',
+        tsconfigRootDir: __dirname,
       },
       globals: {
         ...globals.browser, // Existing browser globals

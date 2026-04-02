@@ -7,8 +7,10 @@ import { defineStore } from 'pinia';
 import {
   BRIDGE_PING,
   BRIDGE_READY,
+  GET_PENDING_ADDON_TOKEN,
   OIDC_TOKEN,
   OIDC_USER,
+  PENDING_ADDON_TOKEN_RESPONSE,
   SIGN_OUT,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
@@ -53,7 +55,16 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Start the OIDC login process
+   * Web to add-on — Step 2: Start the OIDC login process.
+   *
+   * Redirects the browser (or extension popup) to accounts.tb.pro.
+   * The OIDC provider authenticates the user and redirects back to
+   * /post-login (or /post-login?isExtension=true) with an authorization code.
+   *
+   * Web flow  : redirect_uri = <origin>/post-login
+   * Extension : redirect_uri = <origin>/post-login?isExtension=true
+   *             The isExtension flag is read by PostLoginPage / the router
+   *             guard after login to skip the key-backup prompt.
    */
   async function loginToOIDC({
     onSuccess,
@@ -83,13 +94,40 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Handle the OIDC callback after authentication
+   * Web to add-on — Steps 5–8: Handle the OIDC redirect callback.
+   *
+   * Called by PostLoginPage.vue after accounts.tb.pro redirects back to
+   * /post-login with an authorization code in the URL.
+   *
+   * Step 5 — Token exchange:
+   *   signinCallback() reads the code from the URL and exchanges it with
+   *   the OIDC token endpoint for access_token, refresh_token, and id_token.
+   *
+   * Step 6 — Notify the background script via the token-bridge:
+   *   Because this page runs as a normal web tab, we cannot call
+   *   browser.runtime.sendMessage() directly. Instead we use window.postMessage
+   *   and rely on token-bridge.js (a content script injected into every tab)
+   *   to forward the messages to background.ts.
+   *   • OIDC_TOKEN  → background creates/updates the Thundermail mail account
+   *                   using the refresh token as the OAuth2 credential.
+   *   • OIDC_USER   → background stores the full User object in
+   *                   browser.storage.local[STORAGE_KEY_AUTH] so the add-on
+   *                   popup/menu can read it back via loadUser().
+   *
+   * Step 7 — Update background state (handled by background.ts, see there).
+   *
+   * Step 8 — Authenticate with the backend:
+   *   POSTs the access_token as a Bearer token to auth/oidc/authenticate.
+   *   The backend introspects it against the OIDC provider, finds or creates
+   *   the user record, and responds with httpOnly JWT session cookies that
+   *   all subsequent API calls use.
    */
   async function handleOIDCCallback() {
     try {
       const user = await userManager.signinCallback();
       currentUser.value = user;
 
+      // Step 6a — Ping the bridge to confirm the content script is active.
       window.addEventListener('message', (e) => {
         if (
           e.origin === window.location.origin &&
@@ -105,7 +143,8 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.origin
       );
 
-      // Send the token for thundermail via bridge.
+      // Step 6b — Send the refresh token to the background so it can create
+      // or update the Thundermail mail account (OAuth2 password grant).
       window.postMessage(
         {
           type: OIDC_TOKEN,
@@ -116,7 +155,10 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.origin
       );
 
-      // Send the entire user for TB Send via bridge.
+      // Step 6c — Send the full User object so the background can persist it
+      // in browser.storage.local[STORAGE_KEY_AUTH]. This is how the extension
+      // popup and other web pages share auth state without going through the
+      // OIDC provider again (see loadUser()).
       window.postMessage(
         {
           type: OIDC_USER,
@@ -125,7 +167,9 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.origin
       );
 
-      // Send the access token to our backend to create/update user
+      // Step 8 — Authenticate with the backend.
+      // The backend introspects the access_token, finds or creates the user,
+      // and sets httpOnly JWT session cookies used by all subsequent API calls.
       const response = await api.call('auth/oidc/authenticate', {
         method: 'POST',
         headers: {
@@ -157,7 +201,31 @@ export const useAuthStore = defineStore('auth', () => {
         await loadUser();
       }
 
-      const user = await userManager.getUser();
+      let user = await userManager.getUser();
+
+      // If the stored access token has expired (common when the extension is
+      // reopened after being idle for longer than the token lifetime, typically
+      // ~5 minutes), attempt a silent refresh using the refresh_token before
+      // giving up.  automaticSilentRenew only fires while the page is open, so
+      // we cannot rely on it for cold starts.
+      if (user?.expired) {
+        try {
+          user = await userManager.signinSilent();
+          // Sync the fresh token back to extension storage so the next cold
+          // start doesn't need another round-trip to the token endpoint.
+          if (isExtension) {
+            await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
+          }
+        } catch (refreshError) {
+          console.warn(
+            'Silent token refresh failed during checkAuthStatus:',
+            refreshError
+          );
+          isLoggedIn.value = false;
+          currentUser.value = null;
+          return null;
+        }
+      }
 
       if (user && !user.expired) {
         currentUser.value = user;
@@ -187,11 +255,22 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Get the current access token for API requests
+   * Get the current access token for API requests.
+   * Transparently refreshes the token if it has expired.
    */
   async function getAccessToken() {
     try {
-      const user = await userManager.getUser();
+      let user = await userManager.getUser();
+      if (!user) return null;
+      if (user.expired) {
+        // Access token has expired — use the refresh_token to obtain a new one
+        // rather than returning a stale value that will be rejected by every API.
+        user = await userManager.signinSilent();
+        currentUser.value = user;
+        if (isExtension) {
+          await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
+        }
+      }
       return user?.access_token || null;
     } catch (error) {
       console.error('Failed to get access token:', error);
@@ -261,6 +340,174 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Add-On to Web — Steps 3–8: Authenticate using a token set provided by the add-on.
+   *
+   * Called by AddonAuthPage.vue when the /addon-auth route loads. The add-on
+   * already obtained an OIDC token set from accounts.tb.pro and staged it in
+   * browser.storage.local via triggerAddonLogin(). Because this page runs as a
+   * normal web tab, it cannot access browser.storage.local directly — instead
+   * it requests the token via message-passing through the token-bridge content
+   * script, then uses it to authenticate with the backend.
+   *
+   * Full flow (Add-On to Web):
+   *  1.  background.ts – triggerAddonLogin() stores token, opens /addon-auth
+   *  2.  AddonAuthPage.vue loads, calls this function
+   *  3.  POST GET_PENDING_ADDON_TOKEN → token-bridge → background
+   *  4.  background reads storage, responds with PENDING_ADDON_TOKEN_RESPONSE,
+   *      then deletes the staging key
+   *  5.  token-bridge forwards response → window.postMessage → Promise resolves
+   *  6.  User object is reconstructed (or obtained via signinSilent)
+   *  7.  OIDC_TOKEN + OIDC_USER are posted so the background keeps its own
+   *      state in sync (Thundermail account setup, STORAGE_KEY_AUTH)
+   *  8.  POST auth/oidc/authenticate — backend issues session cookies
+   *  9.  AddonAuthPage posts SIGN_IN_COMPLETE → background closes tab
+   */
+  async function authenticateWithAddonToken() {
+    // Step 3–5: Request the pending token set from the background via the
+    // token-bridge using a one-time request/response pattern.
+    //
+    // Why message-passing instead of browser.storage.local?
+    // This page runs as a normal browser tab (not inside the extension),
+    // so the `browser` global is unavailable. Posting GET_PENDING_ADDON_TOKEN
+    // causes the token-bridge content script to forward the request to the
+    // background, which reads storage and sends PENDING_ADDON_TOKEN_RESPONSE
+    // back. A 5-second timeout guards against the bridge not being present
+    // (e.g. the page was opened outside of Thunderbird).
+    const tokenSet = await new Promise<{
+      refresh_token: string;
+      access_token?: string;
+      id_token?: string;
+      expires_at?: number;
+      scope?: string;
+    } | null>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        window.removeEventListener('message', handler);
+        reject(new Error('Timed out waiting for pending addon token'));
+      }, 5000);
+
+      function handler(e: MessageEvent) {
+        if (
+          e.origin === window.location.origin &&
+          e.data?.type === PENDING_ADDON_TOKEN_RESPONSE
+        ) {
+          clearTimeout(timeout);
+          window.removeEventListener('message', handler);
+          resolve(e.data.tokenSet ?? null);
+        }
+      }
+
+      window.addEventListener('message', handler);
+      window.postMessage(
+        { type: GET_PENDING_ADDON_TOKEN },
+        window.location.origin
+      );
+    });
+
+    if (!tokenSet?.refresh_token) {
+      // This happens if the page is opened directly (not via triggerAddonLogin)
+      // or if the 5-second timeout fired before the bridge responded.
+      throw new Error('No pending addon token found in storage');
+    }
+
+    let user: User;
+
+    if (tokenSet.access_token && tokenSet.id_token) {
+      // Step 6a — Full token set (access + refresh + id tokens).
+      // Decode the id_token JWT payload (base64url) to extract profile claims.
+      // No signature verification is needed here — the backend will introspect
+      // the access_token. We only need the claims to build the User object.
+      const idTokenPayload = JSON.parse(
+        atob(
+          tokenSet.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+        )
+      );
+
+      user = new User({
+        access_token: tokenSet.access_token,
+        refresh_token: tokenSet.refresh_token,
+        id_token: tokenSet.id_token,
+        token_type: 'Bearer',
+        scope: tokenSet.scope ?? 'openid profile email offline_access',
+        expires_at: tokenSet.expires_at ?? idTokenPayload.exp,
+        profile: idTokenPayload,
+      });
+
+      await userManager.storeUser(user);
+
+      // The access_token may have already expired if there was a delay between
+      // the add-on capturing the token set and this tab loading (e.g. the tab
+      // was opened while Thunderbird was offline, or the token lifetime is short).
+      // Refresh silently so we always hand a valid token to the backend.
+      if (user.expired) {
+        user = await userManager.signinSilent();
+      }
+    } else {
+      // Step 6b — Refresh-token only (AccountHub path).
+      // AccountHub's onAccountAdded event provides only a single OAuth2 token.
+      // We store a minimal, intentionally-expired User so that signinSilent()
+      // will immediately trigger a token refresh, exchanging the refresh_token
+      // for a full access + id token set via the OIDC token endpoint.
+      await userManager.storeUser(
+        new User({
+          access_token: '',
+          token_type: 'Bearer',
+          refresh_token: tokenSet.refresh_token,
+          scope: tokenSet.scope ?? 'openid profile email offline_access',
+          expires_at: 0, // force expired so silent renew triggers
+          profile: {
+            sub: '',
+            iss: settings.authority ?? '',
+            aud: settings.client_id ?? '',
+            exp: 0,
+            iat: 0,
+          },
+        })
+      );
+
+      user = await userManager.signinSilent();
+    }
+
+    currentUser.value = user;
+
+    // Step 7: Notify the background so it mirrors its own auth state.
+    // These are the same two messages that Web to add-on (handleOIDCCallback)
+    // sends after a normal OIDC redirect login:
+    //  • OIDC_TOKEN  → background creates/updates the Thundermail account
+    //  • OIDC_USER   → background stores the full User under STORAGE_KEY_AUTH
+    //                   so the add-on popup/menu can read it back later
+    window.postMessage(
+      {
+        type: OIDC_TOKEN,
+        token: user.refresh_token,
+        email: user.profile.preferred_username ?? user.profile.email,
+        name: user.profile.name ?? user.profile.given_name,
+      },
+      window.location.origin
+    );
+
+    window.postMessage({ type: OIDC_USER, user }, window.location.origin);
+
+    // Step 8: Authenticate with the backend.
+    // Sends the access_token as a Bearer token. The backend introspects it
+    // against the OIDC provider, then issues its own httpOnly JWT session
+    // cookies that the rest of the app uses for API calls.
+    const response = await api.call('auth/oidc/authenticate', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${user.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response?.user) {
+      isLoggedIn.value = true;
+      return response.user;
+    } else {
+      throw new Error('Backend authentication failed');
+    }
+  }
+
   // Legacy alias for backward compatibility
   const loginToKeyCloak = loginToOIDC;
 
@@ -282,5 +529,6 @@ export const useAuthStore = defineStore('auth', () => {
     // add-on specific
     loadUser,
     getOIDCUser,
+    authenticateWithAddonToken,
   };
 });

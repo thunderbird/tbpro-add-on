@@ -32,6 +32,28 @@ declare module '*.vue' {
  * Provides methods to create, update, and manage custom menu items in Thunderbird.
  */
 declare namespace browser {
+  /**
+   * Experiment API that fires when a new Thundermail account is added via
+   * Thunderbird's Accounts Hub and an OIDC token is available for the account.
+   */
+  namespace AccountHub {
+    interface AccountAddedDetail {
+      /** The OAuth2 refresh token (OIDC token) retrieved from the Thunderbird login manager. */
+      token: string;
+      /** The email address of the newly added Thundermail account. */
+      email: string;
+      /** The display name (full name) of the account identity. */
+      name: string;
+    }
+
+    /** Fires when a Thundermail account is added via the Accounts Hub and the OIDC token is ready. */
+    const onAccountAdded: {
+      addListener(
+        callback: (detail: AccountAddedDetail) => Promise<void> | void
+      ): void;
+    };
+  }
+
   namespace TBProMenu {
     /**
      * Creates a new menu item in the TBPro menu.
