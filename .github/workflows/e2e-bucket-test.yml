@@ -28,6 +28,9 @@ jobs:
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
       shared-changed: ${{ steps.check.outputs.shared-changed }}
+    environment:
+      name: default
+      deployment: false
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +57,9 @@ jobs:
       options: --shm-size=2gb --security-opt seccomp=unconfined
     env:
       IS_CI_AUTOMATION: "yes"
+    environment:
+      name: send-prod
+      deployment: false
     steps:
       - uses: actions/checkout@v4
 
