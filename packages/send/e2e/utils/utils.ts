@@ -1,6 +1,5 @@
 import { expect, type Page } from '@playwright/test';
 import { TBAcctsPage } from "../pages/tb-accts-page";
-import { DashboardPage } from '../pages/dashboard-page';
 
 import { 
   TB_SEND_TARGET_ENV,
@@ -20,7 +19,6 @@ import {
 export const navigateToSendAndSignIn = async (page: Page, testProjectName: string = 'desktop') => {
   console.log(`navigating to send ${TB_SEND_TARGET_ENV} (${TB_SEND_BASE_URL})`);
   const tbAcctsSignInPage = new TBAcctsPage(page);
-  const dashboardPage = new DashboardPage(page);
 
   await page.goto(`${TB_SEND_BASE_URL}`);
   await page.waitForTimeout(TIMEOUT_5_SECONDS);
@@ -32,10 +30,7 @@ export const navigateToSendAndSignIn = async (page: Page, testProjectName: strin
       await tbAcctsSignInPage.localSendSignIn();
     }
   } else {
-    // sign-in using tb accts; first we click the 'login with your tb pro account' button
-    await expect(tbAcctsSignInPage.signInUsingTBAcctsBtn).toBeVisible({ timeout: TIMEOUT_60_SECONDS });
-    await tbAcctsSignInPage.signInUsingTBAcctsBtn.click();
-    // then we sign-in to tb accounts itself
+    // when navigate to TB Send it now automatically goes directly to TB Pro sign-in dialog
     await tbAcctsSignInPage.signIn(testProjectName);
   }
 }
