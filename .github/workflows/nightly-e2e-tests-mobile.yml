@@ -23,7 +23,7 @@ jobs:
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     environment:
-      name: send-prod
+      name: production
       deployment: false
     env:
       TBPRO_USERNAME: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_USERNAME }}

@@ -21,9 +21,6 @@ jobs:
   # Build and cache devcontainer for faster CI stages
   devcontainer-build:
     runs-on: ubuntu-latest
-    environment:
-      name: default
-      deployment: false
     steps:
       - name: Checkout (GitHub)
         uses: actions/checkout@v4

@@ -26,9 +26,6 @@ jobs:
       IS_CI_AUTOMATION: "yes"
     outputs:
       devcontainer-changed: ${{ steps.check.outputs.devcontainer-changed }}
-    environment:
-      name: default
-      deployment: false
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -43,9 +40,6 @@ jobs:
     needs: detect-changes
     runs-on: ubuntu-latest
     if: needs.detect-changes.outputs.devcontainer-changed == 'true'
-    environment:
-      name: default
-      deployment: false
     steps:
       - name: Checkout (GitHub)
         uses: actions/checkout@v4
@@ -70,9 +64,6 @@ jobs:
     needs: devcontainer-test-build
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer-test:latest
-    environment:
-      name: default
-      deployment: false
     steps:
       - name: Checkout (GitHub)
         uses: actions/checkout@v4
