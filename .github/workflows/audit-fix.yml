@@ -72,6 +72,7 @@ jobs:
 
             ### Changes
             - Ran `pnpm audit --fix` to address security vulnerabilities
+
             - Updated `pnpm-lock.yaml` with latest dependency resolutions
 
             ### Workflow Details
