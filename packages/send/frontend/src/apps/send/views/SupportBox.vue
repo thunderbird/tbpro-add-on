@@ -49,7 +49,7 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
   color: rgb(217, 217, 222) !important;
 }
 .border-thing {
-  background-image: linear-gradient(163deg, #16395f 7%, #171b24 47%);
+  background-image: linear-gradient(45deg, #171b24 47%, #16395f 93%);
   border-radius: 16px;
   padding: 16px;
   height: fit-content;

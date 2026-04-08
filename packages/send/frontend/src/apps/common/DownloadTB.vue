@@ -41,9 +41,9 @@ const handleDownloadTB = () => {
   border: solid 1px var(--surface-border);
   background-image:
     linear-gradient(
-      337deg,
-      rgba(88, 202, 255, 0.046) 181%,
-      rgba(88, 201, 255, 0) 18%
+      315deg,
+      rgba(88, 202, 255, 0.15) 0%,
+      rgba(88, 201, 255, 0) 60%
     ),
     linear-gradient(to bottom, #feffff, #feffff);
 }
