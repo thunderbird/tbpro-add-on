@@ -44,7 +44,7 @@ const {
         <h2 class="email">{{ user.thundermailEmail }}</h2>
       </div>
 
-      <div class="right-column">
+      <div class="right-column center">
         <StorageBar />
       </div>
     </div>
@@ -76,7 +76,7 @@ const {
           :reset-keys="resetKeys"
         />
       </div>
-      <div class="right-column">
+      <div class="right-column alignleft">
         <SupportBox />
         <RenderOnEnvironment :environment-type="'WEB APP OUTSIDE THUNDERBIRD'">
           <DownloadTB />
@@ -88,6 +88,11 @@ const {
 
 <style lang="css" scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
+
+.alignleft {
+  display: flex;
+  align-items: flex-end;
+}
 
 .column-gap {
   gap: 2rem;
@@ -113,12 +118,17 @@ const {
   font-family: Inter;
   font-size: 16px;
   line-height: 1.32;
+  margin: 4px 0 0;
 }
 
 .row {
   display: grid;
   grid-template-columns: 3fr 2fr;
   gap: 2rem;
+}
+
+.center {
+  margin: auto 0;
 }
 
 @media (max-width: 1024px) {

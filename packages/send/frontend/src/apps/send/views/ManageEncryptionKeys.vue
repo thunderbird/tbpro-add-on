@@ -13,7 +13,7 @@ const router = useRouter();
         <h1 class="title">Security & Privacy</h1>
 
         <div class="description">
-          <h3>Manage Encryption Key</h3>
+          <h3 class="title-secondary">Manage Encryption Key</h3>
           <p>
             Download a backup of your active encryption key, or reset your
             account if your key becomes locked or inaccessible.
@@ -22,8 +22,8 @@ const router = useRouter();
 
         <ProButton
           data-testid="recover-access-button"
-          @click="() => router.push('/send/security-and-privacy')"
           type="secondary"
+          @click="() => router.push('/send/security-and-privacy')"
         >
           Encryption Key
         </ProButton>
@@ -34,14 +34,21 @@ const router = useRouter();
 
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
-h3 {
-  font-weight: 700;
+
+.title-secondary {
+  font-family: Inter;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-icon-secondary);
 }
 
 .description {
   margin-bottom: 2rem;
   line-height: 1.6;
   color: #1f2937;
+  gap: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
 .input-group {

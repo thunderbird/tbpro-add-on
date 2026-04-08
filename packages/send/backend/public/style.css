@@ -1,4 +1,6 @@
 /* WARNING THIS IS A SELF GENERATED FILE. ALL CHANGES WILL BE OVERWRITTEN ON BUILD. IF YOU WANT TO MODIFY THE ORIGINAL FILE, PLEASE MODIFY frontend/public/style.css */
+@import './fonts.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -23,6 +25,7 @@
     --colour-neutral-900: #26272a;
     --colour-neutral-base: #feffff;
     --colour-neutral-lower: #f7f7f7;
+    --colour-neutral-lower-dark: #18181b; /* Forced dark mode colour */
     --colour-neutral-border: #e4e4e7;
     --colour-neutral-border-intense: #91939f;
     --colour-primary-soft: #f0f8ff;
@@ -46,6 +49,8 @@
     --colour-danger-hover: #7f1d1d;
     --colour-danger-pressed: #7f1d1d;
     --colour-ti-base: #1a202c;
+    --colour-ti-base-dark: #eeeef0; /* Forced dark mode colour */
+    --colour-ti-base-light: #1a202c; /* Forced light mode colour */
     --colour-ti-secondary: #4c4d58;
     --colour-ti-muted: #737584;
     --colour-ti-highlight: #1373d9;
@@ -54,6 +59,7 @@
     --colour-ti-success: #1d783b;
     --colour-accent-teal: #25a6a0;
     --colour-accent-blue: #58c9ff;
+    --accents-blue: #37adf9;
     --colour-accent-purple: #ae55f7;
     --colour-accent-orange: #ea7308;
     --colour-accent-pink: #e247c4;
@@ -73,6 +79,11 @@
     --colour-send-primary-accent-1: #1f8ddb;
     --colour-send-primary-accent-2: #1f8ddb;
     --surface-border: #e4e4e7;
+    --color-send-muted: #737584;
+    --critical: #dc2626;
+    --text-icon-secondary: #4c4d58;
+    --neutral-0: #feffff;
+    --blue-400: #58c9ff00;
   }
 }
 
@@ -91,4 +102,112 @@ html,
 body,
 #app {
   font-family: 'Inter', sans-serif;
+  background-color: #f5f5f5;
+}
+
+.btn-primary {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12);
+  background-image: linear-gradient(
+    to bottom,
+    var(--accents-blue),
+    var(--primary-default) 40%,
+    var(--primary-hover)
+  );
+}
+
+main {
+  min-height: calc(100vh - 250px - 60px);
+}
+
+/* Overlay modals */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.893);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.modal-container {
+  background: white;
+  border-radius: 24px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  /* overflow-y: auto; */
+  /* box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04); */
+}
+
+.modal-body {
+  /* margin: auto; */
+  padding: 20px;
+  /* background-color: white; */
+  border-radius: 8px;
+}
+
+/* components */
+h1,
+h2 {
+  font-weight: 400;
+  color: #3b82f6;
+  margin: 1.5rem 0 1rem;
+  line-height: 1.2;
+}
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.description {
+  margin-bottom: 2rem;
+  line-height: 1.6;
+  color: #1f2937;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .modal-container {
+    border-radius: 16px;
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    padding: 0rem 1.5rem 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .icon-container {
+    width: 64px;
+    height: 64px;
+  }
+
+  .icon {
+    width: 32px;
+    height: 32px;
+  }
 }

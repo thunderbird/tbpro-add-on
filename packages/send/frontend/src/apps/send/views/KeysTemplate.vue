@@ -22,4 +22,11 @@ const { isOverlay = false } = defineProps<Props>();
 
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
+p {
+  font-family: Inter;
+  font-size: 16px;
+  font-stretch: normal;
+  line-height: 1.32;
+  color: var(--text-icon-secondary);
+}
 </style>

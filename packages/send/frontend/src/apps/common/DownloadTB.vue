@@ -17,7 +17,7 @@ const handleDownloadTB = () => {
       and sign in to Thunderbird Pro from the Thunderbird menu.
     </p>
     <div class="buttonwrapper">
-      <ProButton @click="handleDownloadTB" class="button" type="secondary">
+      <ProButton class="button" type="secondary" @click="handleDownloadTB">
         <DownloadIcon />
         Download</ProButton
       >
@@ -33,14 +33,19 @@ const handleDownloadTB = () => {
 <style lang="css" scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
 .bg {
+  max-width: 350px;
   position: relative;
   padding: 24px 24px 0.3px;
   border-radius: 24px;
   box-shadow: 4px 4px 16px 0 rgba(0, 0, 0, 0.04);
   border: solid 1px var(--surface-border);
   background-image:
-    linear-gradient(337deg, var(--blue-400) 181%, rgba(88, 201, 255, 0) 18%),
-    linear-gradient(to bottom, var(--neutral-0), var(--neutral-0));
+    linear-gradient(
+      337deg,
+      rgba(88, 202, 255, 0.046) 181%,
+      rgba(88, 201, 255, 0) 18%
+    ),
+    linear-gradient(to bottom, #feffff, #feffff);
 }
 .text {
   align-self: stretch;

@@ -37,7 +37,7 @@ const showFileComponents = computed(() => {
         <span>{{ user.thundermailEmail }}</span>
         <NewFolder />
       </header>
-      <div class="flex flex-col gap-4 px-4 content-layout">
+      <div class="flex flex-col gap-4 px-4 content-layout page-wrapper">
         <router-view></router-view>
       </div>
     </main>
@@ -51,3 +51,11 @@ const showFileComponents = computed(() => {
     </aside>
   </div>
 </template>
+
+<style lang="css" scoped>
+@import '@send-frontend/apps/common/tbpro-styles.css';
+.page-wrapper {
+  margin: 0 auto;
+  max-width: 1200px;
+}
+</style>
