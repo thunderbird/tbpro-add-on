@@ -31,11 +31,6 @@
     "vite": ">=6.4.1",
     "vitest": "^3.2.3"
   },
-  "pnpm": {
-    "overrides": {
-      "eslint-scope": "^9.1.1"
-    }
-  },
   "engines": {
     "bun": "1.1.13",
     "node": ">=22.11.0",
