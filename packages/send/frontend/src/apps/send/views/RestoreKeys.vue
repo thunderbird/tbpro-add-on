@@ -121,9 +121,9 @@ const onContinue = async () => {
 @import '@send-frontend/apps/common/tbpro-styles.css';
 
 .description {
-  margin-bottom: 2rem;
-  line-height: 1.6;
-  color: #1f2937;
+  font-family: Inter;
+  font-size: 14px;
+  color: var(--text-icon-secondary);
 }
 
 .input-group {
