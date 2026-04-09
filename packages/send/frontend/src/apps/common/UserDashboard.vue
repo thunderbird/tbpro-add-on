@@ -39,7 +39,7 @@ const {
   <section class="content-layout">
     <div class="row">
       <div class="left-column">
-        <div class="welcome">Welcome,</div>
+        <div class="welcome light">Welcome,</div>
         <div class="name">{{ user.name }}</div>
         <h2 class="email">{{ user.thundermailEmail }}</h2>
       </div>
@@ -111,6 +111,8 @@ const {
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.42px;
+  color: var(--text-icon-muted);
+  margin-bottom: 4px;
   text-transform: uppercase;
 }
 

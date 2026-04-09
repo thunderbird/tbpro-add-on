@@ -148,6 +148,10 @@
   color: #1373d9;
 }
 
+.card-shadow {
+  box-shadow: 4px 4px 16px 0 rgba(0, 0, 0, 0.04);
+}
+
 /* Responsive design */
 @media (max-width: 1024px) {
   .content-layout {

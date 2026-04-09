@@ -7,7 +7,11 @@ const { isOverlay = false } = defineProps<Props>();
 </script>
 
 <template>
-  <div :class="isOverlay ? 'modal-overlay' : 'modal-inline'">
+  <div
+    :class="
+      isOverlay ? 'modal-overlay card-shadow' : 'modal-inline card-shadow'
+    "
+  >
     <div class="modal-container">
       <div class="modal-header">
         <slot name="header"></slot>

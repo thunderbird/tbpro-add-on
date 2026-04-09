@@ -12,7 +12,7 @@ const handleDownloadTB = () => {
 };
 </script>
 <template>
-  <div class="bg">
+  <div class="bg card-shadow">
     <p class="text">
       To use Send, you must enable it in Thunderbird Desktop. Download the app
       and sign in to Thunderbird Pro from the Thunderbird menu.
