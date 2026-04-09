@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import DownloadIcon from './DownloadIcon.vue';
+import DownloadIconBlue from './DownloadIconBlue.vue';
 import ProButton from './ProButton.vue';
 
 const handleDownloadTB = () => {
@@ -18,7 +19,7 @@ const handleDownloadTB = () => {
     </p>
     <div class="buttonwrapper">
       <ProButton class="button" type="secondary" @click="handleDownloadTB">
-        <DownloadIcon />
+        <DownloadIconBlue />
         Download</ProButton
       >
     </div>
