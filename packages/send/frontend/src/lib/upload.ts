@@ -182,7 +182,7 @@ export default class Uploader {
         itemObj: ItemResponse;
       } | null = null;
       let retryCount = 0;
-      const maxRetries = 3;
+      const maxRetries = 5;
 
       // We set the part number starting from 1 to avoid problems with part 0 evaluating to false
       const part = shouldSplit ? index + 1 : undefined;
@@ -258,8 +258,14 @@ export default class Uploader {
           console.error(`Upload attempt ${retryCount} failed:`, error);
 
           if (retryCount >= maxRetries) {
-            console.error(`Upload failed after ${maxRetries} attempts`);
-            return null;
+            const failureMessage =
+              `Upload failed for ${fileBlob.name} after ${maxRetries} attempts` +
+              (part ? ` (part ${part})` : '');
+            console.error(failureMessage, error);
+            progressTracker.setProcessStage('error');
+            progressTracker.setText(failureMessage);
+            progressTracker.error = failureMessage;
+            throw new Error(failureMessage);
           }
 
           // Wait before retrying (exponential backoff)
@@ -309,6 +315,14 @@ export default class Uploader {
       }
 
       uploadResponses.push(...batchResults);
+    }
+
+    if (uploadResponses.length !== blobs.length) {
+      const failureMessage = `Upload failed for ${fileBlob.name}`;
+      progressTracker.setProcessStage('error');
+      progressTracker.setText(failureMessage);
+      progressTracker.error = failureMessage;
+      throw new Error(failureMessage);
     }
 
     return uploadResponses;
