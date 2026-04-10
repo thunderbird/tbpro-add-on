@@ -38,7 +38,7 @@
 .content-layout {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 32px;
   min-width: 18rem;
 }
 
@@ -146,6 +146,10 @@
   letter-spacing: normal;
   text-align: left;
   color: #1373d9;
+}
+
+.card-shadow {
+  box-shadow: 4px 4px 16px 0 rgba(0, 0, 0, 0.04);
 }
 
 /* Responsive design */

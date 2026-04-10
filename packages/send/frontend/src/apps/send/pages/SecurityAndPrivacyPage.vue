@@ -57,7 +57,7 @@ const {
 
 .row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
   gap: 2rem;
 }
 

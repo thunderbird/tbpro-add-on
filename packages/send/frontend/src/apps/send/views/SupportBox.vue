@@ -45,16 +45,16 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
 </template>
 
 <style lang="css" scoped>
+* {
+  color: rgb(217, 217, 222) !important;
+}
 .border-thing {
-  background-image: linear-gradient(
-    163deg,
-    rgb(22, 57, 95) 7%,
-    rgb(23, 27, 36) 47%
-  );
+  background-image: linear-gradient(45deg, #171b24 47%, #16395f 93%);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 16px;
   height: fit-content;
   width: 100%;
+  max-width: 350px;
 }
 .support-card {
   background: #1e293b;
@@ -68,7 +68,11 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
   color: white;
   font-size: 1.5rem;
   font-weight: 400;
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
 }
 
 .support-links {
@@ -81,9 +85,10 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
   color: #e2e8f0;
   font-size: 0.9375rem;
   text-decoration: none;
+  font-size: 14px;
   transition: color 0.2s;
   display: block;
-  padding: 1rem 0;
+  padding: 12px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 

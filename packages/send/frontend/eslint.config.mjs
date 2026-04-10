@@ -3,6 +3,7 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import tsParser from '@typescript-eslint/parser';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
@@ -12,7 +13,7 @@ export default [
   {
     languageOptions: {
       parserOptions: {
-        parser: '@typescript-eslint/parser',
+        parser: tsParser,
         tsconfigRootDir: __dirname,
       },
       globals: {

@@ -28,8 +28,10 @@ function handleNavigateToEncryptedFiles() {
 
 <template>
   <KeysTemplate
-    ><h2>Encrypted Files</h2>
-    <p>Open or manage your encrypted file storage in one secure place.</p>
+    ><h2 class="title">Encrypted Files</h2>
+    <p class="description">
+      Open or manage your encrypted file storage in one secure place.
+    </p>
     <BaseButton
       :disabled="!canNavigateToEncryptedFiles"
       class="recover-button"
@@ -44,5 +46,15 @@ function handleNavigateToEncryptedFiles() {
 @import '@send-frontend/apps/common/tbpro-styles.css';
 .recover-button {
   margin-top: 1rem;
+}
+.title {
+  font-family: Metropolis;
+}
+.description {
+  font-family: Inter;
+  font-size: 16px;
+  font-stretch: normal;
+  line-height: 1.32;
+  color: var(--text-icon-secondary);
 }
 </style>

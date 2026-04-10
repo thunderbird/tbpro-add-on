@@ -3,12 +3,13 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
     languageOptions: {
       parserOptions: {
-        parser: '@typescript-eslint/parser',
+        parser: tsParser,
       },
       globals: {
         ...globals.browser, // Existing browser globals

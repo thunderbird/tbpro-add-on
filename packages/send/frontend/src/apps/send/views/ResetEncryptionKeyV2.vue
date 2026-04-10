@@ -110,4 +110,8 @@ const createNewKey = () => {
 .cancel-button:hover {
   background-color: #eff6ff;
 }
+.modal-content {
+  margin: 0;
+  padding: 0;
+}
 </style>

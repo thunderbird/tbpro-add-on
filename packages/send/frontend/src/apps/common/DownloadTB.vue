@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import DownloadIcon from './DownloadIcon.vue';
+import DownloadIconBlue from './DownloadIconBlue.vue';
 import ProButton from './ProButton.vue';
 
 const handleDownloadTB = () => {
@@ -11,14 +12,14 @@ const handleDownloadTB = () => {
 };
 </script>
 <template>
-  <div class="bg">
+  <div class="bg card-shadow">
     <p class="text">
       To use Send, you must enable it in Thunderbird Desktop. Download the app
       and sign in to Thunderbird Pro from the Thunderbird menu.
     </p>
     <div class="buttonwrapper">
-      <ProButton @click="handleDownloadTB" class="button" type="secondary">
-        <DownloadIcon />
+      <ProButton class="button" type="secondary" @click="handleDownloadTB">
+        <DownloadIconBlue />
         Download</ProButton
       >
     </div>
@@ -33,14 +34,19 @@ const handleDownloadTB = () => {
 <style lang="css" scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
 .bg {
+  max-width: 350px;
   position: relative;
   padding: 24px 24px 0.3px;
   border-radius: 24px;
   box-shadow: 4px 4px 16px 0 rgba(0, 0, 0, 0.04);
   border: solid 1px var(--surface-border);
   background-image:
-    linear-gradient(337deg, var(--blue-400) 181%, rgba(88, 201, 255, 0) 18%),
-    linear-gradient(to bottom, var(--neutral-0), var(--neutral-0));
+    linear-gradient(
+      315deg,
+      rgba(88, 202, 255, 0.15) 0%,
+      rgba(88, 201, 255, 0) 60%
+    ),
+    linear-gradient(to bottom, #feffff, #feffff);
 }
 .text {
   align-self: stretch;

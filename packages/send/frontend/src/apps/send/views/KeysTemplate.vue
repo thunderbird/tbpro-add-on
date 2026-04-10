@@ -7,7 +7,11 @@ const { isOverlay = false } = defineProps<Props>();
 </script>
 
 <template>
-  <div :class="isOverlay ? 'modal-overlay' : 'modal-inline'">
+  <div
+    :class="
+      isOverlay ? 'modal-overlay card-shadow' : 'modal-inline card-shadow'
+    "
+  >
     <div class="modal-container">
       <div class="modal-header">
         <slot name="header"></slot>
@@ -22,4 +26,11 @@ const { isOverlay = false } = defineProps<Props>();
 
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
+p {
+  font-family: Inter;
+  font-size: 16px;
+  font-stretch: normal;
+  line-height: 1.32;
+  color: var(--text-icon-secondary);
+}
 </style>

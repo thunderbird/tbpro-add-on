@@ -39,12 +39,12 @@ const {
   <section class="content-layout">
     <div class="row">
       <div class="left-column">
-        <div class="welcome">Welcome,</div>
+        <div class="welcome light">Welcome,</div>
         <div class="name">{{ user.name }}</div>
         <h2 class="email">{{ user.thundermailEmail }}</h2>
       </div>
 
-      <div class="right-column">
+      <div class="right-column center">
         <StorageBar />
       </div>
     </div>
@@ -76,7 +76,7 @@ const {
           :reset-keys="resetKeys"
         />
       </div>
-      <div class="right-column">
+      <div class="right-column alignleft">
         <SupportBox />
         <RenderOnEnvironment :environment-type="'WEB APP OUTSIDE THUNDERBIRD'">
           <DownloadTB />
@@ -89,16 +89,22 @@ const {
 <style lang="css" scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
 
+.alignleft {
+  display: flex;
+  align-items: flex-end;
+}
+
 .column-gap {
   gap: 2rem;
 }
-
 .name {
+  height: 43px;
   font-family: Metropolis;
   font-size: 36px;
   font-weight: 300;
   line-height: 1.2;
   letter-spacing: -0.36px;
+  color: var(--text-icon-base);
 }
 
 .welcome {
@@ -106,6 +112,8 @@ const {
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.42px;
+  color: var(--text-icon-muted);
+  margin-bottom: 4px;
   text-transform: uppercase;
 }
 
@@ -113,12 +121,18 @@ const {
   font-family: Inter;
   font-size: 16px;
   line-height: 1.32;
+  margin: 4px 0 0;
+  color: var(--text-icon-secondary);
 }
 
 .row {
   display: grid;
   grid-template-columns: 3fr 2fr;
   gap: 2rem;
+}
+
+.center {
+  margin: auto 0;
 }
 
 @media (max-width: 1024px) {

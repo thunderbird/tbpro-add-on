@@ -2,10 +2,12 @@
 import CopyIcon from '@send-frontend/apps/common/CopyIcon.vue';
 import DownloadIcon from '@send-frontend/apps/common/DownloadIcon.vue';
 import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
+import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
 import { downloadPassPhrase } from '@send-frontend/lib/passphraseUtils';
 import { useKeychainStore, useUserStore } from '@send-frontend/stores';
+import { DangerButton } from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 
 const emit = defineEmits<{
@@ -20,6 +22,7 @@ const {
 const { copy } = useClipboard();
 
 const passphraseFromLocalStorage = keychain.getPassphraseValue();
+const isPassphraseVisible = ref(false);
 
 const formattedPassphrase = computed(() => {
   return passphraseFromLocalStorage.split(' ').join(' - ');
@@ -29,6 +32,10 @@ const copyToClipboard = () => {
   if (passphraseFromLocalStorage) {
     copy(formattedPassphrase.value);
   }
+};
+
+const togglePassphraseVisibility = () => {
+  isPassphraseVisible.value = !isPassphraseVisible.value;
 };
 </script>
 
@@ -50,13 +57,19 @@ const copyToClipboard = () => {
           </label>
           <div class="key-input-container">
             <input
-              type="text"
+              :type="isPassphraseVisible ? 'text' : 'password'"
               :value="formattedPassphrase"
               readonly
               class="key-input"
             />
-            <button class="icon-button" title="Toggle visibility">
-              <EyeIcon />
+            <button
+              class="icon-button"
+              :title="isPassphraseVisible ? 'Hide key' : 'Show key'"
+              :aria-label="isPassphraseVisible ? 'Hide key' : 'Show key'"
+              @click="togglePassphraseVisibility"
+            >
+              <EyeIcon v-if="isPassphraseVisible" />
+              <EyeOffIcon v-else />
             </button>
             <button
               class="icon-button"
@@ -81,20 +94,20 @@ const copyToClipboard = () => {
 
     <KeysTemplate>
       <div class="key-section reset-section">
-        <h2 class="">Reset Encryption Key</h2>
+        <h2 class="title">Reset Encryption Key</h2>
 
         <p class="section-description">
           Resetting your encryption key permanently removes all files and clears
           your encrypted storage. This action cannot be undone.
         </p>
 
-        <button
+        <DangerButton
           data-testid="show-reset"
           class="reset-button"
           @click="emit('confirm')"
         >
           Reset encryption key
-        </button>
+        </DangerButton>
       </div>
     </KeysTemplate>
   </div>
@@ -102,6 +115,9 @@ const copyToClipboard = () => {
 
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
+.title {
+  font-family: Metropolis;
+}
 .keys-container {
   display: flex;
   flex-direction: column;
@@ -174,14 +190,7 @@ const copyToClipboard = () => {
 }
 
 .reset-button {
-  padding: 0.625rem 1.25rem;
-  background-color: #dc2626;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  padding: 18px 16px;
 }
 
 .reset-button:hover {
