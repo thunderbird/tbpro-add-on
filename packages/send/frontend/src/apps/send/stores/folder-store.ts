@@ -281,15 +281,21 @@ const useFolderStore = defineStore('folderManager', () => {
         progress
       );
 
-      if (newItems && rootFolder.value) {
+      if (!newItems || newItems.length === 0) {
+        throw new Error(`Upload failed for ${formattedBlob.name}`);
+      }
+
+      if (rootFolder.value) {
         rootFolder.value.items = [...rootFolder.value.items, ...newItems];
       }
 
       return newItems;
     } catch (error) {
       console.error('Upload failed in uploadItem:', error);
-      progress.error = error.message;
-      throw new Error(`Upload failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      progress.error = message;
+      progress.setProcessStage('error');
+      throw new Error(`Upload failed: ${message}`);
     }
   }
 
