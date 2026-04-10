@@ -1,14 +1,14 @@
 <script setup lang="ts">
+import ProButton from '@send-frontend/apps/common/ProButton.vue';
 import { useRouter } from 'vue-router';
 import KeysTemplate from './KeysTemplate.vue';
-import ProButton from '@send-frontend/apps/common/ProButton.vue';
 
 const router = useRouter();
 </script>
 
 <template>
   <KeysTemplate>
-    <div class="">
+    <div>
       <div class="" style="margin-bottom: 32px">
         <h1 class="title">Security & Privacy</h1>
 
@@ -28,12 +28,53 @@ const router = useRouter();
           Encryption Key
         </ProButton>
       </div>
+      <span class="divider"></span>
+      <div class="spacing">
+        <div class="title-secondary">Delete Send Data</div>
+        <p>
+          Permanently delete all encrypted files in your Thunderbird Pro Send
+          storage.
+        </p>
+        <div class="delete-link light">
+          <router-link to="/send/security-and-privacy?delete=true"
+            >Delete Send data</router-link
+          >
+        </div>
+      </div>
     </div>
   </KeysTemplate>
 </template>
 
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
+
+.spacing {
+  gap: 18px;
+  display: flex;
+  flex-direction: column;
+}
+.delete-link * {
+  width: 98px;
+  height: 15px;
+  flex-grow: 0;
+  font-family: Inter;
+  font-size: 12px;
+  font-weight: normal;
+  font-stretch: normal;
+  text-decoration: underline;
+  line-height: normal;
+  letter-spacing: normal;
+  text-align: left;
+  color: var(--text-icon-critical);
+}
+.divider {
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin: 32px 0;
+  background-color: var(--surface-border);
+  color: var(--surface-border);
+}
 
 .title-secondary {
   font-family: Inter;
