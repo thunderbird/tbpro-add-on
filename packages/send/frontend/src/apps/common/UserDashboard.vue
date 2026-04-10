@@ -97,13 +97,14 @@ const {
 .column-gap {
   gap: 2rem;
 }
-
 .name {
+  height: 43px;
   font-family: Metropolis;
   font-size: 36px;
   font-weight: 300;
   line-height: 1.2;
   letter-spacing: -0.36px;
+  color: var(--text-icon-base);
 }
 
 .welcome {
@@ -121,6 +122,7 @@ const {
   font-size: 16px;
   line-height: 1.32;
   margin: 4px 0 0;
+  color: var(--text-icon-secondary);
 }
 
 .row {
