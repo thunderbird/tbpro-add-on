@@ -5,6 +5,7 @@ import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
 import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
 import { downloadPassPhrase } from '@send-frontend/lib/passphraseUtils';
 import { useKeychainStore, useUserStore } from '@send-frontend/stores';
+import { DangerButton } from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
@@ -100,13 +101,13 @@ const togglePassphraseVisibility = () => {
           your encrypted storage. This action cannot be undone.
         </p>
 
-        <button
+        <DangerButton
           data-testid="show-reset"
           class="reset-button"
           @click="emit('confirm')"
         >
           Reset encryption key
-        </button>
+        </DangerButton>
       </div>
     </KeysTemplate>
   </div>
@@ -189,14 +190,7 @@ const togglePassphraseVisibility = () => {
 }
 
 .reset-button {
-  padding: 0.625rem 1.25rem;
-  background-color: #dc2626;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  padding: 18px 16px;
 }
 
 .reset-button:hover {
