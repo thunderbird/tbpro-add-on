@@ -40,7 +40,7 @@ jobs:
           echo "Running pnpm audit --fix..."
           pnpm audit --fix || true
           echo "Audit fix completed"
-          pnpm i
+          pnpm install --no-frozen-lockfile
 
       - name: Check for changes
         id: check-changes
