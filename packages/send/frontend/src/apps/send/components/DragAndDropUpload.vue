@@ -22,7 +22,12 @@ const { api } = useApiStore();
 const dropZoneRef = ref();
 const { progress } = useStatusStore();
 
-const filesMetadata = ref(null);
+const filesMetadata = ref<Array<{
+  name: string;
+  size: number;
+  type: string;
+  lastModified: number;
+}> | null>(null);
 const fileBlobs = ref<NamedBlob[]>([]);
 const completedFiles = ref<
   Array<{
@@ -32,6 +37,17 @@ const completedFiles = ref<
     lastModified: number;
     status: 'completed';
     uploadedAt: Date;
+  }>
+>([]);
+const failedFiles = ref<
+  Array<{
+    name: string;
+    size: number;
+    type: string;
+    lastModified: number;
+    status: 'failed';
+    failedAt: Date;
+    error: string;
   }>
 >([]);
 const isUploading = ref(false);
@@ -61,6 +77,7 @@ function onDrop(files: File[] | null) {
   filesMetadata.value = [];
   fileBlobs.value = [];
   completedFiles.value = [];
+  failedFiles.value = [];
   isError.value = false; // Reset error state
 
   // Early return if no files
@@ -97,7 +114,8 @@ function onDrop(files: File[] | null) {
     });
   } catch (error) {
     console.error('Error in onDrop processing:', error);
-    progress.error = `Error processing files: ${error.message}`;
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    progress.error = `Error processing files: ${message}`;
     isError.value = true;
   }
 }
@@ -205,23 +223,43 @@ async function doUpload() {
       } catch (error) {
         console.error(`Upload error for file ${index + 1}:`, error);
         progress.setProcessStage('error');
-        progress.error = `Upload failed for ${blob.name}: ${error.message || 'Unknown error'}`;
-        // throw error;
+        const uploadError =
+          error instanceof Error ? error.message : 'Unknown error';
+        progress.error = `Upload failed for ${blob.name}: ${uploadError}`;
+
+        const failedFile = {
+          ...fileMetadata,
+          status: 'failed' as const,
+          failedAt: new Date(),
+          error: uploadError,
+        };
+        failedFiles.value.unshift(failedFile);
+
+        // Remove from pending lists once marked as failed
+        filesMetadata.value.splice(index, 1);
+        fileBlobs.value.splice(index, 1);
       }
     }
 
     // Clear the pending files list if all uploads were successful
     if (results.length > 0 && filesMetadata.value.length === 0) {
-      filesMetadata.value = null;
-      fileBlobs.value = [];
-      progress.setText(
-        `Successfully uploaded ${results.length} file${results.length === 1 ? '' : 's'}`
-      );
+      if (failedFiles.value.length === 0) {
+        filesMetadata.value = null;
+        fileBlobs.value = [];
+        progress.setText(
+          `Successfully uploaded ${results.length} file${results.length === 1 ? '' : 's'}`
+        );
 
-      // Reset progress after a brief delay
-      setTimeout(() => {
-        progress.initialize();
-      }, 2_000);
+        // Reset progress after a brief delay
+        setTimeout(() => {
+          progress.initialize();
+        }, 2_000);
+      } else {
+        progress.setProcessStage('error');
+        progress.setText(
+          `Uploaded ${results.length} file${results.length === 1 ? '' : 's'}, ${failedFiles.value.length} failed`
+        );
+      }
     }
   } catch {
     isError.value = true;
@@ -276,7 +314,6 @@ async function doUpload() {
         multiple
         @change="onFileInputChange"
       />
-
 
       <!-- Display dropped files and completed files -->
       <div
@@ -383,6 +420,55 @@ async function doUpload() {
                 <!-- Success icon -->
                 <div class="flex-shrink-0 text-green-500">
                   <CheckmarkIcon />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Failed files section -->
+        <div v-if="failedFiles.length > 0" class="mt-4">
+          <h3
+            id="failed-files-heading"
+            class="text-lg font-semibold mb-2 text-red-700"
+          >
+            Failed Uploads ({{ failedFiles.length }} file{{
+              failedFiles.length === 1 ? '' : 's'
+            }}):
+          </h3>
+          <div
+            class="space-y-2 max-h-60 overflow-y-auto"
+            role="list"
+            aria-labelledby="failed-files-heading"
+            aria-live="polite"
+          >
+            <div
+              v-for="(file, index) in failedFiles"
+              :key="`failed-${index}`"
+              class="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200 w-full"
+              role="listitem"
+              :aria-label="`Failed upload: ${file.name}, ${prettyBytes(file.size)}`"
+            >
+              <div class="flex items-center space-x-3 flex-1 min-w-0">
+                <div class="flex-shrink-0">
+                  <ImageIcon v-if="file.type.startsWith('image/')" />
+                  <DocumentIcon v-else />
+                </div>
+                <div class="flex-1 min-w-0 overflow-hidden">
+                  <p
+                    class="text-sm font-medium text-gray-900 truncate"
+                    :title="file.name"
+                  >
+                    {{ file.name }}
+                  </p>
+                  <p class="text-sm text-gray-500 truncate">
+                    {{ prettyBytes(file.size) }}
+                    <span v-if="file.type" class="ml-2">• {{ file.type }}</span>
+                    <span class="ml-2 text-red-600">• Failed</span>
+                  </p>
+                  <p class="text-xs text-red-600 truncate" :title="file.error">
+                    {{ file.error }}
+                  </p>
                 </div>
               </div>
             </div>
