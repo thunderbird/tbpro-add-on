@@ -40,10 +40,7 @@ jobs:
           echo "Running pnpm audit --fix..."
           pnpm audit --fix || true
           echo "Audit fix completed"
-
-      - name: Install deps
-        id: install-deps
-        run: pnpm i
+          pnpm i
 
       - name: Check for changes
         id: check-changes
