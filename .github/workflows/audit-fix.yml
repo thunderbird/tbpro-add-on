@@ -41,16 +41,25 @@ jobs:
           pnpm audit --fix || true
           echo "Audit fix completed"
           pnpm install --no-frozen-lockfile
+          if git diff --exit-code pnpm-lock.yaml; then
+            echo "audit-changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "audit-changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump package versions (patch)
+        if: steps.audit-fix.outputs.audit-changed == 'true'
+        run: node scripts/bump-versions.js
 
       - name: Check for changes
         id: check-changes
         run: |
-          if git diff --exit-code pnpm-lock.yaml; then
+          if git diff --exit-code; then
             echo "has-changes=false" >> "$GITHUB_OUTPUT"
-            echo "No changes detected in lockfile"
+            echo "No changes detected"
           else
             echo "has-changes=true" >> "$GITHUB_OUTPUT"
-            echo "Changes detected in lockfile"
+            echo "Changes detected"
           fi
 
       - name: Create Pull Request
@@ -58,7 +67,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: fix security vulnerabilities via pnpm audit --fix"
+          commit-message: "chore: bump patch versions and fix security vulnerabilities"
           branch: automated/dependency-audit-${{ github.run_number }}
           delete-branch: true
           title: "[Automated] Fix Security Vulnerabilities"
@@ -69,15 +78,15 @@ jobs:
 
             ### Changes
             - Ran `pnpm audit --fix` to address security vulnerabilities
-
             - Updated `pnpm-lock.yaml` with latest dependency resolutions
+            - Bumped patch version on all packages and manifest files (excluding assist) to trigger CI validations
 
             ### Workflow Details
             - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             - **Triggered**: ${{ github.event_name == 'schedule' && 'Scheduled (Weekly)' || 'Manual' }}
             - **Date**: ${{ github.event.head_commit.timestamp }}
 
-            Please review the changes in `pnpm-lock.yaml` and merge if appropriate.
+            Please review the changes and merge if appropriate.
           labels: |
             dependencies
             security
