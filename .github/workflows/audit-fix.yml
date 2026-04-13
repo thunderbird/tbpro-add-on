@@ -41,8 +41,14 @@ jobs:
           pnpm audit --fix || true
           echo "Audit fix completed"
           pnpm install --no-frozen-lockfile
+          if git diff --exit-code pnpm-lock.yaml; then
+            echo "audit-changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "audit-changed=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Bump package versions (patch)
+        if: steps.audit-fix.outputs.audit-changed == 'true'
         run: node scripts/bump-versions.js
 
       - name: Check for changes
