@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useBackupAndRestore } from '../composables/useBackupAndRestore';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import DeleteSendDataCard from '../views/DeleteSendDataCard.vue';
 import ResetEncryptionKeyV2 from '../views/ResetEncryptionKeyV2.vue';
 import RestoreKeys from '../views/RestoreKeys.vue';
 import SecurityAndPrivacy from '../views/SecurityAndPrivacy.vue';
 import SupportBox from '../views/SupportBox.vue';
+const route = useRoute();
 const router = useRouter();
+
+const { keychain } = useKeychainStore();
 
 const {
   backupData,
@@ -14,16 +20,36 @@ const {
   restoreFromBackup,
   shouldReset,
   resetKeys,
+  deleteFiles,
 } = useBackupAndRestore();
+
+const showDeleteCard = computed(() => route.query.delete === 'true');
+const storedPassphrase = computed(() => keychain.getPassphraseValue() ?? '');
+
+const closeDeleteCard = () => {
+  router.push('/send/security-and-privacy');
+};
+
+const handleDelete = async () => {
+  deleteFiles();
+};
 </script>
 <template>
   <div class="container">
     <h1 class="title top">Security & Privacy</h1>
-    <div class="row">
+    <div class="row" :class="{ single: showDeleteCard }">
       <!-- Backup and Restore Section -->
       <section>
+        <DeleteSendDataCard
+          v-if="showDeleteCard"
+          :stored-passphrase="storedPassphrase"
+          @confirm="handleDelete"
+          @cancel="closeDeleteCard"
+        />
         <RestoreKeys
-          v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldReset"
+          v-else-if="
+            backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldReset
+          "
           :restore-from-backup="restoreFromBackup"
           :set-passphrase="setPassphrase"
           :message="errorMessage"
@@ -32,12 +58,12 @@ const {
         />
         <!-- RESET -->
         <ResetEncryptionKeyV2
-          v-if="shouldReset"
+          v-else-if="shouldReset"
           @confirm="resetKeys"
           @cancel="() => (shouldReset = false)"
         />
         <SecurityAndPrivacy
-          v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
+          v-else-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
           :show-keys-by-default="true"
           :reset-keys="resetKeys"
         />

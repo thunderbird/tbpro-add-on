@@ -122,6 +122,22 @@ export const useBackupAndRestore = () => {
   });
 
   /**
+   * Mutation to reset all user keys.
+   * This will:
+   * 1. Delete files from the server
+   * 2. Reload the page
+   */
+  const { mutate: deleteFiles } = useMutation({
+    mutationKey: ['deleteFiles'],
+    mutationFn: async () => {
+      return await trpc.deleteFiles.mutate();
+    },
+    onSuccess: async () => {
+      router.push('/send/profile');
+    },
+  });
+
+  /**
    * Regenerates a random passphrase and updates the store with the new words.
    * Used when the user wants a new random passphrase during backup setup.
    */
@@ -246,6 +262,7 @@ export const useBackupAndRestore = () => {
     restoreFromBackup,
     routeToKeyRestore,
     resetKeys,
+    deleteFiles,
     // Passphrase
     words,
     passphraseString,

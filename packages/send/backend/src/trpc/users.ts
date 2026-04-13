@@ -292,6 +292,49 @@ export const usersRouter = router({
 
   /**
    * @openapi
+   * /trpc/deleteFiles:
+   *   post:
+   *     tags:
+   *       - Users
+   *     summary: Delete user files
+   *     description: Deletes all user files, containers, and uploads (Development Only)
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Files deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   description: Whether the deletion was successful
+   */
+  deleteFiles: trpc.use(isAuthed).mutation(async ({ ctx }) => {
+    const id = ctx.user.id;
+    try {
+      const containers = await getContainersOwnedByUser(id);
+      const uploads = await getUploadsOwnedByUser(id);
+
+      // Burn containers
+      await Promise.all(containers.map(({ id }) => deleteContainer(id)));
+      // Burn uploads
+      await Promise.all(uploads.map(({ id }) => deleteUpload(id)));
+
+      return { success: true };
+    } catch (e) {
+      console.error(e);
+      throw new TRPCError({
+        message: 'Could not reset keys',
+        code: 'UNPROCESSABLE_CONTENT',
+      });
+    }
+  }),
+
+  /**
+   * @openapi
    * /trpc/userLogin:
    *   post:
    *     tags:
