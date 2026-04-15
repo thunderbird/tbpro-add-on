@@ -491,6 +491,10 @@ export class Keychain {
 
       // load other keys
       this.keys = await this.fallbackToStoredKeys(keys);
+
+      // decrypt and cache the passphrase from storage
+      await this._storage.initializePassphrase();
+
       return true;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
