@@ -133,7 +133,12 @@ export const useBackupAndRestore = () => {
       return await trpc.deleteFiles.mutate();
     },
     onSuccess: async () => {
-      router.push('/send/profile');
+      await router.push('/send/profile');
+      // hard reload to force a new default folder to be created since all previous ones are now deleted
+      window.location.reload();
+      window.alert(
+        'All your files have been deleted. You can start fresh now!'
+      );
     },
   });
 
