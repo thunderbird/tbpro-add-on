@@ -65,6 +65,7 @@ const { open, close: closefn } = useModal({
           return closefn();
         },
         confirm: onDownloadConfirm,
+        class: 'relative',
       },
     }),
   },

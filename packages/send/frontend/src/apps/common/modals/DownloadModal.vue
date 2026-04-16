@@ -13,7 +13,7 @@ const emit = defineEmits<{
 <template>
   <VueFinalModal
     class="flex justify-center items-center"
-    content-class="flex flex-col p-4 bg-white rounded border border-gray-100"
+    content-class="flex flex-col p-4 bg-white rounded border border-gray-100 pb-8 pt-2"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
     <div class="flex items-center h-10 relative">
