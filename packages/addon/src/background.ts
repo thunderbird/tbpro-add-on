@@ -32,6 +32,7 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { initSharedPinia } from '@send-frontend/lib/shared-pinia';
+import { trpc } from '@send-frontend/lib/trpc';
 import { useConfigStore } from '@send-frontend/stores/index.js';
 import {
   closeLoginTab,
@@ -483,6 +484,14 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     case ALL_UPLOADS_COMPLETE: {
       console.log(`[onMessage] Received message that files were uploaded.`);
       const { url } = message;
+
+      if (!message?.isPasswordProtected) {
+        const [_url, hash] = url.split('share/')[1].split('#');
+        await trpc.addPasswordToAccessLink.mutate({
+          linkId: _url,
+          password: hash,
+        });
+      }
 
       message.results.forEach(({ originalId: id }) => {
         if (uploadPromiseMap.has(id)) {
