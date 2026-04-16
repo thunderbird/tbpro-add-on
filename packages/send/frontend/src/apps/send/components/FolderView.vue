@@ -97,6 +97,7 @@ const { open, close: closefn } = useModal({
       attrs: {
         closefn: () => closefn(),
         confirm: onDownloadConfirm,
+        class: 'relative',
       },
     }),
   },
