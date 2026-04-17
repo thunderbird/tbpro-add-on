@@ -33,7 +33,7 @@ export function useSendConfig() {
   /**
    * Checks browser extension storage for SEND_MESSAGE_TO_BRIDGE value
    * and transfers it to localStorage under 'lb/passphrase' key.
-   * The value is stored as an object with passPhrase property.
+   * The value is stored in the encrypted AES-GCM format.
    */
   const checkAndTransferBridgeMessage = async () => {
     try {
@@ -41,11 +41,8 @@ export function useSendConfig() {
 
       if (result[SEND_MESSAGE_TO_BRIDGE]) {
         const value = result[SEND_MESSAGE_TO_BRIDGE];
-        const passphraseObject = {
-          passPhrase: value,
-        };
 
-        localStorage.setItem('lb/passphrase', JSON.stringify(passphraseObject));
+        await keychain.storePassPhrase(value);
         console.log('✅ Transferred bridge message to localStorage');
 
         // Delete the value from extension storage after successful transfer
@@ -200,7 +197,7 @@ export function useSendConfig() {
     useLoginQuery,
     /**
      * Checks browser extension storage for SEND_MESSAGE_TO_BRIDGE value
-     * and transfers it to localStorage under 'lb/passphrase' key.
+     * and transfers it to localStorage under 'lb/passphrase' key in encrypted form.
      */
     checkAndTransferBridgeMessage,
     /**
