@@ -111,7 +111,7 @@ export function useUploadAndShare() {
       }
       console.log(`I got a sharing url and it is`);
       console.log(url);
-      shareComplete(url, [...uploadedItems]);
+      shareComplete(url, [...uploadedItems], !!password);
     } catch (err) {
       console.log(err.message);
       shareAborted();
@@ -121,11 +121,16 @@ export function useUploadAndShare() {
     }
   }
 
-  function shareComplete(url: string, results: UploadResult[]) {
+  function shareComplete(
+    url: string,
+    results: UploadResult[],
+    isPasswordProtected: boolean
+  ) {
     browser.runtime.sendMessage({
       type: ALL_UPLOADS_COMPLETE,
       url,
       results,
+      isPasswordProtected,
       aborted: false,
     });
 
