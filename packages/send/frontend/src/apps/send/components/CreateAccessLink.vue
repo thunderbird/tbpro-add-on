@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
 import { trpc } from '@send-frontend/lib/trpc';
+import { ExpirationOption, getExpirationDate } from '@send-frontend/lib/utils';
 import { useMutation } from '@tanstack/vue-query';
 import { ref, watch } from 'vue';
 
@@ -17,7 +18,8 @@ const props = defineProps<{
 const emit = defineEmits(['createAccessLinkComplete', 'createAccessLinkError']);
 
 const password = ref('');
-const expiration = ref(null);
+const selectedExpiration = ref<ExpirationOption>('14days');
+const customDateTime = ref('');
 const accessUrl = ref('');
 const showPassword = ref(false);
 const tooltipText = ref('Copied to clipboard');
@@ -55,7 +57,7 @@ async function newAccessLink() {
     const url = await sharingStore.createAccessLink(
       props.folderId,
       password.value,
-      expiration.value
+      getExpirationDate(selectedExpiration.value, customDateTime.value)
     );
 
     if (!url) {
@@ -81,7 +83,8 @@ async function newAccessLink() {
     isLoading.value = false;
   } catch (error) {
     emit('createAccessLinkError');
-    errorMessage.value = error;
+    errorMessage.value =
+      error instanceof Error ? error.message : 'An unexpected error occurred.';
     isLoading.value = false;
   }
 }
@@ -90,7 +93,8 @@ watch(
   () => props.folderId,
   () => {
     password.value = '';
-    expiration.value = null;
+    selectedExpiration.value = '14days';
+    customDateTime.value = '';
     accessUrl.value = '';
     showPassword.value = false;
     errorMessage.value = '';
@@ -112,7 +116,24 @@ watch(
     </label>
     <label class="form-label">
       <span class="label-text">Link Expires</span>
-      <input v-model="expiration" type="datetime-local" />
+      <select
+        :value="selectedExpiration"
+        @change="
+          selectedExpiration = ($event.target as HTMLSelectElement)
+            .value as ExpirationOption
+        "
+      >
+        <option value="never">Never expire</option>
+        <option value="24hours">Expire in 24 hours</option>
+        <option value="14days">Expire in 14 days (default)</option>
+        <option value="30days">Expire in 30 days</option>
+        <option value="custom">Custom date and time</option>
+      </select>
+      <input
+        v-if="selectedExpiration === 'custom'"
+        v-model="customDateTime"
+        type="datetime-local"
+      />
     </label>
     <label class="form-label password-field">
       <span class="label-text">Password</span>
