@@ -497,7 +497,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       try {
         if (!isPasswordProtected) {
           const [_url, hash] = url.split('share/')[1].split('#');
-          const res = await api.call(
+          await api.call(
             `sharing/${_url}/add-password`,
             {
               linkId: _url,
