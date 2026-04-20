@@ -491,6 +491,28 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
         }
       });
 
+      // We add the password hash (if it exists) to the database so it can be retrieved by the sharing links list
+      const isPasswordProtected = !url.includes('#');
+
+      try {
+        if (!isPasswordProtected) {
+          const [_url, hash] = url.split('share/')[1].split('#');
+          await api.call(
+            `sharing/${_url}/add-password`,
+            {
+              linkId: _url,
+              password: hash,
+            },
+            'POST'
+          );
+        }
+      } catch (error) {
+        console.error(
+          `[onMessage] Error handling ALL_UPLOADS_COMPLETE:`,
+          error
+        );
+      }
+
       break;
     }
 
