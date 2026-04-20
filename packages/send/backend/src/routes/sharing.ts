@@ -14,6 +14,7 @@ import {
   isAccessLinkValid,
   removeAccessLink,
   resetAccessLinkRetryCount,
+  updateAccessLink,
 } from '../models/sharing';
 
 import {
@@ -357,5 +358,22 @@ router.post(
     });
   })
 );
+
+router.post('/:linkId/add-password', async (req, res) => {
+  const { password } = req.body;
+  const { linkId } = req.params;
+
+  try {
+    const { id, passwordHash } = await updateAccessLink(linkId, password);
+    console.log('Access link updated', id, passwordHash);
+
+    return res
+      .status(200)
+      .json({ input: { linkId, password }, id, passwordHash });
+  } catch (error) {
+    console.error('Error updating access link', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;
