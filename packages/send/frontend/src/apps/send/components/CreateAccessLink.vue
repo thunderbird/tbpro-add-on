@@ -22,7 +22,6 @@ const selectedExpiration = ref<ExpirationOption>('14days');
 const customDateTime = ref('');
 const accessUrl = ref('');
 const showPassword = ref(false);
-const tooltipText = ref('Copied to clipboard');
 const clipboard = useClipboard();
 const accessUrlInput = ref<HTMLInputElement | null>(null);
 const isLoading = ref(false);
@@ -42,14 +41,6 @@ const { mutate } = useMutation({
 const refreshAccessLinks = useDebounceFn(async () => {
   await sharingStore.fetchFolderAccessLinks(props.folderId);
 }, 1000);
-
-function copyToClipboard(url: string) {
-  clipboard.copy(url);
-  tooltipText.value = 'Copied!';
-  setTimeout(() => {
-    tooltipText.value = 'Click to copy';
-  }, 3000);
-}
 
 async function newAccessLink() {
   isLoading.value = true;
@@ -103,17 +94,6 @@ watch(
 </script>
 <template>
   <section class="form-section">
-    <label class="form-label">
-      <span class="label-text">Create Share Link</span>
-      <input
-        ref="accessUrlInput"
-        v-model="accessUrl"
-        v-tooltip="tooltipText"
-        type="text"
-        class="input-field"
-        @click="copyToClipboard(accessUrl)"
-      />
-    </label>
     <label class="form-label">
       <span class="label-text">Link Expires</span>
       <select
