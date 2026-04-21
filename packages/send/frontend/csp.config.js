@@ -72,7 +72,6 @@ export function getCspConfig(env = {}) {
     'style-src': [
       "'self'", // Same-origin styles
       "'unsafe-inline'", // Inline styles (needed for dynamic styling)
-      'https://fonts.googleapis.com', // Google Fonts CSS
     ],
 
     // Controls image sources

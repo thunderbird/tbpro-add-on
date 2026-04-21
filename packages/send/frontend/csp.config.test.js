@@ -59,11 +59,7 @@ describe('CSP Configuration', () => {
         ])
       );
       expect(config['style-src']).toEqual(
-        expect.arrayContaining([
-          "'self'",
-          "'unsafe-inline'",
-          'https://fonts.googleapis.com',
-        ])
+        expect.arrayContaining(["'self'", "'unsafe-inline'"])
       );
       expect(config['connect-src']).toEqual(
         expect.arrayContaining(["'self'", 'https://*.backblazeb2.com'])
@@ -170,7 +166,6 @@ describe('CSP Configuration', () => {
       const config = getCspConfig();
 
       // Google Fonts
-      expect(config['style-src']).toContain('https://fonts.googleapis.com');
       expect(config['font-src']).toContain('https://fonts.gstatic.com');
 
       // PostHog Analytics
