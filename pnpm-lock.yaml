@@ -17,6 +17,7 @@ overrides:
   axios@>=1.0.0 <=1.13.4: '>=1.13.5'
   basic-ftp@<5.2.0: '>=5.2.0'
   basic-ftp@<=5.2.1: '>=5.2.2'
+  basic-ftp@<=5.2.2: '>=5.3.0'
   basic-ftp@=5.2.0: '>=5.2.1'
   brace-expansion@<1.1.13: '>=1.1.13'
   brace-expansion@>=4.0.0 <5.0.5: '>=5.0.5'
@@ -32,6 +33,7 @@ overrides:
   fast-xml-parser@>=5.0.0 <5.5.7: '>=5.5.7'
   flatted@<3.4.0: '>=3.4.0'
   flatted@<=3.4.1: '>=3.4.2'
+  follow-redirects@<=1.15.11: '>=1.16.0'
   glob@>=10.2.0 <10.5.0: '>=10.5.0'
   handlebars@>=4.0.0 <4.7.9: '>=4.7.9'
   handlebars@>=4.0.0 <=4.7.8: '>=4.7.9'
@@ -58,6 +60,7 @@ overrides:
   picomatch@>=4.0.0 <4.0.4: '>=4.0.4'
   playwright@<1.55.1: '>=1.55.1'
   preact@>=10.26.5 <10.26.10: '>=10.26.10'
+  protobufjs@<7.5.5: '>=7.5.5'
   qs@<6.14.1: '>=6.14.1'
   qs@>=6.7.0 <=6.14.1: '>=6.14.2'
   rollup@>=4.0.0 <4.59.0: '>=4.59.0'
@@ -5285,8 +5288,8 @@ packages:
   focus-trap@7.6.4:
     resolution: {integrity: sha512-xx560wGBk7seZ6y933idtjJQc1l+ck+pI3sKvhKozdBV1dRZoKhkW5xoCaFv9tQiX5RH1xfSxjuNu6g+lmN/gw==}
 
-  follow-redirects@1.15.11:
-    resolution: {integrity: sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==}
+  follow-redirects@1.16.0:
+    resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -7433,8 +7436,8 @@ packages:
     resolution: {integrity: sha512-SAzp/O4Yh02jGdRc+uIrGoe87dkN/XtwxfZ4ZyafJHymd79ozp5VG5nyZ7ygqPM5+cpLDjjGnYFUkngonyDPOQ==}
     engines: {node: '>=14.0.0'}
 
-  protobufjs@7.5.4:
-    resolution: {integrity: sha512-CvexbZtbov6jW2eXAvLukXjXUW1TzFaivC46BpWc/3BpcCysb5Vffu+B3XHMm8lVEuy2Mm4XGex8hBSg1yapPg==}
+  protobufjs@8.0.1:
+    resolution: {integrity: sha512-NWWCCscLjs+cOKF/s/XVNFRW7Yih0fdH+9brffR5NZCy8k42yRdl5KlWKMVXuI1vfCoy4o1z80XR/W/QUb3V3w==}
     engines: {node: '>=12.0.0'}
 
   protoc-gen-ts@0.8.7:
@@ -10081,21 +10084,21 @@ snapshots:
     dependencies:
       lodash.camelcase: 4.3.0
       long: 5.3.2
-      protobufjs: 7.5.4
+      protobufjs: 8.0.1
       yargs: 17.7.2
 
   '@grpc/proto-loader@0.8.0':
     dependencies:
       lodash.camelcase: 4.3.0
       long: 5.3.2
-      protobufjs: 7.5.4
+      protobufjs: 8.0.1
       yargs: 17.7.2
 
   '@grpc/reflection@1.0.4(@grpc/grpc-js@1.14.3)':
     dependencies:
       '@grpc/grpc-js': 1.14.3
       '@grpc/proto-loader': 0.7.15
-      protobufjs: 7.5.4
+      protobufjs: 8.0.1
 
   '@humanfs/core@0.19.1': {}
 
@@ -13147,7 +13150,7 @@ snapshots:
 
   axios@1.15.0:
     dependencies:
-      follow-redirects: 1.15.11
+      follow-redirects: 1.16.0
       form-data: 4.0.5
       proxy-from-env: 2.1.0
     transitivePeerDependencies:
@@ -13310,7 +13313,7 @@ snapshots:
       cheerio: 1.0.0-rc.11
       dotenv: 16.6.1
       emittery: 0.11.0
-      follow-redirects: 1.15.11
+      follow-redirects: 1.16.0
       form-data: 4.0.5
       getos: 3.2.1
       git-last-commit: 1.0.1
@@ -14558,7 +14561,7 @@ snapshots:
     dependencies:
       tabbable: 6.2.0
 
-  follow-redirects@1.15.11: {}
+  follow-redirects@1.16.0: {}
 
   for-each@0.3.5:
     dependencies:
@@ -14878,7 +14881,7 @@ snapshots:
       node-fetch: 2.7.0(encoding@0.1.13)
       object-hash: 3.0.0
       proto3-json-serializer: 2.0.2
-      protobufjs: 7.5.4
+      protobufjs: 8.0.1
       retry-request: 7.0.2(encoding@0.1.13)
       uuid: 9.0.1
     transitivePeerDependencies:
@@ -16988,9 +16991,9 @@ snapshots:
 
   proto3-json-serializer@2.0.2:
     dependencies:
-      protobufjs: 7.5.4
+      protobufjs: 8.0.1
 
-  protobufjs@7.5.4:
+  protobufjs@8.0.1:
     dependencies:
       '@protobufjs/aspromise': 1.1.2
       '@protobufjs/base64': 1.1.2
