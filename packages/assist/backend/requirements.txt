@@ -30,7 +30,7 @@ pycparser==2.22
 pydantic==2.8.2
 pydantic_core==2.20.1
 Pygments==2.18.0
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 python-multipart==0.0.9
 PyJWT==2.9.0
 pytoml==0.1.21
