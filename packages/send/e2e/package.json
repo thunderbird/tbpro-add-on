@@ -20,9 +20,9 @@
     "test:e2e:nightly:prod:browserstack:mobile:ios:safari": "npx browserstack-node-sdk playwright test --grep mobile-nightly --project=ios-safari --browserstack.buildName 'TB Send Nightly Tests iOS Safari' --browserstack.config 'browserstack-mobile-nightly.yml'"
   },
   "devDependencies": {
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.58.2",
     "@types/node": "*",
-    "browserstack-node-sdk": "1.49.10",
+    "browserstack-node-sdk": "^1.52.1",
     "dotenv": "^17.2.1",
     "sort-package-json": "*"
   },
