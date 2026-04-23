@@ -3,7 +3,7 @@ name: Automated Dependency Audit
 
 concurrency:
   group: audit-fix-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   schedule:
@@ -38,7 +38,11 @@ jobs:
         id: audit-fix
         run: |
           echo "Running pnpm audit --fix..."
-          pnpm audit --fix || true
+          if pnpm audit --fix; then
+            echo "audit-ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "audit-ok=false" >> "$GITHUB_OUTPUT"
+          fi
           echo "Audit fix completed"
           pnpm install --no-frozen-lockfile
           if git diff --exit-code pnpm-lock.yaml; then
@@ -46,6 +50,12 @@ jobs:
           else
             echo "audit-changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Fail if audit errored without producing fixes
+        if: always() && steps.audit-fix.outputs.audit-ok == 'false' && steps.audit-fix.outputs.audit-changed == 'false'
+        run: |
+          echo "::error::pnpm audit --fix failed AND no lockfile changes were produced — investigate."
+          exit 1
 
       - name: Bump package versions (patch)
         if: steps.audit-fix.outputs.audit-changed == 'true'
@@ -62,6 +72,42 @@ jobs:
             echo "Changes detected"
           fi
 
+      - name: Compose PR body
+        if: steps.check-changes.outputs.has-changes == 'true'
+        env:
+          AUDIT_OK: ${{ steps.audit-fix.outputs.audit-ok }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIGGER: ${{ github.event_name == 'schedule' && 'Scheduled (Weekly)' || 'Manual' }}
+        run: |
+          TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          {
+            if [[ "$AUDIT_OK" == "false" ]]; then
+              cat <<'WARN'
+          > ⚠️ **Audit errored**: `pnpm audit --fix` exited non-zero while this run still produced partial lockfile changes. Review the diff carefully — some vulnerabilities may remain unfixed, or the audit hit a transient failure.
+          >
+          > If unfixed vulns are expected (e.g., transitive, no patched version available), document them in the PR body before merging.
+
+          WARN
+            fi
+            cat <<BODY
+          ## Automated Dependency Audit
+
+          This PR was automatically created by the dependency audit workflow.
+
+          ### Changes
+          - Ran \`pnpm audit --fix\` to address security vulnerabilities
+          - Updated \`pnpm-lock.yaml\` with latest dependency resolutions
+          - Bumped patch version on all packages and manifest files (excluding assist) to trigger CI validations
+
+          ### Workflow Details
+          - **Workflow Run**: ${RUN_URL}
+          - **Triggered**: ${TRIGGER}
+          - **Date**: ${TIMESTAMP}
+
+          Please review the changes and merge if appropriate.
+          BODY
+          } > /tmp/pr-body.md
+
       - name: Create Pull Request
         if: steps.check-changes.outputs.has-changes == 'true'
         uses: peter-evans/create-pull-request@v7
@@ -71,25 +117,16 @@ jobs:
           branch: automated/dependency-audit-${{ github.run_number }}
           delete-branch: true
           title: "[Automated] Fix Security Vulnerabilities"
-          body: |
-            ## Automated Dependency Audit
-
-            This PR was automatically created by the dependency audit workflow.
-
-            ### Changes
-            - Ran `pnpm audit --fix` to address security vulnerabilities
-            - Updated `pnpm-lock.yaml` with latest dependency resolutions
-            - Bumped patch version on all packages and manifest files (excluding assist) to trigger CI validations
-
-            ### Workflow Details
-            - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            - **Triggered**: ${{ github.event_name == 'schedule' && 'Scheduled (Weekly)' || 'Manual' }}
-            - **Date**: ${{ github.event.head_commit.timestamp }}
-
-            Please review the changes and merge if appropriate.
+          body-path: /tmp/pr-body.md
           labels: |
             dependencies
             security
             automated
           base: main
           assignees: ${{ github.actor }}
+
+      - name: Fail if audit returned non-zero (partial-fix PR created)
+        if: always() && steps.audit-fix.outputs.audit-ok == 'false' && steps.audit-fix.outputs.audit-changed == 'true'
+        run: |
+          echo "::error::pnpm audit --fix exited non-zero. A PR was created with partial lockfile changes, but vulnerabilities remain unfixed. Review the PR body and linked audit output."
+          exit 1

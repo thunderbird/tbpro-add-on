@@ -3,7 +3,7 @@ name: deploy-production
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   release:
@@ -33,10 +33,13 @@ jobs:
 
       - name: Download ECR tag artifact
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
-        uses: dsaltares/fetch-gh-release-asset@master
-        with:
-          version: ${{ github.event.release.id }}
-          file: ecr_tag.zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "${{ github.event.release.tag_name }}" \
+            --pattern "ecr_tag.zip" \
+            --clobber \
+            --repo "${{ github.repository }}"
 
       - name: Configure AWS credentials
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
@@ -134,10 +137,13 @@ jobs:
     steps:
       - name: Download frontend source
         if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
-        uses: dsaltares/fetch-gh-release-asset@master
-        with:
-          version: ${{ github.event.release.id }}
-          file: dist-web-prod.zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "${{ github.event.release.tag_name }}" \
+            --pattern "dist-web-prod.zip" \
+            --clobber \
+            --repo "${{ github.repository }}"
 
       - name: Configure AWS credentials
         if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
@@ -200,10 +206,13 @@ jobs:
 
       - name: Download addon XPI artifact
         if: steps.find-addon.outputs.xpi_name != ''
-        uses: dsaltares/fetch-gh-release-asset@master
-        with:
-          version: ${{ github.event.release.id }}
-          file: ${{ steps.find-addon.outputs.xpi_name }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "${{ github.event.release.tag_name }}" \
+            --pattern "${{ steps.find-addon.outputs.xpi_name }}" \
+            --clobber \
+            --repo "${{ github.repository }}"
 
       - name: Deploy addon prod to ATN via web-ext
         if: steps.find-addon.outputs.xpi_name != ''

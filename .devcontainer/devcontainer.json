@@ -20,7 +20,8 @@
     "ghcr.io/devcontainers-extra/features/lerna-npm:1": {},
     "ghcr.io/shyim/devcontainers-features/bun:0": {},
     "ghcr.io/larsnieuwenhuizen/features/jqyq:0": {},
-    "ghcr.io/devcontainers-extra/features/actionlint:1": {}
+    "ghcr.io/devcontainers-extra/features/actionlint:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "mounts": [
     // "source=/${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
