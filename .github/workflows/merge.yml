@@ -41,6 +41,7 @@ jobs:
       backend-changed: ${{ steps.check.outputs.backend-changed == 'true' || github.event.inputs.force_backend == 'true' }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed == 'true' || github.event.inputs.force_frontend == 'true' }}
+      shared-changed: ${{ steps.check.outputs.shared-changed }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
@@ -57,12 +58,14 @@ jobs:
             frontend-changed:
               - 'packages/send/frontend/**'
               # - '.github/workflows/merge.yml'
+            shared-changed:
+              - 'packages/shared/**'
             addon-changed:
               - 'packages/addon/**'
 
   backend-build-stage:
     needs: detect-changes
-    if: needs.detect-changes.outputs.backend-changed == 'true'
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
     runs-on: ubuntu-latest
     outputs:
       backend-image: ${{ steps.build-backend.outputs.backend-image }}
@@ -124,7 +127,7 @@ jobs:
 
   backend-deploy-stage-aws:
     needs: ["backend-build-stage", "detect-changes"]
-    if: needs.detect-changes.outputs.backend-changed == 'true'
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -192,7 +195,7 @@ jobs:
 
   frontend-build:
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -367,7 +370,7 @@ jobs:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
       IS_CI_AUTOMATION: yes
-    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
+    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true' || github.event.inputs.force_addon == 'true'
     environment:
       name: send-stage
     strategy:
