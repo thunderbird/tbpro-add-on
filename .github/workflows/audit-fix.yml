@@ -124,3 +124,9 @@ jobs:
             automated
           base: main
           assignees: ${{ github.actor }}
+
+      - name: Fail if audit returned non-zero (partial-fix PR created)
+        if: always() && steps.audit-fix.outputs.audit-ok == 'false' && steps.audit-fix.outputs.audit-changed == 'true'
+        run: |
+          echo "::error::pnpm audit --fix exited non-zero. A PR was created with partial lockfile changes, but vulnerabilities remain unfixed. Review the PR body and linked audit output."
+          exit 1
