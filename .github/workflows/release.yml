@@ -35,9 +35,17 @@ jobs:
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         run: |
           command -v gh >/dev/null 2>&1 || {
-            GH_VERSION="2.63.2"
-            curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" | tar -xz -C /tmp
-            install /tmp/gh_${GH_VERSION}_linux_amd64/bin/gh /usr/local/bin/gh
+            GH_VERSION="2.91.0"
+            ASSET="gh_${GH_VERSION}_linux_amd64"
+            TARBALL="${ASSET}.tar.gz"
+            BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
+            curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
+            curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
+            # Verify tarball sha256 against the official checksums file
+            ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
+            tar -xzf /tmp/${TARBALL} -C /tmp
+            install "/tmp/${ASSET}/bin/gh" /usr/local/bin/gh
+            rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
           }
           gh --version
 
@@ -148,9 +156,17 @@ jobs:
         if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
         run: |
           command -v gh >/dev/null 2>&1 || {
-            GH_VERSION="2.63.2"
-            curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" | tar -xz -C /tmp
-            install /tmp/gh_${GH_VERSION}_linux_amd64/bin/gh /usr/local/bin/gh
+            GH_VERSION="2.91.0"
+            ASSET="gh_${GH_VERSION}_linux_amd64"
+            TARBALL="${ASSET}.tar.gz"
+            BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
+            curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
+            curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
+            # Verify tarball sha256 against the official checksums file
+            ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
+            tar -xzf /tmp/${TARBALL} -C /tmp
+            install "/tmp/${ASSET}/bin/gh" /usr/local/bin/gh
+            rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
           }
           gh --version
 
@@ -226,9 +242,17 @@ jobs:
         if: steps.find-addon.outputs.xpi_name != ''
         run: |
           command -v gh >/dev/null 2>&1 || {
-            GH_VERSION="2.63.2"
-            curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" | tar -xz -C /tmp
-            install /tmp/gh_${GH_VERSION}_linux_amd64/bin/gh /usr/local/bin/gh
+            GH_VERSION="2.91.0"
+            ASSET="gh_${GH_VERSION}_linux_amd64"
+            TARBALL="${ASSET}.tar.gz"
+            BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
+            curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
+            curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
+            # Verify tarball sha256 against the official checksums file
+            ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
+            tar -xzf /tmp/${TARBALL} -C /tmp
+            install "/tmp/${ASSET}/bin/gh" /usr/local/bin/gh
+            rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
           }
           gh --version
 
