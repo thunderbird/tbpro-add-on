@@ -157,8 +157,8 @@ jobs:
 
   frontend-invalidate-prod-cdn:
     needs: ["frontend-deploy-prod-aws", "backend-deploy-prod-aws"]
-    # yamllint disable-line rule:line-length
-    if: ${{ needs.frontend-deploy-prod-aws.result == 'success' && needs.backend-deploy-prod-aws.result == 'success' && needs.frontend-deploy-prod-aws.outputs.s3_deployed == 'true' && needs.backend-deploy-prod-aws.outputs.ecs_deployed == 'true' }}
+    # yamllint disable-next-line rule:line-length
+    if: needs.frontend-deploy-prod-aws.result == 'success' && needs.backend-deploy-prod-aws.result == 'success' && needs.frontend-deploy-prod-aws.outputs.s3_deployed == 'true' && needs.backend-deploy-prod-aws.outputs.ecs_deployed == 'true'
     runs-on: ubuntu-latest
     environment:
       name: send-prod
@@ -223,9 +223,10 @@ jobs:
 
       - name: Assert ATN signing success
         if: always() && steps.find-addon.outputs.xpi_name != ''
+        env:
+          OUTCOME: ${{ steps.web-ext-sign-prod-addon.outcome }}
         run: |
-          outcome="${{ steps.web-ext-sign-prod-addon.outcome }}"
-          if [[ "$outcome" != "success" && "$outcome" != "skipped" ]]; then
-            echo "::error::ATN addon signing failed (outcome: $outcome)"
+          if [[ "$OUTCOME" != "success" && "$OUTCOME" != "skipped" ]]; then
+            echo "::error::ATN addon signing failed (outcome: $OUTCOME)"
             exit 1
           fi

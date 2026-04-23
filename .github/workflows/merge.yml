@@ -437,7 +437,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # Addon build configuration
-      - name: (Addon) Create .env file from secrets
+      - name: (Addon) Create send-frontend .env from secrets
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_STAGE }}
           SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN_STAGE }}
@@ -464,7 +464,7 @@ jobs:
           VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
           EOF
 
-      - name: (Addon) Create .env file from secrets
+      - name: (Addon) Create addon .env from secrets
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_STAGE }}
           SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN_STAGE }}
@@ -543,10 +543,11 @@ jobs:
 
       - name: Assert ATN signing success
         if: always()
+        env:
+          OUTCOME: ${{ steps.web-ext-sign-stage-addon.outcome }}
         run: |
-          outcome="${{ steps.web-ext-sign-stage-addon.outcome }}"
-          if [[ "$outcome" != "success" && "$outcome" != "skipped" ]]; then
-            echo "::error::ATN addon signing failed (outcome: $outcome)"
+          if [[ "$OUTCOME" != "success" && "$OUTCOME" != "skipped" ]]; then
+            echo "::error::ATN addon signing failed (outcome: $OUTCOME)"
             exit 1
           fi
 
@@ -564,7 +565,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # Addon build configuration
-      - name: (Addon) Create .env file from secrets
+      - name: (Addon) Create send-frontend .env from secrets
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
           SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN_PROD }}
@@ -591,7 +592,7 @@ jobs:
           VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
           EOF
 
-      - name: (Addon) Create .env file from secrets
+      - name: (Addon) Create addon .env from secrets
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
           SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN_PROD }}
