@@ -264,7 +264,7 @@ jobs:
         id: frontend-build
         env:
           BASE_URL: ${{ matrix.base_url }}
-          IS_CI_AUTOMATION: yes
+          IS_CI_AUTOMATION: "yes"
         run: |
           echo "Building for environment: ${{ matrix.env }}"
           set -x
@@ -369,7 +369,7 @@ jobs:
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
-      IS_CI_AUTOMATION: yes
+      IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true' || github.event.inputs.force_addon == 'true'
     environment:
       name: send-stage
@@ -447,7 +447,7 @@ jobs:
         env:
           BASE_URL: ${{matrix.base_url}}
           ENV: ${{ matrix.env }}
-          IS_CI_AUTOMATION: yes
+          IS_CI_AUTOMATION: "yes"
         run: |
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
