@@ -38,7 +38,7 @@ jobs:
         id: audit-fix
         run: |
           echo "Running pnpm audit --fix..."
-          pnpm audit --fix || true
+          pnpm audit --fix
           echo "Audit fix completed"
           pnpm install --no-frozen-lockfile
           if git diff --exit-code pnpm-lock.yaml; then
