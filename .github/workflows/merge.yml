@@ -317,21 +317,21 @@ jobs:
           date
 
       - name: Download frontend-archive-stage artifact
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         uses: actions/download-artifact@v4
         with:
           name: dist-web-stage
           path: frontend-source
 
       - name: Configure AWS credentials
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: eu-central-1
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
 
       - name: Deploy to stage
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         id: frontend-deploy
         run: |
           cd frontend-source
@@ -340,7 +340,7 @@ jobs:
 
   frontend-invalidate-stage-cdn:
     needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
-    if: ${{ always() && (needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true') && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
+    if: ${{ always() && (needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true') && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' && needs.detect-changes.outputs.shared-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
     runs-on: ubuntu-latest
     environment:
       name: send-stage
