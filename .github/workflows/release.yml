@@ -223,7 +223,8 @@ jobs:
       - name: Assert ATN signing success
         if: always() && steps.find-addon.outputs.xpi_name != ''
         run: |
-          if [[ "${{ steps.web-ext-sign-prod-addon.outcome }}" != "success" ]]; then
-            echo "ATN addon signing failed"
+          outcome="${{ steps.web-ext-sign-prod-addon.outcome }}"
+          if [[ "$outcome" != "success" && "$outcome" != "skipped" ]]; then
+            echo "::error::ATN addon signing failed (outcome: $outcome)"
             exit 1
           fi

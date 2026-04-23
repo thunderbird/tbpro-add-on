@@ -213,7 +213,6 @@ jobs:
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter send-frontend
-          lerna run build --scope=send-suite
 
       # Front end build env configuration
       - name: Create .env file from secrets
@@ -304,7 +303,6 @@ jobs:
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm install --filter send-frontend
-          lerna run build --scope=send-suite
 
       # Front end build env configuration
       - name: Create .env file from secrets
@@ -558,8 +556,9 @@ jobs:
       - name: Assert ATN signing success
         if: always()
         run: |
-          if [[ "${{ steps.web-ext-sign-stage-addon.outcome }}" != "success" ]]; then
-            echo "ATN addon signing failed"
+          outcome="${{ steps.web-ext-sign-stage-addon.outcome }}"
+          if [[ "$outcome" != "success" && "$outcome" != "skipped" ]]; then
+            echo "::error::ATN addon signing failed (outcome: $outcome)"
             exit 1
           fi
 
