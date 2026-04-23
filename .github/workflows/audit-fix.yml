@@ -78,8 +78,8 @@ jobs:
           AUDIT_OK: ${{ steps.audit-fix.outputs.audit-ok }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TRIGGER: ${{ github.event_name == 'schedule' && 'Scheduled (Weekly)' || 'Manual' }}
-          TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: |
+          TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
           {
             if [[ "$AUDIT_OK" == "false" ]]; then
               cat <<'WARN'

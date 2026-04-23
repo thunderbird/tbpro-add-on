@@ -39,12 +39,15 @@ jobs:
             ASSET="gh_${GH_VERSION}_linux_amd64"
             TARBALL="${ASSET}.tar.gz"
             BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
+            GH_INSTALL_DIR="${HOME}/.local/bin"
+            mkdir -p "${GH_INSTALL_DIR}"
             curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
             curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
             # Verify tarball sha256 against the official checksums file
             ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
             tar -xzf /tmp/${TARBALL} -C /tmp
-            install "/tmp/${ASSET}/bin/gh" /usr/local/bin/gh
+            install "/tmp/${ASSET}/bin/gh" "${GH_INSTALL_DIR}/gh"
+            echo "${GH_INSTALL_DIR}" >> "${GITHUB_PATH}"
             rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
           }
           gh --version
@@ -160,12 +163,15 @@ jobs:
             ASSET="gh_${GH_VERSION}_linux_amd64"
             TARBALL="${ASSET}.tar.gz"
             BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
+            GH_INSTALL_DIR="${HOME}/.local/bin"
+            mkdir -p "${GH_INSTALL_DIR}"
             curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
             curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
             # Verify tarball sha256 against the official checksums file
             ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
             tar -xzf /tmp/${TARBALL} -C /tmp
-            install "/tmp/${ASSET}/bin/gh" /usr/local/bin/gh
+            install "/tmp/${ASSET}/bin/gh" "${GH_INSTALL_DIR}/gh"
+            echo "${GH_INSTALL_DIR}" >> "${GITHUB_PATH}"
             rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
           }
           gh --version
@@ -246,12 +252,15 @@ jobs:
             ASSET="gh_${GH_VERSION}_linux_amd64"
             TARBALL="${ASSET}.tar.gz"
             BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
+            GH_INSTALL_DIR="${HOME}/.local/bin"
+            mkdir -p "${GH_INSTALL_DIR}"
             curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
             curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
             # Verify tarball sha256 against the official checksums file
             ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
             tar -xzf /tmp/${TARBALL} -C /tmp
-            install "/tmp/${ASSET}/bin/gh" /usr/local/bin/gh
+            install "/tmp/${ASSET}/bin/gh" "${GH_INSTALL_DIR}/gh"
+            echo "${GH_INSTALL_DIR}" >> "${GITHUB_PATH}"
             rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
           }
           gh --version
