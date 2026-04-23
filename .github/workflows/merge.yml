@@ -3,7 +3,7 @@ name: deploy-stage-and-create-release
 
 concurrency:
   group: deploy-stage
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:

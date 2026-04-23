@@ -3,7 +3,7 @@ name: deploy-production
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   release:
@@ -30,6 +30,16 @@ jobs:
       - name: Check out the code
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         uses: actions/checkout@v4
+
+      - name: Ensure gh CLI is present
+        if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
+        run: |
+          command -v gh >/dev/null 2>&1 || {
+            GH_VERSION="2.63.2"
+            curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" | tar -xz -C /tmp
+            install /tmp/gh_${GH_VERSION}_linux_amd64/bin/gh /usr/local/bin/gh
+          }
+          gh --version
 
       - name: Download ECR tag artifact
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
@@ -134,6 +144,16 @@ jobs:
     outputs:
       s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
     steps:
+      - name: Ensure gh CLI is present
+        if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
+        run: |
+          command -v gh >/dev/null 2>&1 || {
+            GH_VERSION="2.63.2"
+            curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" | tar -xz -C /tmp
+            install /tmp/gh_${GH_VERSION}_linux_amd64/bin/gh /usr/local/bin/gh
+          }
+          gh --version
+
       - name: Download frontend source
         if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
         env:
@@ -201,6 +221,16 @@ jobs:
       - name: Check out the code
         if: steps.find-addon.outputs.xpi_name != ''
         uses: actions/checkout@v4
+
+      - name: Ensure gh CLI is present
+        if: steps.find-addon.outputs.xpi_name != ''
+        run: |
+          command -v gh >/dev/null 2>&1 || {
+            GH_VERSION="2.63.2"
+            curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" | tar -xz -C /tmp
+            install /tmp/gh_${GH_VERSION}_linux_amd64/bin/gh /usr/local/bin/gh
+          }
+          gh --version
 
       - name: Download addon XPI artifact
         if: steps.find-addon.outputs.xpi_name != ''
