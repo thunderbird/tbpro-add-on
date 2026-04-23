@@ -41,6 +41,7 @@ jobs:
       backend-changed: ${{ steps.check.outputs.backend-changed == 'true' || github.event.inputs.force_backend == 'true' }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed == 'true' || github.event.inputs.force_frontend == 'true' }}
+      shared-changed: ${{ steps.check.outputs.shared-changed == 'true' }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
@@ -57,12 +58,14 @@ jobs:
             frontend-changed:
               - 'packages/send/frontend/**'
               # - '.github/workflows/merge.yml'
+            shared-changed:
+              - 'packages/shared/**'
             addon-changed:
               - 'packages/addon/**'
 
   backend-build-stage:
     needs: detect-changes
-    if: needs.detect-changes.outputs.backend-changed == 'true'
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
     runs-on: ubuntu-latest
     outputs:
       backend-image: ${{ steps.build-backend.outputs.backend-image }}
@@ -124,7 +127,7 @@ jobs:
 
   backend-deploy-stage-aws:
     needs: ["backend-build-stage", "detect-changes"]
-    if: needs.detect-changes.outputs.backend-changed == 'true'
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -192,7 +195,7 @@ jobs:
 
   frontend-build:
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -257,11 +260,11 @@ jobs:
           EOF
 
       - name: Build frontend assets
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         id: frontend-build
         env:
           BASE_URL: ${{ matrix.base_url }}
-          IS_CI_AUTOMATION: yes
+          IS_CI_AUTOMATION: "yes"
         run: |
           echo "Building for environment: ${{ matrix.env }}"
           set -x
@@ -279,7 +282,7 @@ jobs:
           ls -l send-suite-${{ matrix.env }}-*.xpi
 
       - name: Archive the ${{ matrix.env }} frontend build
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         id: frontend-archive-stage
         uses: actions/upload-artifact@v4
         with:
@@ -288,7 +291,7 @@ jobs:
           compression-level: 0
 
       - name: Archive the ${{ matrix.env }} XPI
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         id: xpi-archive-stage
         uses: actions/upload-artifact@v4
         with:
@@ -297,7 +300,7 @@ jobs:
 
   frontend-deploy-stage-aws:
     needs: ["frontend-build", "detect-changes"]
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
+    if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -314,21 +317,21 @@ jobs:
           date
 
       - name: Download frontend-archive-stage artifact
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         uses: actions/download-artifact@v4
         with:
           name: dist-web-stage
           path: frontend-source
 
       - name: Configure AWS credentials
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: eu-central-1
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
 
       - name: Deploy to stage
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
+        if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true'
         id: frontend-deploy
         run: |
           cd frontend-source
@@ -337,7 +340,7 @@ jobs:
 
   frontend-invalidate-stage-cdn:
     needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
-    if: ${{ always() && needs.detect-changes.outputs.frontend-changed == 'true' && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
+    if: ${{ always() && (needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true') && needs.frontend-deploy-stage-aws.result == 'success' && ((needs.detect-changes.outputs.backend-changed != 'true' && needs.detect-changes.outputs.shared-changed != 'true') || needs.backend-deploy-stage-aws.result == 'success') }}
     runs-on: ubuntu-latest
     environment:
       name: send-stage
@@ -366,8 +369,8 @@ jobs:
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
-      IS_CI_AUTOMATION: yes
-    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
+      IS_CI_AUTOMATION: "yes"
+    if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.shared-changed == 'true' || github.event.inputs.force_addon == 'true'
     environment:
       name: send-stage
     strategy:
@@ -444,7 +447,7 @@ jobs:
         env:
           BASE_URL: ${{matrix.base_url}}
           ENV: ${{ matrix.env }}
-          IS_CI_AUTOMATION: yes
+          IS_CI_AUTOMATION: "yes"
         run: |
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
