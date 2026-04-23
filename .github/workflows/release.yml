@@ -157,7 +157,7 @@ jobs:
 
   frontend-invalidate-prod-cdn:
     needs: ["frontend-deploy-prod-aws", "backend-deploy-prod-aws"]
-    if: ${{ needs.frontend-deploy-prod-aws.outputs.s3_deployed == 'true' && needs.backend-deploy-prod-aws.outputs.ecs_deployed == 'true' }}
+    if: ${{ needs.frontend-deploy-prod-aws.result == 'success' && needs.backend-deploy-prod-aws.result == 'success' && needs.frontend-deploy-prod-aws.outputs.s3_deployed == 'true' && needs.backend-deploy-prod-aws.outputs.ecs_deployed == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: send-prod
@@ -219,3 +219,11 @@ jobs:
           apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
           apiKey: ${{ secrets.ATN_API_KEY }}
           apiSecret: ${{ secrets.ATN_API_SECRET }}
+
+      - name: Assert ATN signing success
+        if: always() && steps.find-addon.outputs.xpi_name != ''
+        run: |
+          if [[ "${{ steps.web-ext-sign-prod-addon.outcome }}" != "success" ]]; then
+            echo "ATN addon signing failed"
+            exit 1
+          fi
