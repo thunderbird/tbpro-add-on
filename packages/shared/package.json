@@ -40,7 +40,7 @@
     "prettier": "^3.8.1",
     "typescript": "*",
     "typescript-eslint": "^8.58.1",
-    "vite": ">=6.4.1",
+    "vite": ">=8.0.10",
     "vitest": "*",
     "webextension-polyfill": "^0.12.0"
   },

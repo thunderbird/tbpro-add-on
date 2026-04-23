@@ -46,7 +46,7 @@
     "@sentry/cli": "^2.58.5",
     "@sentry/node": "^8.55.0",
     "@sentry/profiling-node": "^8.55.0",
-    "@trpc/server": ">=11.1.1",
+    "@trpc/server": ">=11.16.0",
     "@tweedegolf/sab-adapter-amazon-s3": "^1.0.20",
     "@tweedegolf/sab-adapter-backblaze-b2": "^1.0.7",
     "@tweedegolf/sab-adapter-local": "^1.0.9",
@@ -65,8 +65,8 @@
     "passport-openidconnect": "^0.1.2",
     "posthog-node": "^4.18.0",
     "prisma": "^5.22.0",
-    "uuid": "^11.1.0",
-    "vite": "^7.3.1",
+    "uuid": "^14.0.0",
+    "vite": "^8.0.10",
     "websocket": "npm:ws@^8.19.0",
     "zod": "^3.25.76"
   },
@@ -104,7 +104,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.58.1",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.5"
   },
   "engines": {
     "node": ">=22.11.0"
