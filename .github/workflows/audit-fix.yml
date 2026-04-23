@@ -3,7 +3,7 @@ name: Automated Dependency Audit
 
 concurrency:
   group: audit-fix-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   schedule:
@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Fail if audit errored without producing fixes
-        if: steps.audit-fix.outputs.audit-ok == 'false' && steps.audit-fix.outputs.audit-changed == 'false'
+        if: always() && steps.audit-fix.outputs.audit-ok == 'false' && steps.audit-fix.outputs.audit-changed == 'false'
         run: |
           echo "::error::pnpm audit --fix failed AND no lockfile changes were produced — investigate."
           exit 1

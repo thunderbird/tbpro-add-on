@@ -31,27 +31,6 @@ jobs:
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         uses: actions/checkout@v4
 
-      - name: Ensure gh CLI is present
-        if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
-        run: |
-          command -v gh >/dev/null 2>&1 || {
-            GH_VERSION="2.91.0"
-            ASSET="gh_${GH_VERSION}_linux_amd64"
-            TARBALL="${ASSET}.tar.gz"
-            BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
-            GH_INSTALL_DIR="${HOME}/.local/bin"
-            mkdir -p "${GH_INSTALL_DIR}"
-            curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
-            curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
-            # Verify tarball sha256 against the official checksums file
-            ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
-            tar -xzf /tmp/${TARBALL} -C /tmp
-            install "/tmp/${ASSET}/bin/gh" "${GH_INSTALL_DIR}/gh"
-            echo "${GH_INSTALL_DIR}" >> "${GITHUB_PATH}"
-            rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
-          }
-          gh --version
-
       - name: Download ECR tag artifact
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         env:
@@ -59,6 +38,7 @@ jobs:
         run: |
           gh release download "${{ github.event.release.tag_name }}" \
             --pattern "ecr_tag.zip" \
+            --clobber \
             --repo "${{ github.repository }}"
 
       - name: Configure AWS credentials
@@ -155,27 +135,6 @@ jobs:
     outputs:
       s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
     steps:
-      - name: Ensure gh CLI is present
-        if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
-        run: |
-          command -v gh >/dev/null 2>&1 || {
-            GH_VERSION="2.91.0"
-            ASSET="gh_${GH_VERSION}_linux_amd64"
-            TARBALL="${ASSET}.tar.gz"
-            BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
-            GH_INSTALL_DIR="${HOME}/.local/bin"
-            mkdir -p "${GH_INSTALL_DIR}"
-            curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
-            curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
-            # Verify tarball sha256 against the official checksums file
-            ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
-            tar -xzf /tmp/${TARBALL} -C /tmp
-            install "/tmp/${ASSET}/bin/gh" "${GH_INSTALL_DIR}/gh"
-            echo "${GH_INSTALL_DIR}" >> "${GITHUB_PATH}"
-            rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
-          }
-          gh --version
-
       - name: Download frontend source
         if: contains(github.event.release.assets.*.name, 'dist-web-prod.zip')
         env:
@@ -183,6 +142,7 @@ jobs:
         run: |
           gh release download "${{ github.event.release.tag_name }}" \
             --pattern "dist-web-prod.zip" \
+            --clobber \
             --repo "${{ github.repository }}"
 
       - name: Configure AWS credentials
@@ -244,27 +204,6 @@ jobs:
         if: steps.find-addon.outputs.xpi_name != ''
         uses: actions/checkout@v4
 
-      - name: Ensure gh CLI is present
-        if: steps.find-addon.outputs.xpi_name != ''
-        run: |
-          command -v gh >/dev/null 2>&1 || {
-            GH_VERSION="2.91.0"
-            ASSET="gh_${GH_VERSION}_linux_amd64"
-            TARBALL="${ASSET}.tar.gz"
-            BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
-            GH_INSTALL_DIR="${HOME}/.local/bin"
-            mkdir -p "${GH_INSTALL_DIR}"
-            curl -fsSL "${BASE_URL}/${TARBALL}" -o /tmp/${TARBALL}
-            curl -fsSL "${BASE_URL}/gh_${GH_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt
-            # Verify tarball sha256 against the official checksums file
-            ( cd /tmp && grep " ${TARBALL}$" gh_checksums.txt | sha256sum -c - )
-            tar -xzf /tmp/${TARBALL} -C /tmp
-            install "/tmp/${ASSET}/bin/gh" "${GH_INSTALL_DIR}/gh"
-            echo "${GH_INSTALL_DIR}" >> "${GITHUB_PATH}"
-            rm -f "/tmp/${TARBALL}" /tmp/gh_checksums.txt
-          }
-          gh --version
-
       - name: Download addon XPI artifact
         if: steps.find-addon.outputs.xpi_name != ''
         env:
@@ -272,6 +211,7 @@ jobs:
         run: |
           gh release download "${{ github.event.release.tag_name }}" \
             --pattern "${{ steps.find-addon.outputs.xpi_name }}" \
+            --clobber \
             --repo "${{ github.repository }}"
 
       - name: Deploy addon prod to ATN via web-ext
