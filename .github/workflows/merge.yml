@@ -208,12 +208,6 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Install pnpm and build package
-        id: install-pnpm-build
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-frontend
-
       # Front end build env configuration
       - name: Create .env file from secrets
         env:
@@ -246,7 +240,7 @@ jobs:
         id: frontend-build
         env:
           BASE_URL: "https://send-stage.tb.pro"
-          IS_CI_AUTOMATION: yes
+          IS_CI_AUTOMATION: "yes"
         run: |
           echo "Building for environment: stage"
           set -x
@@ -298,12 +292,6 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Install pnpm and build package
-        id: install-pnpm-build
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter send-frontend
-
       # Front end build env configuration
       - name: Create .env file from secrets
         env:
@@ -336,7 +324,7 @@ jobs:
         id: frontend-build
         env:
           BASE_URL: "https://send.tb.pro"
-          IS_CI_AUTOMATION: yes
+          IS_CI_AUTOMATION: "yes"
         run: |
           echo "Building for environment: prod"
           set -x
@@ -441,7 +429,7 @@ jobs:
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
-      IS_CI_AUTOMATION: yes
+      IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
     environment:
       name: send-stage
@@ -507,7 +495,7 @@ jobs:
         env:
           BASE_URL: "https://send-stage.tb.pro"
           ENV: "stage"
-          IS_CI_AUTOMATION: yes
+          IS_CI_AUTOMATION: "yes"
         run: |
           # install packages that addon depends on
           pnpm install --filter tbpro-shared
@@ -568,7 +556,7 @@ jobs:
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
-      IS_CI_AUTOMATION: yes
+      IS_CI_AUTOMATION: "yes"
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
     environment:
       name: send-prod
@@ -634,7 +622,7 @@ jobs:
         env:
           BASE_URL: "https://send.tb.pro"
           ENV: "prod"
-          IS_CI_AUTOMATION: yes
+          IS_CI_AUTOMATION: "yes"
         run: |
           # install packages that addon depends on
           pnpm install --filter tbpro-shared

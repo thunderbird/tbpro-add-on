@@ -157,7 +157,13 @@ jobs:
 
   frontend-invalidate-prod-cdn:
     needs: ["frontend-deploy-prod-aws", "backend-deploy-prod-aws"]
-    if: ${{ needs.frontend-deploy-prod-aws.result == 'success' && needs.backend-deploy-prod-aws.result == 'success' && needs.frontend-deploy-prod-aws.outputs.s3_deployed == 'true' && needs.backend-deploy-prod-aws.outputs.ecs_deployed == 'true' }}
+    if: |
+      ${{
+        needs.frontend-deploy-prod-aws.result == 'success' &&
+        needs.backend-deploy-prod-aws.result == 'success' &&
+        needs.frontend-deploy-prod-aws.outputs.s3_deployed == 'true' &&
+        needs.backend-deploy-prod-aws.outputs.ecs_deployed == 'true'
+      }}
     runs-on: ubuntu-latest
     environment:
       name: send-prod
