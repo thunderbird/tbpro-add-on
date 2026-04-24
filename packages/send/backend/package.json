@@ -40,8 +40,8 @@
     ]
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.996.0",
-    "@aws-sdk/s3-request-presigner": "^3.996.0",
+    "@aws-sdk/client-s3": "^3.1037.0",
+    "@aws-sdk/s3-request-presigner": "^3.1037.0",
     "@prisma/client": "^5.22.0",
     "@sentry/cli": "^2.58.5",
     "@sentry/node": "^8.55.0",
