@@ -24,6 +24,7 @@ overrides:
   browserstack-local@<=1.5.8: '>=1.5.9'
   diff@<4.0.4: '>=4.0.4'
   esbuild@<=0.24.2: '>=0.25.0'
+  fast-xml-parser@<5.7.0: '>=5.7.0'
   fast-xml-parser@>=4.0.0-beta.3 <=5.5.5: '>=5.5.6'
   fast-xml-parser@>=4.0.0-beta.3 <=5.5.6: '>=5.5.7'
   fast-xml-parser@>=4.1.3 <5.3.5: '>=5.3.5'
@@ -70,6 +71,7 @@ overrides:
   tar@<=7.5.2: '>=7.5.3'
   tar@<=7.5.9: '>=7.5.10'
   tmp@<=0.2.3: '>=0.2.4'
+  uuid@<14.0.0: '>=14.0.0'
   validator@<13.15.20: '>=13.15.20'
   validator@<13.15.22: '>=13.15.22'
   vite@<=6.4.1: 6.4.2
@@ -533,8 +535,8 @@ importers:
         specifier: ^5.22.0
         version: 5.22.0
       uuid:
-        specifier: ^11.1.0
-        version: 11.1.0
+        specifier: '>=14.0.0'
+        version: 14.0.0
       vite:
         specifier: ^8.0.9
         version: 8.0.9(@types/node@25.3.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3)
@@ -651,14 +653,14 @@ importers:
   packages/send/e2e:
     devDependencies:
       '@playwright/test':
-        specifier: 1.56.1
-        version: 1.56.1
+        specifier: 1.58.2
+        version: 1.58.2
       '@types/node':
         specifier: '*'
         version: 22.14.0
       browserstack-node-sdk:
-        specifier: 1.49.10
-        version: 1.49.10(encoding@0.1.13)
+        specifier: ^1.52.1
+        version: 1.52.2(encoding@0.1.13)
       dotenv:
         specifier: ^17.2.1
         version: 17.2.3
@@ -2494,8 +2496,8 @@ packages:
     resolution: {integrity: sha512-ROFF39F6ZrnzSUEmQQZUar0Jt4xVoP9WnDRdWwF4NNcXs3xBTLgBUDoOwW141y1jP+S8nahIbdxbFC7IShw9Iw==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
-  '@playwright/test@1.56.1':
-    resolution: {integrity: sha512-vSMYtL/zOcFpvJCW71Q/OEGQb7KYBPAdKh35WNSkaZA75JlAO8ED8UN6GUNTm3drWomcbcqRPFqQbLae8yBTdg==}
+  '@playwright/test@1.58.2':
+    resolution: {integrity: sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -4204,8 +4206,8 @@ packages:
   browserstack-local@1.5.12:
     resolution: {integrity: sha512-xrdpG4rw6Ktxa/gM8x0esnohFlw0V33bQiUX08rrHWKbnJAG57KTHGvJ4mvgc9eRL63pEKal+WuNDg3vEUz4hA==}
 
-  browserstack-node-sdk@1.49.10:
-    resolution: {integrity: sha512-nKUNJgwJvz8uC4TjnSvW3VnhTBOrA+uqvw1Hya79Ny2Jc/YZ6WtjmGl30IMZ4kZ1GrwTnGykWasUeYGWvAg5jw==}
+  browserstack-node-sdk@1.52.2:
+    resolution: {integrity: sha512-JQJcb+2hNpFcdG/g0gW26AfR5HtG9Fe6KldrvOmQOYkAvbawaJjqrt5JHrsgoeWUpW9o3gd336/rwYI3Vf4Ubg==}
     hasBin: true
 
   buffer-crc32@0.2.13:
@@ -7197,13 +7199,13 @@ packages:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
 
-  playwright-core@1.56.1:
-    resolution: {integrity: sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==}
+  playwright-core@1.58.2:
+    resolution: {integrity: sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.56.1:
-    resolution: {integrity: sha512-aFi5B0WovBHTEvpM3DzXTUaeN6eN0qWnTkKx4NQaH4Wvcmc153PdaY2UBdSYKaGYw+UyWXSVyxDUg5DoPEttjw==}
+  playwright@1.58.2:
+    resolution: {integrity: sha512-vA30H8Nvkq/cPBnNw4Q8TWz1EJyqgpuinBcHET0YVJVFldr8JDNiU9LaWAE1KqSkRYazuaBhTpB5ZzShOezQ6A==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -8419,20 +8421,8 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
-  uuid@11.1.0:
-    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
-    hasBin: true
-
-  uuid@8.0.0:
-    resolution: {integrity: sha512-jOXGuXZAWdsTH7eZLtyXMqUb9EcWMGZNbL9YcGBJl4MH4nrxHmZJhEHvyLFrkxo+28uLb/NYRcStH48fnD0Vzw==}
-    hasBin: true
-
-  uuid@8.3.2:
-    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
-    hasBin: true
-
-  uuid@9.0.1:
-    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+  uuid@14.0.0:
+    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:
@@ -8570,7 +8560,7 @@ packages:
       '@vitest/coverage-istanbul': 4.1.5
       '@vitest/coverage-v8': 4.1.5
       '@vitest/ui': 4.1.5
-      happy-dom: '>=20.8.8'
+      happy-dom: '>=20.8.9'
       jsdom: '*'
       vite: 6.4.2
     peerDependenciesMeta:
@@ -10255,7 +10245,7 @@ snapshots:
       '@types/stream-buffers': 3.0.8
       form-data: 4.0.5
       hpagent: 1.2.0
-      isomorphic-ws: 5.0.0(ws@8.19.0)
+      isomorphic-ws: 5.0.0(ws@8.20.0)
       js-yaml: 4.1.1
       jsonpath-plus: 10.3.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -10264,7 +10254,7 @@ snapshots:
       socks-proxy-agent: 8.0.5
       stream-buffers: 3.0.3
       tar-fs: 3.1.1
-      ws: 8.19.0
+      ws: 8.20.0
     transitivePeerDependencies:
       - bare-abort-controller
       - bare-buffer
@@ -10335,7 +10325,7 @@ snapshots:
       through: 2.3.8
       tinyglobby: 0.2.12
       upath: 2.0.1
-      uuid: 11.1.0
+      uuid: 14.0.0
       validate-npm-package-license: 3.0.4
       validate-npm-package-name: 6.0.2
       wide-align: 1.1.5
@@ -10987,9 +10977,9 @@ snapshots:
 
   '@pkgr/core@0.2.4': {}
 
-  '@playwright/test@1.56.1':
+  '@playwright/test@1.58.2':
     dependencies:
-      playwright: 1.56.1
+      playwright: 1.58.2
 
   '@pnpm/config.env-replace@1.1.0': {}
 
@@ -11905,7 +11895,7 @@ snapshots:
     dependencies:
       '@types/http-cache-semantics': 4.2.0
       '@types/keyv': 3.1.4
-      '@types/node': 22.14.0
+      '@types/node': 25.3.0
       '@types/responselike': 1.0.3
 
   '@types/caseless@0.12.5': {}
@@ -11989,7 +11979,7 @@ snapshots:
 
   '@types/keyv@3.1.4':
     dependencies:
-      '@types/node': 22.14.0
+      '@types/node': 25.3.0
 
   '@types/long@4.0.2': {}
 
@@ -12013,7 +12003,7 @@ snapshots:
 
   '@types/node-fetch@2.6.13':
     dependencies:
-      '@types/node': 22.14.0
+      '@types/node': 25.3.0
       form-data: 4.0.5
 
   '@types/node@22.14.0':
@@ -12067,13 +12057,13 @@ snapshots:
   '@types/request@2.48.13':
     dependencies:
       '@types/caseless': 0.12.5
-      '@types/node': 22.14.0
+      '@types/node': 25.3.0
       '@types/tough-cookie': 4.0.5
       form-data: 2.5.5
 
   '@types/responselike@1.0.3':
     dependencies:
-      '@types/node': 22.14.0
+      '@types/node': 25.3.0
 
   '@types/send@0.17.4':
     dependencies:
@@ -12097,7 +12087,7 @@ snapshots:
 
   '@types/stream-buffers@3.0.8':
     dependencies:
-      '@types/node': 22.14.0
+      '@types/node': 25.3.0
 
   '@types/superagent@8.1.9':
     dependencies:
@@ -12985,7 +12975,7 @@ snapshots:
       sax: 1.2.1
       url: 0.10.3
       util: 0.12.5
-      uuid: 8.0.0
+      uuid: 14.0.0
       xml2js: 0.6.2
 
   axios-retry@3.9.1:
@@ -13139,7 +13129,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  browserstack-node-sdk@1.49.10(encoding@0.1.13):
+  browserstack-node-sdk@1.52.2(encoding@0.1.13):
     dependencies:
       '@google-cloud/compute': 4.12.0(encoding@0.1.13)
       '@google-cloud/container': 5.19.0(encoding@0.1.13)
@@ -13183,11 +13173,11 @@ snapshots:
       stack-trace: 0.0.10
       table: 6.9.0
       update-notifier: 6.0.2
-      uuid: 8.3.2
+      uuid: 14.0.0
       windows-release: 5.1.1
       winston: 3.19.0
       winston-transport: 4.9.0
-      ws: 8.19.0
+      ws: 8.20.0
       yargs: 17.7.2
       yauzl: 2.10.0
     transitivePeerDependencies:
@@ -14449,7 +14439,7 @@ snapshots:
       https-proxy-agent: 7.0.6
       is-stream: 2.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
-      uuid: 9.0.1
+      uuid: 14.0.0
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -14685,7 +14675,7 @@ snapshots:
       proto3-json-serializer: 2.0.2
       protobufjs: 8.0.1
       retry-request: 7.0.2(encoding@0.1.13)
-      uuid: 9.0.1
+      uuid: 14.0.0
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -14701,7 +14691,7 @@ snapshots:
       google-auth-library: 9.15.1(encoding@0.1.13)
       qs: 6.15.0
       url-template: 2.0.8
-      uuid: 9.0.1
+      uuid: 14.0.0
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -15109,9 +15099,9 @@ snapshots:
 
   isexe@4.0.0: {}
 
-  isomorphic-ws@5.0.0(ws@8.19.0):
+  isomorphic-ws@5.0.0(ws@8.20.0):
     dependencies:
-      ws: 8.19.0
+      ws: 8.20.0
 
   istanbul-lib-coverage@3.2.2: {}
 
@@ -15165,7 +15155,7 @@ snapshots:
 
   jest-worker@28.1.3:
     dependencies:
-      '@types/node': 22.14.0
+      '@types/node': 25.3.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
@@ -15195,7 +15185,7 @@ snapshots:
 
   js-yaml-cloudformation-schema@1.0.0:
     dependencies:
-      js-yaml: 3.14.2
+      js-yaml: 4.1.1
 
   js-yaml-js-types@1.0.1(js-yaml@4.1.1):
     dependencies:
@@ -15437,7 +15427,7 @@ snapshots:
       tinyglobby: 0.2.12
       typescript: 5.9.3
       upath: 2.0.1
-      uuid: 11.1.0
+      uuid: 14.0.0
       validate-npm-package-license: 3.0.4
       validate-npm-package-name: 6.0.2
       wide-align: 1.1.5
@@ -16631,11 +16621,11 @@ snapshots:
     dependencies:
       find-up: 4.1.0
 
-  playwright-core@1.56.1: {}
+  playwright-core@1.58.2: {}
 
-  playwright@1.56.1:
+  playwright@1.58.2:
     dependencies:
-      playwright-core: 1.56.1
+      playwright-core: 1.58.2
     optionalDependencies:
       fsevents: 2.3.2
 
@@ -16792,7 +16782,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 22.14.0
+      '@types/node': 25.3.0
       long: 5.3.2
 
   protoc-gen-ts@0.8.7: {}
@@ -17663,7 +17653,7 @@ snapshots:
       https-proxy-agent: 5.0.1
       node-fetch: 2.7.0(encoding@0.1.13)
       stream-events: 1.0.5
-      uuid: 9.0.1
+      uuid: 14.0.0
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -18007,13 +17997,7 @@ snapshots:
 
   utils-merge@1.0.1: {}
 
-  uuid@11.1.0: {}
-
-  uuid@8.0.0: {}
-
-  uuid@8.3.2: {}
-
-  uuid@9.0.1: {}
+  uuid@14.0.0: {}
 
   v8-compile-cache-lib@3.0.1: {}
 
