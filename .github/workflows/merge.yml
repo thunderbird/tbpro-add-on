@@ -267,7 +267,6 @@ jobs:
           set -x
           # Initial setup of dependencies
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
           cd packages/send/frontend
 
@@ -447,7 +446,6 @@ jobs:
           IS_CI_AUTOMATION: yes
         run: |
           # install packages that addon depends on
-          pnpm install --filter tbpro-shared
           pnpm install --filter addon
           pnpm install --filter send-frontend
 

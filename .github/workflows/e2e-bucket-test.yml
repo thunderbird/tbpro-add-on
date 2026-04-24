@@ -27,7 +27,6 @@ jobs:
       backend-changed: ${{ steps.check.outputs.backend-changed }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
-      shared-changed: ${{ steps.check.outputs.shared-changed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,8 +41,6 @@ jobs:
               - '.github/workflows/validate.yml'
             frontend-changed:
               - 'packages/send/frontend/**'
-            shared-changed:
-              - 'packages/shared/**'
 
   end-to-end-bucket-tests:
     needs: detect-changes
@@ -63,7 +60,6 @@ jobs:
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm i --filter "send-*"
-          pnpm install --filter tbpro-shared
 
           cd packages/send
           # Setup local environment (use public login)

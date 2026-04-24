@@ -9,7 +9,6 @@ export default defineConfig({
       "packages/send",
       "packages/send/backend",
       "packages/send/frontend",
-      "packages/shared",
       "packages/addon",
     ],
   },

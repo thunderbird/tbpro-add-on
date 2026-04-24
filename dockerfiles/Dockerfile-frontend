@@ -16,7 +16,6 @@ ADD package.json \
 
 # ADD the send-frontend directory
 ADD packages/send/frontend ./packages/send/frontend
-ADD packages/shared ./packages/shared
 
 # Install dependencies 
 RUN npm install -g pnpm

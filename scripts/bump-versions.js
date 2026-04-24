@@ -5,7 +5,6 @@
 const fs = require('fs');
 
 const files = [
-    'packages/shared/package.json',
     'packages/addon/package.json',
     'packages/addon/public/manifest.json',
     'packages/send/package.json',
