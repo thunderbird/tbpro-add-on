@@ -448,14 +448,14 @@ importers:
   packages/send:
     devDependencies:
       '@types/node':
-        specifier: '*'
-        version: 22.14.0
+        specifier: ^25.6.0
+        version: 25.6.0
       dotenv:
-        specifier: ^17.2.1
-        version: 17.2.3
+        specifier: ^17.4.2
+        version: 17.4.2
       sort-package-json:
-        specifier: '*'
-        version: 2.15.1
+        specifier: ^3.6.1
+        version: 3.6.1
 
   packages/send/backend:
     dependencies:
@@ -5453,6 +5453,10 @@ packages:
 
   dotenv@17.2.3:
     resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
+    engines: {node: '>=12'}
+
+  dotenv@17.4.2:
+    resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
 
   dunder-proto@1.0.1:
@@ -12440,7 +12444,7 @@ snapshots:
       '@babel/core': 7.26.10
       '@sentry/babel-plugin-component-annotate': 5.0.0
       '@sentry/cli': 2.58.5(encoding@0.1.13)
-      dotenv: 16.6.1
+      dotenv: 16.4.7
       find-up: 5.0.0
       glob: 13.0.6
       magic-string: 0.30.8
@@ -15361,6 +15365,8 @@ snapshots:
   dotenv@16.6.1: {}
 
   dotenv@17.2.3: {}
+
+  dotenv@17.4.2: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -18605,7 +18611,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 25.6.0
+      '@types/node': 22.14.0
       long: 5.3.2
 
   protoc-gen-ts@0.8.7: {}
