@@ -66,7 +66,7 @@ const createMockUser = (id: string | undefined): UserType | null => {
 describe('validateToken (direct test)', () => {
   // Use vi.Mocked for typed mocks
   const mockApi: { call: MockedFunction<ApiConnection['call']> } = {
-    call: vi.fn(),
+    call: vi.fn() as MockedFunction<ApiConnection['call']>,
   };
 
   beforeEach(() => {
@@ -252,7 +252,7 @@ describe('validator', () => {
   let mockKeychain: Partial<Keychain>;
 
   beforeEach(() => {
-    mockApi = { call: vi.fn() };
+    mockApi = { call: vi.fn() as MockedFunction<ApiConnection['call']> };
     mockUserStore = {
       user: { id: '123', email: 'test@example.com', tier: UserTier.FREE },
       getBackup: vi.fn().mockResolvedValue('backup'),
