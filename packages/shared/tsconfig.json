@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.client.base.json",
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "outDir": "./dist",
     "baseUrl": "./",
     "allowJs": true,
