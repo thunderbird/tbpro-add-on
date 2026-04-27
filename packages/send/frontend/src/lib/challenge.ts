@@ -31,7 +31,7 @@ export async function getContainerKeyFromChallenge(
   // Step 2: convert to array buffers, as necessary.
   // Only the salt needs to be converted to an array buffer.
   // This is handled automatically by keychain.password.unwrapContentKey
-  let challengeSalt: ArrayBufferLike;
+  let challengeSalt: ArrayBuffer;
   try {
     challengeSalt = Util.base64ToArrayBuffer(challengeSaltStr);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
