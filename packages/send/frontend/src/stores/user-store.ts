@@ -3,6 +3,7 @@ import useApiStore from '@send-frontend/stores/api-store';
 import { Backup } from '@send-frontend/stores/user-store.types';
 import { UserTier, UserType } from '@send-frontend/types';
 import { defineStore } from 'pinia';
+import { reactive } from 'vue';
 
 export const EMPTY_USER: UserType = {
   id: undefined,
@@ -15,7 +16,7 @@ const useUserStore = defineStore('user', () => {
   const { api } = useApiStore();
   const storage = new Storage();
 
-  const user = { ...EMPTY_USER };
+  const user = reactive({ ...EMPTY_USER });
 
   function populateUser(userData: UserType) {
     user.id = userData.id;
