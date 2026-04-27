@@ -6,7 +6,7 @@ const ONE_GB_IN_BYTES = ONE_MB_IN_BYTES * 1000;
 
 const LIMITS = {
   // We default to free tier unless specified otherwise
-  [UserTier.FREE]: ONE_GB_IN_BYTES * 300,
+  [UserTier.FREE]: ONE_GB_IN_BYTES * 60,
   // Other tiers (only used for testing)
   [UserTier.EPHEMERAL]:
     // We set this value using an env variable so we can test easily
