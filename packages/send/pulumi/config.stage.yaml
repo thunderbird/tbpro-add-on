@@ -200,22 +200,3 @@ resources:
     #     cpu_utilization:
     #       enabled: False
     #       threshold: 80
-
-  tb:ci:AwsAutomationUser:
-    ci:
-      access_keys: {}
-      enable_legacy_access_key: True
-      # additional_policies:
-      #   - arn:aws:iam::768512802988:policy/send-suite-stage-frontend-cache-invalidation
-      enable_ecr_image_push: true
-      ecr_repositories:
-        - send
-      enable_fargate_deployments: true
-      fargate_clusters:
-        - send-suite-stage-fargate
-      fargate_task_role_arns:
-        - arn:aws:iam::768512802988:role/send-suite-stage-fargate
-      enable_full_s3_access: false
-      enable_s3_bucket_upload: true
-      s3_upload_buckets:
-        - tb-send-suite-stage-frontend
