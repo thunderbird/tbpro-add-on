@@ -106,11 +106,13 @@ export function blobStream(
 }
 
 export function arrayBufferToReadableStream(
-  buffer: ArrayBuffer
+  buffer: ArrayBuffer | ArrayBufferView
 ): ReadableStream {
   return new ReadableStream({
     start: (controller) => {
-      controller.enqueue(new Uint8Array(buffer));
+      controller.enqueue(
+        ArrayBuffer.isView(buffer) ? buffer : new Uint8Array(buffer)
+      );
       controller.close();
     },
   });

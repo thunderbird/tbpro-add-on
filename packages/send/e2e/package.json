@@ -21,10 +21,10 @@
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
-    "@types/node": "*",
-    "browserstack-node-sdk": "^1.52.1",
-    "dotenv": "^17.2.1",
-    "sort-package-json": "*"
+    "@types/node": "^25.6.0",
+    "browserstack-node-sdk": "^1.52.3",
+    "dotenv": "^17.4.2",
+    "sort-package-json": "^3.6.1"
   },
   "engines": {
     "bun": "1.1.13",
