@@ -179,9 +179,6 @@ importers:
       send-frontend:
         specifier: workspace:*
         version: file:packages/send/frontend(@trpc/server@11.16.0(typescript@5.8.3))(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.15.0)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(rollup@4.59.0)(typescript@5.8.3)
-      tbpro-shared:
-        specifier: workspace:*
-        version: file:packages/shared(typescript@5.8.3)
       ua-parser-js:
         specifier: ^1.0.40
         version: 1.0.40
@@ -432,7 +429,7 @@ importers:
         version: 1.1.0(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
       vitest:
         specifier: ^4.1.5
-        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.2.3(vitest@4.1.5))(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.4.5))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.2.3)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.4.5))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.0.21
         version: 2.2.10(typescript@5.4.5)
@@ -722,9 +719,6 @@ importers:
       pretty-bytes:
         specifier: ^6.1.1
         version: 6.1.1
-      tbpro-shared:
-        specifier: workspace:*
-        version: file:packages/shared(typescript@5.8.3)
       ua-parser-js:
         specifier: ^1.0.40
         version: 1.0.40
@@ -864,82 +858,6 @@ importers:
       vue-eslint-parser:
         specifier: ^10.4.0
         version: 10.4.0(eslint@10.2.0(jiti@1.21.7))
-
-  packages/shared:
-    dependencies:
-      '@tanstack/vue-query':
-        specifier: '*'
-        version: 5.72.1(vue@3.5.19(typescript@5.8.3))
-      dayjs:
-        specifier: '*'
-        version: 1.11.13
-      get-random-values:
-        specifier: ^3.0.0
-        version: 3.0.0
-      oidc-client-ts:
-        specifier: ^3.3.0
-        version: 3.3.0
-      pinia:
-        specifier: '*'
-        version: 2.3.1(typescript@5.8.3)(vue@3.5.19(typescript@5.8.3))
-      vue:
-        specifier: '*'
-        version: 3.5.19(typescript@5.8.3)
-    devDependencies:
-      '@eslint/js':
-        specifier: ^10.0.1
-        version: 10.0.1(eslint@10.2.0(jiti@1.21.7))
-      '@types/firefox-webext-browser':
-        specifier: ^120.0.4
-        version: 120.0.4
-      '@types/node':
-        specifier: '*'
-        version: 22.14.0
-      '@types/thunderbird-webext-browser':
-        specifier: ^127.0.0
-        version: 127.0.0
-      '@typescript-eslint/parser':
-        specifier: ^8.58.1
-        version: 8.58.1(eslint@10.2.0(jiti@1.21.7))(typescript@5.8.3)
-      '@vitejs/plugin-vue':
-        specifier: ^6.0.3
-        version: 6.0.3(vite@8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.19(typescript@5.8.3))
-      '@vitest/coverage-v8':
-        specifier: '*'
-        version: 3.1.1(vitest@4.1.5)
-      dotenv:
-        specifier: '*'
-        version: 16.4.7
-      eslint:
-        specifier: ^10.2.0
-        version: 10.2.0(jiti@1.21.7)
-      eslint-config-prettier:
-        specifier: ^10.1.8
-        version: 10.1.8(eslint@10.2.0(jiti@1.21.7))
-      eslint-plugin-vue:
-        specifier: ^10.8.0
-        version: 10.8.0(@typescript-eslint/parser@8.58.1(eslint@10.2.0(jiti@1.21.7))(typescript@5.8.3))(eslint@10.2.0(jiti@1.21.7))(vue-eslint-parser@10.4.0(eslint@10.2.0(jiti@1.21.7)))
-      globals:
-        specifier: ^17.3.0
-        version: 17.3.0
-      prettier:
-        specifier: ^3.8.1
-        version: 3.8.1
-      typescript:
-        specifier: '*'
-        version: 5.8.3
-      typescript-eslint:
-        specifier: ^8.58.1
-        version: 8.58.1(eslint@10.2.0(jiti@1.21.7))(typescript@5.8.3)
-      vite:
-        specifier: '>=8.0.9'
-        version: 8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3)
-      vitest:
-        specifier: '*'
-        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.1.1)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(vite@8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
-      webextension-polyfill:
-        specifier: ^0.12.0
-        version: 0.12.0
 
 packages:
 
@@ -6876,10 +6794,6 @@ packages:
     resolution: {integrity: sha512-t13S540ZwFOEZKLYHJwSfITugupW4uYLwuQSSXyKH/wHwZ+7FvgHE7gnNJh1YQIZ1Yd1hKSRjqeXGSUtS0r9JA==}
     engines: {node: '>=18'}
 
-  oidc-client-ts@3.5.0:
-    resolution: {integrity: sha512-l2q8l9CTCTOlbX+AnK4p3M+4CEpKpyQhle6blQkdFhm0IsBqsxm15bYaSa11G7pWdsYr6epdsRZxJpCyCRbT8A==}
-    engines: {node: '>=18'}
-
   oidc-token-hash@5.1.0:
     resolution: {integrity: sha512-y0W+X7Ppo7oZX6eovsRkuzcSM40Bicg2JEJkDJ4irIt1wsYAP5MLSNv+QAogO8xivMffw/9OvV3um1pxXgt1uA==}
     engines: {node: ^10.13.0 || >=12.0.0}
@@ -8078,9 +7992,6 @@ packages:
     resolution: {integrity: sha512-tOG/7GyXpFevhXVh8jOPJrmtRpOTsYqUIkVdVooZYJS/z8WhfQUX8RJILmeuJNinGAMSu1veBr4asSHFt5/hng==}
     engines: {node: '>=18'}
 
-  tbpro-shared@file:packages/shared:
-    resolution: {directory: packages/shared, type: directory}
-
   teeny-request@9.0.0:
     resolution: {integrity: sha512-resvxdc6Mgb7YEThw6G6bExlXKkv6+YbuzGg9xuXxSgxJF7Ozs+o8Y9+2R3sArdWdW8nOokoQb1yrpFB0pQK2g==}
     engines: {node: '>=14'}
@@ -8556,7 +8467,7 @@ packages:
       '@vitest/coverage-istanbul': 4.1.5
       '@vitest/coverage-v8': 4.1.5
       '@vitest/ui': 4.1.5
-      happy-dom: '>=20.8.8'
+      happy-dom: '>=20.8.9'
       jsdom: '*'
       vite: 6.4.2
     peerDependenciesMeta:
@@ -12398,12 +12309,6 @@ snapshots:
       vite: 8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3)
       vue: 3.5.13(typescript@5.8.3)
 
-  '@vitejs/plugin-vue@6.0.3(vite@8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.19(typescript@5.8.3))':
-    dependencies:
-      '@rolldown/pluginutils': 1.0.0-beta.53
-      vite: 8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3)
-      vue: 3.5.19(typescript@5.8.3)
-
   '@vitest/coverage-v8@3.1.1(vitest@4.1.5)':
     dependencies:
       '@ampproject/remapping': 2.3.0
@@ -12418,7 +12323,7 @@ snapshots:
       std-env: 3.9.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.1.1)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(vite@8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
+      vitest: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.1.1)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
     transitivePeerDependencies:
       - supports-color
 
@@ -16255,10 +16160,6 @@ snapshots:
     dependencies:
       jwt-decode: 4.0.0
 
-  oidc-client-ts@3.5.0:
-    dependencies:
-      jwt-decode: 4.0.0
-
   oidc-token-hash@5.1.0: {}
 
   on-finished@2.4.1:
@@ -17150,7 +17051,6 @@ snapshots:
       pinia: 2.3.1(typescript@5.8.3)(vue@3.5.19(typescript@5.8.3))
       posthog-js: 1.235.0
       pretty-bytes: 6.1.1
-      tbpro-shared: file:packages/shared(typescript@5.8.3)
       ua-parser-js: 1.0.40
       vue: 3.5.19(typescript@5.8.3)
       vue-final-modal: 4.5.5(@vueuse/core@10.11.1(vue@3.5.13(typescript@5.8.3)))(@vueuse/integrations@13.0.0(axios@1.15.0)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.13(typescript@5.8.3)))(focus-trap@7.6.4)(vue@3.5.19(typescript@5.8.3))
@@ -17627,18 +17527,6 @@ snapshots:
       minizlib: 3.1.0
       yallist: 5.0.0
 
-  tbpro-shared@file:packages/shared(typescript@5.8.3):
-    dependencies:
-      '@tanstack/vue-query': 5.72.1(vue@3.5.13(typescript@5.8.3))
-      dayjs: 1.11.13
-      get-random-values: 3.0.0
-      oidc-client-ts: 3.5.0
-      pinia: 2.3.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
-      vue: 3.5.13(typescript@5.8.3)
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - typescript
-
   teeny-request@9.0.0(encoding@0.1.13):
     dependencies:
       http-proxy-agent: 5.0.0
@@ -18063,13 +17951,13 @@ snapshots:
 
   vitest-localstorage-mock@0.0.1(vitest@4.1.5):
     dependencies:
-      vitest: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.1.1)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(vite@8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
+      vitest: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.1.1)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
 
   vitest-websocket-mock@0.4.0(vitest@4.1.5):
     dependencies:
       '@vitest/utils': 2.1.9
       mock-socket: 9.3.1
-      vitest: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.1.1)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(vite@8.0.9(@types/node@22.14.0)(esbuild@0.27.3)(jiti@1.21.7)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
+      vitest: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.1.1)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))
 
   vitest@4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.1.1)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
@@ -18133,7 +18021,7 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.2.3(vitest@4.1.5))(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.4.5))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3)):
+  vitest@4.1.5(@opentelemetry/api@1.9.0)(@types/node@22.14.0)(@vitest/coverage-v8@3.2.3)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.7.3(@types/node@22.14.0)(typescript@5.4.5))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.5
       '@vitest/mocker': 4.1.5(msw@2.7.3(@types/node@22.14.0)(typescript@5.4.5))(vite@6.4.2(@types/node@22.14.0)(jiti@1.21.7)(lightningcss@1.32.0)(terser@5.44.0)(tsx@4.19.3)(yaml@2.8.3))

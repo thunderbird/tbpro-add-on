@@ -25,7 +25,6 @@ jobs:
       backend-changed: ${{ steps.check.outputs.backend-changed }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
-      shared-changed: ${{ steps.check.outputs.shared-changed }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +39,6 @@ jobs:
               - '.github/workflows/validate.yml'
             frontend-changed:
               - 'packages/send/frontend/**'
-            shared-changed:
-              - 'packages/shared/**'
             addon-changed:
               - 'packages/addon/**'
 
@@ -120,7 +117,6 @@ jobs:
         id: install-dependencies
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
           pnpm install --filter send-backend
           lerna run db:generate --scope=send-backend
@@ -142,29 +138,6 @@ jobs:
         id: frontend-tests-and-lint
         run: |
           lerna run ci:validate --scope=send-frontend
-
-  # When the shared package code changes, run these steps
-  shared-tests:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
-    env:
-      IS_CI_AUTOMATION: "yes"
-    if: needs.detect-changes.outputs.shared-changed == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        id: install-dependencies
-        run: |
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-          pnpm install --filter tbpro-shared
-          pnpm install --filter send-backend
-
-      - name: Shared package tests and lint
-        id: shared-tests
-        run: |
-          lerna run test --scope=tbpro-shared
 
   # When the addon package code changes, run these steps
   addon-changes:
@@ -195,7 +168,6 @@ jobs:
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           # install packages that addon depends on
-          pnpm install --filter tbpro-shared
           pnpm install --filter send-frontend
           pnpm install --filter addon
 

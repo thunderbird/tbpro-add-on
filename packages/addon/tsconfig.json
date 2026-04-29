@@ -1,5 +1,5 @@
 {
-  "extends": "tbpro-shared/tsconfig.client.base.json",
+  "extends": "./tsconfig.client.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": "./",
