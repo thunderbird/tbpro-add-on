@@ -2,7 +2,6 @@
 
 import tb_pulumi
 import tb_pulumi.autoscale
-import tb_pulumi.ci
 import tb_pulumi.cloudfront
 import tb_pulumi.cloudwatch
 import tb_pulumi.fargate
@@ -74,11 +73,6 @@ monitoring = tb_pulumi.cloudwatch.CloudWatchMonitoringGroup(
     notify_emails=monitoring_opts['notify_emails'],
     config=monitoring_opts,
 )
-
-# Set up an IAM user for automation purposes
-auto_users_opts = resources.get('tb:ci:AwsAutomationUser', {})
-for user, user_opts in auto_users_opts.items():
-    tb_pulumi.ci.AwsAutomationUser(f'{project.name_prefix}-{user}', project=project, **user_opts)
 
 # Set up IAM policies and groups to grant environment-bounded access to these resources
 sap = tb_pulumi.iam.StackAccessPolicies(
