@@ -23,8 +23,8 @@
     "setup": "./scripts/setup.sh",
     "sort-package-json": "sort-package-json",
     "test": "VITE_TESTING=true vitest run --silent",
-    "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
     "test:watch": "VITE_TESTING=true vitest --watch",
+    "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
     "typecheck": "tsc --noEmit",
     "postversion": "bun run ./scripts/bump.ts"
   },
