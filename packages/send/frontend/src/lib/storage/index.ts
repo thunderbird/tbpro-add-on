@@ -1,6 +1,12 @@
 import { JwkKeyPair, StoredKey } from '@send-frontend/lib/keychain';
 import { UserType } from '@send-frontend/types';
 import LocalStorageAdapter from './LocalStorage';
+import {
+  decryptPassphrase,
+  encryptPassphrase,
+  EncryptedPassphrase,
+  getOrCreatePassphraseKey,
+} from './passphraseEncryption';
 
 export interface StorageAdapter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -9,6 +15,10 @@ export interface StorageAdapter {
   set: (k: string, v: any) => void;
   clear: () => void;
 }
+
+// Kept out of the class to avoid changing the structural type of Storage,
+// which would break test mocks that construct Keychain-shaped objects.
+const passPhraseCache = new WeakMap<Storage, string>();
 
 export class Storage {
   USER_KEY = 'lb/user';
@@ -19,6 +29,39 @@ export class Storage {
 
   constructor(Adapter = LocalStorageAdapter) {
     this.adapter = new Adapter();
+  }
+
+  /**
+   * Must be awaited before any call to getPassPhrase().
+   * Reads the stored passphrase, decrypts it if it is in the encrypted
+   * AES-GCM format, or migrates the legacy plaintext value by re-encrypting it.
+   */
+  async initializePassphrase(): Promise<void> {
+    const stored = this.adapter.get(this.PASS_PHRASE);
+    if (!stored) return;
+
+    // Legacy plaintext format: { passPhrase: "..." }
+    if (stored.passPhrase !== undefined) {
+      const plain: string = stored.passPhrase ?? '';
+      passPhraseCache.set(this, plain);
+      // Migrate to encrypted format in place
+      if (plain) {
+        await this.storePassPhrase(plain);
+      }
+      return;
+    }
+
+    // Encrypted format: { iv: [...], data: [...] }
+    if (stored.iv !== undefined && stored.data !== undefined) {
+      const key = await getOrCreatePassphraseKey();
+      if (key) {
+        const plain = await decryptPassphrase(
+          key,
+          stored as EncryptedPassphrase
+        );
+        passPhraseCache.set(this, plain);
+      }
+    }
   }
 
   async storeUser(userObj: UserType): Promise<void> {
@@ -34,12 +77,19 @@ export class Storage {
   }
 
   async storePassPhrase(passPhrase: string): Promise<void> {
-    this.adapter.set(this.PASS_PHRASE, { passPhrase });
+    const key = await getOrCreatePassphraseKey();
+    if (key) {
+      const encrypted = await encryptPassphrase(key, passPhrase);
+      this.adapter.set(this.PASS_PHRASE, encrypted);
+    } else {
+      // Fallback for environments without IndexedDB (e.g. tests)
+      this.adapter.set(this.PASS_PHRASE, { passPhrase });
+    }
+    passPhraseCache.set(this, passPhrase);
   }
 
   getPassPhrase(): string {
-    const keys = this.adapter.get(this.PASS_PHRASE);
-    return keys?.passPhrase || '';
+    return passPhraseCache.get(this) ?? '';
   }
 
   async loadKeys(): Promise<StoredKey> {
@@ -55,6 +105,7 @@ export class Storage {
   }
 
   async clear(): Promise<void> {
+    passPhraseCache.delete(this);
     return this.adapter.clear();
   }
 
