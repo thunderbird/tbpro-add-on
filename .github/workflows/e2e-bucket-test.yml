@@ -155,22 +155,21 @@ jobs:
           echo "VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}" >> .env
           echo "VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL }}" >> .env
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
+      - name: Restore Playwright browsers cache
+        uses: actions/cache/restore@v4
         id: playwright-cache
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
           key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
-          save-always: true
 
-      - name: Cache apt packages for Playwright
-        uses: actions/cache@v4
+      - name: Restore apt packages cache
+        uses: actions/cache/restore@v4
+        id: apt-cache
         with:
           path: /var/cache/apt/archives
           key: apt-playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
           restore-keys: |
             apt-playwright-${{ runner.os }}-
-          save-always: true
 
       - name: Install Playwright system dependencies
         shell: bash
@@ -192,6 +191,20 @@ jobs:
           cp .env packages/send/e2e
           mv .env packages/send/e2e/tests/desktop/dev/
           lerna run test:e2e:ci --scope=send-suite-e2e
+
+      - name: Save Playwright browsers cache
+        if: always() && steps.playwright-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
+
+      - name: Save apt packages cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ steps.apt-cache.outputs.cache-primary-key }}
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
