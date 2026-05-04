@@ -8,3 +8,6 @@ services:
   frontend:
     image: ${FRONTEND_IMAGE}
     pull_policy: always
+    environment:
+      - VITE_OIDC_CLIENT_ID=${VITE_OIDC_CLIENT_ID}
+      - VITE_OIDC_ROOT_URL=${VITE_OIDC_ROOT_URL}
