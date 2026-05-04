@@ -264,36 +264,65 @@ export const uploadWithTracker = ({
   progressTracker,
 }: UploadOptions) => {
   const { setProgress } = progressTracker;
+  const HTTP_RETRY_LIMIT = 2;
+  const HTTP_RETRY_DELAY_MS = 1000;
+  const XHR_TIMEOUT_MS = 30000;
 
-  // Track upload progress using XMLHttpRequest
-  return new Promise<string>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url, true);
-    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+  const attemptPut = (
+    blob: Blob,
+    attempt: number
+  ): Promise<string> => {
+    // Reset progress on retry so the UI gets a clean signal
+    // rather than silently jumping backwards
+    if (attempt > 0) {
+      setProgress(0);
+    }
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        // For multipart uploads, the progress tracker will handle the proper calculation
-        const uploadProgress = event.loaded;
-        setProgress(uploadProgress);
+    return new Promise<string>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url, true);
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      xhr.timeout = XHR_TIMEOUT_MS;
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          // For multipart uploads, the progress tracker will handle the proper calculation
+          const uploadProgress = event.loaded;
+          setProgress(uploadProgress);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(xhr.response);
+        } else {
+          console.error('Upload failed:');
+          reject(new Error('UPLOAD_FAILED'));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('XHR: UPLOAD_FAILED'));
+      xhr.ontimeout = () =>
+        reject(new Error('Upload timed out after 30s'));
+
+      xhr.send(blob);
+    }).catch((error) => {
+      if (attempt < HTTP_RETRY_LIMIT) {
+        console.warn(
+          `HTTP PUT attempt ${attempt + 1} failed, retrying...`,
+          error.message
+        );
+        return new Promise<string>((resolve) =>
+          setTimeout(resolve, HTTP_RETRY_DELAY_MS)
+        ).then(() => attemptPut(blob, attempt + 1));
       }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(xhr.response);
-      } else {
-        console.error('Upload failed:');
-        reject(new Error('UPLOAD_FAILED'));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('XHR: UPLOAD_FAILED'));
-
-    // Convert ReadableStream to Blob and send
-    new Response(readableStream).blob().then((uploadBlob) => {
-      xhr.send(uploadBlob);
+      throw error;
     });
+  };
+
+  // Convert ReadableStream to Blob and send with HTTP-level retries
+  return new Response(readableStream).blob().then((uploadBlob) => {
+    return attemptPut(uploadBlob, 0);
   });
 };
 
