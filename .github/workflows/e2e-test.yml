@@ -145,6 +145,14 @@ jobs:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
           key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
 
+      - name: Cache apt packages for Playwright
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
+          restore-keys: |
+            apt-playwright-${{ runner.os }}-
+
       - name: Install Playwright system dependencies
         run: pnpm --filter send-suite-e2e exec playwright install-deps
 
