@@ -8,8 +8,9 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # browser binaries are installed under the original HOME so we pin that path now.
 export PLAYWRIGHT_BROWSERS_PATH="${HOME}/.cache/ms-playwright"
 
-# In CI, playwright install is handled by workflow steps with caching.
-if [ "$IS_CI_AUTOMATION" != "yes" ]; then
+# In GHA CI, playwright install is handled by dedicated workflow steps with caching.
+# Locally (devcontainer or bare machine), always install so browsers are available.
+if [ "$IS_CI_AUTOMATION" != "yes" ] || [ "$GITHUB_ACTIONS" != "true" ]; then
   echo "Installing browser dependencies..."
   cd "$REPO_ROOT/packages/send"
   pnpm exec playwright install --with-deps
