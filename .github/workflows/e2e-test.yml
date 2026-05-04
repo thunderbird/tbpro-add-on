@@ -146,11 +146,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
 
       - name: Install Playwright system dependencies
-        run: cd packages/send && pnpm exec playwright install-deps
+        run: pnpm --filter send-suite-e2e exec playwright install-deps
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: cd packages/send && pnpm exec playwright install
+        run: pnpm --filter send-suite-e2e exec playwright install
 
       - name: Run stack and test
         id: run-stack-and-test
