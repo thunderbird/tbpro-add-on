@@ -155,7 +155,11 @@ jobs:
             apt-playwright-${{ runner.os }}-
 
       - name: Install Playwright system dependencies
-        run: pnpm --filter send-suite-e2e exec playwright install-deps
+        run: |
+          # docker-clean deletes .deb files from /var/cache/apt/archives after dpkg runs,
+          # which would leave our apt cache empty. Remove it so downloads persist for caching.
+          rm -f /etc/apt/apt.conf.d/docker-clean
+          pnpm --filter send-suite-e2e exec playwright install-deps
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
