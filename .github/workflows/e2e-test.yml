@@ -109,6 +109,7 @@ jobs:
       BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-fs
       FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-fs
       PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-fs
+      PLAYWRIGHT_BROWSERS_PATH: /github/home/.cache/ms-playwright
     steps:
       - uses: actions/checkout@v4
 
@@ -136,6 +137,20 @@ jobs:
           cd packages/send/frontend
           echo "VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}" >> .env
           echo "VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL }}" >> .env
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
+
+      - name: Install Playwright system dependencies
+        run: cd packages/send && pnpm exec playwright install-deps
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: cd packages/send && pnpm exec playwright install
 
       - name: Run stack and test
         id: run-stack-and-test
