@@ -1,0 +1,10 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    pull_policy: always
+  reverse-proxy:
+    image: ${PROXY_IMAGE}
+    pull_policy: always
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    pull_policy: always

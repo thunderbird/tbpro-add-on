@@ -31,7 +31,17 @@ if [ "$IS_CI_AUTOMATION" = "yes" ]; then
     DOCKER_HOST="localhost"
   fi
 
-  BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
+  if [ "$GITHUB_ACTIONS" = "true" ]; then
+    # In GHA, images are pre-built and pushed to GHCR by docker/build-push-action steps.
+    # compose.ci.prebuilt.yml overrides image: and pull_policy: always for each service.
+    docker compose -f "$REPO_ROOT/compose.ci.yml" -f "$REPO_ROOT/compose.ci.prebuilt.yml" up -d || {
+      echo "ERROR: docker compose up failed"
+      docker compose -f "$REPO_ROOT/compose.ci.yml" logs
+      exit 1
+    }
+  else
+    BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
+  fi
 else
   pnpm dev:detach
   DOCKER_HOST="localhost"
