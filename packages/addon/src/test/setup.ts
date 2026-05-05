@@ -29,14 +29,6 @@ vi.mock('send-frontend/src/logger', () => ({
   },
 }));
 
-vi.mock('tbpro-shared', () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
 // Mock environment variables
 Object.defineProperty(import.meta, 'env', {
   value: {

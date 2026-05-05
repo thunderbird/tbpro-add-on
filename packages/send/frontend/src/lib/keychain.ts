@@ -21,7 +21,7 @@ import { Ref } from 'vue';
 import { ApiConnection } from './api';
 
 const SALT_LENGTH = 128;
-let crypto: Crypto | typeof nodeCrypto = nodeCrypto;
+let crypto: Crypto = nodeCrypto as unknown as Crypto;
 
 try {
   crypto = window.crypto;
@@ -505,8 +505,10 @@ export class Keychain {
 }
 
 export class Util {
-  static generateSalt(size = 16): Uint8Array {
-    const salt = getRandomValues(new Uint8Array(size));
+  static generateSalt(size = 16): Uint8Array<ArrayBuffer> {
+    const salt = getRandomValues(
+      new Uint8Array(size)
+    ) as Uint8Array<ArrayBuffer>;
 
     return salt;
   }
@@ -527,13 +529,13 @@ export class Util {
     return btoa(encodeURIComponent(byteString));
   }
 
-  static base64ToArrayBuffer(base64: string): ArrayBufferLike {
+  static base64ToArrayBuffer(base64: string): ArrayBuffer {
     const byteString = decodeURIComponent(atob(base64));
     const byteArray = new Uint8Array(byteString.length);
     for (let i = 0; i < byteString.length; i++) {
       byteArray[i] = byteString.charCodeAt(i);
     }
-    return byteArray.buffer;
+    return byteArray.buffer as ArrayBuffer;
   }
 }
 

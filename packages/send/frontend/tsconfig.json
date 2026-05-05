@@ -1,8 +1,9 @@
 {
-  "extends": "tbpro-shared/tsconfig.client.base.json",
+  "extends": "./tsconfig.client.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "..",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
     "paths": {
       "@send-frontend/*": ["./src/*"],

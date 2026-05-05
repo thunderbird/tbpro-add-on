@@ -11,6 +11,7 @@ import '@thunderbirdops/services-ui/style.css';
 import LoadingComponent from '@send-frontend/apps/common/LoadingComponent.vue';
 import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
 import DownloadModal from '@send-frontend/apps/common/modals/DownloadModal.vue';
+import SendIconBlack from '@send-frontend/apps/common/SendIconBlack.vue';
 import BreadCrumb from '@send-frontend/apps/send/components/BreadCrumb.vue';
 import { default as Btn } from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import FolderTableRowCell from '@send-frontend/apps/send/elements/FolderTableRowCell.vue';
@@ -180,6 +181,15 @@ function handleFileClick(id: number) {
   folderStore.setSelectedFile(id);
 }
 
+const isDev = import.meta.env.DEV;
+
+const isEmpty = computed(() => {
+  return (
+    !folderStore.visibleFolders?.length &&
+    !folderStore.rootFolder?.items?.length
+  );
+});
+
 function handleFolderClick(uuid: string) {
   if (selectedFolder.value === uuid) {
     // router.push({ name: 'folder', params: { id: uuid } });
@@ -192,8 +202,8 @@ function handleFolderClick(uuid: string) {
 </script>
 
 <template>
-  <div class="w-full flex flex-col gap-3">
-    <h2>Your Files</h2>
+  <div class="w-full flex flex-col gap-3 wrapper">
+    <h2 class="title">Your Files</h2>
     <span
       v-if="folderStore.rootFolder?.items.length"
       data-testid="file-count"
@@ -204,7 +214,7 @@ function handleFolderClick(uuid: string) {
     <span v-else data-testid="empty-folder" style="display: none"
       >This is an empty folder</span
     >
-    <BreadCrumb />
+    <BreadCrumb v-if="isDev" />
     <div
       v-if="isRouterLoading || folderQuery.isLoading.value"
       class="inset-0 bg-white/80 z-50 flex items-center justify-center"
@@ -221,7 +231,18 @@ function handleFolderClick(uuid: string) {
       </button>
     </div>
     <div v-else>
+      <div
+        v-if="isEmpty"
+        class="border border-blue-400 rounded-lg flex flex-col items-center justify-center py-16 gap-2 bg-white"
+      >
+        <div class="rounded-full border-2 border-gray-500 p-3">
+          <SendIconBlack class="w-8 h-8 text-gray-500" />
+        </div>
+        <p class="font-semibold text-gray-700 mt-1">No files</p>
+        <p class="text-sm text-gray-500">Uploaded files will appear here.</p>
+      </div>
       <table
+        v-else
         class="w-full border-separate border-spacing-x-0 border-spacing-y-1"
       >
         <thead>
@@ -352,3 +373,10 @@ function handleFolderClick(uuid: string) {
     </div>
   </div>
 </template>
+
+<style scoped>
+@import '@send-frontend/apps/common/tbpro-styles.css';
+.wrapper {
+  min-width: calc(80vw - 16rem);
+}
+</style>

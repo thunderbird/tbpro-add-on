@@ -111,7 +111,7 @@ class ECETransformer {
       rs?: number;
       length?: number;
     } = {};
-    header.salt = buffer.buffer.slice(0, KEY_LENGTH);
+    header.salt = buffer.buffer.slice(0, KEY_LENGTH) as ArrayBuffer;
     header.rs = buffer.readUIntBE(KEY_LENGTH, 4);
     const idlen = buffer.readUInt8(KEY_LENGTH + 4);
     header.length = idlen + KEY_LENGTH + 5;

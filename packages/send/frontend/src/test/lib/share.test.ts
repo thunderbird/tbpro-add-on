@@ -15,24 +15,26 @@ const defaultUser: UserType = {
 };
 
 vi.mock('@send-frontend/lib/keychain', () => {
-  const Keychain = vi.fn(() => ({
-    newKeyForContainer: vi.fn(),
-    store: vi.fn(),
-    get: vi.fn().mockImplementation(() => 'abc123xyz'),
-    container: {
-      wrapContentKey: vi.fn().mockImplementation(() => `ghi789rst`),
-      unwrapContentKey: vi.fn().mockImplementation(() => `def456uvw`),
-    },
-    password: {
-      wrapContainerKey: vi.fn().mockImplementation(() => `ghi789rst`),
-      wrapContentKey: vi.fn().mockImplementation(() => `def456uvw`),
-    },
-    challenge: {
-      generateKey: vi.fn().mockImplementation(() => `ghi789rst`),
-      createChallenge: vi.fn().mockImplementation(() => `def456uvw`),
-      encryptChallenge: vi.fn().mockImplementation(() => `jkl123opq`),
-    },
-  }));
+  const Keychain = vi.fn(function () {
+    return {
+      newKeyForContainer: vi.fn(),
+      store: vi.fn(),
+      get: vi.fn().mockImplementation(() => 'abc123xyz'),
+      container: {
+        wrapContentKey: vi.fn().mockImplementation(() => `ghi789rst`),
+        unwrapContentKey: vi.fn().mockImplementation(() => `def456uvw`),
+      },
+      password: {
+        wrapContainerKey: vi.fn().mockImplementation(() => `ghi789rst`),
+        wrapContentKey: vi.fn().mockImplementation(() => `def456uvw`),
+      },
+      challenge: {
+        generateKey: vi.fn().mockImplementation(() => `ghi789rst`),
+        createChallenge: vi.fn().mockImplementation(() => `def456uvw`),
+        encryptChallenge: vi.fn().mockImplementation(() => `jkl123opq`),
+      },
+    };
+  });
 
   const Util = {
     generateSalt: vi.fn(),

@@ -3,11 +3,10 @@
 Welcome to the TB Pro Addon monorepo! It is meant to house all the projects that are combined to create the tbpro addon.
 The packages inside this monorepo are:
 
-- `tbpro-shared`: Shared code and utilities used across the Thunderbird Send js apps.
 - `send-suite`: The main package that contains the Thunderbird Send webapp and extension. It contains the dependencies to test the webapp using playwright and the backend using vitest.
 - `send-frontend`: The frontend code for the Thunderbird Send webapp. It is a Vite app that uses Vite as a build tool.
 - `send-backend`: The backend code for the Thunderbird Send webapp. It is a Node.js app that uses Express as a web server and postgres as a database.
-- `addon`: The Thunderbird Send extension code. This puts everything together and outputs a single xpi (addon package). It depends on `send-frontend` and `tbpro-shared` to build.
+- `addon`: The Thunderbird Send extension code. This puts everything together and outputs a single xpi (addon package). It depends on `send-frontend` to build.
 
 This includes the Thunderbird Send webapp, the Thunderbird Send extension, and the shared code between them.
 This monorepo is managed using [Lerna](https://lerna.js.org/) and [pnpm](https://pnpm.io/).
@@ -182,30 +181,3 @@ For example, If I want to run e2e tests on send, I can run
 
 ### Packages
 
-#### tbpro-shared
-
-The `tbpro-shared` package contains shared code and utilities used across the Thunderbird Send add-on. This package is designed to be used as a dependency by other packages in the monorepo.
-
-**Key Features:**
-
-- Shared TypeScript types and interfaces
-- Common utilities and helper functions
-- Shared configuration and constants
-
-**Main Commands:**
-
-- `pnpm build` - Builds the package and generates TypeScript definitions
-- `pnpm test` - Runs the test suite
-- `pnpm test:watch` - Runs tests in watch mode for development
-- `pnpm test-debug` - Runs tests in debug mode
-
-**Usage:**
-To use this package in other packages within the monorepo, add it as a dependency in your package.json:
-
-```json
-{
-  "dependencies": {
-    "tbpro-shared": "workspace:*"
-  }
-}
-```

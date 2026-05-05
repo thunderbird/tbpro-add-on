@@ -11,9 +11,11 @@ import { useUploadAndShare } from '@send-frontend/apps/send/composables/useUploa
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 
 import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
+import WithLoader from '@send-frontend/apps/common/WithLoader.vue';
+import PromptPopupLogin from '@send-frontend/apps/send/views/PromptLogin.vue';
+import { useAuth } from '@send-frontend/lib/auth';
 import {
   ALL_UPLOADS_ABORTED,
-  FIFTEEN_MINUTES,
   FILE_LIST,
   MAX_FILE_SIZE,
   POPUP_READY,
@@ -25,11 +27,6 @@ import useApiStore from '@send-frontend/stores/api-store';
 import { useQuery } from '@tanstack/vue-query';
 import UploadPage from '../pages/UploadPage.vue';
 import { useStatusStore } from '../stores/status-store';
-import { useAuth } from '@send-frontend/lib/auth';
-import WithLoader from '@send-frontend/apps/common/WithLoader.vue';
-import PromptPopupLogin from '@send-frontend/apps/send/views/PromptLogin.vue';
-import { useAuthStore } from '@send-frontend/stores';
-import { useSendConfig } from '@send-frontend/composables/useSendConfig';
 
 interface FileItem {
   id: number;
@@ -67,8 +64,6 @@ async function handleUploadAndShare(
 const { error: uploadBlockedDuetoSize } = useQuery({
   queryKey: ['can-upload'],
   queryFn: canUploadQuery,
-  retry: false,
-  staleTime: FIFTEEN_MINUTES,
 });
 
 const { data: isConfigured, refetch } = useQuery({
