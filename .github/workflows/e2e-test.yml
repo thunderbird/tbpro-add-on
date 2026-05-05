@@ -110,8 +110,6 @@ jobs:
       FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-fs
       PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-fs
       PLAYWRIGHT_BROWSERS_PATH: /github/home/.cache/ms-playwright
-      VITE_OIDC_CLIENT_ID: ${{ secrets.VITE_OIDC_CLIENT_ID }}
-      VITE_OIDC_ROOT_URL: ${{ secrets.VITE_OIDC_ROOT_URL }}
     steps:
       - uses: actions/checkout@v4
 
