@@ -46,5 +46,6 @@ ONBUILD RUN echo "Don't add runtime user"
 FROM runtime_${BUILD_ENV}
 ENV CI=true
 
-# Run the development server (deps are baked in at build time)
-CMD ["sh", "-c", "pnpm --filter send-frontend run dev"]
+# pnpm install is a no-op when deps are baked in, but required locally where compose.yml
+# volume-mounts the host tree over /app and overwrites the image's node_modules.
+CMD ["sh", "-c", "pnpm install && pnpm --filter send-frontend run dev"]
