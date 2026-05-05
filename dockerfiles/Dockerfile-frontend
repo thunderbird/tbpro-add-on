@@ -6,16 +6,14 @@ FROM node:22.14.0 AS base
 
 WORKDIR /app
 
-# Copy dependency manifests + packages/shared source (its postinstall runs `tsc`
-# and needs the source tree). packages/send/frontend source is deferred until after
-# install so frontend-only changes don't bust the dep layer cache.
+# Copy dependency manifests first; defer frontend source until after install so
+# source-only changes don't bust the pnpm install layer cache.
 ADD package.json \
     pnpm-lock.yaml \
     pnpm-workspace.yaml \
     nx.json \
     lerna.json \
     ./
-ADD packages/shared ./packages/shared
 ADD packages/send/frontend/package.json ./packages/send/frontend/package.json
 
 # Install dependencies
