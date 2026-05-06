@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import DownloadIcon from './DownloadIcon.vue';
 import DownloadIconBlue from './DownloadIconBlue.vue';
 import ProButton from './ProButton.vue';
 
 const handleDownloadTB = () => {
   window.open(
-    'https://www.thunderbird.net/thunderbird/all/?utm_campaign=main&utm_medium=tb_pro&utm_source=thundermail_dashboard&utm_content=banner_top',
+    'https://addons.thunderbird.net/en-US/thunderbird/addon/pro/?src=ext-send-dashboard',
     '_blank',
     'noopener,noreferrer'
   );
@@ -14,13 +13,13 @@ const handleDownloadTB = () => {
 <template>
   <div class="bg card-shadow">
     <p class="text">
-      To use Send, you must enable it in Thunderbird Desktop. Download the app
-      and sign in to Thunderbird Pro from the Thunderbird menu.
+      To use Send in Thunderbird Desktop, install the Thunderbird Pro add-on and
+      sign in from the Thunderbird menu.
     </p>
     <div class="buttonwrapper">
       <ProButton class="button" type="secondary" @click="handleDownloadTB">
         <DownloadIconBlue />
-        Download</ProButton
+        Get add-on</ProButton
       >
     </div>
     <img
