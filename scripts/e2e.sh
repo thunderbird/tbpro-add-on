@@ -8,11 +8,14 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # browser binaries are installed under the original HOME so we pin that path now.
 export PLAYWRIGHT_BROWSERS_PATH="${HOME}/.cache/ms-playwright"
 
-# Install browsers and system dependencies (--with-deps installs both in one step)
-echo "Installing browser dependencies..."
-cd "$REPO_ROOT/packages/send"
-pnpm exec playwright install --with-deps
-cd "$REPO_ROOT"
+# In GHA CI, playwright install is handled by dedicated workflow steps with caching.
+# Locally (devcontainer or bare machine), always install so browsers are available.
+if [ "$IS_CI_AUTOMATION" != "yes" ] || [ "$GITHUB_ACTIONS" != "true" ]; then
+  echo "Installing browser dependencies..."
+  cd "$REPO_ROOT/packages/send"
+  pnpm exec playwright install --with-deps
+  cd "$REPO_ROOT"
+fi
 
 pwd
 
@@ -31,7 +34,17 @@ if [ "$IS_CI_AUTOMATION" = "yes" ]; then
     DOCKER_HOST="localhost"
   fi
 
-  BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
+  if [ "$GITHUB_ACTIONS" = "true" ]; then
+    # In GHA, images are pre-built and pushed to GHCR by docker/build-push-action steps.
+    # compose.ci.prebuilt.yml overrides image: and pull_policy: always for each service.
+    docker compose -f "$REPO_ROOT/compose.ci.yml" -f "$REPO_ROOT/compose.ci.prebuilt.yml" up -d || {
+      echo "ERROR: docker compose up failed"
+      docker compose -f "$REPO_ROOT/compose.ci.yml" logs
+      exit 1
+    }
+  else
+    BUILD_ENV=production docker compose -f "$REPO_ROOT/compose.ci.yml" up -d --build
+  fi
 else
   pnpm dev:detach
   DOCKER_HOST="localhost"

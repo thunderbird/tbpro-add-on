@@ -7,32 +7,34 @@ FROM node:22.14.0 AS base
 # Update packages
 RUN apt update -y && apt upgrade -y
 
-# Add project source
 WORKDIR /app
+
+# Copy only dependency manifests first so the install layer is only
+# invalidated when deps change, not when source changes.
 ADD package.json \
     tsconfig.json \
     ./
 
-ADD prisma ./prisma
-ADD public ./public
-ADD scripts ./scripts
-ADD src ./src
-ADD vitest.integration.config.js ./
-
-# build prodction
+# build production — lockfile copied here via ONBUILD, then install runs
 FROM base AS build_lockfile_production
 ONBUILD RUN echo "Add pnpm-lock.yaml"
 ONBUILD ADD pnpm-lock.yaml ./
 
-# build development
+# build development — no lockfile (resolved at workspace root)
 FROM base AS build_lockfile_development
-# We don't copy the lockfile during development 
-# because we resolve our dependencies at the root
 ONBUILD RUN echo "Don't add pnpm-lock.yaml"
 
 FROM build_lockfile_${BUILD_ENV} AS build_app
 RUN npm install -g pnpm
+# prisma must be present before install: prisma's postinstall runs `prisma generate`
+ADD prisma ./prisma
 RUN pnpm install --no-frozen-lockfile
+
+# Remaining source copied AFTER install so source changes don't bust the dep layer cache.
+ADD public ./public
+ADD scripts ./scripts
+ADD src ./src
+ADD vitest.integration.config.js ./
 
 # runtime production
 FROM build_app AS runtime_production

@@ -41,14 +41,75 @@ jobs:
               - '.github/workflows/validate.yml'
             frontend-changed:
               - 'packages/send/frontend/**'
-  end-to-end-tests:
+            shared-changed:
+              - 'packages/shared/**'
+  build-e2e-images:
     needs: detect-changes
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    env:
+      # -fs suffix distinguishes tags from the bucket-test workflow which uses -b2
+      BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-fs
+      FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-fs
+      PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-fs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./packages/send/backend
+          file: ./packages/send/backend/Dockerfile
+          build-args: BUILD_ENV=production
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}
+          cache-from: type=gha,scope=e2e-backend-fs
+          cache-to: type=gha,mode=max,scope=e2e-backend-fs
+
+      - name: Build reverse-proxy image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./packages/send/backend/tls-dev-proxy
+          push: true
+          tags: ${{ env.PROXY_IMAGE }}
+          cache-from: type=gha,scope=e2e-reverse-proxy-fs
+          cache-to: type=gha,mode=max,scope=e2e-reverse-proxy-fs
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./
+          file: ./dockerfiles/Dockerfile-frontend
+          build-args: BUILD_ENV=production
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}
+          cache-from: type=gha,scope=e2e-frontend-fs
+          cache-to: type=gha,mode=max,scope=e2e-frontend-fs
+
+  end-to-end-tests:
+    needs: [detect-changes, build-e2e-images]
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+      options: --shm-size=2gb --security-opt seccomp=unconfined
     env:
       IS_CI_AUTOMATION: "yes"
+      BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-fs
+      FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-fs
+      PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-fs
+      PLAYWRIGHT_BROWSERS_PATH: /github/home/.cache/ms-playwright
     steps:
       - uses: actions/checkout@v4
 
@@ -76,6 +137,33 @@ jobs:
           echo "VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}" >> .env
           echo "VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL }}" >> .env
 
+      - name: Restore Playwright browsers cache
+        uses: actions/cache/restore@v4
+        id: playwright-cache
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
+
+      - name: Restore apt packages cache
+        uses: actions/cache/restore@v4
+        id: apt-cache
+        with:
+          path: /var/cache/apt/archives
+          key: apt-playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
+          restore-keys: |
+            apt-playwright-${{ runner.os }}-
+
+      - name: Install Playwright system dependencies
+        run: |
+          # docker-clean deletes .deb files from /var/cache/apt/archives after dpkg runs,
+          # which would leave our apt cache empty. Remove it so downloads persist for caching.
+          rm -f /etc/apt/apt.conf.d/docker-clean
+          pnpm --filter send-suite-e2e exec playwright install-deps
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter send-suite-e2e exec playwright install
+
       - name: Run stack and test
         id: run-stack-and-test
         timeout-minutes: 10
@@ -83,9 +171,22 @@ jobs:
           # Create .env file with secrets (for end to end run only)# Create .env file with secrets
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
-          mv .env packages/send/e2e        
-          lerna run build-image:backend --scope=send-suite
+          mv .env packages/send/e2e
           lerna run test:e2e:ci --scope=send-suite-e2e
+
+      - name: Save Playwright browsers cache
+        if: always() && steps.playwright-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
+
+      - name: Save apt packages cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ steps.apt-cache.outputs.cache-primary-key }}
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

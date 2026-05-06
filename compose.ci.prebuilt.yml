@@ -1,0 +1,15 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    pull_policy: always
+  reverse-proxy:
+    image: ${PROXY_IMAGE}
+    pull_policy: always
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    pull_policy: always
+    env_file:
+      - ./packages/send/frontend/.env
+    # Deps are baked into the prebuilt image; skip the pnpm install that the default CMD runs
+    # (that install is only needed locally where compose.yml mounts the host tree over /app).
+    command: ["sh", "-c", "pnpm --filter send-frontend run dev"]
