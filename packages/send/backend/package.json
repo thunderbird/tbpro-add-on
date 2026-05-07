@@ -7,8 +7,9 @@
   "author": "Thunderbird",
   "main": "index.js",
   "scripts": {
-    "bootstrap": "pnpm i --filter send-backend && pnpm db:generate",
+    "bootstrap": "pnpm i --filter send-backend && pnpm db:generate && pnpm build:image",
     "build": "pnpm exec tsc && tsc-alias && pnpm sentry:sourcemaps",
+    "build:image": "./scripts/build.sh",
     "ci:validate": "pnpm run lint:all; pnpm run test",
     "db:browse": "prisma studio",
     "db:generate": "prisma generate",
