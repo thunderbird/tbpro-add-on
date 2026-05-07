@@ -17,7 +17,7 @@ ADD package.json \
 ADD packages/send/frontend/package.json ./packages/send/frontend/package.json
 
 # Install dependencies
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10
 RUN pnpm install
 
 # Copy frontend source after install
