@@ -25,10 +25,10 @@ FROM base AS build_lockfile_development
 ONBUILD RUN echo "Don't add pnpm-lock.yaml"
 
 FROM build_lockfile_${BUILD_ENV} AS build_app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.15.1
 # prisma must be present before install: prisma's postinstall runs `prisma generate`
 ADD prisma ./prisma
-RUN pnpm install --no-frozen-lockfile
+RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile --config.inject-workspace-packages=true; else pnpm install --no-frozen-lockfile; fi
 
 # Remaining source copied AFTER install so source changes don't bust the dep layer cache.
 ADD public ./public
