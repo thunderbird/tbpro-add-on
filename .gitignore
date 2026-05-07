@@ -44,8 +44,6 @@ lerna-debug.log*
 # Monorepo
 /builds
 .nx/cache
-# Package-level lockfiles are generated at build time from the monorepo root lockfile
-packages/**/pnpm-lock.yaml
 # This helps the cache to build faster, we'll disable it until we can test it properly on CI
 .nx/workspace-data
 
