@@ -65,11 +65,22 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare backend build context
+        run: |
+          rsync -a \
+            --exclude=node_modules \
+            --exclude=.docker-build \
+            --exclude=.pnpm-store \
+            packages/send/backend/ \
+            packages/send/backend/.docker-build/
+          cp pnpm-lock.yaml packages/send/backend/.docker-build/
+          echo "node_modules/" > packages/send/backend/.docker-build/.dockerignore
+
       - name: Build backend image
         uses: docker/build-push-action@v6
         with:
-          context: ./packages/send/backend
-          file: ./packages/send/backend/Dockerfile
+          context: ./packages/send/backend/.docker-build
+          file: ./packages/send/backend/.docker-build/Dockerfile
           build-args: BUILD_ENV=production
           push: true
           tags: ${{ env.BACKEND_IMAGE }}
