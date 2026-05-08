@@ -17,6 +17,7 @@ rsync -a \
   --exclude='.pnpm-store' \
   --exclude='dist' \
   --exclude='build' \
+  --exclude='src/test' \
   "$SCRIPT_DIR/../" \
   "$CONTEXT_DIR/"
 
