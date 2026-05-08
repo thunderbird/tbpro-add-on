@@ -28,6 +28,7 @@ import useMetricsStore from '@send-frontend/stores/metrics';
 import { storeToRefs } from 'pinia';
 
 import NotFoundPage from '../common/NotFoundPage.vue';
+import DeleteDataPage from './pages/DeleteDataPage.vue';
 import AddonAuthPage from './AddonAuthPage.vue';
 import ExtensionPage from './ExtensionPage.vue';
 import LoginPage from './LoginPage.vue';
@@ -55,6 +56,7 @@ enum META_OPTIONS {
   resolveDefaultFolder = 'resolveDefaultFolder',
   isAvailableForExtension = 'isAvailableForExtension',
   requiresExtensionLogin = 'requiresExtensionLogin',
+  requiresAdminPrivileges = 'requiresAdminPrivileges',
 }
 
 export const routes: RouteRecordRaw[] = [
@@ -186,6 +188,20 @@ export const routes: RouteRecordRaw[] = [
     component: ForceClose,
   },
 
+  {
+    path: '/admin',
+    meta: {
+      [META_OPTIONS.requiresAdminPrivileges]: true,
+      [META_OPTIONS.requiresValidToken]: true,
+    },
+    children: [
+      {
+        path: 'delete-data',
+        component: DeleteDataPage,
+      },
+    ],
+  },
+
   /* 
   TESTING ONLY
   These routes are only available in development mode and are used to render the extension.
@@ -251,6 +267,10 @@ router.beforeEach(async (to, from, next) => {
     to,
     META_OPTIONS.requiresRetryCountCheck
   );
+  const requiresAdminPrivileges = matchMeta(
+    to,
+    META_OPTIONS.requiresAdminPrivileges
+  );
 
   const hasLocalStorageSession = validateLocalStorageSession(userStore);
 
@@ -260,6 +280,14 @@ router.beforeEach(async (to, from, next) => {
       metrics.capture('send.invalid.token');
       return next('/login');
     }
+  }
+
+  // If the route requires admin privileges, we check if the user is an admin before allowing access to the route
+  if (requiresAdminPrivileges) {
+    const adminStatus = await api.call('users/is-admin');
+    if (adminStatus?.isAdmin) {
+      return next();
+    } else return next('/404');
   }
 
   // Check addon login state if running in extension context

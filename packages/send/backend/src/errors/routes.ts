@@ -220,6 +220,10 @@ export const USER_ERRORS = {
     statusCode: 500,
     message: 'Could not create user.',
   },
+  USER_NOT_DELETED: {
+    statusCode: 500,
+    message: 'Could not delete user data.',
+  },
   USER_NOT_FOUND: {
     statusCode: 404,
     message: 'Could not find user.',

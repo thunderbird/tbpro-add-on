@@ -32,6 +32,7 @@ model User {
   shares              Share[]      @relation("Sender")
   uploads             Upload[]
   isFTUEComplete      Boolean      @default(false)
+  isAdmin             Boolean      @default(false)
 }
 
 model Profile {

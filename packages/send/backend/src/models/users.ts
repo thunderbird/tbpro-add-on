@@ -485,3 +485,41 @@ export const getFTUEStatus = async (userId: string) => {
 
   return user?.isFTUEComplete;
 };
+
+export async function getAdminStatus(id: string) {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { isAdmin: true },
+  });
+
+  return user?.isAdmin;
+}
+
+export async function getAllUsers() {
+  return prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+    },
+  });
+}
+
+export async function deleteUser(id: string) {
+  return prisma.$transaction(async (tx) => {
+    // 1. Remove memberships the user holds in other users' groups
+    await tx.membership.deleteMany({ where: { userId: id } });
+
+    // 2. Remove invitations where the user is the recipient
+    await tx.invitation.deleteMany({ where: { recipientId: id } });
+
+    // 3. Delete containers owned by the user.
+    //    Cascade: items → (upload refs dropped), shares → invitations sent by user, access links
+    await tx.container.deleteMany({ where: { ownerId: id } });
+
+    // 4. Delete uploads owned by the user
+    await tx.upload.deleteMany({ where: { ownerId: id } });
+
+    // 5. Delete the user record itself (cascade: profile)
+    return tx.user.delete({ where: { id } });
+  });
+}
