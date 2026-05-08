@@ -109,7 +109,7 @@ jobs:
           ECR_TAG: "${{ steps.login-ecr.outputs.registry }}/${{ vars.PROJECT }}:${{ github.sha }}"
         run: |
           # Build a docker container and push it to ECR so that it can be deployed to ECS.
-          docker build -t "$ECR_TAG" ./packages/send/backend/build
+          docker build -t "$ECR_TAG" ./packages/send/backend/.docker-build
           docker push "$ECR_TAG"
           echo "backend-image=$ECR_TAG" >> "$GITHUB_OUTPUT"
           echo -n "$ECR_TAG" > ecr_tag.txt
