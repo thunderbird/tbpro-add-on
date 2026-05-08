@@ -25,10 +25,16 @@ FROM base AS build_lockfile_development
 ONBUILD RUN echo "Don't add pnpm-lock.yaml"
 
 FROM build_lockfile_${BUILD_ENV} AS build_app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10
+# Create workspace config to allow build scripts (pnpm 9+ security requirement).
+# Without this, pnpm blocks postinstall scripts for prisma, sentry, etc.
+RUN printf 'packages:\n  - "."\nonlyBuiltDependencies:\n  - "@prisma/client"\n  - "@prisma/engines"\n  - "@scarf/scarf"\n  - "@sentry/cli"\n  - "@sentry/profiling-node"\n  - prisma\n' > pnpm-workspace.yaml
 # prisma must be present before install: prisma's postinstall runs `prisma generate`
 ADD prisma ./prisma
-RUN pnpm install --no-frozen-lockfile
+# Use --no-lockfile: the pnpm-lock.yaml (whether from pnpm deploy or the workspace root)
+# contains workspace-qualified peer-dep specs that pnpm cannot resolve in a
+# standalone container context. Install from package.json alone.
+RUN pnpm install --no-lockfile
 
 # Remaining source copied AFTER install so source changes don't bust the dep layer cache.
 ADD public ./public
