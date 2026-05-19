@@ -25,10 +25,12 @@ import {
   getUserPublicKey,
   setBackup,
   updateUserPublicKey,
+  deleteUser,
+  getAllUsers,
 } from '../models/users';
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
-import { requireJWT } from '../middleware';
+import { requireAdminPermisions, requireJWT } from '../middleware';
 
 const router: Router = Router();
 
@@ -636,10 +638,137 @@ router.get(
   })
 );
 
+/**
+ * @swagger
+ * /api/users/ftue:
+ *   get:
+ *     tags: [Users]
+ *     summary: Get FTUE status
+ *     description: Returns whether the first-time user experience has been completed for the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: FTUE status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isFTUEComplete:
+ *                   type: boolean
+ */
 router.get('/ftue', requireJWT, async (req: Request, res) => {
   const { id } = getDataFromAuthenticatedRequest(req);
   const isFTUEComplete = await getFTUEStatus(id);
   res.status(200).json({ isFTUEComplete });
 });
+
+/**
+ * @swagger
+ * /api/users/is-admin:
+ *   get:
+ *     tags: [Users]
+ *     summary: Check if user is admin
+ *     description: Returns whether the authenticated user has admin permissions
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isAdmin:
+ *                   type: boolean
+ */
+router.get('/is-admin', requireJWT, async (req: Request, res) => {
+  const { id } = getDataFromAuthenticatedRequest(req);
+  const user = await getUserById(id);
+  res.status(200).json({ isAdmin: user?.isAdmin ?? false });
+});
+
+/* ADMIN ONLY ROUTES */
+
+/**
+ * @swagger
+ * /api/users/all-users:
+ *   get:
+ *     tags: [Users]
+ *     summary: Get all users (admin only)
+ *     description: Retrieves all users except the currently authenticated admin user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       403:
+ *         description: Forbidden - admin permissions required
+ */
+router.get(
+  '/all-users',
+  requireJWT,
+  requireAdminPermisions,
+  async (req, res) => {
+    const { id } = getDataFromAuthenticatedRequest(req);
+    const users = await getAllUsers();
+    const allUsersExceptCurrent = users.filter((user) => user.id !== id);
+    return res.status(200).json(allUsersExceptCurrent);
+  }
+);
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   delete:
+ *     tags: [Users]
+ *     summary: Delete a user (admin only)
+ *     description: Permanently deletes a user by ID. Admins cannot delete their own account.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user to delete
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *       400:
+ *         description: Cannot delete your own user
+ *       403:
+ *         description: Forbidden - admin permissions required
+ *       404:
+ *         description: User not found or deletion failed
+ */
+router.delete(
+  '/:id',
+  requireJWT,
+  requireAdminPermisions,
+  addErrorHandling(USER_ERRORS.USER_NOT_DELETED),
+  wrapAsyncHandler(async (req, res) => {
+    const { id } = getDataFromAuthenticatedRequest(req);
+    // make sure we don't delete our own user by accident
+    if (id === req.params.id) {
+      return res.status(400).json({
+        message: 'You cannot delete your own user.',
+      });
+    }
+
+    await deleteUser(req.params.id);
+
+    return res.status(200).json({ message: 'User data deleted successfully.' });
+  })
+);
 
 export default router;

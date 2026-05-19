@@ -7,7 +7,7 @@ import { extractBearerToken, validateOIDCToken } from './auth/oidc';
 import { VERSION } from './config';
 import { getUsedStorage } from './models';
 import { fromPrismaV2 } from './models/prisma-helper';
-import { getUserByOIDCSubject } from './models/users';
+import { getAdminStatus, getUserByOIDCSubject } from './models/users';
 import {
   allPermissions,
   hasAdmin,
@@ -383,4 +383,18 @@ export async function checkStorageLimit(
   }
 
   return next();
+}
+
+export async function requireAdminPermisions(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const { id } = getDataFromAuthenticatedRequest(req);
+
+  const adminStatus = await getAdminStatus(id);
+  if (!adminStatus) {
+    return reject(res);
+  }
+  next();
 }

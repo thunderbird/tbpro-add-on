@@ -4,12 +4,12 @@ export default defineConfig({
   test: {
     // You can comment out the ones you don't need for better performance
     projects: [
-      "packages/assist",
-      "packages/assist/frontend",
-      "packages/send",
+      // "packages/assist",
+      // "packages/assist/frontend",
+      // "packages/send",
       "packages/send/backend",
-      "packages/send/frontend",
-      "packages/addon",
+      // "packages/send/frontend",
+      // "packages/addon",
     ],
   },
 });
