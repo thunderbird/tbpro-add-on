@@ -7,6 +7,8 @@ packages:
   - packages/send/e2e
   - packages/addon
 
+injectWorkspacePackages: true
+
 overrides:
   '@tootallnate/once@<3.0.1': '>=3.0.1'
   axios@>=1.0.0 <1.15.1: '>=1.15.1'
