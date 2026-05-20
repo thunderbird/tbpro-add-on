@@ -28,7 +28,18 @@ async function init(
   }
 
   await folderStore.sync();
-  if (!folderStore?.defaultFolder) {
+  const defaultFolder = folderStore?.defaultFolder;
+  const defaultFolderKeyIsMissing =
+    defaultFolder && !keychain.keys[defaultFolder.id];
+
+  if (defaultFolderKeyIsMissing) {
+    console.warn(
+      `Default folder ${defaultFolder.id} exists but has no key. Deleting orphaned container and recreating.`
+    );
+    await folderStore.deleteFolder(defaultFolder.id);
+  }
+
+  if (!defaultFolder || defaultFolderKeyIsMissing) {
     const createFolderResp = await folderStore.createFolder();
     if (!createFolderResp?.id) {
       return INIT_ERRORS.COULD_NOT_CREATE_DEFAULT_FOLDER;

@@ -199,11 +199,24 @@ const useFolderStore = defineStore('folderManager', () => {
 
     if (containerResponse?.container) {
       const { container } = containerResponse;
-      folders.value = [...folders.value, container];
-      await keychain.newKeyForContainer(container.id);
-      await backupKeys(keychain, api, msg);
-      await keychain.store();
-      return container;
+      try {
+        await keychain.newKeyForContainer(container.id);
+        await backupKeys(keychain, api, msg);
+        await keychain.store();
+        folders.value = [...folders.value, container];
+        return container;
+      } catch (error) {
+        console.error(
+          `Failed to set up key for container ${container.id}, rolling back`,
+          error
+        );
+        try {
+          await api.call(`containers/${container.id}`, {}, 'DELETE');
+        } catch (deleteError) {
+          console.error('Failed to roll back container creation', deleteError);
+        }
+        return null;
+      }
     }
     return null;
   }
