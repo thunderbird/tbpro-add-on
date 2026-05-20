@@ -2,6 +2,7 @@ import useFolderStore, {
   FolderStore,
 } from '@send-frontend/apps/send/stores/folder-store';
 import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { INIT_ERRORS } from '@send-frontend/apps/send/const';
 import init from '@send-frontend/lib/init';
 import { UserStoreType } from '@send-frontend/stores/user-store';
 import { Canceler, JsonResponse } from '@send-frontend/types';
@@ -244,7 +245,12 @@ export async function dbUserSetup(
   // - loading user from storage
   // - loading keychain from storage
   // - creating the default folder
-  await init(userStore, keychain, folderStore);
+  const initResult = await init(userStore, keychain, folderStore);
+  if (initResult !== INIT_ERRORS.NONE) {
+    console.error(
+      `User setup incomplete — init() returned error: ${Object.keys(INIT_ERRORS)[initResult]}`
+    );
+  }
 }
 
 /* This function is a short hand to get the meta records from the route */
@@ -268,10 +274,7 @@ export const uploadWithTracker = ({
   const HTTP_RETRY_DELAY_MS = 1000;
   const XHR_TIMEOUT_MS = 30000;
 
-  const attemptPut = (
-    blob: Blob,
-    attempt: number
-  ): Promise<string> => {
+  const attemptPut = (blob: Blob, attempt: number): Promise<string> => {
     // Reset progress on retry so the UI gets a clean signal
     // rather than silently jumping backwards
     if (attempt > 0) {
@@ -302,8 +305,7 @@ export const uploadWithTracker = ({
       };
 
       xhr.onerror = () => reject(new Error('XHR: UPLOAD_FAILED'));
-      xhr.ontimeout = () =>
-        reject(new Error('Upload timed out after 30s'));
+      xhr.ontimeout = () => reject(new Error('Upload timed out after 30s'));
 
       xhr.send(blob);
     }).catch((error) => {
