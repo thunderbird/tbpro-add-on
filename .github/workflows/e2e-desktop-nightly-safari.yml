@@ -1,14 +1,14 @@
-# Run the nightly E2E tests on desktop browsers on prod using BrowserStack; prod uses Backblaze for backend storage
-name: nightly-tests-mobile
+# Run the nightly E2E tests on desktop browser on prod using BrowserStack; prod uses Backblaze for backend storage
+name: nightly-tests-desktop-safari
 
 concurrency:
-  group: nightly-tests-mobile
+  group: e2e-desktop-nightly-safari
   cancel-in-progress: true
 
 on:
   schedule:
-    # run every day at 2:30am UTC (9:30 PM EST)
-    - cron:  '30 2 * * *'
+    # run every day at 2:20am UTC
+    - cron:  '20 2 * * *'
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -17,8 +17,8 @@ permissions:
   contents: read    # This is required for actions/checkout
 
 jobs:
-  nightly-prod-mobile-e2e:
-    name: nightly-prod-mobile-e2e
+  desktop-nightly-safari:
+    name: prod-desktop-nightly-safari
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -42,20 +42,12 @@ jobs:
           username:  ${{ secrets.BROWSERSTACK_USERNAME }}
           access-key: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
           project-name: 'Thunderbird Send'
-          build-name: 'TB Send Nightly E2E Tests (Desktop): BUILD_INFO'
+          build-name: 'TB Send Nightly E2E Tests (Desktop Safari): BUILD_INFO'
 
-      - name: Prod E2E Tests on Android Chrome
+      - name: Prod E2E Tests on Desktop Safari Webkit
         # don't send GHA failure email if any of the E2E tests fail, can be annoying (check the jobs each day in BrowserStack)
         continue-on-error: true
         run: |
           cd ./packages/send/e2e
           cp .env.prod.sample .env
-          npm run test:e2e:nightly:prod:browserstack:mobile:android:chrome
-
-      - name: Prod E2E Tests on iOS Safari
-        # don't send GHA failure email if any of the E2E tests fail, can be annoying (check the jobs each day in BrowserStack)
-        continue-on-error: true
-        run: |
-          cd ./packages/send/e2e
-          cp .env.prod.sample .env
-          npm run test:e2e:nightly:prod:browserstack:mobile:ios:safari
+          npm run test:e2e:nightly:prod:browserstack:desktop:safari

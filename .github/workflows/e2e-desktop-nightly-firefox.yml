@@ -1,13 +1,13 @@
-# Run the nightly E2E tests on desktop browsers on prod using BrowserStack; prod uses Backblaze for backend storage
-name: nightly-tests-desktop
+# Run the nightly E2E tests on desktop browser on prod using BrowserStack; prod uses Backblaze for backend storage
+name: nightly-tests-desktop-firefox
 
 concurrency:
-  group: nightly-tests-desktop
+  group: e2e-desktop-nightly-firefox
   cancel-in-progress: true
 
 on:
   schedule:
-    # run every day at 2am UTC (9PM EST)
+    # run every day at 2am UTC
     - cron:  '0 2 * * *'
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -17,8 +17,8 @@ permissions:
   contents: read    # This is required for actions/checkout
 
 jobs:
-  nightly-prod-desktop-e2e:
-    name: nightly-prod-desktop-e2e
+  desktop-nightly-firefox:
+    name: prod-desktop-nightly-firefox
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
@@ -42,7 +42,7 @@ jobs:
           username:  ${{ secrets.BROWSERSTACK_USERNAME }}
           access-key: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
           project-name: 'Thunderbird Send'
-          build-name: 'TB Send Nightly E2E Tests (Desktop): BUILD_INFO'
+          build-name: 'TB Send Nightly E2E Tests (Desktop Firefox): BUILD_INFO'
 
       - name: Prod E2E Tests on Desktop Firefox
         # don't send GHA failure email if any of the E2E tests fail, can be annoying (check the jobs each day in BrowserStack)
@@ -51,19 +51,3 @@ jobs:
           cd ./packages/send/e2e
           cp .env.prod.sample .env
           npm run test:e2e:nightly:prod:browserstack:desktop:firefox
-
-      - name: Prod E2E Tests on Desktop Safari Webkit
-        # don't send GHA failure email if any of the E2E tests fail, can be annoying (check the jobs each day in BrowserStack)
-        continue-on-error: true
-        run: |
-          cd ./packages/send/e2e
-          cp .env.prod.sample .env
-          npm run test:e2e:nightly:prod:browserstack:desktop:safari
-
-      - name: Prod E2E Tests on Desktop Chromium
-        # don't send GHA failure email if any of the E2E tests fail, can be annoying (check the jobs each day in BrowserStack)
-        continue-on-error: true
-        run: |
-          cd ./packages/send/e2e
-          cp .env.prod.sample .env
-          npm run test:e2e:nightly:prod:browserstack:desktop:chromium

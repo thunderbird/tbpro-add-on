@@ -218,13 +218,13 @@ If you pushed to a branch or PR and the resulting Github pull request E2E test j
     - Open the ZIP file, expand it, and open the `index.html` file in your browser
 
 ### Nightly E2E Tests CI Job Failing
-If you notice an email from Github actions indicating that the Nightly E2E Tests job failed, you can:
+If you notice an email from Github actions indicating that one of the Nightly E2E Tests job failed, you can:
 
-- Open the failing Github nightly-tests action job:
+- Open the failing Github e2e nightly action job:
     - Click on the `View workflow run` link in the email - or -
     - Go into the Github repo, and
         - Choose `Actions` at the top
-        - On the list of Actions on the left side choose `nightly-e2e-tests-desktop`
+        - On the list of Actions on the left side choose the failing action i.e. `e2e-desktop-nightly-chrome`
         - In the corresponding list of completed nightly test action jobs, click on the failing one
     - Then click on the failed E2E test step to open the console view
     - In the console view, expand the E2E tests job and read the test failure details
