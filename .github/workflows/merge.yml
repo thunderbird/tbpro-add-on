@@ -474,6 +474,33 @@ jobs:
           path: ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
           compression-level: 0 # <-- don't zip!
 
+      - name: Build system-add-on XPI for prod
+        if: matrix.env == 'prod'
+        id: system-addon-build
+        run: |
+          PROD_XPI="${{ steps.addon-frontend-build.outputs.xpi_filename }}"
+          VERSION_SUFFIX=$(echo "$PROD_XPI" | cut -d'-' -f4-)
+          SYSTEM_XPI="tbpro-system-add-on-prod-${VERSION_SUFFIX}"
+
+          # Extract, swap the ID in manifest.json, repack
+          mkdir -p /tmp/system-addon-unpack
+          unzip "packages/addon/$PROD_XPI" -d /tmp/system-addon-unpack
+          sed -i 's/"id": "tbpro-add-on@thunderbird.net"/"id": "tbpro-system-add-on@thunderbird.net"/g' /tmp/system-addon-unpack/manifest.json
+          cd /tmp/system-addon-unpack
+          zip -r "$GITHUB_WORKSPACE/packages/addon/$SYSTEM_XPI" .
+
+          echo "system_xpi_filename=$SYSTEM_XPI" >> "$GITHUB_OUTPUT"
+          echo "system_xpi_file_path=packages/addon/$SYSTEM_XPI" >> "$GITHUB_OUTPUT"
+
+      - name: Archive the system-add-on XPI
+        if: matrix.env == 'prod'
+        id: xpi-archive-system-addon
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-add-on-prod
+          path: ${{ steps.system-addon-build.outputs.system_xpi_file_path }}
+          compression-level: 0 # <-- don't zip!
+
       - name: Deploy addon stage to ATN via web-ext
         if: matrix.env == 'stage'
         continue-on-error: true
