@@ -28,6 +28,7 @@ jobs:
     env:
       TBPRO_USERNAME: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_USERNAME }}
       TBPRO_PASSWORD: ${{ secrets.E2E_NIGHTLY_PROD_TBPRO_PASSWORD }}
+      TB_SEND_ENCRYPTION_KEY_CODE: ${{ secrets.E2E_NIGHTLY_PROD_TB_SEND_ENCRYPTION_KEY_CODE }}
     steps:
       - uses: actions/checkout@v4
 
