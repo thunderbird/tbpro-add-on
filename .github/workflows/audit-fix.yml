@@ -45,8 +45,8 @@ jobs:
           echo "Running pnpm audit --fix=override..."
           pnpm audit --fix=override || true
           echo "Audit fix completed"
-          pnpm install --no-frozen-lockfile
-          if git diff --quiet -- package.json packages pnpm-lock.yaml pnpm-workspace.yaml; then
+          pnpm install --frozen-lockfile
+          if git diff --exit-code pnpm-lock.yaml; then
             echo "audit-changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "audit-changed=true" >> "$GITHUB_OUTPUT"
