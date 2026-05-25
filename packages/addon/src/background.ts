@@ -40,6 +40,7 @@ import {
   menuLoggedIn,
   menuLogout,
 } from './menu';
+import { checkAndUninstallIfDeprecated } from './selfUninstall';
 
 // Initialize the shared Pinia instance that will be used by both
 // background and extension contexts
@@ -743,6 +744,7 @@ function initAccountHubListener() {
 }
 
 (async function main() {
+  await checkAndUninstallIfDeprecated();
   initMenu();
   initCloudFile();
   initStorageWatcher();
