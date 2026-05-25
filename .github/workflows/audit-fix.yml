@@ -40,7 +40,7 @@ jobs:
           echo "Running pnpm audit --fix..."
           pnpm audit --fix || true
           echo "Audit fix completed"
-          pnpm install --no-frozen-lockfile
+          pnpm install
           if git diff --exit-code pnpm-lock.yaml; then
             echo "audit-changed=false" >> "$GITHUB_OUTPUT"
           else
