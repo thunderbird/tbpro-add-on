@@ -92,7 +92,7 @@ The same nightly E2E tests suite can also be run on your local machine's browser
 
 When the nightly E2E tests run they run against the TB Send production environment and therefore you need an existing TB Acocunts / TB Send test account already setup that the tests will use for sign-in.
 
-**Also the nigthly tests assume that the production test account already has TB Send setup (i.e. already signed in at least once before and encryption keys are already setup). When you sign into TB Send you should see the Profile screen with your Send Storage displayed (and no active prompt to create or restore the encrytion keys).**
+**Also the nigthly tests assume that the production test account already has TB Send setup (i.e. already signed in at least once before and encryption key code already created). When you sign into TB Send you should see the main dashboard profile screen, NOT the initial create encryprtion keys screen that apepars the very first time you sign into TB Send with a new account.**
 
 ### Running the nightly prod E2E tests on Firefox on your local machine
 
@@ -109,6 +109,7 @@ cp packages/send/e2e/.env.prod.sample packages/send/e2e/.env
 ```sh
 TBPRO_USERNAME=<tb-pro-username>
 TBPRO_PASSWORD=<associated-password>
+TB_SEND_ENCRYPTION_KEY_CODE=<associated-tb-send-encryption-key>
 ```
 
 3. Then from the root folder run:

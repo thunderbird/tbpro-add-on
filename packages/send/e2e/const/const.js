@@ -8,6 +8,8 @@ export const TB_SEND_TARGET_ENV = String(process.env.TB_SEND_TARGET_ENV);
 export const TB_SEND_BASE_URL = String(process.env.TB_SEND_BASE_URL);
 export const TB_ACCTS_EMAIL = String(process.env.TBPRO_USERNAME);
 export const TB_ACCTS_PWORD = String(process.env.TBPRO_PASSWORD);
+export const TB_SEND_ENCRYPTION_KEY_CODE = String(process.env.TB_SEND_ENCRYPTION_KEY_CODE);
+export const TB_SEND_SECURITY_AND_PRIVACY_URL = String(`${process.env.TB_SEND_BASE_URL}send/security-and-privacy`);
 
 // timeout values
 export const TIMEOUT_1_SECOND = 1_000;
