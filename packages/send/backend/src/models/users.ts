@@ -420,7 +420,14 @@ export async function findOrCreateUserByOIDC({
   const userFromPrisma = await getUserByOIDCSubject(oidcSubject);
 
   if (userFromPrisma) {
-    if (!userFromPrisma.thundermailEmail || !userFromPrisma.name) {
+    const thundermailEmailChanged =
+      thundermailEmail && thundermailEmail !== userFromPrisma.thundermailEmail;
+
+    if (
+      !userFromPrisma.thundermailEmail ||
+      !userFromPrisma.name ||
+      thundermailEmailChanged
+    ) {
       if (!userFromPrisma.name && name) {
         await prisma.user.update({
           where: { id: userFromPrisma.id },
@@ -428,8 +435,11 @@ export async function findOrCreateUserByOIDC({
         });
       }
 
-      // Update entry with thundermailEmail if it's missing
-      if (!userFromPrisma?.thundermailEmail && thundermailEmail) {
+      // Update entry with thundermailEmail if it's missing or has changed
+      if (
+        thundermailEmail &&
+        (!userFromPrisma.thundermailEmail || thundermailEmailChanged)
+      ) {
         await prisma.user.update({
           where: { id: userFromPrisma.id },
           data: { thundermailEmail },
