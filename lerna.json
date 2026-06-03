@@ -2,8 +2,6 @@
   "$schema": "node_modules/lerna/schemas/lerna-schema.json",
   "version": "independent",
   "packages": [
-    "packages/assist",
-    "packages/assist/frontend",
     "packages/send",
     "packages/send/backend",
     "packages/send/frontend",

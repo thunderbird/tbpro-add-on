@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Bumps the patch version of all packages and manifests (excluding assist).
+// Bumps the patch version of all packages and manifests
 'use strict';
 
 const fs = require('fs');
