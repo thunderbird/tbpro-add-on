@@ -15,7 +15,7 @@ import './style.css';
 // dependency which requires a global i18n instance registered via app.use(i18n).
 const i18nStubMessages = {
   'footer.copywrite':
-    'Thunderbird is part of {mzlaLink}, a wholly owned subsidiary of Mozilla Foundation. Portions of this content are ©1998–{currentYear} by individual contributors. Content available under a {creativeCommonsLink}.',
+    'Thunderbird is part of {mzlaLink}, a wholly owned subsidiary of the not-for-profit Mozilla.org. Portions of this content are ©1998–{currentYear} by individual contributors. Content available under a {creativeCommonsLink}.',
   'footer.mzlaLinkText': 'MZLA Technologies Corporation',
   'footer.creativeCommonsLinkText': 'Creative Commons license',
 };
