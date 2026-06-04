@@ -13,6 +13,7 @@ overrides:
   axios@>=1.0.0 <1.16.0: '>=1.16.0'
   brace-expansion@>=4.0.0 <5.0.5: '>=5.0.5'
   brace-expansion@>=5.0.0 <5.0.6: '>=5.0.6'
+  enhanced-resolve: 5.22.1
   fast-uri@<=3.1.0: '>=3.1.1'
   fast-uri@<=3.1.1: '>=3.1.2'
   fast-xml-builder@<=1.1.6: '>=1.1.7'
@@ -4754,8 +4755,8 @@ packages:
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==}
 
-  enhanced-resolve@5.22.2:
-    resolution: {integrity: sha512-0rxICaFZ7NQho/sHely2bvOPRP0Eu2B0NZ9zM54YvRvWMn7jfz3DmnOZDR9LlXDdDcqntAVc6Hfy4gr/tdH/Ag==}
+  enhanced-resolve@5.22.1:
+    resolution: {integrity: sha512-6QEuw3zoX1SJQc7b87aBXke/no+mG2bTBgw29gWMQonLmpEkWoCAVkl+M49e48AZlWzxiDzDZzYdp6kobcyLww==}
     engines: {node: '>=10.13.0'}
 
   enquirer@2.3.6:
@@ -13740,7 +13741,7 @@ snapshots:
     dependencies:
       once: 1.4.0
 
-  enhanced-resolve@5.22.2:
+  enhanced-resolve@5.22.1:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.3.3
@@ -14012,7 +14013,7 @@ snapshots:
   eslint-plugin-n@17.10.3(eslint@10.2.1(jiti@1.21.7)):
     dependencies:
       '@eslint-community/eslint-utils': 4.9.1(eslint@10.2.1(jiti@1.21.7))
-      enhanced-resolve: 5.22.2
+      enhanced-resolve: 5.22.1
       eslint: 10.2.1(jiti@1.21.7)
       eslint-plugin-es-x: 7.8.0(eslint@10.2.1(jiti@1.21.7))
       get-tsconfig: 4.14.0
