@@ -112,10 +112,16 @@ TBPRO_PASSWORD=<associated-password>
 TB_SEND_ENCRYPTION_KEY_CODE=<associated-tb-send-encryption-key>
 ```
 
-3. Then from the root folder run:
+3. Then to run the nightly tests on Firefox desktop, from the root folder run:
 
 ```sh
 lerna run test:e2e:nightly --scope=send-suite-e2e
+```
+
+Or to run on a simulated mobile viewport, run:
+
+```sh
+lerna run test:e2e:nightly:mobile:viewport --scope=send-suite-e2e
 ```
 
 ### Running nightly E2E tests in BrowserStack
