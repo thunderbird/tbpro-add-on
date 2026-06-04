@@ -11,7 +11,7 @@
 
   exports.CloudFileAccounts = class extends ExtensionCommon.ExtensionAPI {
     onStartup() {
-      // Ensure provider is registered during startup
+      // Ensure provider is checked during startup.
       this._cloudProviderRegistered = this._cloudProviderRegistered.bind(this);
       cloudFileAccounts.on('providerRegistered', this._cloudProviderRegistered);
       this._cloudProviderRegistered('ext-' + this.extension.id);
@@ -29,19 +29,9 @@
     }
 
     _cloudProviderRegistered(providerType) {
-      if (providerType != 'ext-' + this.extension.id) {
-        return;
+      if (providerType == 'ext-' + this.extension.id) {
+        cloudFileAccounts.getProviderForType('ext-' + this.extension.id);
       }
-
-      let provider = cloudFileAccounts.getProviderForType(
-        'ext-' + this.extension.id
-      );
-      if (!provider) {
-        return;
-      }
-
-      // Provider is registered and ready
-      console.log(`Cloud file provider registered: ${providerType}`);
     }
 
     getAPI(_context) {
