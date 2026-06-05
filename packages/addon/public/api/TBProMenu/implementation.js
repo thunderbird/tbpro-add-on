@@ -160,6 +160,7 @@
    * @param {object} createProps - The create properties
    * @param {string} createProps.title - The title of the menu item
    * @param {string} createProps.secondaryTitle - The secondary title of the item, if applicable
+   * @param {string} createProps.tooltip - The tooltip of the menu item, if applicable
    * @param {string} createProps.parentId - The parent menu item id.
    */
   function _createMenuItem(
@@ -207,7 +208,7 @@
           action: id,
           id: 'tbpro-menu-id-' + id,
           menuId: submenu.id,
-          tooltip: tooltip,
+          tooltip,
           close: '',
         });
       }
@@ -228,6 +229,7 @@
    * @param {object} createProps - The create properties
    * @param {string} createProps.title - The title of the menu item
    * @param {string} createProps.secondaryTitle - The secondary title of the item, if applicable
+   * @param {string} createProps.tooltip - The tooltip of the menu item, if applicable
    */
   function _updateMenuItem(window, id, { title, secondaryTitle, tooltip }) {
     const document = window.document;
@@ -245,10 +247,8 @@
         menuItem.querySelector('.tbpro-menu-item-bold-text').textContent =
           secondaryTitle;
       }
-    } else {
-      if (title !== null) {
-        menuItem.setAttribute('label', title);
-      }
+    } else if (title !== null) {
+      menuItem.setAttribute('label', title);
     }
     menuItem.setAttribute('tooltiptext', tooltip || '');
   }
@@ -358,8 +358,10 @@
    *  when the item is clicked.
    * @param {string} options.id - The id of the submenu item. Used to generate the html ID
    *  and for being able to remove the item later.
+   * @param {string} options.menuId - The id of the submenu to add the item to.
    * @param {string} options.nav - The string of a submenu which should
    *  be navigated to when the item is clicked
+   * @param {string} options.tooltip - The tooltip of the submenu item, if applicable.
    *
    * @returns {HTMLElement} - The submenu item which was created.
    */
@@ -442,7 +444,7 @@
       element.classList.add(...classes);
     }
     if (attributes) {
-      for (let [key, value] of Object.entries(attributes)) {
+      for (const [key, value] of Object.entries(attributes)) {
         element.setAttribute(key, value);
       }
     }
@@ -468,7 +470,7 @@
       window.document.querySelector('body').appendChild(stylesheet);
 
       if (gRootMenuId) {
-        let root = gMenuItems[gRootMenuId];
+        const root = gMenuItems[gRootMenuId];
         this._loadMenuItem(window, root.id, root);
       }
     }
@@ -476,7 +478,7 @@
     _loadMenuItem(window, id, createProps) {
       _createMenuItem(window, this.extension, id, createProps);
 
-      for (let child of createProps.children || []) {
+      for (const child of createProps.children || []) {
         this._loadMenuItem(window, child.id, child);
       }
     }
