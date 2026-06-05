@@ -60,9 +60,6 @@
             try {
               // Check if account already exists
               if (accountExists(email, hostname)) {
-                console.log(
-                  `Account already exists for ${email} on ${hostname}`
-                );
                 return {
                   success: true,
                   alreadyExists: true,
@@ -77,7 +74,6 @@
                 displayName
               );
               await CreateInBackend.createAccountInBackend(accountConfig);
-              console.log(`Successfully created account for ${email}`);
               return { success: true, alreadyExists: false };
             } catch (e) {
               console.error('Error creating account:', e);
@@ -109,7 +105,6 @@
               await oauth2Module.setRefreshToken(refreshToken);
               // Workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=1998099
               oauth2Module._oauth.refreshToken = refreshToken;
-              console.log(`Using workaround for refreshToken`);
 
               return { success: true };
             } catch (e) {

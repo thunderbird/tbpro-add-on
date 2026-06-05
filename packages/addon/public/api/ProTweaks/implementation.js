@@ -17,7 +17,7 @@
         return;
       }
 
-      let provider = cloudFileAccounts.getProviderForType(
+      const provider = cloudFileAccounts.getProviderForType(
         'ext-' + this.extension.id
       );
       if (!provider) {
