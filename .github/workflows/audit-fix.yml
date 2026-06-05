@@ -79,7 +79,7 @@ jobs:
             ### Changes
             - Ran `pnpm audit --fix` to address security vulnerabilities
             - Updated `pnpm-lock.yaml` with latest dependency resolutions
-            - Bumped patch version on all packages and manifest files (excluding assist) to trigger CI validations
+            - Bumped patch version on all packages and manifest files to trigger CI validations
 
             ### Workflow Details
             - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

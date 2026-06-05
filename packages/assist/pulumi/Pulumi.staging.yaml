@@ -1,9 +1,0 @@
-encryptionsalt: v1:0vsTek+Oncs=:v1:gn+0iJfZnEGSTOAF:t9Ayxv/RN3bcD8Gh+ooyKWBd/wlPow==
-config:
-  assist:sentry-dsn:
-    secure: v1:i4rihsV/tdxAV2KU:1b6ybJIhxxf7rosxC2q3lIbLW1h+k9IguCTVoAXMjsoahcNytbEQgLarbk+7eKi5thxfIcBkZhLbMxw3bCyOUBJfVzyYO03322/vdHD3daXbX60HenmVi/xMLWVTswrtwMZTHvZa1mxQpg2hOTLR
-  aws:region: us-east-2
-  assist:flwr-mgmt-key:
-    secure: v1:1rcKsCBob8N9G9r0:hXGIYmUxpDTrzN6+zDy2rp966YdPHAbJB3TyWoxfcFCV3ZClIu6fO2oexoqSptvZhmXns/odNcYEyQDWMdKu0Q==
-  assist:flwr-proj-id:
-    secure: v1:s3UVckqyAr/lSEwT:FAH0kOFlE+eRZPaIcAakBco=
