@@ -1,0 +1,74 @@
+---
+name: Bump Package Versions
+
+concurrency:
+  group: bump-versions-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: read
+
+jobs:
+  bump-versions:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    env:
+      IS_CI_AUTOMATION: "yes"
+      HUSKY: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump package and manifest versions
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          node scripts/bump-versions.js
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if git diff --quiet -- package.json packages; then
+            echo "has-changes=false" >> "$GITHUB_OUTPUT"
+            echo "No changes detected"
+          else
+            echo "has-changes=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected"
+          fi
+
+      - name: Create Pull Request
+        if: steps.check-changes.outputs.has-changes == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump package and manifest versions"
+          branch: automated/version-bump-${{ github.run_number }}
+          delete-branch: true
+          title: "[Automated] Bump Package Versions"
+          body: |
+            ## Automated Version Bump
+
+            This PR was automatically created by the version bump workflow.
+
+            ### Changes
+            - Bumped patch versions across package files and extension manifests
+
+            ### Workflow Details
+            - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - **Triggered**: Manual
+
+            Please review the changes and merge if appropriate.
+          labels: |
+            automated
+            version-bump
+          base: main
+          assignees: ${{ github.actor }}

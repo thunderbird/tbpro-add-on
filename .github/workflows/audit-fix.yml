@@ -21,8 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
     env:
       IS_CI_AUTOMATION: "yes"
+      HUSKY: "0"
     outputs:
       has-changes: ${{ steps.check-changes.outputs.has-changes }}
     steps:
@@ -32,16 +36,17 @@ jobs:
 
       - name: Install dependencies
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
 
-      - name: Run pnpm audit --fix
+      - name: Run pnpm audit --fix=override
         id: audit-fix
         run: |
-          echo "Running pnpm audit --fix..."
-          pnpm audit --fix || true
+          echo "Running pnpm audit --fix=override..."
+          pnpm audit --fix=override || true
           echo "Audit fix completed"
           pnpm install --no-frozen-lockfile
-          if git diff --exit-code pnpm-lock.yaml; then
+          if git diff --quiet -- package.json packages pnpm-lock.yaml pnpm-workspace.yaml; then
             echo "audit-changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "audit-changed=true" >> "$GITHUB_OUTPUT"
@@ -77,7 +82,7 @@ jobs:
             This PR was automatically created by the dependency audit workflow.
 
             ### Changes
-            - Ran `pnpm audit --fix` to address security vulnerabilities
+            - Ran `pnpm audit --fix=override` to address security vulnerabilities
             - Updated `pnpm-lock.yaml` with latest dependency resolutions
             - Bumped patch version on all packages and manifest files to trigger CI validations
 
