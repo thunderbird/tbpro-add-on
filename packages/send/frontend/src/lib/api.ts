@@ -28,8 +28,15 @@ export class ApiConnection {
     if (process.env.NODE_ENV === 'test') {
       return true;
     }
-    const { isBucketStorage } = await trpc.getStorageType.query();
-    return isBucketStorage;
+    // In production, bucket storage is always assumed true — skip the network call.
+    if (import.meta.env.MODE === 'production') {
+      return true;
+    } else {
+      // Only in development do we query the backend,
+      // which may be configured with filesystem storage instead.
+      const { isBucketStorage } = await trpc.getStorageType.query();
+      return isBucketStorage;
+    }
   }
 
   toString(): string {
