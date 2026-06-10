@@ -42,8 +42,26 @@ export const useConfigStore = defineStore('config', () => {
     _serverUrl.value = url;
   }
 
-  // Returns the addon id based on the server URL uses (ext-) to register cloudfile
+  // Returns the cloudfile provider type (`ext-<extension id>`) used to register
+  // and look up the cloud file account.
+  //
+  // Thunderbird registers the provider as `ext-` + the extension id declared in
+  // the installed manifest (see CloudFileAccounts/implementation.js). Deriving
+  // the value from `browser.runtime.id` at runtime keeps us in sync with
+  // whatever id is actually installed — critically the system add-on build,
+  // where the packaging step rewrites the manifest id to
+  // `tbpro-system-add-on@thunderbird.net`. Hardcoding the prod id here would
+  // produce `ext-tbpro-add-on@thunderbird.net`, which is not registered in the
+  // system add-on and fails with "Cloud file provider ... is not registered".
   function getAddonId() {
+    const runtimeId =
+      typeof browser !== 'undefined' ? browser?.runtime?.id : undefined;
+    if (runtimeId) {
+      return `ext-${runtimeId}`;
+    }
+
+    // Fallback for non-extension contexts (web app / tests) where there is no
+    // runtime id available.
     if (serverUrl.value.includes('send-backend.tb.pro')) {
       return 'ext-tbpro-add-on@thunderbird.net';
     } else {
