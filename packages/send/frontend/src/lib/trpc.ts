@@ -15,10 +15,9 @@ import { AppRouter } from '@send-backend/router';
 import { TRPC_WS_PATH } from './config';
 
 // Single source for the Send backend host. The host application (Thunderbird)
-// can override this at build/extraction time, and may set it to an empty
-// string to mean "disabled — do not connect" (e.g. in CI/automation, where any
-// non-local connection aborts the whole process). When unset we fall back to
-// whatever the build was configured with.
+// can override this at build/extraction time. An empty or unset value means
+// "disabled — do not connect" (e.g. in CI/automation, where any non-local
+// connection aborts the whole process).
 const serverUrl = (import.meta.env.VITE_SEND_SERVER_URL ?? '').trim();
 
 const refreshUrl = `${serverUrl}/api/auth/refresh`;
@@ -70,12 +69,13 @@ export function getWsClientConfig(
   url: string,
   testing: boolean
 ): WSClientConfig | null {
-  if (testing || url.length === 0) {
+  const normalizedUrl = url.trim();
+  if (testing || normalizedUrl.length === 0) {
     return null;
   }
 
   return {
-    url: `${url}${TRPC_WS_PATH}`,
+    url: `${normalizedUrl}${TRPC_WS_PATH}`,
     lazy: {
       enabled: true,
       closeMs: 1000,
