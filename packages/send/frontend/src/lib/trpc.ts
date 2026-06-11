@@ -14,17 +14,77 @@ import {
 import { AppRouter } from '@send-backend/router';
 import { TRPC_WS_PATH } from './config';
 
-// create persistent WebSocket connection
+// Single source for the Send backend host. The host application (Thunderbird)
+// can override this at build/extraction time, and may set it to an empty
+// string to mean "disabled — do not connect" (e.g. in CI/automation, where any
+// non-local connection aborts the whole process). When unset we fall back to
+// whatever the build was configured with.
+const serverUrl = (import.meta.env.VITE_SEND_SERVER_URL ?? '').trim();
 
-const refreshUrl = `${import.meta.env.VITE_SEND_SERVER_URL}/api/auth/refresh`;
-const trpcUrl = `${import.meta.env.VITE_SEND_SERVER_URL}/trpc`;
-const isTesting = import.meta.env.VITE_TESTING === 'true';
-// We create a WebSocket client only if we are not in testing mode
-const wsClient = !isTesting
-  ? createWSClient({
-      url: `${import.meta.env.VITE_SEND_SERVER_URL}${TRPC_WS_PATH}`,
-    })
-  : null;
+const refreshUrl = `${serverUrl}/api/auth/refresh`;
+const trpcUrl = `${serverUrl}/trpc`;
+
+/**
+ * Detect whether we're running in a test/automation context, where the
+ * WebSocket must stay closed.
+ *
+ * Unit tests inject `import.meta.env.VITE_TESTING`. When that build-time flag is
+ * unavailable — as in the shipped background bundle — fall back to the presence
+ * of the WebExtension `browser.test` API, which the Thunderbird/Firefox test
+ * harness only exposes when the add-on is loaded under automation. This keeps a
+ * logged-out automation profile from ever opening the socket at startup.
+ */
+export function detectTesting(): boolean {
+  if (import.meta.env.VITE_TESTING !== undefined) {
+    return import.meta.env.VITE_TESTING === 'true';
+  }
+
+  return (
+    typeof browser !== 'undefined' &&
+    Boolean((browser as { test?: unknown }).test)
+  );
+}
+
+const isTesting = detectTesting();
+
+type WSClientConfig = NonNullable<Parameters<typeof createWSClient>[0]>;
+
+/**
+ * Decide how (and whether) to build the WebSocket client.
+ *
+ * Returns `null` — meaning "do not connect" — when running under unit tests or
+ * when no backend host is configured (empty `serverUrl`). Otherwise returns the
+ * client config with **lazy mode** enabled.
+ *
+ * Lazy mode is critical: the background page of the built-in/system add-on
+ * imports this module on every Thunderbird launch, including fresh,
+ * never-signed-in profiles. A non-lazy client opens the socket as a side effect
+ * of construction (at module load), which under automation triggers a fatal
+ * "non-local network connections are disabled" abort and crashes the process
+ * before any feature is used. With lazy mode the connection is deferred until
+ * the first subscription actually runs (i.e. an authenticated user is using a
+ * feature) and is closed again after inactivity, so a logged-out profile makes
+ * zero outbound connections at startup.
+ */
+export function getWsClientConfig(
+  url: string,
+  testing: boolean
+): WSClientConfig | null {
+  if (testing || url.length === 0) {
+    return null;
+  }
+
+  return {
+    url: `${url}${TRPC_WS_PATH}`,
+    lazy: {
+      enabled: true,
+      closeMs: 1000,
+    },
+  };
+}
+
+const wsClientConfig = getWsClientConfig(serverUrl, isTesting);
+const wsClient = wsClientConfig ? createWSClient(wsClientConfig) : null;
 
 /**
  * We only import the `AppRouter` type from the server - this is not available at runtime
