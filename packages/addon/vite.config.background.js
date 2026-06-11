@@ -34,12 +34,21 @@ export default defineConfig(({ mode }) => {
       lib: {
         entry: fileURLToPath(new URL('src/background.ts', import.meta.url)),
         name: 'ExtensionBackground',
-        fileName: () => 'background.js', // Ensure output is background.js
+        // Emit ES modules with a .mjs extension. Thunderbird's static
+        // browser_parsable_script.js check parses every packaged *.js as a
+        // classic script and fails on our top-level import/export; .mjs (and
+        // .sys.mjs) files are parsed as modules instead. See Bug 2036665.
+        fileName: () => 'background.mjs',
         formats: ['es'],
       },
       minify: true,
       sourcemap: 'inline',
       outDir: 'dist/background',
+      rollupOptions: {
+        output: {
+          chunkFileNames: '[name].mjs',
+        },
+      },
     },
   };
 });

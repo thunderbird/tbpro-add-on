@@ -38,8 +38,12 @@ export default defineConfig(({ mode }) => {
           extension: resolve(__dirname, 'index.extension.html'),
         },
         output: {
-          entryFileNames: '[name].js',
-          chunkFileNames: 'chunks/[name].js',
+          // Emit ES modules with a .mjs extension. Thunderbird's static
+          // browser_parsable_script.js check parses every packaged *.js as a
+          // classic script and fails on our top-level import/export; .mjs (and
+          // .sys.mjs) files are parsed as modules instead. See Bug 2036665.
+          entryFileNames: '[name].mjs',
+          chunkFileNames: 'chunks/[name].mjs',
           assetFileNames: 'assets/[name].[ext]',
         },
       },
