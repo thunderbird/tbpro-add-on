@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ADDON_ID_PROD, ADDON_ID_STAGE } from '../addonIds';
 import { checkAndUninstallIfDeprecated } from '../selfUninstall';
 
-const STAGE_ADDON_ID = 'tbpro-addon-stage@thunderbird.net';
-const PROD_ADDON_ID = 'tbpro-add-on@thunderbird.net';
+const STAGE_ADDON_ID = ADDON_ID_STAGE;
+const PROD_ADDON_ID = ADDON_ID_PROD;
 const CUTOFF_VERSION = '140.0';
 
 function setupBrowserMock(addonId: string, geckoVersion = '145.0') {

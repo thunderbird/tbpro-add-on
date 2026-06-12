@@ -2,6 +2,7 @@ import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { getEnvName } from '@send-frontend/lib/clientConfig';
 import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
 import { APPOINTMENT_URL } from '@send-frontend/apps/common/constants';
+import { shouldAutoOpenLoginOnInstall } from './installGate';
 
 // Determine environment-specific URLs
 const environmentName = getEnvName();
@@ -217,9 +218,12 @@ function checkLoginStateOnInterval() {
  * Creates the root menu item and registers listeners for all menu actions.
  */
 export function init() {
-  // Register onInstalled handler to open BASE_URL on extension install/update
+  // Register onInstalled handler to open the login page on first install — but
+  // only for the regular (standalone) add-on. The built-in system add-on is
+  // enabled by default for every user and must not make a startup network
+  // connection on a fresh, never-signed-in profile (see installGate.ts).
   browser.runtime.onInstalled.addListener(async (details) => {
-    if (details.reason === 'install') {
+    if (shouldAutoOpenLoginOnInstall(details.reason, browser.runtime.id)) {
       await menuLogin();
     }
   });
