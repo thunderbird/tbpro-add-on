@@ -1,6 +1,8 @@
 /// <reference types="thunderbird-webext-browser" />
 
-const DEPRECATION_ADDON_IDS = ['tbpro-addon-stage@thunderbird.net'];
+import { ADDON_ID_STAGE } from './addonIds';
+
+const DEPRECATION_ADDON_IDS = [ADDON_ID_STAGE];
 
 /**
  * Compare two semver strings. Returns true if `a >= b`.

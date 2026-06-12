@@ -482,10 +482,12 @@ jobs:
           VERSION_SUFFIX=$(echo "$PROD_XPI" | cut -d'-' -f4-)
           SYSTEM_XPI="tbpro-system-add-on-prod-${VERSION_SUFFIX}"
 
-          # Extract, swap the ID in manifest.json, repack
+          # Extract, swap the ID in manifest.json, repack.
+          # The system add-on id lives in packages/addon/src/addonIds.ts so it is
+          # not hard-coded here; set-system-id.ts rewrites prod -> system id.
           mkdir -p /tmp/system-addon-unpack
           unzip "packages/addon/$PROD_XPI" -d /tmp/system-addon-unpack
-          sed -i 's/"id": "tbpro-add-on@thunderbird.net"/"id": "tbpro-system-add-on@thunderbird.net"/g' /tmp/system-addon-unpack/manifest.json
+          bun run packages/addon/scripts/set-system-id.ts /tmp/system-addon-unpack/manifest.json
           cd /tmp/system-addon-unpack
           zip -r "$GITHUB_WORKSPACE/packages/addon/$SYSTEM_XPI" .
 
