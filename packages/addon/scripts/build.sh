@@ -58,6 +58,18 @@ fi
 
 
 echo "================================================================"
+echo "=============== rewrite font urls =============================="
+### The bundled CSS (from send-frontend's fonts.css) declares @font-face rules
+### with absolute url(/fonts/...). When the add-on is loaded as a built-in
+### add-on, an absolute /fonts/ url resolves against the resource:// protocol
+### root (resource://builtin-addons/fonts/Inter/...) instead of the add-on's own
+### directory, so the fonts 404 and Thunderbird's static browser_parsable_css.js
+### check crashes (Bug 2036665). The CSS lives in dist/assets/ and the fonts in
+### dist/fonts/, so rewrite the absolute url(/fonts/...) to a relative
+### url(../fonts/...) that resolves inside the add-on's own directory.
+find dist/assets -name '*.css' -exec perl -pi -e 's{url\(/fonts/}{url(../fonts/}g' {} +
+
+echo "================================================================"
 echo "=============== background.js =================================="
 ### Build `background.js` as a library
 vite build --config vite.config.background.js

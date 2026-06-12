@@ -40,6 +40,7 @@ import {
   menuLoggedIn,
   menuLogout,
 } from './menu';
+import { shouldInitCloudFileOnStartup } from './cloudFileGate';
 import { checkAndUninstallIfDeprecated } from './selfUninstall';
 
 // Initialize the shared Pinia instance that will be used by both
@@ -749,7 +750,15 @@ function initAccountHubListener() {
 (async function main() {
   await checkAndUninstallIfDeprecated();
   initMenu();
-  initCloudFile();
+  // Only create the Send cloudfile account when the user is already signed in.
+  // A fresh, never-signed-in profile (e.g. the built-in system add-on under
+  // automation) must leave the cloudfile account list untouched so it doesn't
+  // pollute the default profile or break Thunderbird's cloudfile tests
+  // (Bug 2036665). The account is otherwise created on explicit sign-in.
+  const { isLoggedIn } = await getLoginState();
+  if (shouldInitCloudFileOnStartup(isLoggedIn)) {
+    initCloudFile();
+  }
   initStorageWatcher();
   initAccountHubListener();
 })().catch((error) => {
