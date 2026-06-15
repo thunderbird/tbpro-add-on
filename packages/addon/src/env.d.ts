@@ -157,5 +157,33 @@ declare namespace browser {
       type: string,
       configured: boolean
     ): Promise<CreateAccountResult>;
+
+    /**
+     * Result returned when toggling the provider's registration.
+     */
+    interface ProviderRegistrationResult {
+      /** Whether the operation was successful */
+      success: boolean;
+      /** True if the provider was already registered */
+      alreadyRegistered?: boolean;
+      /** True if the provider was not registered to begin with */
+      alreadyUnregistered?: boolean;
+      /** Error message if the operation failed */
+      error?: string;
+    }
+
+    /**
+     * Re-registers the Send cloud file provider (the instance Thunderbird
+     * created from the manifest `cloud_file` key) so it appears in the provider
+     * list. Idempotent. Called on sign-in.
+     */
+    function registerProvider(): Promise<ProviderRegistrationResult>;
+
+    /**
+     * Unregisters the Send cloud file provider so it is hidden from the provider
+     * list while the user is signed out. Idempotent. The provider instance is
+     * retained internally for re-registration on sign-in.
+     */
+    function unregisterProvider(): Promise<ProviderRegistrationResult>;
   }
 }

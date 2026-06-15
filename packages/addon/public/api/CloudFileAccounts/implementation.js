@@ -11,10 +11,26 @@
 
   exports.CloudFileAccounts = class extends ExtensionCommon.ExtensionAPI {
     onStartup() {
-      // Ensure provider is checked during startup.
-      this._cloudProviderRegistered = this._cloudProviderRegistered.bind(this);
-      cloudFileAccounts.on('providerRegistered', this._cloudProviderRegistered);
-      this._cloudProviderRegistered('ext-' + this.extension.id);
+      this._providerType = 'ext-' + this.extension.id;
+
+      // The "Thunderbird Send" cloud file provider is declared via the manifest
+      // `cloud_file` key, so Thunderbird registers it automatically on every
+      // startup — including on fresh, never-signed-in profiles where the
+      // built-in system add-on runs under automation. We keep a reference to the
+      // provider object so the background script can unregister it while signed
+      // out (hiding Send from the cloud file provider list and preferences) and
+      // re-register the very same instance on sign-in, which keeps the
+      // browser.cloudFile.onFileUpload binding intact. See Bug 2036665.
+      this._capturedProvider =
+        cloudFileAccounts.getProviderForType(this._providerType) || null;
+
+      // When true, the provider must stay hidden even if Thunderbird registers
+      // it after the background script has already asked us to unregister it
+      // (the manifest registration and the background script race at startup).
+      this._keepUnregistered = false;
+
+      this._onProviderRegistered = this._onProviderRegistered.bind(this);
+      cloudFileAccounts.on('providerRegistered', this._onProviderRegistered);
     }
 
     onShutdown(isAppShutdown) {
@@ -22,22 +38,35 @@
         return;
       }
 
-      cloudFileAccounts.off(
-        'providerRegistered',
-        this._cloudProviderRegistered
-      );
+      cloudFileAccounts.off('providerRegistered', this._onProviderRegistered);
     }
 
-    _cloudProviderRegistered(providerType) {
-      if (providerType == 'ext-' + this.extension.id) {
-        cloudFileAccounts.getProviderForType('ext-' + this.extension.id);
+    // EventEmitter invokes listeners as (eventName, ...args), so rather than
+    // depend on the emitted argument we re-check the registry by our type.
+    _onProviderRegistered() {
+      const provider = cloudFileAccounts.getProviderForType(this._providerType);
+      if (!provider) {
+        return;
+      }
+
+      // Remember the provider instance so it can be re-registered on sign-in.
+      this._capturedProvider = provider;
+
+      // If we are meant to stay signed out, immediately undo the registration.
+      if (this._keepUnregistered) {
+        cloudFileAccounts.unregisterProvider(this._providerType);
       }
     }
 
     getAPI(_context) {
+      const providerType = 'ext-' + this.extension.id;
+
+      // Arrow functions keep `this` bound to the ExtensionAPI instance so the
+      // register/unregister handlers can read and update the captured provider
+      // and the _keepUnregistered flag set up in onStartup().
       return {
         CloudFileAccounts: {
-          async createAccount(type, configured) {
+          createAccount: async (type, configured) => {
             try {
               // Check if the provider is registered
               const provider = cloudFileAccounts.getProviderForType(type);
@@ -84,6 +113,62 @@
               return {
                 success: false,
                 error: `Error creating cloud file account: ${error.message}`,
+              };
+            }
+          },
+
+          // Re-register the Send provider (e.g. on sign-in). Idempotent: a
+          // no-op if the provider is already in the registry.
+          registerProvider: async () => {
+            this._keepUnregistered = false;
+
+            if (cloudFileAccounts.getProviderForType(providerType)) {
+              return { success: true, alreadyRegistered: true };
+            }
+
+            if (!this._capturedProvider) {
+              return {
+                success: false,
+                error: `No cloud file provider '${providerType}' available to register.`,
+              };
+            }
+
+            try {
+              cloudFileAccounts.registerProvider(
+                providerType,
+                this._capturedProvider
+              );
+              return { success: true };
+            } catch (error) {
+              return {
+                success: false,
+                error: `Error registering cloud file provider: ${error.message}`,
+              };
+            }
+          },
+
+          // Hide the Send provider while signed out. Idempotent: a no-op if the
+          // provider is not currently registered.
+          unregisterProvider: async () => {
+            // Stay hidden even if Thunderbird registers the provider after this
+            // call (manifest registration vs. background script startup race).
+            this._keepUnregistered = true;
+
+            const provider = cloudFileAccounts.getProviderForType(providerType);
+            if (!provider) {
+              return { success: true, alreadyUnregistered: true };
+            }
+
+            // Keep the instance so we can re-register it on sign-in.
+            this._capturedProvider = provider;
+
+            try {
+              cloudFileAccounts.unregisterProvider(providerType);
+              return { success: true };
+            } catch (error) {
+              return {
+                success: false,
+                error: `Error unregistering cloud file provider: ${error.message}`,
               };
             }
           },

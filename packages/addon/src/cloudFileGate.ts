@@ -14,6 +14,12 @@
  * The account is still created on explicit sign-in via the SIGN_IN_COMPLETE
  * flow in background.ts, so signed-in users (standalone or system) keep the Send
  * cloudfile provider configured.
+ *
+ * The manifest `cloud_file` key also makes Thunderbird register the Send
+ * provider itself on every startup, independently of the account. When this
+ * returns false, background.ts additionally unregisters that provider (via the
+ * CloudFileAccounts experiment API) so a signed-out profile shows no Send entry
+ * in the cloud file provider list at all; it is re-registered on sign-in.
  */
 export function shouldInitCloudFileOnStartup(isLoggedIn: boolean): boolean {
   return isLoggedIn;
