@@ -34,6 +34,8 @@ platforms:
       setup: 
       - name: 'firefox_auth'
         testMatch: 'auth.desktop.ts'
+      use:
+        storageState: 'test-results/.auth/user.json'
 
   - os: OS X
     osVersion: Sequoia
@@ -44,7 +46,9 @@ platforms:
       setup: 
       - name: 'safari_auth'
         testMatch: 'auth.desktop.ts'
-
+      use:
+        storageState: 'test-results/.auth/user.json'
+  
   - os: Windows
     osVersion: 11
     browserName: playwright-chromium
@@ -54,6 +58,8 @@ platforms:
       setup: 
       - name: 'chromium_auth'
         testMatch: 'auth.desktop.ts'
+      use:
+        storageState: 'test-results/.auth/user.json'
 
 # =======================
 # Parallels per Platform
