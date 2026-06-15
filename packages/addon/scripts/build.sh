@@ -70,6 +70,20 @@ echo "=============== rewrite font urls =============================="
 find dist/assets -name '*.css' -exec perl -pi -e 's{url\(/fonts/}{url(../fonts/}g' {} +
 
 echo "================================================================"
+echo "=============== sanitize parsable css =========================="
+### Thunderbird's static browser_parsable_css.js check (Bug 2036665) rejects a
+### handful of declarations that autoprefixer / vendored libs leak into the
+### bundled CSS:
+###   * -moz-column-gap          -> not a real Gecko property (the standard
+###                                 column-gap is emitted right alongside it)
+###   * -webkit-text-size-adjust -> value rejected by Gecko's parser
+###   * :global(...)             -> Vue scoped-CSS wrapper left unprocessed
+### Drop the two dead vendor-prefixed declarations and unwrap :global(X) -> X so
+### the packaged add-on passes the static check.
+find dist/assets -name '*.css' -exec perl -pi -e \
+  's/-moz-column-gap:[^;}]*;?//g; s/-webkit-text-size-adjust:[^;}]*;?//g; s/:global\(([^)]*)\)/$1/g;' {} +
+
+echo "================================================================"
 echo "=============== background.js =================================="
 ### Build `background.js` as a library
 vite build --config vite.config.background.js
