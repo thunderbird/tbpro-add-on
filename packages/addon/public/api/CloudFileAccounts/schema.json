@@ -48,6 +48,58 @@
             }
           }
         }
+      },
+      {
+        "name": "registerProvider",
+        "type": "function",
+        "description": "Re-registers the Send cloud file provider (the same instance Thunderbird created from the manifest) so it appears in the provider list. Idempotent. Used on sign-in.",
+        "async": true,
+        "parameters": [],
+        "returns": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the operation was successful."
+            },
+            "alreadyRegistered": {
+              "type": "boolean",
+              "optional": true,
+              "description": "True if the provider was already registered."
+            },
+            "error": {
+              "type": "string",
+              "optional": true,
+              "description": "Error message if the operation failed."
+            }
+          }
+        }
+      },
+      {
+        "name": "unregisterProvider",
+        "type": "function",
+        "description": "Unregisters the Send cloud file provider so it is hidden from the provider list while the user is signed out. Idempotent. The provider instance is retained for re-registration on sign-in.",
+        "async": true,
+        "parameters": [],
+        "returns": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the operation was successful."
+            },
+            "alreadyUnregistered": {
+              "type": "boolean",
+              "optional": true,
+              "description": "True if the provider was not registered to begin with."
+            },
+            "error": {
+              "type": "string",
+              "optional": true,
+              "description": "Error message if the operation failed."
+            }
+          }
+        }
       }
     ]
   }

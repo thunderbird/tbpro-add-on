@@ -103,6 +103,16 @@ function logAccountCreationResult(result: {
 // ==============================================
 // Initialize the cloudFile accounts, keychain, and stores.
 async function initCloudFile() {
+  // Make sure the Send provider is registered before creating an account. While
+  // signed out we unregister it (see main()), so a sign-in must re-register the
+  // provider first; createAccount fails otherwise. This is a no-op when the
+  // provider is already registered.
+  try {
+    await browser.CloudFileAccounts.registerProvider();
+  } catch (error) {
+    console.warn('Error registering cloud file provider:', error);
+  }
+
   try {
     const result = await browser.CloudFileAccounts.createAccount(
       getAddonId(),
@@ -334,6 +344,13 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
 
     case SIGN_OUT:
       menuLogout();
+      // Hide the Send provider again so a signed-out profile matches the
+      // fresh-install baseline (provider only exists while signed in).
+      try {
+        await browser.CloudFileAccounts.unregisterProvider();
+      } catch (e) {
+        console.warn('Error unregistering cloud file provider on sign-out:', e);
+      }
       break;
 
     case SIGN_IN:
@@ -758,6 +775,17 @@ function initAccountHubListener() {
   const { isLoggedIn } = await getLoginState();
   if (shouldInitCloudFileOnStartup(isLoggedIn)) {
     initCloudFile();
+  } else {
+    // Signed out: the manifest `cloud_file` key makes Thunderbird register the
+    // Send provider on every startup, so on a fresh/never-signed-in profile it
+    // would still appear in the cloud file provider list and break Thunderbird's
+    // own cloudfile tests (Bug 2036665). Unregister it until the user signs in;
+    // initCloudFile() re-registers it on sign-in.
+    try {
+      await browser.CloudFileAccounts.unregisterProvider();
+    } catch (error) {
+      console.warn('Error unregistering cloud file provider:', error);
+    }
   }
   initStorageWatcher();
   initAccountHubListener();
