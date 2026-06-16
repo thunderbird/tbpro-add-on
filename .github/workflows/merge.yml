@@ -423,6 +423,7 @@ jobs:
           BASE_URL: ${{ matrix.base_url }}
           SEND_SERVER_URL: ${{ matrix.send_server_url }}
           SEND_CLIENT_URL: ${{ matrix.send_client_url }}
+          DEPRECATION_VERSION: "153.0.0"
         run: |
           echo "Environment: ${{ matrix.env }}"
           cd packages/addon
@@ -435,7 +436,8 @@ jobs:
           VITE_POSTHOG_PROJECT_KEY=${POSTHOG_KEY}
           VITE_POSTHOG_HOST=${POSTHOG_HOST}
           VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
-          VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}                    
+          VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
+          VITE_DEPRECATION_VERSION=${DEPRECATION_VERSION}
           EOF
 
       - name: Build the frontend's static assets
