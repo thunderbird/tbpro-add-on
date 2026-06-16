@@ -36,14 +36,23 @@
                   'nsIIncomingServerListener',
                 ]),
 
-                onServerLoaded(server) {
+                async onServerLoaded(server) {
                   try {
-                    const hostname = server.hostName;
+                    const hostname = server.hostname;
+                    console.log(
+                      `[AccountHub] onServerLoaded fired for host: ${hostname}`
+                    );
                     if (!THUNDERMAIL_HOST_PATTERN.test(hostname)) {
+                      console.log(
+                        `[AccountHub] Host ${hostname} is not a Thundermail host — ignoring.`
+                      );
                       return;
                     }
 
                     const email = server.username;
+                    console.log(
+                      `[AccountHub] Thundermail host matched. email=${email}`
+                    );
 
                     const oauth2Module = new OAuth2Module();
                     if (!oauth2Module.initFromMail(server)) {
@@ -52,13 +61,20 @@
                       );
                       return;
                     }
+                    console.log('[AccountHub] OAuth2Module initialized.');
 
-                    // getRefreshToken() reads the stored token directly from
-                    // the Thunderbird login manager (password manager).
+                    // getRefreshToken() asynchronously reads the stored token
+                    // from the Thunderbird login manager (password manager).
                     // The token is guaranteed to be stored already because
                     // verifyConfig() (which runs OAuth2 auth) completes before
                     // createAccountInBackend() fires NotifyServerLoaded.
-                    const token = oauth2Module.getRefreshToken();
+                    console.log('[AccountHub] Awaiting getRefreshToken()...');
+                    const token = await oauth2Module.getRefreshToken();
+                    console.log(
+                      `[AccountHub] getRefreshToken() resolved. type=${typeof token}, hasToken=${!!token}, length=${
+                        token ? token.length : 0
+                      }`
+                    );
 
                     if (!token) {
                       console.warn(
@@ -71,8 +87,14 @@
                     const account =
                       MailServices.accounts.findAccountForServer(server);
                     const name = account?.defaultIdentity?.fullName ?? '';
+                    console.log(
+                      `[AccountHub] Resolved name="${name}". Firing onAccountAdded for ${email}.`
+                    );
 
                     fire.async({ token, email, name });
+                    console.log(
+                      `[AccountHub] fire.async dispatched for ${email}.`
+                    );
                   } catch (e) {
                     console.error(
                       '[AccountHub] Error in onServerLoaded handler:',
@@ -82,8 +104,8 @@
                 },
 
                 // Required by nsIMsgIncomingServerListener but not used here.
-                onServerUnloaded(_server) {},
-                onServerChanged(_server) {},
+                onServerUnloaded(_server) { },
+                onServerChanged(_server) { },
               };
 
               MailServices.accounts.addIncomingServerListener(serverListener);
