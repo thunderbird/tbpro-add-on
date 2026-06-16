@@ -740,31 +740,24 @@ function initStorageWatcher() {
 function initAccountHubListener() {
   browser.AccountHub.onAccountAdded.addListener(async ({ token, email }) => {
     console.log(
-      `[AccountHub] onAccountAdded fired for ${email}. Logging in add-on. ` +
-        `tokenType=${typeof token}, hasToken=${!!token}, tokenLength=${
-          token ? token.length : 0
-        }`
+      `[AccountHub] onAccountAdded fired for ${email}. Logging in add-on.`
     );
 
     // Ensure the OAuth2 token is registered against the TB mail account.
     try {
-      const result = await addThundermailToken(token, email, THUNDERMAIL_HOST);
-      console.log('[AccountHub] addThundermailToken result:', result);
+      await addThundermailToken(token, email, THUNDERMAIL_HOST);
     } catch (e) {
       console.error('[AccountHub] Failed to store OIDC token:', e);
     }
 
     // Update the add-on menu to reflect the logged-in state.
-    console.log('[AccountHub] Updating menu to logged-in state.');
     menuLoggedIn({ username: email });
 
     // Trigger Add-On to Web: stage the token in storage and open /addon-auth.
     // AccountHub provides a refresh token only; authenticateWithAddonToken
     // will exchange it for a full token set via signinSilent.
     try {
-      console.log('[AccountHub] Calling triggerAddonLogin...');
       await triggerAddonLogin({ refresh_token: token });
-      console.log('[AccountHub] triggerAddonLogin completed.');
     } catch (e) {
       console.error('[AccountHub] Failed to trigger addon login:', e);
     }
