@@ -1,5 +1,11 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_TESTING?: string;
+  readonly VITE_SEND_SERVER_URL?: string;
+  readonly VITE_LOGGER_LEVEL?: 'debug' | 'info' | 'warn' | 'error';
+}
+
 /**
  * Application version injected at build time by Vite.
  * @example "1.0.5"
