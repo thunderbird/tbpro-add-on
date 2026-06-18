@@ -32,10 +32,36 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    {
-      name: "firefox",
+
+    // Setup browsers - signs into Appointment once for all the tests and saves auth
+    { 
+      name: 'desktop-auth',
+      testMatch: /.*\auth.desktop\.ts/,
       use: {
-        ...devices["Desktop Firefox"],
+        ...devices['Desktop Chrome'],
+        screenshot: 'only-on-failure',
+       },
+    },
+
+    // Main tests; each browser runs the setup above and saves auth state which is loaded for each test in the suite
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        screenshot: 'only-on-failure',
+        // Use prepared auth state
+        storageState: 'test-results/.auth/user.json',
+       },
+      dependencies: ['desktop-auth'],
+    },
+
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        screenshot: 'only-on-failure',
+        // Use prepared auth state
+        storageState: 'test-results/.auth/user.json',
         // Firefox-specific settings
         launchOptions: {
           firefoxUserPrefs: {
@@ -44,39 +70,29 @@ export default defineConfig({
             "privacy.trackingprotection.enabled": false,
           },
         },
-      },
+       },
+      dependencies: ['desktop-auth'],
     },
 
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
+    {
+      name: 'safari',
+      use: {
+        ...devices['Desktop Safari'],
+        screenshot: 'only-on-failure',
+        // Use prepared auth state
+        storageState: 'test-results/.auth/user.json',
+      },
+      dependencies: ['desktop-auth'],
+    },
 
     /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
+    {
+      name: 'Google-Pixel-7-View',
+      use: {
+        ...devices['Pixel 7'],
+        screenshot: 'only-on-failure',
+       },
+    },
+    // no dependency as mobile browsers don't support loading auth state so must sign-in for each test
   ],
-
-  /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://127.0.0.1:3000',
-  //   reuseExistingServer: !process.env.IS_CI_AUTOMATION,
-  // },
 });

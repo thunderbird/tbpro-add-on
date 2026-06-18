@@ -37,12 +37,6 @@ platforms:
         profile:
           password_manager_enabled: false
 
-  - browserName: safari
-    osVersion: 26
-    deviceName: iPhone 17
-    playwrightConfigOptions:
-      name: ios-safari
-
 # =======================
 # Parallels per Platform
 # =======================

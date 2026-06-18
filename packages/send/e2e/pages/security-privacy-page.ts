@@ -14,6 +14,12 @@ export class SecurityPrivacyPage {
   readonly restoreKeyContinueBtn: Locator;
   readonly manageKeyHdr: Locator;
   readonly resetKeyHdr: Locator;
+  readonly deleteSendDataCardHeading: Locator;
+  readonly deleteSendDataWarning: Locator;
+  readonly deleteUnderstandCheckbox: Locator;
+  readonly deletePasswordInput: Locator;
+  readonly deleteSendDataButton: Locator;
+  readonly cancelDeleteSendDataButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -22,6 +28,14 @@ export class SecurityPrivacyPage {
     this.restoreKeyContinueBtn = page.getByTestId('restore-keys-button');
     this.manageKeyHdr = page.getByText('Manage Encryption Key', { exact: true });
     this.resetKeyHdr = page.getByText('Reset Encryption Key', { exact: true });
+    this.deleteSendDataCardHeading = this.page.getByRole('heading', { name: 'Delete Send Data' });
+    this.deleteSendDataWarning = this.page.getByText(
+      /This will permanently delete all encrypted files in your Thunderbird Pro\s+Send storage\./
+    );
+    this.deleteUnderstandCheckbox = this.page.getByTestId('delete-understand-checkbox');
+    this.deletePasswordInput = this.page.getByTestId('delete-password');
+    this.deleteSendDataButton = this.page.getByTestId('delete-send-data');
+    this.cancelDeleteSendDataButton = this.page.getByRole('button', { name: 'Cancel' });
   }
 
   /**
@@ -46,5 +60,25 @@ export class SecurityPrivacyPage {
     await expect(this.restoreKeyContinueBtn).not.toBeVisible();
     await expect(this.manageKeyHdr).toBeVisible();
     await expect(this.resetKeyHdr).toBeVisible();
+  }
+
+  async expectManageKeysVisible() {
+    await expect(this.manageKeyHdr).toBeVisible();
+    await expect(this.resetKeyHdr).toBeVisible();
+  }
+
+  async expectDeleteSendDataCardVisible() {
+    await expect(this.deleteSendDataCardHeading).toBeVisible();
+    await expect(this.deleteSendDataWarning).toBeVisible();
+    await expect(this.deleteUnderstandCheckbox).toBeVisible();
+    await expect(this.deletePasswordInput).toBeVisible();
+    await expect(this.deleteSendDataButton).toBeDisabled();
+  }
+
+  async cancelDeleteSendData() {
+    await this.cancelDeleteSendDataButton.click();
+    await this.page.waitForTimeout(TIMEOUT_1_SECOND);
+    await expect(this.deletePasswordInput).not.toBeVisible();
+    await this.expectManageKeysVisible();
   }
 }
