@@ -1,3 +1,4 @@
+import './src/lib/logger';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { fileURLToPath, URL } from 'node:url';
 import { resolve } from 'path';
