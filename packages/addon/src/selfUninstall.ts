@@ -1,8 +1,8 @@
 /// <reference types="thunderbird-webext-browser" />
 
-import { ADDON_ID_STAGE } from './addonIds';
+import { ADDON_ID_PROD, ADDON_ID_STAGE } from './addonIds';
 
-const DEPRECATION_ADDON_IDS = [ADDON_ID_STAGE];
+const DEPRECATION_ADDON_IDS = [ADDON_ID_STAGE, ADDON_ID_PROD];
 
 /**
  * Compare two semver strings. Returns true if `a >= b`.
@@ -22,7 +22,7 @@ function semverGte(a: string, b: string): boolean {
  *
  * Uninstall conditions (all must be true):
  * 1. `VITE_DEPRECATION_VERSION` env var is set at build time.
- * 2. The running addon ID matches the designated stage ID.
+ * 2. The running addon ID matches the designated deprecation ID.
  * 3. The Thunderbird (Gecko) version is >= the deprecation cutoff version.
  *
  * Production builds are unaffected because their addon ID differs.

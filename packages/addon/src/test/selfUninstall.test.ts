@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ADDON_ID_PROD, ADDON_ID_STAGE } from '../addonIds';
+import { ADDON_ID_PROD, ADDON_ID_STAGE, ADDON_ID_SYSTEM } from '../addonIds';
 import { checkAndUninstallIfDeprecated } from '../selfUninstall';
 
 const STAGE_ADDON_ID = ADDON_ID_STAGE;
 const PROD_ADDON_ID = ADDON_ID_PROD;
+const SYSTEM_ADDON_ID = ADDON_ID_SYSTEM;
 const CUTOFF_VERSION = '140.0';
 
 function setupBrowserMock(addonId: string, geckoVersion = '145.0') {
@@ -56,8 +57,16 @@ describe('checkAndUninstallIfDeprecated', () => {
     expect(browser.management.uninstallSelf).not.toHaveBeenCalled();
   });
 
-  it('does not uninstall when addon ID does not match', async () => {
+  it('uninstalls the prod addon when ID matches and gecko version >= cutoff', async () => {
     setupBrowserMock(PROD_ADDON_ID);
+
+    await checkAndUninstallIfDeprecated();
+
+    expect(browser.management.uninstallSelf).toHaveBeenCalledOnce();
+  });
+
+  it('does not uninstall the built-in system addon', async () => {
+    setupBrowserMock(SYSTEM_ADDON_ID);
 
     await checkAndUninstallIfDeprecated();
 
