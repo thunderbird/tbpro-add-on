@@ -17,20 +17,33 @@
       // `cloud_file` key, so Thunderbird registers it automatically on every
       // startup — including on fresh, never-signed-in profiles where the
       // built-in system add-on runs under automation. We keep a reference to the
-      // provider object so the background script can unregister it while signed
-      // out (hiding Send from the cloud file provider list and preferences) and
-      // re-register the very same instance on sign-in, which keeps the
-      // browser.cloudFile.onFileUpload binding intact. See Bug 2036665.
+      // provider object so it can be re-registered on sign-in (via
+      // registerProvider()), which keeps the browser.cloudFile.onFileUpload
+      // binding intact. See Bug 2036665.
       this._capturedProvider =
         cloudFileAccounts.getProviderForType(this._providerType) || null;
 
-      // When true, the provider must stay hidden even if Thunderbird registers
-      // it after the background script has already asked us to unregister it
-      // (the manifest registration and the background script race at startup).
-      this._keepUnregistered = false;
+      // Hide the provider by default and only reveal it on explicit sign-in
+      // (registerProvider() clears this flag). The manifest registration and the
+      // background script's async startup race at startup; on slow debug builds
+      // the manifest can register Send before the background script reads the
+      // login state and asks us to hide it, briefly exposing Send and breaking
+      // Thunderbird's cloudfile tests which assert a clean provider baseline
+      // ("Got 2, expected 1"). Defaulting to keepUnregistered removes that race:
+      // the provider is hidden synchronously the moment it is registered,
+      // independent of the background script. See Bug 2048823.
+      this._keepUnregistered = true;
 
       this._onProviderRegistered = this._onProviderRegistered.bind(this);
       cloudFileAccounts.on('providerRegistered', this._onProviderRegistered);
+
+      // If the manifest already registered the provider before this ran, the
+      // providerRegistered listener won't fire for it, so unregister it now.
+      // (When the manifest registers later, the listener handles it inline,
+      // since cloudFileAccounts.emit() invokes listeners synchronously.)
+      if (cloudFileAccounts.getProviderForType(this._providerType)) {
+        cloudFileAccounts.unregisterProvider(this._providerType);
+      }
     }
 
     onShutdown(isAppShutdown) {

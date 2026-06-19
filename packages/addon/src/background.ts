@@ -776,11 +776,12 @@ function initAccountHubListener() {
   if (shouldInitCloudFileOnStartup(isLoggedIn)) {
     initCloudFile();
   } else {
-    // Signed out: the manifest `cloud_file` key makes Thunderbird register the
-    // Send provider on every startup, so on a fresh/never-signed-in profile it
-    // would still appear in the cloud file provider list and break Thunderbird's
-    // own cloudfile tests (Bug 2036665). Unregister it until the user signs in;
-    // initCloudFile() re-registers it on sign-in.
+    // Signed out: the CloudFileAccounts experiment already hides the Send
+    // provider by default at startup (it unregisters as soon as the manifest
+    // `cloud_file` key registers it), so a fresh/never-signed-in profile shows
+    // no Send entry and Thunderbird's own cloudfile tests stay green (Bug
+    // 2036665, Bug 2048823). This call is therefore idempotent defense-in-depth;
+    // initCloudFile() re-registers the provider on sign-in.
     try {
       await browser.CloudFileAccounts.unregisterProvider();
     } catch (error) {
