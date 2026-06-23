@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
+import { FORCE_CLOSE_WINDOW, SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
 import { onMounted } from 'vue';
 
 // Removed as we re-evaluate the system add-on FTUE
@@ -15,13 +15,40 @@ import { onMounted } from 'vue';
 //   }
 // }
 
+/**
+ * Signal a completed sign-in to the add-on, then close this tab.
+ *
+ * The token-bridge content script relays window messages to the background
+ * script, which owns tab teardown — so the order matters:
+ *   1. SIGN_IN_COMPLETE  — lets the background run its post-login work
+ *      (FTUE check, register Send, close the tracked login tab).
+ *   2. FORCE_CLOSE_WINDOW — explicitly closes *this* tab (the message sender),
+ *      in case the background's closeLoginTab() doesn't match it.
+ *   3. window.close()     — last-resort fallback if no bridge/background is
+ *      listening (e.g. the page is open in a plain browser tab).
+ *
+ * Both messages must be posted before the tab is torn down; the bridge relays
+ * them to the background, which performs the actual close.
+ */
 async function closeOnSignInComplete() {
-  window.close();
-  window.postMessage({ type: SIGN_IN_COMPLETE }, window.location.origin);
   try {
-    window.postMessage({ type: 'FORCE_CLOSE_WINDOW' }, window.location.origin);
+    window.postMessage({ type: SIGN_IN_COMPLETE }, window.location.origin);
   } catch (error) {
-    console.error('Error posting message to parent window:', error);
+    console.error('Error posting SIGN_IN_COMPLETE message:', error);
+  }
+
+  try {
+    window.postMessage({ type: FORCE_CLOSE_WINDOW }, window.location.origin);
+  } catch (error) {
+    console.error('Error posting FORCE_CLOSE_WINDOW message:', error);
+  }
+
+  // Fallback for contexts without the token bridge. This is a no-op in a normal
+  // Thunderbird tab (which only the background can close), but harmless here.
+  try {
+    window.close();
+  } catch (error) {
+    console.error('Error closing window:', error);
   }
 }
 
