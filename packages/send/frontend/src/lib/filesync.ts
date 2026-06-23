@@ -184,9 +184,11 @@ export async function sendBlob(
       progressTracker,
     });
     return id;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
-    throw new Error('UPLOAD_FAILED');
+    // Preserve the underlying cause (timeout/5xx/signing) so the Sentry
+    // event carries it; the message stays 'UPLOAD_FAILED' to keep grouping
+    // stable. @sentry/vue's linkedErrors integration serializes error.cause.
+    throw new Error('UPLOAD_FAILED', { cause: error });
   }
 }
 
