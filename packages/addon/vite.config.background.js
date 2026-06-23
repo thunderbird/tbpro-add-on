@@ -1,4 +1,3 @@
-import './src/lib/logger';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { fileURLToPath, URL } from 'node:url';
 import { resolve } from 'path';
@@ -23,6 +22,10 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     define: {
+      // Preserve the shared defines (__APP_VERSION__, __APP_NAME__); a bare
+      // `define` here would otherwise shadow the ones spread from
+      // sharedViteConfig and break code that references __APP_VERSION__.
+      ...sharedViteConfig.define,
       'process.env.NODE_ENV': JSON.stringify(mode),
     },
     resolve: {

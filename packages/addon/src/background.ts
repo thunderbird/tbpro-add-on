@@ -1,4 +1,9 @@
 /// <reference types="thunderbird-webext-browser" />
+// Side-effect import: installs the level-gated, version-prefixed console logger
+// for the background script. The extension and management pages get their logger
+// via send-frontend's setup.js; the background entry is standalone, so it must
+// import the logger itself (this must run before other modules log).
+import './lib/logger';
 import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-store';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { useApiStore } from '@send-frontend/stores';
