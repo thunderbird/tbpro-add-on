@@ -399,10 +399,9 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
         await initCloudFile();
       } catch (e) {
         console.error('Error during SIGN_IN_COMPLETE handling:', e);
-      } finally {
-        // Open the add-on options page after successful login
-        await browser.runtime.openOptionsPage();
       }
+      // The system add-on no longer relies on the options page, so there is
+      // nothing to open after a successful login.
       break;
 
     case SEND_MESSAGE_TO_BRIDGE: {
@@ -422,7 +421,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
             });
         }
       });
-      await browser.runtime.openOptionsPage();
+      // The system add-on no longer relies on the options page.
       break;
     }
 
@@ -482,11 +481,8 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
 
     case OPEN_MANAGEMENT_PAGE: {
       console.log(`[onMessage] Received OPEN_MANAGEMENT_PAGE request`);
-      try {
-        await browser.runtime.openOptionsPage();
-      } catch (error) {
-        console.error('[onMessage] Failed to open management page:', error);
-      }
+      // The system add-on no longer relies on the options page, so there is
+      // no management page to open here.
       break;
     }
 
