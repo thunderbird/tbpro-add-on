@@ -1,27 +1,33 @@
 <script lang="ts" setup>
 import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
-import { useApiStore } from '@send-frontend/stores';
 import { onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 
-const { api } = useApiStore();
-const router = useRouter();
+// Removed as we re-evaluate the system add-on FTUE
+// Tracked on https://github.com/thunderbird/tbpro-add-on/issues/915
+// async function checkForFTUE() {
+//   const ftueResponse = await api.call<{ isFTUEComplete: boolean }>(
+//     'users/ftue'
+//   );
 
-async function checkForFTUE() {
-  const ftueResponse = await api.call<{ isFTUEComplete: boolean }>(
-    'users/ftue'
-  );
+//   if (!ftueResponse?.isFTUEComplete) {
+//     router.push(`/ftue`);
+//     return;
+//   }
+// }
 
-  if (!ftueResponse?.isFTUEComplete) {
-    router.push(`/ftue`);
-    return;
-  }
+async function closeOnSignInComplete() {
   window.close();
   window.postMessage({ type: SIGN_IN_COMPLETE }, window.location.origin);
+  try {
+    window.postMessage({ type: 'FORCE_CLOSE_WINDOW' }, window.location.origin);
+  } catch (error) {
+    console.error('Error posting message to parent window:', error);
+  }
 }
 
 onMounted(async () => {
-  await checkForFTUE();
+  // await checkForFTUE();
+  await closeOnSignInComplete();
 });
 </script>
 
