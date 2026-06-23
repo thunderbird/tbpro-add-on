@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      minify: true,
+      minify: false,
       sourcemap: 'hidden',
       outDir: 'dist/extension',
       rollupOptions: {

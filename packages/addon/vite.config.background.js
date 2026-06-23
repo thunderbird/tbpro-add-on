@@ -45,7 +45,7 @@ export default defineConfig(({ mode }) => {
         fileName: () => 'background.mjs',
         formats: ['es'],
       },
-      minify: true,
+      minify: false,
       sourcemap: 'inline',
       outDir: 'dist/background',
       rollupOptions: {
