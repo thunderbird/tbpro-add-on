@@ -194,7 +194,10 @@ jobs:
           # Create .env file with secrets (for end to end run only)
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
-          mv .env packages/send/e2e
+          # The dev OIDC spec loads credentials from tests/desktop/dev/.env
+          # (send.spec.ts: dotenv path = __dirname/.env), so place it there too.
+          cp .env packages/send/e2e
+          mv .env packages/send/e2e/tests/desktop/dev/
           cd packages/send/e2e
           mise exec -- pnpm run test:e2e:ci
 
