@@ -18,9 +18,19 @@ import {
   it,
   vi,
 } from 'vitest';
-import { uploadWithTracker } from './helpers';
+import {
+  getUploadRetryDelayMs,
+  UPLOAD_HTTP_RETRY_LIMIT,
+  uploadWithTracker,
+} from './helpers';
 
 const TEST_URL = 'http://test.local/api/upload';
+
+// Real setTimeout, captured before any spy replaces the global. Retry tests
+// mock setTimeout to run on the next tick (no wall-clock wait) so exponential
+// backoff doesn't make the suite take seconds, while still recording the
+// delays that were requested.
+const realSetTimeout = globalThis.setTimeout.bind(globalThis);
 
 function makeStream(content = 'test-payload') {
   return new ReadableStream({
@@ -33,17 +43,29 @@ function makeStream(content = 'test-payload') {
 
 describe('uploadWithTracker — HTTP-level retry', () => {
   const server = setupServer();
+  let scheduledDelays: number[];
 
   beforeAll(() => server.listen());
   afterEach(() => {
     server.resetHandlers();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
   afterAll(() => server.close());
 
   beforeEach(() => {
     // Re-reset the mock per test so call counts are clean
     mockProgressTracker.setProgress = vi.fn();
+
+    // Record each requested backoff delay and fire the callback on the next
+    // tick so retries don't incur real exponential-backoff waits.
+    scheduledDelays = [];
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      cb: () => void,
+      ms?: number
+    ) => {
+      scheduledDelays.push(ms ?? 0);
+      return realSetTimeout(cb, 0);
+    }) as typeof setTimeout);
   });
 
   it('recovers from a transient 500 on the first attempt', async () => {
@@ -92,7 +114,7 @@ describe('uploadWithTracker — HTTP-level retry', () => {
     expect(calls).toBe(3);
   });
 
-  it('throws UPLOAD_FAILED after exhausting all 3 attempts', async () => {
+  it('throws UPLOAD_FAILED after exhausting all attempts (default 4)', async () => {
     let calls = 0;
     server.use(
       http.put(TEST_URL, () => {
@@ -109,7 +131,32 @@ describe('uploadWithTracker — HTTP-level retry', () => {
       })
     ).rejects.toThrow(/UPLOAD_FAILED/);
 
-    expect(calls).toBe(3);
+    // limit retries + the initial attempt
+    expect(calls).toBe(UPLOAD_HTTP_RETRY_LIMIT + 1);
+    // One backoff delay scheduled per retry
+    expect(scheduledDelays).toHaveLength(UPLOAD_HTTP_RETRY_LIMIT);
+  });
+
+  it('schedules retries with strictly increasing (exponential) backoff', async () => {
+    server.use(
+      http.put(TEST_URL, () =>
+        HttpResponse.text('persistent error', { status: 500 })
+      )
+    );
+
+    await expect(
+      uploadWithTracker({
+        url: TEST_URL,
+        readableStream: makeStream(),
+        progressTracker: mockProgressTracker,
+      })
+    ).rejects.toThrow(/UPLOAD_FAILED/);
+
+    // Jitter ranges per attempt don't overlap (each is [base*2^a*0.5,
+    // base*2^a)), so successive delays are always strictly increasing.
+    for (let i = 1; i < scheduledDelays.length; i++) {
+      expect(scheduledDelays[i]).toBeGreaterThan(scheduledDelays[i - 1]);
+    }
   });
 
   it('retries on a network error (msw: HttpResponse.error)', async () => {
@@ -179,5 +226,31 @@ describe('uploadWithTracker — HTTP-level retry', () => {
     const zeroResetCalls = (mockProgressTracker.setProgress as ReturnType<typeof vi.fn>).mock.calls
       .filter((args) => args[0] === 0).length;
     expect(zeroResetCalls).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('getUploadRetryDelayMs', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('grows exponentially with the attempt index (jitter floor)', () => {
+    // Math.random() === 0 => jitter factor 0.5
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    expect(getUploadRetryDelayMs(0, 1000)).toBe(500);
+    expect(getUploadRetryDelayMs(1, 1000)).toBe(1000);
+    expect(getUploadRetryDelayMs(2, 1000)).toBe(2000);
+  });
+
+  it('keeps each delay within [base*2^attempt*0.5, base*2^attempt)', () => {
+    const base = 1000;
+    for (const r of [0, 0.25, 0.5, 0.75, 0.999]) {
+      vi.spyOn(Math, 'random').mockReturnValue(r);
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const exp = base * 2 ** attempt;
+        const delay = getUploadRetryDelayMs(attempt, base);
+        expect(delay).toBeGreaterThanOrEqual(exp * 0.5);
+        expect(delay).toBeLessThan(exp);
+      }
+      vi.restoreAllMocks();
+    }
   });
 });

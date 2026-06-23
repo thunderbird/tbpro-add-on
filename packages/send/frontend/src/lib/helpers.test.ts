@@ -8,6 +8,10 @@ const TEST_URL = `${import.meta.env.VITE_SEND_SERVER_URL}/api`;
 const TEST_CONTENT = 'test-content';
 const TEST_BLOB = new Blob([TEST_CONTENT]);
 
+// Real setTimeout captured before any spy; retry tests fire the callback on
+// the next tick so the upload's exponential backoff adds no wall-clock wait.
+const realSetTimeout = globalThis.setTimeout.bind(globalThis);
+
 describe('helpers', () => {
   const restHandlers = [
     http.get(`${TEST_URL}/download/*`, () =>
@@ -28,8 +32,15 @@ describe('helpers', () => {
     server.close();
   });
 
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      cb: () => void
+    ) => realSetTimeout(cb, 0)) as typeof setTimeout);
+  });
+
   afterEach(() => {
     server.resetHandlers();
+    vi.restoreAllMocks();
   });
 
   describe('uploadWithTracker', () => {
