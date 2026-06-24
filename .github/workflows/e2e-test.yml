@@ -171,19 +171,35 @@ jobs:
           rm -f /etc/apt/apt.conf.d/docker-clean
           pnpm --filter send-suite-e2e exec playwright install-deps
 
+      # Pin the Node version used to install/run Playwright (see packages/send/e2e/.tool-versions).
+      # The container's default Node (24.x) hits a stream regression (nodejs/node#63487) that
+      # hangs `playwright install` during zip extraction; Node 22 LTS avoids it. We keep
+      # @playwright/test at 1.59.1 for BrowserStack Automate compatibility.
+      - name: Install pinned Node via mise
+        working-directory: packages/send/e2e
+        run: |
+          mise install
+          mise exec -- node --version
+
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm --filter send-suite-e2e exec playwright install
+        timeout-minutes: 10
+        working-directory: packages/send/e2e
+        run: mise exec -- pnpm exec playwright install
 
       - name: Run stack and test
         id: run-stack-and-test
         timeout-minutes: 10
         run: |
-          # Create .env file with secrets (for end to end run only)# Create .env file with secrets
+          # Create .env file with secrets (for end to end run only)
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
-          mv .env packages/send/e2e
-          lerna run test:e2e:ci --scope=send-suite-e2e
+          # The dev OIDC spec loads credentials from tests/desktop/dev/.env
+          # (send.spec.ts: dotenv path = __dirname/.env), so place it there too.
+          cp .env packages/send/e2e
+          mv .env packages/send/e2e/tests/desktop/dev/
+          cd packages/send/e2e
+          mise exec -- pnpm run test:e2e:ci
 
       - name: Save Playwright browsers cache
         if: always() && steps.playwright-cache.outputs.cache-hit != 'true'
