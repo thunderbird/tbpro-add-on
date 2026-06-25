@@ -32,8 +32,10 @@ platforms:
     playwrightConfigOptions:
       name: Firefox-OSX
       setup: 
-      - name: 'setup_firefox'
-        testMatch: 'auth.desktop.setup.ts'
+      - name: 'firefox_auth'
+        testMatch: 'auth.desktop.ts'
+      use:
+        storageState: 'test-results/.auth/user.json'
 
   - os: OS X
     osVersion: Sequoia
@@ -42,9 +44,11 @@ platforms:
     playwrightConfigOptions:
       name: Safari-OSX
       setup: 
-      - name: 'setup_webkit'
-        testMatch: 'auth.desktop.setup.ts'
-
+      - name: 'safari_auth'
+        testMatch: 'auth.desktop.ts'
+      use:
+        storageState: 'test-results/.auth/user.json'
+  
   - os: Windows
     osVersion: 11
     browserName: playwright-chromium
@@ -52,8 +56,10 @@ platforms:
     playwrightConfigOptions:
       name: Chromium-Win11
       setup: 
-      - name: 'setup_chromium'
-        testMatch: 'auth.desktop.setup.ts'
+      - name: 'chromium_auth'
+        testMatch: 'auth.desktop.ts'
+      use:
+        storageState: 'test-results/.auth/user.json'
 
 # =======================
 # Parallels per Platform
