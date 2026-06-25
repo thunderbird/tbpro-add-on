@@ -22,7 +22,7 @@ import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
 import { useQuery } from '@tanstack/vue-query';
 import { computed, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
-import LoadingComponent from '../common/LoadingComponent.vue';
+import AuthLoader from './components/AuthLoader.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -69,10 +69,7 @@ watchEffect(() => {
 
 <template>
   <div class="addon-auth-container">
-    <div v-if="isLoading" class="loading-section">
-      <LoadingComponent />
-      <p>Completing authentication...</p>
-    </div>
+    <AuthLoader v-if="isLoading" />
 
     <div v-else-if="error" class="error-section">
       <h2>Authentication Error</h2>
@@ -93,11 +90,11 @@ watchEffect(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  min-height: 100vh;
   padding: 2rem;
   text-align: center;
 }
 
-.loading-section,
 .error-section,
 .success-section {
   max-width: 400px;

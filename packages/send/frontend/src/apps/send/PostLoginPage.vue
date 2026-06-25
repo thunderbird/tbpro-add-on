@@ -13,7 +13,7 @@ import { useAuthStore } from '@send-frontend/stores/auth-store';
 import { useQuery } from '@tanstack/vue-query';
 import { computed, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
-import LoadingComponent from '../common/LoadingComponent.vue';
+import AuthLoader from './components/AuthLoader.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -61,8 +61,7 @@ watchEffect(() => {
 <template>
   <div class="post-login-container">
     <div v-if="isLoading" class="loading-section">
-      <LoadingComponent />
-      <p>Completing authentication...</p>
+      <AuthLoader />
     </div>
 
     <div v-else-if="error" class="error-section">
