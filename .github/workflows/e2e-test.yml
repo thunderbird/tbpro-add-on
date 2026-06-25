@@ -182,6 +182,7 @@ jobs:
           mise exec -- node --version
 
       - name: Install Playwright browsers
+        id: install-playwright-browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         timeout-minutes: 10
         working-directory: packages/send/e2e
@@ -201,8 +202,11 @@ jobs:
           cd packages/send/e2e
           mise exec -- pnpm run test:e2e:ci
 
+      # Only save when the install step actually succeeded. A cancelled or failed
+      # install (e.g. the Node 24 extract-zip hang) would otherwise save a partial
+      # cache that poisons future runs with "Executable doesn't exist".
       - name: Save Playwright browsers cache
-        if: always() && steps.playwright-cache.outputs.cache-hit != 'true'
+        if: always() && steps.playwright-cache.outputs.cache-hit != 'true' && steps.install-playwright-browsers.outcome == 'success'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
