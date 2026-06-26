@@ -29,6 +29,33 @@ export const playwrightConfig = {
   fileLinks: [] as string[],
 };
 
+/**
+ * Reset the module-level `shareLinks` singleton back to its empty baseline.
+ * Call this at suite start so a failed/aborted run can't leak stale (or null)
+ * links into a later run and produce cryptic, misattributed failures (#930).
+ */
+export function resetShareLinks() {
+  for (const key of Object.keys(playwrightConfig.shareLinks)) {
+    playwrightConfig.shareLinks[key] = null;
+  }
+}
+
+/**
+ * Read a share link that an earlier workflow step was supposed to populate.
+ * Throws an actionable error instead of letting a `null` reach `page.goto()`,
+ * where it surfaces as the opaque `goto: url: expected string, got object`.
+ */
+export function requireShareLink(key: string): string {
+  const link = playwrightConfig.shareLinks[key];
+  if (!link) {
+    throw new Error(
+      `Missing share link for "${key}" — an upstream test step did not populate it. ` +
+        `This usually means an earlier workflow (share/upload) failed; check that failure first.`
+    );
+  }
+  return link;
+}
+
 export async function downloadFirstFile(page: Page) {
   const { downloadButton, confirmDownload } = fileLocators(page);
   await downloadButton.click();

@@ -25,7 +25,7 @@ import {
 } from "../../../pages/dev/myFiles"
 
 import { oidc_login } from "../../../pages/dev/oidc"
-import { setup_browser } from "../../../utils/dev/testUtils"
+import { resetShareLinks, setup_browser } from "../../../utils/dev/testUtils"
 
 config.config({ path: path.resolve(__dirname, "./.env") });
 
@@ -106,6 +106,12 @@ test.describe("File workflows", {
 }, () => {
   let page: Page;
   let context: BrowserContext;
+
+  // Start from a clean share-link map so a prior (possibly failed) run can't
+  // leak stale/null links into the download + delete steps below (#930).
+  test.beforeAll(() => {
+    resetShareLinks();
+  });
 
   test.beforeEach(async () => {
     ({ page, context } = await setup_browser());

@@ -1,5 +1,6 @@
 import { ContainerType, PrismaClient } from '@prisma/client';
 import {
+  BaseError,
   CONTAINER_NOT_CREATED,
   CONTAINER_NOT_FOUND,
   CONTAINER_NOT_UPDATED,
@@ -23,45 +24,47 @@ export async function createContainer(
   parentId: string | null,
   shareOnly: boolean
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query: Record<string, any> = {
-    data: {},
-  };
-  const group = await fromPrismaV2(
-    prisma.group.create,
-    query,
-    GROUP_NOT_CREATED
-  );
+  // Create the group, the owner's membership, and the container atomically.
+  // Doing these as separate calls left a window where a partially-created
+  // container (e.g. group without membership) could be observed, surfacing as
+  // a spurious 403 / "No Group found". See issue #930.
+  return prisma.$transaction(async (tx) => {
+    const group = await tx.group.create({ data: {} }).catch((err) => {
+      console.error(err);
+      throw new BaseError(GROUP_NOT_CREATED);
+    });
 
-  query = {
-    data: {
-      groupId: group.id,
-      userId: ownerId,
-      permission: PermissionType.ADMIN, // Owner has full permissions
-    },
-  };
-  await fromPrismaV2(prisma.membership.create, query, MEMBERSHIP_NOT_CREATED);
+    await tx.membership
+      .create({
+        data: {
+          groupId: group.id,
+          userId: ownerId,
+          permission: PermissionType.ADMIN, // Owner has full permissions
+        },
+      })
+      .catch((err) => {
+        console.error(err);
+        throw new BaseError(MEMBERSHIP_NOT_CREATED);
+      });
 
-  query = {
-    data: {
-      name,
-      ownerId,
-      groupId: group.id,
-      type,
-      shareOnly,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  };
-  if (parentId) {
-    query.data['parentId'] = parentId;
-  }
-
-  return await fromPrismaV2(
-    prisma.container.create,
-    query,
-    CONTAINER_NOT_CREATED
-  );
+    return tx.container
+      .create({
+        data: {
+          name,
+          ownerId,
+          groupId: group.id,
+          type,
+          shareOnly,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          ...(parentId ? { parentId } : {}),
+        },
+      })
+      .catch((err) => {
+        console.error(err);
+        throw new BaseError(CONTAINER_NOT_CREATED);
+      });
+  });
 }
 
 export async function getItemsInContainer(id: string) {
