@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
         fileName: 'background',
         formats: ['es'],
       },
-      minify: true,
+      minify: false,
       sourcemap: true,
       outDir: 'dist/background',
       // rollupOptions: {

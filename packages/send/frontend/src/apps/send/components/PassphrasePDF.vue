@@ -40,7 +40,7 @@ const instruction = ref(
   "Fill out and save this form, then store it in a safe place you'll remember."
 );
 const formTitle = ref('Send Encryption Key');
-const accountLabel = ref('THUNDERBIRD PRO ACCOUNT');
+const accountLabel = ref('THUNDERMAIL ACCOUNT');
 const keyLabel = ref('SEND ENCRYPTION KEY');
 const generatedLabel = ref('Generated');
 const learnMoreText = ref('Learn more about encryption keys');
