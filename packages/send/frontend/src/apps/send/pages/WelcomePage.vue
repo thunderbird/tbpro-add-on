@@ -39,7 +39,7 @@ async function handleSetEncryptionPassword() {
     </div>
 
     <!-- Main Heading -->
-    <h1 class="welcome-heading">Welcome to Thunderbird Pro!</h1>
+    <h1 class="welcome-heading">Welcome to Thundermail!</h1>
 
     <!-- Content Layout -->
     <div class="content-layout">
@@ -71,7 +71,7 @@ async function handleSetEncryptionPassword() {
             </div>
             <p class="card-text">
               Next, set your encryption password. Then you’re ready to send
-              encrypted files or manage them from your Thunderbird Pro account
+              encrypted files or manage them from your Thundermail account
               menu.
             </p>
 

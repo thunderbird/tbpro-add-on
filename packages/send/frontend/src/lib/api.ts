@@ -59,16 +59,29 @@ export class ApiConnection {
    * @returns {AsyncJsonResponse<T>} Returns a Promise that resolves to the response data (or null).
    *
    */
-  public async call<
-    T = { [key: string]: any },
-    O extends Options = { fullResponse: false },
-  >(
+  // `fullResponse: true` returns the raw Response (required, so an omitted
+  // options object resolves to the T | null overload, not Response).
+  public async call(
+    path: string,
+    body: Record<string, any>,
+    method: string,
+    headers: Record<string, any>,
+    options: Options & { fullResponse: true }
+  ): Promise<Response>;
+  public async call<T = { [key: string]: any }>(
+    path: string,
+    body?: Record<string, any>,
+    method?: string,
+    headers?: Record<string, any>,
+    options?: Options & { fullResponse?: false }
+  ): Promise<T | null>;
+  public async call<T = { [key: string]: any }>(
     path: string,
     body: Record<string, any> = {},
     method: string = 'GET',
     headers: Record<string, any> = {},
-    options?: O
-  ): Promise<O extends { fullResponse: true } ? Response : T | null> {
+    options?: Options
+  ): Promise<Response | T | null> {
     const url = `${this.serverUrl}/api/${path}`;
     const refreshTokenUrl = `${this.serverUrl}/api/auth/refresh`;
 
@@ -112,6 +125,7 @@ export class ApiConnection {
       resp = await fetch(url, opts);
     } catch (e) {
       console.log(e);
+      options?.onFailure?.({ kind: 'network', status: null, error: e });
       return null;
     }
 
@@ -132,6 +146,7 @@ export class ApiConnection {
           }
         } catch (error) {
           console.error('Token refresh failed:', error);
+          options?.onFailure?.({ kind: 'network', status: null, error });
           return null;
         }
       } else {
@@ -145,17 +160,32 @@ export class ApiConnection {
           resp = await fetch(url, opts);
         } catch (error) {
           console.log(error);
+          options?.onFailure?.({ kind: 'network', status: null, error });
           return null;
         }
       }
     }
 
     if (!resp.ok) {
+      // Surface the status/body for the caller's diagnostics before discarding
+      // the response. Reading the body is safe here because we return null
+      // (we never parse it as JSON on the error path).
+      let body: string | undefined;
+      try {
+        body = (await resp.text()).slice(0, 500);
+      } catch {
+        body = undefined;
+      }
+      options?.onFailure?.({
+        kind: 'http',
+        status: resp.status,
+        statusText: resp.statusText,
+        body,
+      });
       return null;
     }
 
     if (!!options?.fullResponse) {
-      //@ts-ignore
       return resp;
     }
 
@@ -163,6 +193,23 @@ export class ApiConnection {
   }
 }
 
+/**
+ * Why a {@link ApiConnection.call} failed. `call` returns `null` on every
+ * failure, which loses the distinction between a network error and an API
+ * 4xx/5xx (and the status code). Callers that need that for observability can
+ * pass an `onFailure` hook to capture it.
+ */
+export type ApiCallFailure =
+  | { kind: 'network'; status: null; error: unknown }
+  | { kind: 'http'; status: number; statusText: string; body?: string };
+
 type Options = {
   fullResponse?: boolean;
+  /**
+   * Optional diagnostics hook invoked when the call fails, just before `call`
+   * returns null. Purely observational — it does not change the return value
+   * or any control flow. Used to capture the HTTP status / network-vs-server
+   * cause that would otherwise be discarded.
+   */
+  onFailure?: (failure: ApiCallFailure) => void;
 };

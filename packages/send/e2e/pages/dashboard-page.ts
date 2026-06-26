@@ -1,15 +1,9 @@
 import { expect, type Page, type Locator } from '@playwright/test';
 
-import { TB_SEND_SUPPORT_URL, TIMEOUT_1_SECOND } from '../const/const';
+import { TIMEOUT_1_SECOND } from '../const/const';
 import { EncryptedFilesPage } from './encrypted-files-page';
 import { SecurityPrivacyPage } from './security-privacy-page';
-
-const SUPPORT_LINK_LABELS = [
-  /^Need help with your account\?/,
-  /^Troubleshooting for desktop/,
-  /^Learn more about encryption/,
-  /^Export your data/,
-];
+import { expectSupportLinks } from './support-links';
 
 export class DashboardPage {
   readonly page: Page;
@@ -102,18 +96,7 @@ export class DashboardPage {
   }
 
   async expectSupportLinks() {
-    for (const label of SUPPORT_LINK_LABELS) {
-      const supportLink = this.page.getByRole('link', { name: label });
-
-      await expect(supportLink).toBeVisible();
-
-      // on ios the path includes a trailing / but other platforms don't
-      const expLinkRegex = new RegExp(`^${TB_SEND_SUPPORT_URL}/?$`);
-      await expect(supportLink).toHaveAttribute('href', expLinkRegex);
-      await expect(supportLink).toHaveAttribute('target', '_blank');
-      await expect(supportLink).toHaveAttribute('rel', /noopener/);
-      await expect(supportLink).toHaveAttribute('rel', /noreferrer/);
-    }
+    await expectSupportLinks(this.page);
   }
 
   async goToEncryptedFilesFromDashboard() {

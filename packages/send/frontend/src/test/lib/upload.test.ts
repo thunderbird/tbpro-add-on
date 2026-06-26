@@ -246,7 +246,9 @@ describe('Uploader', () => {
         expect.objectContaining({
           fileHash: 'abc123def456',
         }),
-        'POST'
+        'POST',
+        {},
+        expect.objectContaining({ onFailure: expect.any(Function) })
       );
     });
 
@@ -290,7 +292,9 @@ describe('Uploader', () => {
         expect.objectContaining({
           fileHash: 'abc123def456',
         }),
-        'POST'
+        'POST',
+        {},
+        expect.objectContaining({ onFailure: expect.any(Function) })
       );
     });
 
