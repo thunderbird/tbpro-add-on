@@ -264,14 +264,46 @@ type UploadOptions = {
   progressTracker: ProgressTracker;
 };
 
+// Upload PUT retry policy. The hard B2 failures seen in production
+// (Sentry SEND-SUITE-FRONTEND-24H) are multi-minute stalls, so we retry a
+// handful of times with exponentially-growing, jittered delays to widen the
+// recovery window before giving up. Defaults are overridable via Vite env
+// vars — note these are baked in at build time, so a change still needs a
+// frontend deploy; they exist for tuning, not live runtime config.
+// UPLOAD_HTTP_RETRY_LIMIT is the number of *retries*; total attempts is
+// limit + 1 (default 3 retries => 4 attempts).
+export const UPLOAD_HTTP_RETRY_LIMIT: number =
+  Number(import.meta.env.VITE_UPLOAD_HTTP_RETRY_LIMIT) || 3;
+export const UPLOAD_HTTP_RETRY_BASE_DELAY_MS: number =
+  Number(import.meta.env.VITE_UPLOAD_HTTP_RETRY_BASE_DELAY_MS) || 1000;
+
+/**
+ * Exponential backoff with jitter for the upload PUT retry schedule:
+ *   delay = base * 2^attempt * (0.5 + Math.random() / 2)
+ * The jitter factor is in [0.5, 1.0), so with the default 1000ms base the
+ * per-attempt delays grow roughly ~1s, ~2s, ~4s while staying de-synchronized
+ * across clients (avoids a thundering herd when B2 recovers).
+ *
+ * @param attempt - zero-based index of the attempt that just failed
+ * @param baseDelayMs - base delay; defaults to UPLOAD_HTTP_RETRY_BASE_DELAY_MS
+ */
+export function getUploadRetryDelayMs(
+  attempt: number,
+  baseDelayMs: number = UPLOAD_HTTP_RETRY_BASE_DELAY_MS
+): number {
+  const exponential = baseDelayMs * 2 ** attempt;
+  const jitter = 0.5 + Math.random() / 2; // [0.5, 1.0)
+  // floor (not round) keeps each attempt's range strictly below the next's
+  // floor: [base*2^a*0.5, base*2^a), so successive delays never collide.
+  return Math.floor(exponential * jitter);
+}
+
 export const uploadWithTracker = ({
   url,
   readableStream,
   progressTracker,
 }: UploadOptions) => {
   const { setProgress } = progressTracker;
-  const HTTP_RETRY_LIMIT = 2;
-  const HTTP_RETRY_DELAY_MS = 1000;
   const XHR_TIMEOUT_MS = 60000;
 
   const attemptPut = (blob: Blob, attempt: number): Promise<string> => {
@@ -310,13 +342,14 @@ export const uploadWithTracker = ({
 
       xhr.send(blob);
     }).catch((error) => {
-      if (attempt < HTTP_RETRY_LIMIT) {
+      if (attempt < UPLOAD_HTTP_RETRY_LIMIT) {
+        const delayMs = getUploadRetryDelayMs(attempt);
         console.warn(
-          `HTTP PUT attempt ${attempt + 1} failed, retrying...`,
+          `HTTP PUT attempt ${attempt + 1} failed, retrying in ${delayMs}ms...`,
           error.message
         );
         return new Promise<string>((resolve) =>
-          setTimeout(resolve, HTTP_RETRY_DELAY_MS)
+          setTimeout(resolve, delayMs)
         ).then(() => attemptPut(blob, attempt + 1));
       }
       throw error;
