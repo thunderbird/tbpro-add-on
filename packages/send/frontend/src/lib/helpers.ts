@@ -272,7 +272,7 @@ export const uploadWithTracker = ({
   const { setProgress } = progressTracker;
   const HTTP_RETRY_LIMIT = 2;
   const HTTP_RETRY_DELAY_MS = 1000;
-  const XHR_TIMEOUT_MS = 30000;
+  const XHR_TIMEOUT_MS = 60000;
 
   const attemptPut = (blob: Blob, attempt: number): Promise<string> => {
     // Reset progress on retry so the UI gets a clean signal
@@ -305,7 +305,8 @@ export const uploadWithTracker = ({
       };
 
       xhr.onerror = () => reject(new Error('XHR: UPLOAD_FAILED'));
-      xhr.ontimeout = () => reject(new Error('Upload timed out after 30s'));
+      xhr.ontimeout = () =>
+        reject(new Error(`Upload timed out after ${XHR_TIMEOUT_MS / 1000}s`));
 
       xhr.send(blob);
     }).catch((error) => {
