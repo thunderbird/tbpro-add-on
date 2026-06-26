@@ -5,16 +5,40 @@ import {
 } from '@send-frontend/apps/send/stores/folder-store.types';
 import type { ProcessStage } from '@send-frontend/apps/send/stores/status-store';
 import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
-import { ApiConnection } from '@send-frontend/lib/api';
+import { ApiCallFailure, ApiConnection } from '@send-frontend/lib/api';
 import { NamedBlob, sendBlob } from '@send-frontend/lib/filesync';
 import { Keychain } from '@send-frontend/lib/keychain';
 import { UserType } from '@send-frontend/types';
+import * as Sentry from '@sentry/vue';
 import { SPLIT_SIZE } from './const';
 import {
   hashFiles,
   retryUntilSuccessOrTimeout,
   splitIntoMultipleZips,
 } from './utils';
+
+/**
+ * Turn the (optional) {@link ApiCallFailure} from the create-entry call into a
+ * descriptive Error to use as the thrown error's `cause`, so the underlying
+ * reason (network vs HTTP status/body) survives in Sentry instead of being a
+ * bare "Failed to create upload entry".
+ */
+function createEntryFailureToCause(failure: ApiCallFailure | undefined): Error {
+  if (failure?.kind === 'http') {
+    const suffix = failure.body ? `: ${failure.body}` : '';
+    return new Error(
+      `create-entry HTTP ${failure.status} ${failure.statusText}${suffix}`
+    );
+  }
+  if (failure?.kind === 'network') {
+    return failure.error instanceof Error
+      ? failure.error
+      : new Error(`create-entry network error: ${String(failure.error)}`);
+  }
+  // api.call returned null without reporting a failure (shouldn't normally
+  // happen, but keep a non-empty cause rather than losing the signal).
+  return new Error('create-entry returned no result');
+}
 
 export default class Uploader {
   user: UserType;
@@ -213,7 +237,11 @@ export default class Uploader {
             });
           }
 
-          // Create a Content entry in the database
+          // Create a Content entry in the database.
+          // Capture why this call fails (network vs API 4xx/5xx + status) so
+          // Sentry can break "Failed to create upload entry" down by cause and
+          // rate. Observability only (#914) — no retry/timeout change here.
+          let createEntryFailure: ApiCallFailure | undefined;
           const result = await this.api.call<{
             upload: UploadResponse;
           }>(
@@ -227,10 +255,43 @@ export default class Uploader {
               part, // if the file was split into multiple zips, we add the part
               fileHash: hashes[index],
             },
-            'POST'
+            'POST',
+            {},
+            {
+              onFailure: (failure) => {
+                createEntryFailure = failure;
+              },
+            }
           );
           if (!result) {
-            throw new Error('Failed to create upload entry');
+            const cause = createEntryFailureToCause(createEntryFailure);
+            Sentry.captureException(cause, {
+              tags: {
+                upload_stage: 'create_entry',
+                create_entry_failure_kind: createEntryFailure?.kind ?? 'unknown',
+                ...(createEntryFailure?.kind === 'http'
+                  ? { create_entry_http_status: String(createEntryFailure.status) }
+                  : {}),
+              },
+              contexts: {
+                create_entry: {
+                  kind: createEntryFailure?.kind ?? 'unknown',
+                  status:
+                    createEntryFailure?.kind === 'http'
+                      ? createEntryFailure.status
+                      : null,
+                  statusText:
+                    createEntryFailure?.kind === 'http'
+                      ? createEntryFailure.statusText
+                      : undefined,
+                  body:
+                    createEntryFailure?.kind === 'http'
+                      ? createEntryFailure.body
+                      : undefined,
+                },
+              },
+            });
+            throw new Error('Failed to create upload entry', { cause });
           }
           const upload = result.upload;
 
