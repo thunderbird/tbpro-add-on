@@ -233,7 +233,7 @@ function handleFolderClick(uuid: string) {
     <div v-else>
       <div
         v-if="isEmpty"
-        class="border border-blue-400 rounded-lg flex flex-col items-center justify-center py-16 gap-2 bg-white"
+        class="border border-gray-200 rounded-lg flex flex-col items-center justify-center py-16 gap-2 bg-white"
       >
         <div class="rounded-full border-2 border-gray-500 p-3">
           <SendIconBlack class="w-8 h-8 text-gray-500" />
@@ -376,7 +376,4 @@ function handleFolderClick(uuid: string) {
 
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
-.wrapper {
-  min-width: calc(80vw - 16rem);
-}
 </style>
