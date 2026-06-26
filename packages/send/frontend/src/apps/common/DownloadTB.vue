@@ -13,7 +13,7 @@ const handleDownloadTB = () => {
 <template>
   <div class="bg card-shadow">
     <p class="text">
-      To use Send in Thunderbird Desktop, install the Thunderbird Pro add-on and
+      To use Send in Thunderbird Desktop, install the Thundermail add-on and
       sign in from the Thunderbird menu.
     </p>
     <div class="buttonwrapper">

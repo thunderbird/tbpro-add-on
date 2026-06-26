@@ -67,7 +67,7 @@ export class SecurityPrivacyPage {
     this.resetKeyCancelButton = page.getByRole('button', { name: 'Cancel' });
     this.deleteSendDataCardHeading = this.page.getByRole('heading', { name: 'Delete Send Data' });
     this.deleteSendDataWarning = this.page.getByText(
-      /This will permanently delete all encrypted files in your Thunderbird Pro\s+Send storage\./
+      /This will permanently delete all encrypted files in your Thundermail\s+Send storage\./
     );
     this.deleteUnderstandCheckbox = this.page.getByTestId('delete-understand-checkbox');
     this.deletePasswordInput = this.page.getByTestId('delete-password');
