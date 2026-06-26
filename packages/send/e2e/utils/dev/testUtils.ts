@@ -9,7 +9,7 @@ import {
 import { readFileSync } from "fs";
 
 import { fileLocators } from "../../pages/dev/locators";
-import { emptystatePath, storageStatePath } from "../../tests/desktop/dev/send.spec";
+import { emptystatePath, storageStatePath } from "./paths";
 import path from "path";
 
 const sharelinks = {
