@@ -70,11 +70,8 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   async function openManagementPage() {
-    try {
-      await browser.runtime.openOptionsPage();
-    } catch (error) {
-      console.error('Failed to open management page:', error);
-    }
+    // The system add-on no longer relies on the options page, so there is no
+    // management page to open here.
   }
 
   return {
