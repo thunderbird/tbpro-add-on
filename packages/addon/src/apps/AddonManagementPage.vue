@@ -29,7 +29,7 @@ async function openLoginPage() {
     <WithLoader :is-loading="isLoadingAuth">
       <div v-if="!isLoggedIn" class="login-section">
         <p class="description">
-          Sign in with Thunderbird Pro to use Send or restore access to your
+          Sign in with Thundermail to use Send or restore access to your
           encrypted files.
         </p>
         <AuthButtons

@@ -59,12 +59,12 @@ const confirmDeletion = () => {
       <h1 class="title">Delete Send Data</h1>
 
       <p class="description strong">
-        This will permanently delete all encrypted files in your Thunderbird Pro
+        This will permanently delete all encrypted files in your Thundermail
         Send storage.
       </p>
 
       <p class="description">
-        Your Thunderbird Pro subscription will not be affected.
+        Your Thundermail subscription will not be affected.
       </p>
 
       <p class="description">

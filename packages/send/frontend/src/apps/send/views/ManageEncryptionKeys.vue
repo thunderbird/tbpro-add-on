@@ -32,7 +32,7 @@ const router = useRouter();
       <div class="spacing">
         <div class="title-secondary">Delete Send Data</div>
         <p>
-          Permanently delete all encrypted files in your Thunderbird Pro Send
+          Permanently delete all encrypted files in your Thundermail Send
           storage.
         </p>
         <div class="delete-link light">
