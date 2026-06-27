@@ -7,10 +7,11 @@ import {
   downloadFirstFile,
   dragAndDropFile,
   playwrightConfig,
+  requireShareLink,
   saveClipboardItem,
 } from "../../utils/dev/testUtils";
 
-const { password, timeout, shareLinks, fileLinks } = playwrightConfig;
+const { password, timeout, fileLinks } = playwrightConfig;
 
 export async function upload_workflow({ page }: PlaywrightProps) {
   const { folderRowSelector, folderRowTestID, fileCountID, uploadButton, dropZone, tableCellID, passwordInput } =
@@ -150,13 +151,13 @@ export async function download_workflow({ page, context }: PlaywrightProps) {
 
   // Regular window downloads
   let otherPage = await context.newPage();
-  await otherPage.goto(shareLinks["folder-no-password"]!);
+  await otherPage.goto(requireShareLink("folder-no-password"));
   await otherPage.waitForLoadState("networkidle");
   await downloadFirstFile(otherPage);
   await otherPage.close();
 
   otherPage = await context.newPage();
-  await otherPage.goto(shareLinks["folder-with-password"]!);
+  await otherPage.goto(requireShareLink("folder-with-password"));
   await otherPage.waitForLoadState("networkidle");
   await otherPage.getByTestId(passwordInputID).fill(password);
   await otherPage.getByTestId(submitButtonID).click();
@@ -176,14 +177,14 @@ export async function download_workflow({ page, context }: PlaywrightProps) {
 
     // Download share link (folder) without password
     otherPage = await incognitoContext.newPage();
-    await otherPage.goto(shareLinks["folder-no-password"]!);
+    await otherPage.goto(requireShareLink("folder-no-password"));
     await otherPage.waitForLoadState("networkidle");
     await downloadFirstFile(otherPage);
     await otherPage.close();
 
     // Download share link (folder) with password
     otherPage = await incognitoContext.newPage();
-    await otherPage.goto(shareLinks["folder-with-password"]!);
+    await otherPage.goto(requireShareLink("folder-with-password"));
     await otherPage.waitForLoadState("networkidle");
     await otherPage.getByTestId(passwordInputID).fill(password);
     await otherPage.getByTestId(submitButtonID).click();
@@ -193,14 +194,14 @@ export async function download_workflow({ page, context }: PlaywrightProps) {
 
     // Download individual file without password
     otherPage = await incognitoContext.newPage();
-    await otherPage.goto(shareLinks["file-no-password"]!);
+    await otherPage.goto(requireShareLink("file-no-password"));
     await otherPage.waitForLoadState("networkidle");
     await downloadFirstFile(otherPage);
     await otherPage.close();
 
     // Download individual file with password
     otherPage = await incognitoContext.newPage();
-    await otherPage.goto(shareLinks["file-with-password"]!);
+    await otherPage.goto(requireShareLink("file-with-password"));
     await otherPage.waitForLoadState("networkidle");
     await otherPage.getByTestId(passwordInputID).fill(password);
     await otherPage.getByTestId(submitButtonID).click();
@@ -239,12 +240,12 @@ export async function delete_file({ page }: PlaywrightProps) {
 
   // Check that the share links are no longer accessible
   // Folder no password link
-  await page.goto(shareLinks["folder-no-password"]!);
+  await page.goto(requireShareLink("folder-no-password"));
   await page.waitForLoadState("networkidle");
   expect(await page.getByTestId("not_found").textContent()).toContain("This link is no longer active");
 
   // Folder with password link
-  await page.goto(shareLinks["folder-with-password"]!);
+  await page.goto(requireShareLink("folder-with-password"));
   await page.waitForLoadState("networkidle");
   await page.getByTestId(passwordInputID).fill(password);
   await page.getByTestId(submitButtonID).click();

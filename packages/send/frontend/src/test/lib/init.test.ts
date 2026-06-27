@@ -1,6 +1,18 @@
 import { INIT_ERRORS } from '@send-frontend/apps/send/const';
 import init from '@send-frontend/lib/init';
+import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// init() pulls the api connection from the store and attempts a key restore
+// before deciding a default folder is orphaned. Mock both so the tests can
+// control whether the restore populates the keychain.
+vi.mock('@send-frontend/stores/api-store', () => ({
+  default: () => ({ api: {} }),
+}));
+
+vi.mock('@send-frontend/lib/keychain', () => ({
+  restoreKeysUsingLocalStorage: vi.fn(),
+}));
 
 // ---------------------------------------------------------------------------
 // Helper factories — produce minimal duck-typed stand-ins for each dependency
@@ -62,6 +74,7 @@ describe('init()', () => {
     userStore = makeUserStore();
     keychain = makeKeychain();
     folderStore = makeFolderStore();
+    vi.mocked(restoreKeysUsingLocalStorage).mockReset();
   });
 
   // --- Early-exit error paths (pre-existing behaviour — regression tests) ---
@@ -205,5 +218,46 @@ describe('init()', () => {
     expect(result).toBe(INIT_ERRORS.COULD_NOT_CREATE_DEFAULT_FOLDER);
 
     vi.restoreAllMocks();
+  });
+
+  // --- Regression for #930: do not destroy a valid container ---
+
+  it('restores keys before the orphan check and does NOT delete when the key arrives via restore', async () => {
+    const folderId = 'folder-from-backup';
+    const keysMap: Record<string, string> = {}; // key not in local storage yet
+    folderStore = makeFolderStore({ defaultFolder: { id: folderId } });
+    keychain = makeKeychain(keysMap);
+
+    // The server-backup restore populates the previously-missing key.
+    vi.mocked(restoreKeysUsingLocalStorage).mockImplementation(async () => {
+      keysMap[folderId] = 'restored-key';
+    });
+
+    const result = await init(
+      userStore as any,
+      keychain as any,
+      folderStore as any
+    );
+
+    expect(restoreKeysUsingLocalStorage).toHaveBeenCalledOnce();
+    // The valid container must survive: no destructive delete + recreate.
+    expect(folderStore.deleteFolder).not.toHaveBeenCalled();
+    expect(folderStore.createFolder).not.toHaveBeenCalled();
+    expect(result).toBe(INIT_ERRORS.NONE);
+  });
+
+  it('is single-flight: concurrent calls share one run (no double delete/create)', async () => {
+    folderStore = makeFolderStore({ defaultFolder: null });
+
+    const [r1, r2] = await Promise.all([
+      init(userStore as any, keychain as any, folderStore as any),
+      init(userStore as any, keychain as any, folderStore as any),
+    ]);
+
+    // Both callers resolve, but the work runs exactly once.
+    expect(folderStore.sync).toHaveBeenCalledOnce();
+    expect(folderStore.createFolder).toHaveBeenCalledOnce();
+    expect(r1).toBe(INIT_ERRORS.NONE);
+    expect(r2).toBe(INIT_ERRORS.NONE);
   });
 });
