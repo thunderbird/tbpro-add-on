@@ -25,7 +25,15 @@ import {
 } from "../../../pages/dev/myFiles"
 
 import { oidc_login } from "../../../pages/dev/oidc"
-import { setup_browser } from "../../../utils/dev/testUtils"
+import {
+  emptyState,
+  emptystatePath,
+  storageStatePath,
+} from "../../../utils/dev/paths"
+import { resetShareLinks, setup_browser } from "../../../utils/dev/testUtils"
+
+// Re-export for backwards compatibility with anything importing these from the spec.
+export { emptystatePath, storageStatePath }
 
 config.config({ path: path.resolve(__dirname, "./.env") });
 
@@ -37,20 +45,6 @@ export type PlaywrightProps = {
 export const credentials = {
   TBPRO_USERNAME: process.env.TBPRO_USERNAME,
   TBPRO_PASSWORD: process.env.TBPRO_PASSWORD,
-};
-
-export const storageStatePath = path.resolve(
-  __dirname,
-  "../../../data/lockboxstate.json"
-);
-
-export const emptystatePath = path.resolve(
-  __dirname,
-    "../../../data/emptystate.json"
-);
-const emptyState = {
-  cookies: [],
-  origins: [],
 };
 
 // Cleanup storage state after all tests
@@ -106,6 +100,12 @@ test.describe("File workflows", {
 }, () => {
   let page: Page;
   let context: BrowserContext;
+
+  // Start from a clean share-link map so a prior (possibly failed) run can't
+  // leak stale/null links into the download + delete steps below (#930).
+  test.beforeAll(() => {
+    resetShareLinks();
+  });
 
   test.beforeEach(async () => {
     ({ page, context } = await setup_browser());
