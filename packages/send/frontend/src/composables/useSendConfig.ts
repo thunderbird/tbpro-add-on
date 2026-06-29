@@ -157,7 +157,16 @@ export function useSendConfig() {
     isLoggedIn: boolean;
     username: string | null;
   }> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // Guards against the token-bridge content script being absent or
+      // unresponsive (e.g. the page is open outside of Thunderbird, or the
+      // add-on isn't installed). Without this the promise — and any router
+      // guard awaiting it — would hang forever.
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('Timed out waiting for addon login state'));
+      }, 5000);
+
       const messageHandler = (event: MessageEvent) => {
         if (event.data?.type === LOGIN_STATE_RESPONSE) {
           cleanup();
@@ -169,6 +178,7 @@ export function useSendConfig() {
       };
 
       const cleanup = () => {
+        clearTimeout(timeout);
         window.removeEventListener('message', messageHandler);
       };
 

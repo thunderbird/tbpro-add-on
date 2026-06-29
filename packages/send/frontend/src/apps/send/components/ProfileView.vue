@@ -11,11 +11,24 @@ const { isThunderbirdHost } = useConfigStore();
 const { environmentType } = useIsExtension();
 const router = useRouter();
 
+// The post-login extension popup arrives at /send/profile?isExtension=true and
+// relies on the auto-close below to dismiss itself. A genuine user tab (e.g.
+// opened from the accounts.tb.pro dashboard) does not carry this flag.
+const isExtensionLoginPopup = computed(
+  () =>
+    new URLSearchParams(window.location.search).get('isExtension') === 'true'
+);
+
 const shouldShowDashboard = computed(() => {
   if (environmentType.value === 'WEB APP OUTSIDE THUNDERBIRD') return true;
 
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('showDashboard') === 'true';
+  if (urlParams.get('showDashboard') === 'true') return true;
+
+  // A real web-app tab inside Thunderbird should render the dashboard rather
+  // than self-close. Only the post-login extension popup (isExtension=true)
+  // should fall through to the auto-close path.
+  return !isExtensionLoginPopup.value;
 });
 
 const close = useDebounceFn(() => {
