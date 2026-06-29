@@ -67,7 +67,21 @@ echo "=============== rewrite font urls =============================="
 ### check crashes (Bug 2036665). The CSS lives in dist/assets/ and the fonts in
 ### dist/fonts/, so rewrite the absolute url(/fonts/...) to a relative
 ### url(../fonts/...) that resolves inside the add-on's own directory.
-find dist/assets -name '*.css' -exec perl -pi -e 's{url\(/fonts/}{url(../fonts/}g' {} +
+###
+### The url() value may be quoted or bare: production (minified) builds emit
+### url(/fonts/...) while dev/unminified builds preserve the source quotes,
+### url('/fonts/...'). Capture the optional quote ((["\x27]?), \x27 = ') and
+### re-emit it so both forms are rewritten — a quote-blind regex silently
+### leaves dev builds absolute and re-introduces the crash above.
+find dist/assets -name '*.css' -exec perl -pi -e 's{url\((["\x27]?)/fonts/}{url($1../fonts/}g' {} +
+
+### Fail the build if any absolute /fonts/ url() survived the rewrite, so a
+### broken bundle can never silently ship and crash browser_parsable_css.js.
+if grep -REq "url\((['\"]?)/fonts/" dist/assets/*.css; then
+    echo "ERROR: absolute /fonts/ url() survived rewrite — would crash browser_parsable_css.js" >&2
+    grep -REn "url\((['\"]?)/fonts/" dist/assets/*.css >&2
+    exit 1
+fi
 
 echo "================================================================"
 echo "=============== sanitize parsable css =========================="
