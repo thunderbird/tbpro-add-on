@@ -134,57 +134,37 @@ export async function menuLogout() {
   });
 }
 
-async function closeAllTbProTabs() {
-  const openWindows = await browser.windows.getAll({ populate: true });
-
-  // Close all the tabs that are still open to the BASE_URL, as they may be in a bad state due to the expired token
-  for (const window of openWindows) {
-    for (const tab of window.tabs) {
-      if (tab.url?.includes(`${BASE_URL}`)) {
-        try {
-          await browser.tabs.remove(tab.id!);
-          console.log(`Closed expired session tab with id ${tab.id}`);
-        } catch {
-          console.warn(`Could not close tab with id ${tab.id}`);
-        }
-      }
-    }
-  }
-}
-
-/* 
+/*
   Checks if the add-on is logged in, this is separate from the web context.
-  It's useful for the web context to figure out if the add-on is logged in or not, and also for the add-on to check if the token is expired and log out if necessary.
+  It's a read-only probe: it's called by the Send route guard (via GET_LOGIN_STATE)
+  and by a 60s timer, so it MUST NOT have destructive side effects (closing tabs,
+  wiping storage, forcing the menu to log out).
+
+  Note on `expires_at`: that field is the short-lived OIDC *access token* expiry. An
+  expired access token does NOT mean the session is over — the Send web app refreshes
+  it transparently via userManager.signinSilent() using the refresh_token (see
+  auth-store getAccessToken/checkAuthStatus). So login state is driven by the presence
+  of a refresh_token, not by access-token expiry. Genuine logout flows through the
+  SIGN_OUT message path, which calls menuLogout().
  */
 export async function getLoginState() {
   try {
     // Get the auth token from browser storage (this is a copy of the auth token stored in the web context, used to determine login state in the add-on context)
     const authStorageData = await browser.storage.local.get(STORAGE_KEY_AUTH);
-    console.log(authStorageData);
-    if (authStorageData[STORAGE_KEY_AUTH]) {
-      // Check token expiration
-      const expiration = authStorageData[STORAGE_KEY_AUTH]?.expires_at * 1000; // Convert to milliseconds
-      const now = Date.now();
-      console.log('Token expires in (s):', (expiration - now) / 1000);
-      // If the token is expired, treat as logged out
-      if (expiration && now >= expiration) {
-        console.warn('Auth token is expired. Treating as logged out.');
-        await closeAllTbProTabs();
-
-        await browser.storage.local.remove(STORAGE_KEY_AUTH);
-        await menuLogout();
-        return { isLoggedIn: false, username: null };
-      }
-
-      const username =
-        authStorageData[STORAGE_KEY_AUTH]?.profile?.preferred_username ||
-        authStorageData[STORAGE_KEY_AUTH]?.profile?.email;
-
-      if (username) {
-        await menuLoggedIn({ username });
-        return { isLoggedIn: true, username };
-      }
+    const auth = authStorageData[STORAGE_KEY_AUTH];
+    if (!auth) {
+      return { isLoggedIn: false, username: null };
     }
+
+    const username = auth?.profile?.preferred_username || auth?.profile?.email;
+
+    // A stored session with a refresh_token is logged in, even if the access
+    // token's expires_at has lapsed — the web app will silently refresh it.
+    if (auth.refresh_token && username) {
+      await menuLoggedIn({ username });
+      return { isLoggedIn: true, username };
+    }
+
     return { isLoggedIn: false, username: null };
   } catch (error) {
     console.error('Error retrieving auth state from storage:', error);
