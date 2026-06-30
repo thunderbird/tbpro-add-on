@@ -108,6 +108,22 @@ rm -rf dist/background
 
 rm -rf dist/pages
 
+### When building the system/built-in add-on variant (ADDON_VARIANT=system),
+### rewrite the built dist manifest's prod id to the system add-on id
+### (tbpro-system-add-on@thunderbird.net) so the local build matches the id
+### Thunderbird ships it under and exercises the id-keyed runtime guards
+### (installGate.ts / selfUninstall.ts). Operates on the built copy only — the
+### source public/manifest.json keeps the prod id. Reuses set-system-id.ts, the
+### same script CI uses when repacking the system XPI.
+if [ "$ADDON_VARIANT" = "system" ]; then
+    echo "================================================================"
+    echo "=============== system add-on id ==============================="
+    ### --allow-stage: a dev build's dist manifest carries the STAGE id (set-id.ts
+    ### only runs for prod), so accept STAGE too. CI's prod-XPI repack omits the
+    ### flag and keeps its strict PROD-only guard.
+    bun run scripts/set-system-id.ts dist/manifest.json --allow-stage
+fi
+
 cd dist
 # Create xpi with version number
 zip -r -FS ../tbpro-addon-${VERSION}.xpi *
