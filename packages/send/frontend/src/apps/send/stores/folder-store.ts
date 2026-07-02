@@ -77,7 +77,7 @@ export interface FolderStore {
 
 const useFolderStore = defineStore('folderManager', () => {
   const { api } = useApiStore();
-  const { user } = useUserStore();
+  const { user, populateFromBackend } = useUserStore();
   const { progress } = useStatusStore();
   const { metrics } = useMetricsStore();
   const { keychain } = useKeychainStore();
@@ -264,6 +264,23 @@ const useFolderStore = defineStore('folderManager', () => {
     api: ApiConnection
   ): Promise<Item[]> {
     progress.error = '';
+
+    // Guard against uploading with an unpopulated user. The create-entry POST
+    // (`POST /api/uploads`) sends `ownerId: user.id`; an undefined id is silently
+    // dropped by JSON.stringify, so the backend rejects every attempt with a 400
+    // ("Required" on ownerId) and the upload retry loop hammers it — which also
+    // drives a storm of token/userinfo refreshes. Re-hydrate from the backend
+    // session first, and fail with a clear message if it still can't provide one.
+    if (!user.id) {
+      console.warn('uploadItem: user.id missing; re-populating from backend');
+      await populateFromBackend();
+    }
+    if (!user.id) {
+      progress.error = 'You are not fully signed in. Please sign in again.';
+      throw new Error(
+        'Cannot upload: user session is missing a user id (ownerId would be empty).'
+      );
+    }
 
     const canUpload = await checkBlobSize(fileBlob);
 
