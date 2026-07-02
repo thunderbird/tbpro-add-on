@@ -18,6 +18,7 @@ import {
   FORCE_CLOSE_WINDOW,
   GET_LOGIN_STATE,
   GET_PENDING_ADDON_TOKEN,
+  GET_TELEMETRY_STATE,
   LOGIN_STATE_RESPONSE,
   OIDC_TOKEN,
   OIDC_USER,
@@ -31,6 +32,8 @@ import {
   SIGN_IN_COMPLETE,
   SIGN_OUT,
   STORAGE_KEY_AUTH,
+  TELEMETRY_STATE_CHANGED,
+  TELEMETRY_STATE_RESPONSE,
 } from '@send-frontend/lib/const';
 
 import init from '@send-frontend/lib/init';
@@ -447,6 +450,28 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       break;
     }
 
+    case GET_TELEMETRY_STATE: {
+      // The hosted Send dashboard (send.js) runs as a web page and cannot call
+      // the browser.Telemetry experiment API directly, so it requests the
+      // Thunderbird telemetry pref here via the token-bridge (issue #952).
+      // getUploadEnabled() already fails closed to false on error.
+      let enabled = false;
+      try {
+        enabled = await browser.Telemetry.getUploadEnabled();
+      } catch (e) {
+        console.warn('[onMessage] Failed to read telemetry pref:', e);
+      }
+      if (sender?.tab?.id) {
+        browser.tabs
+          .sendMessage(sender.tab.id, {
+            type: TELEMETRY_STATE_RESPONSE,
+            enabled,
+          })
+          .catch(() => {});
+      }
+      break;
+    }
+
     // ----- Add-On to Web — Step 6: Read staged token and respond to tab -----
     // The /addon-auth page (running as a normal web tab) cannot call
     // browser.storage.local directly. It sends GET_PENDING_ADDON_TOKEN via
@@ -765,6 +790,30 @@ function initAccountHubListener() {
   });
 }
 
+// ==============================================
+// Broadcast Thunderbird telemetry pref changes to hosted Send pages (issue
+// #952). The dashboard (send.js) runs as a web page without the
+// browser.Telemetry experiment API, so it can't observe the pref itself. We
+// watch it here and push changes through the token-bridge so telemetry can
+// start/stop at runtime without a reload.
+function initTelemetryListener() {
+  browser.Telemetry.onChanged.addListener(async (enabled) => {
+    const tabs = await browser.tabs.query({});
+    tabs.forEach((tab) => {
+      if (tab.id) {
+        browser.tabs
+          .sendMessage(tab.id, {
+            type: TELEMETRY_STATE_CHANGED,
+            enabled,
+          })
+          .catch(() => {
+            // Ignore tabs that can't receive messages.
+          });
+      }
+    });
+  });
+}
+
 (async function main() {
   await checkAndUninstallIfDeprecated();
   initMenu();
@@ -790,6 +839,7 @@ function initAccountHubListener() {
   }
   initStorageWatcher();
   initAccountHubListener();
+  initTelemetryListener();
 })().catch((error) => {
   console.error('Error initializing background.js', error);
 });

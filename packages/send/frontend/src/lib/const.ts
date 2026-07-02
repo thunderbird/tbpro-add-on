@@ -55,3 +55,14 @@ export const STORAGE_KEY_AUTH = 'STORAGE_KEY_AUTH';
 export const PENDING_ADDON_TOKEN = 'tbpro-pending-addon-token';
 export const GET_PENDING_ADDON_TOKEN = 'TB/GET_PENDING_ADDON_TOKEN';
 export const PENDING_ADDON_TOKEN_RESPONSE = 'TB/PENDING_ADDON_TOKEN_RESPONSE';
+
+// Telemetry pref bridge (issue #952). The hosted Send dashboard (send.js) runs
+// as a web page without access to the `browser.Telemetry` experiment API, so it
+// asks the background script for the Thunderbird telemetry pref via the
+// token-bridge instead of reading it directly.
+//   GET_TELEMETRY_STATE      : web page → bridge → background ("what's the pref?")
+//   TELEMETRY_STATE_RESPONSE : background → bridge → web page ("{ enabled }")
+//   TELEMETRY_STATE_CHANGED  : background → bridge → web page (runtime pref change)
+export const GET_TELEMETRY_STATE = 'TB/GET_TELEMETRY_STATE';
+export const TELEMETRY_STATE_RESPONSE = 'TB/TELEMETRY_STATE_RESPONSE';
+export const TELEMETRY_STATE_CHANGED = 'TB/TELEMETRY_STATE_CHANGED';

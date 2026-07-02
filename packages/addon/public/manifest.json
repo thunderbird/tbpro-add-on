@@ -124,6 +124,20 @@
           "startup"
         ]
       }
+    },
+    "Telemetry": {
+      "schema": "api/Telemetry/schema.json",
+      "parent": {
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "Telemetry"
+          ]
+        ],
+        "script": "api/Telemetry/implementation.js"
+      }
     }
   },
   "content_scripts": [
