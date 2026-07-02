@@ -797,6 +797,17 @@ function initAccountHubListener() {
 // watch it here and push changes through the token-bridge so telemetry can
 // start/stop at runtime without a reload.
 function initTelemetryListener() {
+  // The Telemetry experiment API may be unavailable in some builds/contexts.
+  // Degrade gracefully (runtime pref-change broadcast is simply disabled)
+  // instead of throwing and aborting the rest of background initialization.
+  if (!browser.Telemetry?.onChanged?.addListener) {
+    console.warn(
+      '[Telemetry] browser.Telemetry.onChanged unavailable; ' +
+        'runtime telemetry pref-change broadcast disabled.'
+    );
+    return;
+  }
+
   browser.Telemetry.onChanged.addListener(async (enabled) => {
     const tabs = await browser.tabs.query({});
     tabs.forEach((tab) => {

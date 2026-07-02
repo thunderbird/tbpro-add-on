@@ -136,7 +136,10 @@
             "Telemetry"
           ]
         ],
-        "script": "api/Telemetry/implementation.js"
+        "script": "api/Telemetry/implementation.js",
+        "events": [
+          "startup"
+        ]
       }
     }
   },
