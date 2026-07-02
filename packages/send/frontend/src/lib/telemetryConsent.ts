@@ -8,14 +8,29 @@
  * - Outside Thunderbird (public website): telemetry behaves as before (allowed).
  * - Inside Thunderbird, on an add-on (moz-extension) page: read the pref via the
  *   `browser.Telemetry` experiment API.
- * - Inside Thunderbird but the experiment API is unavailable / errors: fail
- *   closed (no telemetry).
+ * - Inside Thunderbird on the hosted Send dashboard (send.js runs as a web page
+ *   with no experiment API): ask the background script for the pref over the
+ *   token-bridge (issue #952).
+ * - Inside Thunderbird but neither the experiment API nor the bridge answers:
+ *   fail closed (no telemetry).
  *
  * The `browser.Telemetry` namespace is provided by the add-on's experiment API
  * (packages/addon/public/api/Telemetry). The frontend types come from
  * @types/firefox-webext-browser, which does not know about custom experiment
  * APIs, hence the `@ts-ignore` accesses below (matching extension-store.ts).
  */
+
+import {
+  GET_TELEMETRY_STATE,
+  TELEMETRY_STATE_CHANGED,
+  TELEMETRY_STATE_RESPONSE,
+} from './const';
+
+// How long to wait for the token-bridge to answer before failing closed. The
+// bridge content script is injected at document_start, so it is normally
+// present before this runs; the timeout covers the case where it is not (e.g.
+// the add-on isn't installed).
+const BRIDGE_TIMEOUT_MS = 2000;
 
 const isInsideThunderbird = (): boolean =>
   typeof navigator !== 'undefined' &&
@@ -36,6 +51,41 @@ const getTelemetryApi = (): any => {
 };
 
 /**
+ * Requests the Thunderbird telemetry pref from the background script via the
+ * token-bridge, for contexts (the hosted Send dashboard) that lack the
+ * `browser.Telemetry` experiment API. Resolves false (fail closed) if the
+ * bridge does not answer within the timeout.
+ */
+function requestTelemetryStateViaBridge(): Promise<boolean> {
+  if (typeof window === 'undefined') {
+    return Promise.resolve(false);
+  }
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      window.removeEventListener('message', handler);
+    };
+
+    const timer = setTimeout(() => {
+      // Bridge absent or unresponsive — fail closed.
+      cleanup();
+      resolve(false);
+    }, BRIDGE_TIMEOUT_MS);
+
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === TELEMETRY_STATE_RESPONSE) {
+        cleanup();
+        resolve(Boolean(event.data.enabled));
+      }
+    };
+
+    window.addEventListener('message', handler);
+    window.postMessage({ type: GET_TELEMETRY_STATE }, window.location.origin);
+  });
+}
+
+/**
  * Resolves whether telemetry (Sentry + PostHog) is allowed to run.
  * Fails closed (false) when inside Thunderbird and the pref cannot be read.
  */
@@ -46,16 +96,18 @@ export async function isTelemetryAllowed(): Promise<boolean> {
   }
 
   const api = getTelemetryApi();
-  if (!api?.getUploadEnabled) {
-    // Inside Thunderbird but the experiment API is unavailable: fail closed.
-    return false;
+  if (api?.getUploadEnabled) {
+    // moz-extension add-on page: read the pref directly.
+    try {
+      return Boolean(await api.getUploadEnabled());
+    } catch {
+      return false;
+    }
   }
 
-  try {
-    return Boolean(await api.getUploadEnabled());
-  } catch {
-    return false;
-  }
+  // Inside Thunderbird without the direct experiment API (the hosted Send
+  // dashboard runs as a web page): ask the background via the token-bridge.
+  return requestTelemetryStateViaBridge();
 }
 
 /**
@@ -67,18 +119,32 @@ export function onTelemetryChanged(
   cb: (enabled: boolean) => void
 ): () => void {
   const api = getTelemetryApi();
-  if (!api?.onChanged?.addListener) {
-    return () => {};
+  if (api?.onChanged?.addListener) {
+    // moz-extension add-on page: observe the pref directly.
+    const listener = (enabled: boolean) => cb(Boolean(enabled));
+    api.onChanged.addListener(listener);
+
+    return () => {
+      try {
+        api.onChanged.removeListener?.(listener);
+      } catch {
+        // ignore
+      }
+    };
   }
 
-  const listener = (enabled: boolean) => cb(Boolean(enabled));
-  api.onChanged.addListener(listener);
+  // Inside Thunderbird without the direct API (the hosted Send dashboard): the
+  // background pushes pref changes through the token-bridge as window messages.
+  if (isInsideThunderbird() && typeof window !== 'undefined') {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === TELEMETRY_STATE_CHANGED) {
+        cb(Boolean(event.data.enabled));
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }
 
-  return () => {
-    try {
-      api.onChanged.removeListener?.(listener);
-    } catch {
-      // ignore
-    }
-  };
+  // Public website (outside Thunderbird): nothing to observe.
+  return () => {};
 }
