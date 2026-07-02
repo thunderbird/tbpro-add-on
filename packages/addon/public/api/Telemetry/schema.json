@@ -1,0 +1,32 @@
+[
+  {
+    "namespace": "Telemetry",
+    "functions": [
+      {
+        "name": "getUploadEnabled",
+        "type": "function",
+        "description": "Returns the current value of the Thunderbird telemetry upload preference (datareporting.healthreport.uploadEnabled). Defaults to false (opted out) if the preference cannot be read.",
+        "async": true,
+        "parameters": [],
+        "returns": {
+          "type": "boolean",
+          "description": "True if the user has telemetry upload enabled; false if the user has opted out or the preference cannot be read."
+        }
+      }
+    ],
+    "events": [
+      {
+        "name": "onChanged",
+        "type": "function",
+        "description": "Fires when the Thunderbird telemetry upload preference (datareporting.healthreport.uploadEnabled) changes, with the new value.",
+        "parameters": [
+          {
+            "name": "uploadEnabled",
+            "type": "boolean",
+            "description": "The new value of datareporting.healthreport.uploadEnabled."
+          }
+        ]
+      }
+    ]
+  }
+]
