@@ -24,16 +24,40 @@ const settings: UserManagerSettings = {
   post_logout_redirect_uri: `${import.meta.env?.VITE_SEND_CLIENT_URL}/logout`,
   response_type: 'code',
   scope: 'openid profile email offline_access',
-  automaticSilentRenew: true,
+  // Refresh on demand only (see refreshAccessToken). The library's background
+  // auto-renew adds uncontrolled concurrent refreshes and falls back to an
+  // iframe flow that cannot work inside Thunderbird, both of which surface as
+  // spurious logouts.
+  automaticSilentRenew: false,
   filterProtocolClaims: true,
-  loadUserInfo: true,
+  // Profile claims (preferred_username, email, name, given_name) already come
+  // from the id_token with the profile+email scopes. Skipping the userinfo
+  // call removes a post-refresh network round-trip that can fail inside
+  // Thunderbird and reject an otherwise-successful token refresh.
+  loadUserInfo: false,
 };
 
 const userManager = new UserManager(settings);
 
+/**
+ * OIDC error codes that mean the session is genuinely over — the refresh token
+ * was revoked or has expired. Any other failure (network, timeout, userinfo)
+ * is transient and must NOT drop the user out of a still-valid session.
+ */
+const GENUINE_AUTH_FAILURE_CODES = [
+  'invalid_grant',
+  'login_required',
+  'session_expired',
+];
+
+function isGenuineAuthFailure(error: unknown): boolean {
+  const code = (error as { error?: string } | null)?.error;
+  return typeof code === 'string' && GENUINE_AUTH_FAILURE_CODES.includes(code);
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
-  const { isExtension } = useConfigStore();
+  const { isExtension, isThunderbirdHost } = useConfigStore();
 
   const isLoggedIn = ref(false);
   const currentUser = ref<User | null>(null);
@@ -43,6 +67,76 @@ export const useAuthStore = defineStore('auth', () => {
   });
 
   // ------- OIDC Authentication ------- //
+
+  // Shared in-flight refresh promise. Concurrent callers (getAccessToken before
+  // an API call, checkAuthStatus, the 60s add-on menu timer) reuse the same
+  // signinSilent() rather than firing overlapping refreshes — with refresh-token
+  // rotation, every extra concurrent refresh races the others and loses with
+  // invalid_grant, which reads as a spurious logout.
+  let inFlightRefresh: Promise<User | null> | null = null;
+
+  /**
+   * Notify the add-on background that the session is over so its menu reverts
+   * to logged-out. Only meaningful inside Thunderbird, where the token-bridge
+   * content script forwards window messages to background.ts — the same path
+   * UserMenu.vue uses on explicit logout.
+   */
+  function notifyAddonSignedOut() {
+    if (!isThunderbirdHost) return;
+    try {
+      window.postMessage({ type: SIGN_OUT }, window.location.origin);
+    } catch (error) {
+      console.error('Failed to notify add-on of sign-out:', error);
+    }
+  }
+
+  /**
+   * Refresh the access token via the refresh_token, deduping concurrent callers.
+   *
+   * Returns the refreshed User on success. On a genuine auth failure (refresh
+   * token revoked/expired) it clears local login state, notifies the add-on,
+   * and returns null. On a transient failure (network/timeout) it leaves the
+   * session intact and returns null so a later call can retry — we do not log
+   * the user out over a blip.
+   */
+  async function refreshAccessToken(): Promise<User | null> {
+    if (inFlightRefresh) return inFlightRefresh;
+
+    inFlightRefresh = (async () => {
+      try {
+        const user = await userManager.signinSilent();
+        currentUser.value = user;
+        // Persist the freshly-rotated token so the extension popup's next cold
+        // start reads a current token instead of a stale one.
+        if (isExtension && user) {
+          await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
+        }
+        return user;
+      } catch (error) {
+        if (isGenuineAuthFailure(error)) {
+          console.warn(
+            `Silent token refresh failed — session ended (${
+              (error as { error?: string }).error
+            }). Signing out.`
+          );
+          isLoggedIn.value = false;
+          currentUser.value = null;
+          notifyAddonSignedOut();
+        } else {
+          // Transient failure: keep the session and let a later call retry.
+          console.warn(
+            'Silent token refresh hit a transient error; keeping session:',
+            error
+          );
+        }
+        return null;
+      } finally {
+        inFlightRefresh = null;
+      }
+    })();
+
+    return inFlightRefresh;
+  }
 
   async function getOIDCUser() {
     try {
@@ -206,23 +300,11 @@ export const useAuthStore = defineStore('auth', () => {
       // If the stored access token has expired (common when the extension is
       // reopened after being idle for longer than the token lifetime, typically
       // ~5 minutes), attempt a silent refresh using the refresh_token before
-      // giving up.  automaticSilentRenew only fires while the page is open, so
-      // we cannot rely on it for cold starts.
+      // giving up. refreshAccessToken() handles state/notification on genuine
+      // failure and preserves the session on transient errors.
       if (user?.expired) {
-        try {
-          user = await userManager.signinSilent();
-          // Sync the fresh token back to extension storage so the next cold
-          // start doesn't need another round-trip to the token endpoint.
-          if (isExtension) {
-            await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
-          }
-        } catch (refreshError) {
-          console.warn(
-            'Silent token refresh failed during checkAuthStatus:',
-            refreshError
-          );
-          isLoggedIn.value = false;
-          currentUser.value = null;
+        user = await refreshAccessToken();
+        if (!user) {
           return null;
         }
       }
@@ -265,11 +347,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (user.expired) {
         // Access token has expired — use the refresh_token to obtain a new one
         // rather than returning a stale value that will be rejected by every API.
-        user = await userManager.signinSilent();
-        currentUser.value = user;
-        if (isExtension) {
-          await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
-        }
+        user = await refreshAccessToken();
       }
       return user?.access_token || null;
     } catch (error) {
@@ -302,20 +380,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Silent refresh of the access token
+   * Silent refresh of the access token. Delegates to the deduped
+   * refreshAccessToken(), which owns state/notification on genuine failure and
+   * preserves the session on transient errors.
    */
   async function refreshToken() {
-    try {
-      const user = await userManager.signinSilent();
-      currentUser.value = user;
-      return user.access_token;
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      // If silent refresh fails, user needs to re-authenticate
-      isLoggedIn.value = false;
-      currentUser.value = null;
-      return null;
-    }
+    const user = await refreshAccessToken();
+    return user?.access_token ?? null;
   }
 
   async function loadUser() {
