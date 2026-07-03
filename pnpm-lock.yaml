@@ -7,6 +7,7 @@ settings:
 
 overrides:
   '@opentelemetry/core@<2.8.0': '>=2.8.0'
+  '@sigstore/verify@<=3.1.0': '>=3.1.1'
   axios@>=1.0.0 <1.15.1: '>=1.15.1'
   axios@>=1.0.0 <1.15.2: '>=1.15.2'
   axios@>=1.0.0 <1.16.0: '>=1.16.0'
@@ -19,6 +20,7 @@ overrides:
   js-yaml@>=4.0.0 <=4.1.1: '>=4.2.0'
   protobufjs@>=8.0.0 <=8.5.0: '>=8.6.0'
   qs@>=6.11.1 <=6.15.1: '>=6.15.2'
+  sigstore@<=4.1.0: '>=4.1.1 <5.0.0'
   tar@<=7.5.15: '>=7.5.16'
   tmp@<0.2.6: '>=0.2.6'
   uuid@<11.1.1: '>=11.1.1'
@@ -69,7 +71,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       vite:
-        specifier: '>=6.4.3'
+        specifier: ^8.0.10
         version: 8.0.16(@types/node@22.19.17)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.44.0)(tsx@4.21.0)(yaml@2.8.3)
       vitest:
         specifier: ^4.1.5
@@ -277,7 +279,7 @@ importers:
         specifier: ^3.3.2
         version: 3.3.2
       vite:
-        specifier: '>=6.4.3'
+        specifier: ^8.0.10
         version: 8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.44.0)(tsx@4.21.0)(yaml@2.8.3)
       vitest:
         specifier: ^4.1.5
@@ -391,8 +393,8 @@ importers:
         specifier: ^8.0.10
         version: 8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.44.0)(tsx@4.21.0)(yaml@2.8.3)
       websocket:
-        specifier: npm:ws@^8.20.0
-        version: ws@8.20.0
+        specifier: npm:ws@^8.21.0
+        version: ws@8.21.0
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -2593,8 +2595,8 @@ packages:
     resolution: {integrity: sha512-TCAzTy0xzdP79EnxSjq9KQ3eaR7+FmudLC6eRKknVKZbV7ZNlGLClAAQb/HMNJ5n2OBNk2GT1tEmU0xuPr+SLQ==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
-  '@sigstore/verify@3.1.0':
-    resolution: {integrity: sha512-mNe0Iigql08YupSOGv197YdHpPPr+EzDZmfCgMc7RPNaZTw5aLN01nBl6CHJOh3BGtnMIj83EeN4butBchc8Ag==}
+  '@sigstore/verify@3.1.1':
+    resolution: {integrity: sha512-qv7+G3J2cc6wwFj3yKvXOamzqhMwSk1ogPGmhpS8iXllcPrJaIIBA+4HbttlHVu1pqWTdmaCH/WE7UOC51kdoA==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
   '@sinclair/typebox@0.34.49':
@@ -7437,8 +7439,8 @@ packages:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
 
-  sigstore@4.1.0:
-    resolution: {integrity: sha512-/fUgUhYghuLzVT/gaJoeVehLCgZiUxPCPMcyVNY0lIf/cTCz58K/WTI7PefDarXxp9nUKpEwg1yyz3eSBMTtgA==}
+  sigstore@4.1.1:
+    resolution: {integrity: sha512-endqECJkfhozrXMK5ngu/UAA0xVcVEFdnHJCElGaExypjW+HK5i6zu3NteLoaX/iFbRUbC3+DjttQs0GARr+5w==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
   simple-update-notifier@2.0.0:
@@ -8406,18 +8408,6 @@ packages:
   write-file-atomic@6.0.0:
     resolution: {integrity: sha512-GmqrO8WJ1NuzJ2DrziEI2o57jKAVIQNf8a18W3nCYU3H7PNWqCCVTeH6/NQE93CIllIgQS98rrmVkYgTX9fFJQ==}
     engines: {node: ^18.17.0 || >=20.5.0}
-
-  ws@8.20.0:
-    resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
 
   ws@8.21.0:
     resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
@@ -10824,7 +10814,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@sigstore/verify@3.1.0':
+  '@sigstore/verify@3.1.1':
     dependencies:
       '@sigstore/bundle': 4.0.0
       '@sigstore/core': 3.2.1
@@ -14778,7 +14768,7 @@ snapshots:
       npm-registry-fetch: 19.1.0
       proc-log: 5.0.0
       semver: 7.8.1
-      sigstore: 4.1.0
+      sigstore: 4.1.1
       ssri: 12.0.0
     transitivePeerDependencies:
       - supports-color
@@ -15773,7 +15763,7 @@ snapshots:
       npm-registry-fetch: 19.1.0
       proc-log: 5.0.0
       promise-retry: 2.0.1
-      sigstore: 4.1.0
+      sigstore: 4.1.1
       ssri: 12.0.0
       tar: 7.5.16
     transitivePeerDependencies:
@@ -15795,7 +15785,7 @@ snapshots:
       npm-pick-manifest: 11.0.3
       npm-registry-fetch: 19.1.0
       proc-log: 6.1.0
-      sigstore: 4.1.0
+      sigstore: 4.1.1
       ssri: 13.0.1
       tar: 7.5.16
     transitivePeerDependencies:
@@ -16622,14 +16612,14 @@ snapshots:
 
   signal-exit@4.1.0: {}
 
-  sigstore@4.1.0:
+  sigstore@4.1.1:
     dependencies:
       '@sigstore/bundle': 4.0.0
       '@sigstore/core': 3.2.1
       '@sigstore/protobuf-specs': 0.5.1
       '@sigstore/sign': 4.1.1
       '@sigstore/tuf': 4.0.2
-      '@sigstore/verify': 3.1.0
+      '@sigstore/verify': 3.1.1
     transitivePeerDependencies:
       - supports-color
 
@@ -17222,7 +17212,7 @@ snapshots:
     dependencies:
       '@tufjs/models': 4.1.0
       debug: 4.4.3(supports-color@7.2.0)
-      make-fetch-happen: 15.0.2
+      make-fetch-happen: 15.0.5
     transitivePeerDependencies:
       - supports-color
 
@@ -17776,8 +17766,6 @@ snapshots:
     dependencies:
       imurmurhash: 0.1.4
       signal-exit: 4.1.0
-
-  ws@8.20.0: {}
 
   ws@8.21.0: {}
 
