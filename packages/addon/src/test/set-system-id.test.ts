@@ -78,4 +78,44 @@ describe('setSystemId', () => {
       setSystemId(path.join(tmpDir, 'does-not-exist.json'))
     ).toThrow();
   });
+
+  describe('with allowStage (local built-in dev build)', () => {
+    it('rewrites the stage id to the system id', () => {
+      fs.writeFileSync(manifestPath, manifestWithId(ADDON_ID_STAGE));
+
+      setSystemId(manifestPath, { allowStage: true });
+
+      const result = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      expect(result.browser_specific_settings.gecko.id).toBe(ADDON_ID_SYSTEM);
+    });
+
+    it('still rewrites the prod id to the system id', () => {
+      fs.writeFileSync(manifestPath, manifestWithId(ADDON_ID_PROD));
+
+      setSystemId(manifestPath, { allowStage: true });
+
+      const result = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      expect(result.browser_specific_settings.gecko.id).toBe(ADDON_ID_SYSTEM);
+    });
+
+    it('is a no-op when the manifest is already on the system id', () => {
+      const original = manifestWithId(ADDON_ID_SYSTEM);
+      fs.writeFileSync(manifestPath, original);
+
+      expect(() =>
+        setSystemId(manifestPath, { allowStage: true })
+      ).not.toThrow();
+      expect(fs.readFileSync(manifestPath, 'utf8')).toBe(original);
+    });
+
+    it('throws when no known add-on id is present', () => {
+      const original = manifestWithId('something-else@example.com');
+      fs.writeFileSync(manifestPath, original);
+
+      expect(() =>
+        setSystemId(manifestPath, { allowStage: true })
+      ).toThrow(/Could not find prod id .* or stage id/);
+      expect(fs.readFileSync(manifestPath, 'utf8')).toBe(original);
+    });
+  });
 });

@@ -7,6 +7,50 @@ else
     echo 'Starting development build 🐣'
 fi
 
+# Optional Vite mode forwarded to every `vite build`. Empty by default so the
+# existing builds keep running in Vite's default production mode.
+MODE_ARG=""
+
+### Local backend target (ADDON_ENV=local, via build:dev:system:local).
+### Points the bundle at a locally running Send backend + client instead of the
+### prod/stage hosts baked into the developer's .env.
+if [ "$ADDON_ENV" = "local" ]; then
+    echo 'Targeting local backend (localhost) 🏠'
+    ### Vite `build` defaults to production mode regardless of NODE_ENV. Force
+    ### development so import.meta.env.MODE === 'development': that makes the
+    ### frontend probe the local backend for its storage type (api.ts), sets
+    ### IS_DEV, and keeps prod Sentry off (sentry.ts). Production mode would
+    ### instead assume bucket storage and skip that probe.
+    MODE_ARG="--mode development"
+
+    ### Force localhost URLs. Exported so Vite's loadEnv reads them from
+    ### process.env, where VITE_* vars take precedence over the .env file — whose
+    ### prod block (send.tb.pro / send-backend.tb.pro) would otherwise win via
+    ### last-key-wins. Assigned with := so a developer can still override any of
+    ### them inline (e.g. a different local port) before invoking the build.
+    : "${VITE_SEND_SERVER_URL:=https://localhost:8088}"
+    : "${VITE_SEND_CLIENT_URL:=http://localhost:5173}"
+    ### No local Keycloak: authenticate against the stage identity provider.
+    : "${VITE_OIDC_CLIENT_ID:=desktop}"
+    : "${VITE_OIDC_ROOT_URL:=https://auth-stage.tb.pro/realms/tbpro/}"
+    ### Keep local builds out of the shared Sentry / PostHog projects.
+    : "${VITE_SENTRY_DSN:=}"
+    : "${VITE_POSTHOG_PROJECT_KEY:=}"
+    export VITE_SEND_SERVER_URL VITE_SEND_CLIENT_URL \
+        VITE_OIDC_CLIENT_ID VITE_OIDC_ROOT_URL \
+        VITE_SENTRY_DSN VITE_POSTHOG_PROJECT_KEY
+
+    echo "  VITE_SEND_SERVER_URL=$VITE_SEND_SERVER_URL"
+    echo "  VITE_SEND_CLIENT_URL=$VITE_SEND_CLIENT_URL"
+    echo "  VITE_OIDC_ROOT_URL=$VITE_OIDC_ROOT_URL"
+    ### CORS: the Send backend auto-allows any moz-extension:// origin
+    ### (origins.ts), and the built-in/system add-on still runs under a
+    ### moz-extension:// origin, so its requests pass CORS unchanged. The local
+    ### backend must still have SEND_BACKEND_CORS_ORIGINS set (it throws
+    ### otherwise) and include $VITE_SEND_CLIENT_URL, and Thunderbird must trust
+    ### the self-signed https://localhost cert (used for fetch + wss uploads).
+fi
+
 # Get version from package.json and replace dots with hyphens
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
 
@@ -36,7 +80,7 @@ node scripts/subset-fonts.mjs
 echo "================================================================"
 echo "=============== extension UI ==================================="
 ### Extension UI
-vite build --config vite.config.extension.js
+vite build --config vite.config.extension.js $MODE_ARG
 cp -R dist/extension/assets/* dist/assets/
 cp -R dist/extension/*.* dist/
 if [ -d dist/extension/chunks ]; then
@@ -48,7 +92,7 @@ rm -rf dist/extension
 echo "================================================================"
 echo "=============== management page================================="
 ### Management page, commenting out for now
-vite build --config vite.config.management.js
+vite build --config vite.config.management.js $MODE_ARG
 cp -R dist/pages/assets/* dist/assets/
 cp -R dist/pages/*.* dist/
 if [ -d dist/pages/chunks ]; then
@@ -100,13 +144,29 @@ find dist/assets -name '*.css' -exec perl -pi -e \
 echo "================================================================"
 echo "=============== background.js =================================="
 ### Build `background.js` as a library
-vite build --config vite.config.background.js
+vite build --config vite.config.background.js $MODE_ARG
 cp -R dist/background/* dist/
 # cp -R dist/background/*.map dist/f
 # cp -R dist/background/manifest.json dist/
 rm -rf dist/background
 
 rm -rf dist/pages
+
+### When building the system/built-in add-on variant (ADDON_VARIANT=system),
+### rewrite the built dist manifest's prod id to the system add-on id
+### (tbpro-system-add-on@thunderbird.net) so the local build matches the id
+### Thunderbird ships it under and exercises the id-keyed runtime guards
+### (installGate.ts / selfUninstall.ts). Operates on the built copy only — the
+### source public/manifest.json keeps the prod id. Reuses set-system-id.ts, the
+### same script CI uses when repacking the system XPI.
+if [ "$ADDON_VARIANT" = "system" ]; then
+    echo "================================================================"
+    echo "=============== system add-on id ==============================="
+    ### --allow-stage: a dev build's dist manifest carries the STAGE id (set-id.ts
+    ### only runs for prod), so accept STAGE too. CI's prod-XPI repack omits the
+    ### flag and keeps its strict PROD-only guard.
+    bun run scripts/set-system-id.ts dist/manifest.json --allow-stage
+fi
 
 cd dist
 # Create xpi with version number
