@@ -2,10 +2,13 @@
 
 Status: **Draft for review** — feasibility deliverable for
 [thunderbird/tbpro-add-on#959](https://github.com/thunderbird/tbpro-add-on/issues/959).
-This note evaluates the four feasibility caveats of the proposal (job
-infrastructure, replication byte-path cost, client rollout, storage-layer
-refactor), prices the coherent architecture bundles, and recommends one. The
-selected design (Bundle B) is fully specified in the companion note
+**The goal is upload reliability**: make Send uploads succeed when a direct
+upload to Backblaze B2 stalls and fails (`UPLOAD_FAILED`, #959). This note
+asks whether the R2-fallback approach to that problem is feasible and what it
+costs — it evaluates the four feasibility caveats (job infrastructure,
+replication byte-path cost, client rollout, storage-layer refactor), prices the
+coherent architecture bundles, and recommends one. The selected design
+(Bundle B) is fully specified in the companion note
 [R2StagingReplicationDesign.md](./R2StagingReplicationDesign.md).
 
 **Date:** 2026-07-06 · **Scope:** four fact-checked caveat evaluations, all pricing verified against official vendor sources on 2026-07-06 unless noted. Volume scenarios: 1 / 10 / 50 TB uploaded per month (~10,500 / 105,000 / 525,000 objects at ~100 MB parts).

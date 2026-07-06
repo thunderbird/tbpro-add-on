@@ -7,13 +7,17 @@ implementation approach, pending three blocking prototypes (§3, Phase 0) and th
 human decisions in §6. The option analysis and cost model behind this choice
 live in the companion note [R2StagingFeasibility.md](./R2StagingFeasibility.md).
 
-**Background.** Production uploads to Backblaze B2 fail with `UPLOAD_FAILED`
-connection stalls on long-haul client paths (e.g. Costa Rica → `eu-central-003`):
-the PUT stalls mid-transfer with no HTTP status, retries exhaust, and the upload
-hard-fails (see #959; #913 analyzes the same stall for the resumable-upload
-track). This design terminates the client PUT at Cloudflare's nearby edge (R2),
-so the fragile long-haul hop rides Cloudflare's backbone instead, then
-asynchronously replicates to B2 — which remains the serving tier.
+## Goal
+
+**Make Send uploads succeed when a direct upload to Backblaze B2 stalls and fails.** That is the entire problem this design exists to solve (#959): on long-haul client paths (e.g. Costa Rica → `eu-central-003`) the B2 PUT stalls mid-transfer with no HTTP status, retries exhaust, and the upload hard-fails as `UPLOAD_FAILED`. #913 attacks the same stall from the resumable-upload angle; this note attacks it by giving the client a nearby, more reliable place to land the bytes.
+
+The mechanism, in one sentence: a client uploads to B2 as it does today, and **only when that fails** does it re-upload to a nearby Cloudflare R2 edge; a background job then replicates that object to B2, which stays the single serving tier. Everything else in this note is machinery in service of that one sentence.
+
+### Non-goals (scope guards)
+
+- **Downloads are not changing.** B2 serves every download exactly as today. Serving a not-yet-replicated file directly from R2 is an *optional* stopgap for the brief pre-replication window — not a goal, and droppable if replication is fast enough (as raised in the #959 thread). The design keeps it behind the same provider pointer so it costs nothing to omit.
+- **This is not a general multi-cloud or redundant-storage system.** R2 holds data only transiently, only for the uploads that B2 rejected.
+- **Not resumable/chunked upload** (that is #913) and **no change to the E2E encryption model.**
 
 All platform claims (limits, behaviors, pricing) were verified against
 official vendor documentation on 2026-07-06; claims that could not be verified
