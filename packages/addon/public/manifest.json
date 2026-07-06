@@ -125,7 +125,7 @@
         ]
       }
     },
-    "Telemetry": {
+    "thundermailTelemetry": {
       "schema": "api/Telemetry/schema.json",
       "parent": {
         "scopes": [
@@ -133,7 +133,7 @@
         ],
         "paths": [
           [
-            "Telemetry"
+            "thundermailTelemetry"
           ]
         ],
         "script": "api/Telemetry/implementation.js"

@@ -1,16 +1,16 @@
 [
   {
-    "namespace": "Telemetry",
+    "namespace": "thundermailTelemetry",
     "functions": [
       {
-        "name": "getUploadEnabled",
+        "name": "isTelemetryEnabled",
         "type": "function",
-        "description": "Returns the current value of the Thunderbird telemetry upload preference (datareporting.healthreport.uploadEnabled). Defaults to false (opted out) if the preference cannot be read.",
+        "description": "Returns whether Thunderbird telemetry is currently enabled in the client. Telemetry is enabled only when both datareporting.policy.dataSubmissionEnabled and datareporting.healthreport.uploadEnabled are true. Defaults to false (opted out) if the state cannot be read.",
         "async": true,
         "parameters": [],
         "returns": {
           "type": "boolean",
-          "description": "True if the user has telemetry upload enabled; false if the user has opted out or the preference cannot be read."
+          "description": "True if telemetry is enabled; false if the user has opted out or the state cannot be read."
         }
       }
     ],
@@ -18,12 +18,12 @@
       {
         "name": "onChanged",
         "type": "function",
-        "description": "Fires when the Thunderbird telemetry upload preference (datareporting.healthreport.uploadEnabled) changes, with the new value.",
+        "description": "Fires when the effective Thunderbird telemetry state changes (i.e. either data-reporting pref changes), with the new value.",
         "parameters": [
           {
-            "name": "uploadEnabled",
+            "name": "enabled",
             "type": "boolean",
-            "description": "The new value of datareporting.healthreport.uploadEnabled."
+            "description": "The new effective telemetry state (true if enabled)."
           }
         ]
       }

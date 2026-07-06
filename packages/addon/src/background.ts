@@ -452,24 +452,26 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
 
     case GET_TELEMETRY_STATE: {
       // The hosted Send dashboard (send.js) runs as a web page and cannot call
-      // the browser.Telemetry experiment API directly, so it requests the
-      // Thunderbird telemetry pref here via the token-bridge (issue #952).
-      // getUploadEnabled() already fails closed to false on error.
+      // the browser.thundermailTelemetry experiment API directly, so it
+      // requests the telemetry state here via the token-bridge (issue #952).
+      //
+      // The token-bridge content script is injected on <all_urls>, so only
+      // answer requests originating from our own Send tabs — don't hand the
+      // state to arbitrary web pages that happen to post the same message.
+      if (!sender?.tab?.url?.startsWith(BASE_URL)) {
+        break;
+      }
+      // isTelemetryEnabled() already fails closed to false on error. Return the
+      // value so the requesting content script gets it as the sendMessage
+      // response (no separate broadcast needed — the reply reaches only the
+      // caller's tab).
       let enabled = false;
       try {
-        enabled = await browser.Telemetry.getUploadEnabled();
+        enabled = await browser.thundermailTelemetry.isTelemetryEnabled();
       } catch (e) {
-        console.warn('[onMessage] Failed to read telemetry pref:', e);
+        console.warn('[onMessage] Failed to read telemetry state:', e);
       }
-      if (sender?.tab?.id) {
-        browser.tabs
-          .sendMessage(sender.tab.id, {
-            type: TELEMETRY_STATE_RESPONSE,
-            enabled,
-          })
-          .catch(() => {});
-      }
-      break;
+      return { type: TELEMETRY_STATE_RESPONSE, enabled };
     }
 
     // ----- Add-On to Web — Step 6: Read staged token and respond to tab -----
@@ -793,25 +795,28 @@ function initAccountHubListener() {
 // ==============================================
 // Broadcast Thunderbird telemetry pref changes to hosted Send pages (issue
 // #952). The dashboard (send.js) runs as a web page without the
-// browser.Telemetry experiment API, so it can't observe the pref itself. We
+// browser.thundermailTelemetry experiment API, so it can't observe the pref itself. We
 // watch it here and push changes through the token-bridge so telemetry can
 // start/stop at runtime without a reload.
 function initTelemetryListener() {
-  // The Telemetry experiment API may be unavailable in some builds/contexts.
-  // Degrade gracefully (runtime pref-change broadcast is simply disabled)
-  // instead of throwing and aborting the rest of background initialization.
-  if (!browser.Telemetry?.onChanged?.addListener) {
+  // The experiment API may be unavailable in some builds/contexts. Degrade
+  // gracefully (runtime pref-change broadcast is simply disabled) instead of
+  // throwing and aborting the rest of background initialization.
+  if (!browser.thundermailTelemetry?.onChanged?.addListener) {
     console.warn(
-      '[Telemetry] browser.Telemetry.onChanged unavailable; ' +
+      '[Telemetry] browser.thundermailTelemetry.onChanged unavailable; ' +
         'runtime telemetry pref-change broadcast disabled.'
     );
     return;
   }
 
-  browser.Telemetry.onChanged.addListener(async (enabled) => {
+  browser.thundermailTelemetry.onChanged.addListener(async (enabled) => {
+    // Only notify our own Send dashboard tabs — the token-bridge is injected on
+    // <all_urls>, so broadcasting to every tab would leak the change to
+    // unrelated web pages.
     const tabs = await browser.tabs.query({});
     tabs.forEach((tab) => {
-      if (tab.id) {
+      if (tab.id && tab.url?.startsWith(BASE_URL)) {
         browser.tabs
           .sendMessage(tab.id, {
             type: TELEMETRY_STATE_CHANGED,

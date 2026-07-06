@@ -1,21 +1,22 @@
 /**
  * Telemetry consent gate.
  *
- * Honors Thunderbird's telemetry opt-out preference
- * (datareporting.healthreport.uploadEnabled) for Sentry and PostHog.
+ * Honors Thunderbird's telemetry opt-out (enabled only when both
+ * datareporting.policy.dataSubmissionEnabled and
+ * datareporting.healthreport.uploadEnabled are on) for Sentry and PostHog.
  *
  * Behavior by context:
  * - Outside Thunderbird (public website): telemetry behaves as before (allowed).
- * - Inside Thunderbird, on an add-on (moz-extension) page: read the pref via the
- *   `browser.Telemetry` experiment API.
+ * - Inside Thunderbird, on an add-on (moz-extension) page: read the state via
+ *   the `browser.thundermailTelemetry` experiment API.
  * - Inside Thunderbird on the hosted Send dashboard (send.js runs as a web page
- *   with no experiment API): ask the background script for the pref over the
+ *   with no experiment API): ask the background script for the state over the
  *   token-bridge (issue #952).
  * - Inside Thunderbird but neither the experiment API nor the bridge answers:
  *   fail closed (no telemetry).
  *
- * The `browser.Telemetry` namespace is provided by the add-on's experiment API
- * (packages/addon/public/api/Telemetry). The frontend types come from
+ * The `browser.thundermailTelemetry` namespace is provided by the add-on's
+ * experiment API (packages/addon/public/api/Telemetry). The frontend types come from
  * @types/firefox-webext-browser, which does not know about custom experiment
  * APIs, hence the `@ts-ignore` accesses below (matching extension-store.ts).
  */
@@ -38,14 +39,12 @@ const isInsideThunderbird = (): boolean =>
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getTelemetryApi = (): any => {
-  try {
-    // @ts-ignore — custom experiment API, only present on moz-extension pages
-    if (typeof browser !== 'undefined' && browser?.Telemetry) {
-      // @ts-ignore
-      return browser.Telemetry;
-    }
-  } catch {
-    // `browser` not defined (web context) — fall through
+  // The `typeof browser` guard makes the property access safe in web contexts
+  // where `browser` is undefined, so no try/catch is needed here.
+  // @ts-ignore — custom experiment API, only present on moz-extension pages
+  if (typeof browser !== 'undefined' && browser?.thundermailTelemetry) {
+    // @ts-ignore
+    return browser.thundermailTelemetry;
   }
   return undefined;
 };
@@ -53,7 +52,7 @@ const getTelemetryApi = (): any => {
 /**
  * Requests the Thunderbird telemetry pref from the background script via the
  * token-bridge, for contexts (the hosted Send dashboard) that lack the
- * `browser.Telemetry` experiment API. Resolves false (fail closed) if the
+ * `browser.thundermailTelemetry` experiment API. Resolves false (fail closed) if the
  * bridge does not answer within the timeout.
  */
 function requestTelemetryStateViaBridge(): Promise<boolean> {
@@ -96,10 +95,10 @@ export async function isTelemetryAllowed(): Promise<boolean> {
   }
 
   const api = getTelemetryApi();
-  if (api?.getUploadEnabled) {
-    // moz-extension add-on page: read the pref directly.
+  if (api?.isTelemetryEnabled) {
+    // moz-extension add-on page: read the state directly.
     try {
-      return Boolean(await api.getUploadEnabled());
+      return Boolean(await api.isTelemetryEnabled());
     } catch {
       return false;
     }

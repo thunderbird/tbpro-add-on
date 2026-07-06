@@ -19,7 +19,7 @@ const OPEN_MANAGEMENT_PAGE = 'OPEN_MANAGEMENT_PAGE';
 const GET_PENDING_ADDON_TOKEN = 'TB/GET_PENDING_ADDON_TOKEN';
 const PENDING_ADDON_TOKEN_RESPONSE = 'TB/PENDING_ADDON_TOKEN_RESPONSE';
 // Telemetry pref bridge (issue #952). The hosted Send dashboard cannot call the
-// browser.Telemetry experiment API, so it asks the background for the pref:
+// browser.thundermailTelemetry experiment API, so it asks the background for the pref:
 //   GET_TELEMETRY_STATE      : web page → bridge → background
 //   TELEMETRY_STATE_RESPONSE : background → bridge → web page
 //   TELEMETRY_STATE_CHANGED  : background → bridge → web page (runtime change)
@@ -146,10 +146,23 @@ window.addEventListener('message', (e) => {
   }
 
   // ----- Web to add-on: hosted dashboard asks for the telemetry pref -----
+  // The background returns the state as the sendMessage response (scoped to
+  // this tab), which we relay back to the page. It answers only for our own
+  // Send tabs, so a non-Send page gets no response and the page fails closed.
   if (e?.data?.type === GET_TELEMETRY_STATE) {
-    browser.runtime.sendMessage({
-      type: GET_TELEMETRY_STATE,
-    });
+    browser.runtime
+      .sendMessage({ type: GET_TELEMETRY_STATE })
+      .then((response) => {
+        if (response?.type === TELEMETRY_STATE_RESPONSE) {
+          window.postMessage(
+            { type: TELEMETRY_STATE_RESPONSE, enabled: response.enabled },
+            window.location.origin
+          );
+        }
+      })
+      .catch(() => {
+        // No handler / not our tab — the page-side timeout fails closed.
+      });
   }
 });
 
@@ -195,14 +208,14 @@ browser.runtime.onMessage.addListener((message) => {
     );
   }
 
-  // ----- Add-on to Web: telemetry pref value / runtime change (issue #952) -----
-  if (
-    message.type === TELEMETRY_STATE_RESPONSE ||
-    message.type === TELEMETRY_STATE_CHANGED
-  ) {
+  // ----- Add-on to Web: telemetry runtime change (issue #952) -----
+  // The GET_TELEMETRY_STATE reply is handled inline as the sendMessage
+  // response above; here we only forward unsolicited runtime changes the
+  // background broadcasts to our Send tabs.
+  if (message.type === TELEMETRY_STATE_CHANGED) {
     window.postMessage(
       {
-        type: message.type,
+        type: TELEMETRY_STATE_CHANGED,
         enabled: message.enabled,
       },
       window.location.origin

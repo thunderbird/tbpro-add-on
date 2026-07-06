@@ -7,24 +7,35 @@
 /**
  * Telemetry Experiment API
  *
- * Exposes Thunderbird's telemetry opt-out preference
- * (datareporting.healthreport.uploadEnabled) to the WebExtension so the add-on
- * can gate Sentry and PostHog on it. Reads fail closed: if the preference
- * cannot be read, telemetry is treated as disabled (opted out).
+ * Exposes whether Thunderbird telemetry is enabled to the WebExtension so the
+ * add-on can gate Sentry and PostHog on it. Telemetry is considered enabled
+ * only when BOTH of Thunderbird's data-reporting prefs are on:
+ *   - datareporting.policy.dataSubmissionEnabled (master switch)
+ *   - datareporting.healthreport.uploadEnabled   (upload opt-in)
+ * Reads fail closed: if either pref cannot be read, telemetry is treated as
+ * disabled (opted out).
  */
 
 (function (exports) {
-  const TELEMETRY_PREF = 'datareporting.healthreport.uploadEnabled';
+  // Both prefs must be true for telemetry to be enabled. dataSubmissionEnabled
+  // is the master data-reporting switch; uploadEnabled is the user's opt-in.
+  const TELEMETRY_PREFS = [
+    'datareporting.policy.dataSubmissionEnabled',
+    'datareporting.healthreport.uploadEnabled',
+  ];
 
   /**
-   * Reads the telemetry upload preference, defaulting to false (opted out) on
-   * any error so we never send telemetry when the pref state is unknown.
+   * Returns true only when the user has telemetry enabled. Defaults to false
+   * (opted out) on any error so we never send telemetry when the pref state is
+   * unknown.
    */
-  function readUploadEnabled() {
+  function readTelemetryEnabled() {
     try {
-      return Services.prefs.getBoolPref(TELEMETRY_PREF, false);
+      return TELEMETRY_PREFS.every((pref) =>
+        Services.prefs.getBoolPref(pref, false)
+      );
     } catch (e) {
-      console.error('[Telemetry] Failed to read telemetry preference:', e);
+      console.error('[Telemetry] Failed to read telemetry preferences:', e);
       return false;
     }
   }
@@ -32,31 +43,41 @@
   class Telemetry extends ExtensionCommon.ExtensionAPI {
     getAPI(context) {
       return {
-        Telemetry: {
-          async getUploadEnabled() {
-            return readUploadEnabled();
+        thundermailTelemetry: {
+          async isTelemetryEnabled() {
+            return readTelemetryEnabled();
           },
 
+          // NOTE: Under MV2 (this add-on's manifest) the background is
+          // persistent, so ExtensionCommon.EventManager is sufficient here. An
+          // eventual MV3 / event-page migration would instead need the
+          // primed/persistent-listener pattern so pref changes can wake a
+          // suspended background — revisit this then.
           onChanged: new ExtensionCommon.EventManager({
             context,
-            name: 'Telemetry.onChanged',
+            name: 'thundermailTelemetry.onChanged',
             register(fire) {
               const observer = {
                 QueryInterface: ChromeUtils.generateQI(['nsIObserver']),
                 observe(_subject, _topic, data) {
-                  // When observing a single branch, `data` is the full name of
-                  // the pref that changed.
-                  if (data === TELEMETRY_PREF) {
-                    fire.async(readUploadEnabled());
+                  // When observing these branches, `data` is the full name of
+                  // the pref that changed. Either pref flipping can change the
+                  // effective telemetry state.
+                  if (TELEMETRY_PREFS.includes(data)) {
+                    fire.async(readTelemetryEnabled());
                   }
                 },
               };
 
-              Services.prefs.addObserver(TELEMETRY_PREF, observer);
+              for (const pref of TELEMETRY_PREFS) {
+                Services.prefs.addObserver(pref, observer);
+              }
 
               // Return cleanup function — called when the listener is removed.
               return () => {
-                Services.prefs.removeObserver(TELEMETRY_PREF, observer);
+                for (const pref of TELEMETRY_PREFS) {
+                  Services.prefs.removeObserver(pref, observer);
+                }
               };
             },
           }).api(),

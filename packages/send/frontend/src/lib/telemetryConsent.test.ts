@@ -49,7 +49,7 @@ describe('isTelemetryAllowed', () => {
   it('honors the pref when enabled inside Thunderbird', async () => {
     setUserAgent(THUNDERBIRD_UA);
     (globalThis as unknown as { browser: unknown }).browser = {
-      Telemetry: { getUploadEnabled: vi.fn().mockResolvedValue(true) },
+      thundermailTelemetry: { isTelemetryEnabled: vi.fn().mockResolvedValue(true) },
     };
     await expect(isTelemetryAllowed()).resolves.toBe(true);
   });
@@ -57,14 +57,14 @@ describe('isTelemetryAllowed', () => {
   it('blocks telemetry when the pref is disabled inside Thunderbird', async () => {
     setUserAgent(THUNDERBIRD_UA);
     (globalThis as unknown as { browser: unknown }).browser = {
-      Telemetry: { getUploadEnabled: vi.fn().mockResolvedValue(false) },
+      thundermailTelemetry: { isTelemetryEnabled: vi.fn().mockResolvedValue(false) },
     };
     await expect(isTelemetryAllowed()).resolves.toBe(false);
   });
 
   it('honors the pref via the token-bridge when the API is absent (dashboard) — enabled', async () => {
     setUserAgent(THUNDERBIRD_UA);
-    // No `browser.Telemetry` (hosted dashboard context), but the bridge answers.
+    // No `browser.thundermailTelemetry` (hosted dashboard context), but the bridge answers.
     const uninstall = installFakeBridge(true);
     try {
       await expect(isTelemetryAllowed()).resolves.toBe(true);
@@ -85,7 +85,7 @@ describe('isTelemetryAllowed', () => {
 
   it('fails closed inside Thunderbird when neither the API nor the bridge answers', async () => {
     setUserAgent(THUNDERBIRD_UA);
-    // No `browser.Telemetry` and no bridge listening: the request times out.
+    // No `browser.thundermailTelemetry` and no bridge listening: the request times out.
     vi.useFakeTimers();
     try {
       const pending = isTelemetryAllowed();
@@ -99,8 +99,8 @@ describe('isTelemetryAllowed', () => {
   it('fails closed inside Thunderbird when reading the pref throws', async () => {
     setUserAgent(THUNDERBIRD_UA);
     (globalThis as unknown as { browser: unknown }).browser = {
-      Telemetry: {
-        getUploadEnabled: vi.fn().mockRejectedValue(new Error('boom')),
+      thundermailTelemetry: {
+        isTelemetryEnabled: vi.fn().mockRejectedValue(new Error('boom')),
       },
     };
     await expect(isTelemetryAllowed()).resolves.toBe(false);

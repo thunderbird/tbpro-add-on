@@ -194,25 +194,26 @@ declare namespace browser {
   }
 
   /**
-   * Experiment API exposing Thunderbird's telemetry opt-out preference
-   * (datareporting.healthreport.uploadEnabled) so the add-on can gate Sentry
-   * and PostHog on it. Reads fail closed (return false) when the pref cannot be
-   * read.
+   * Experiment API exposing whether Thunderbird telemetry is enabled so the
+   * add-on can gate Sentry and PostHog on it. Telemetry is enabled only when
+   * both datareporting.policy.dataSubmissionEnabled and
+   * datareporting.healthreport.uploadEnabled are true. Reads fail closed
+   * (return false) when the state cannot be read.
    */
-  namespace Telemetry {
+  namespace thundermailTelemetry {
     /**
-     * Returns the current value of the Thunderbird telemetry upload preference.
-     * Resolves to false (opted out) if the preference cannot be read.
+     * Returns whether Thunderbird telemetry is currently enabled. Resolves to
+     * false (opted out) if the state cannot be read.
      */
-    function getUploadEnabled(): Promise<boolean>;
+    function isTelemetryEnabled(): Promise<boolean>;
 
-    /** Fires when the telemetry upload preference changes, with the new value. */
+    /** Fires when the effective telemetry state changes, with the new value. */
     const onChanged: {
       addListener(
-        callback: (uploadEnabled: boolean) => Promise<void> | void
+        callback: (enabled: boolean) => Promise<void> | void
       ): void;
       removeListener(
-        callback: (uploadEnabled: boolean) => Promise<void> | void
+        callback: (enabled: boolean) => Promise<void> | void
       ): void;
     };
   }
