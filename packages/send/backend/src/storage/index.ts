@@ -9,6 +9,7 @@ import { ReadStream } from 'fs';
 import { Readable } from 'stream';
 import {
   getClientFromAWSSDK,
+  getObjectSize,
   getSignedUrl,
   getSignedUrlforDownload,
 } from './s3b2';
@@ -129,8 +130,25 @@ export class FileStore {
    * @returns The size of the file in bytes.
    *
    * Note that an encrypted file's size is greater than or equal to the unencrypted file's size.
+   *
+   * For Backblaze bucket storage, the size is read back through the same S3 API
+   * used to upload the object (HeadObject via `directClient`). S3 is
+   * read-after-write consistent for an object it just wrote, whereas B2's native
+   * `sizeOf` lags behind the S3 PUT — that lag was the root cause of create-entry
+   * failing with UPLOAD_SIZE_ERROR on large/multipart uploads. Falls back to the
+   * native API if the S3 read fails or no direct client is available.
    */
   async length(id: string): Promise<number> {
+    if (process.env.STORAGE_BACKEND === 'b2' && this.client.directClient) {
+      try {
+        return await getObjectSize(this.client.directClient, id);
+      } catch (error) {
+        console.error(
+          'S3 HeadObject size read failed; falling back to native B2 API:',
+          error
+        );
+      }
+    }
     const result = await this.client.sizeOf(id);
     return result.value;
   }
