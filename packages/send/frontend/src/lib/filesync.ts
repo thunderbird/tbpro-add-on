@@ -129,13 +129,24 @@ export async function getBlob(
   }
 }
 
+export type SendBlobOptions = {
+  // Cancels the in-flight PUT (and blocks retries) when a sibling part fails.
+  signal?: AbortSignal;
+  // Invoked with the storage upload id as soon as it is known — before the PUT
+  // for bucket storage — so the caller can track every part it has begun writing
+  // and clean them up if the overall upload later fails.
+  onUploadId?: (id: string) => void;
+};
+
 export async function sendBlob(
   blob: Blob,
   aesKey: CryptoKey,
   api: ApiConnection,
   progressTracker: ProgressTracker,
-  isBucketStorage = true
+  isBucketStorage = true,
+  options: SendBlobOptions = {}
 ): Promise<string> {
+  const { signal, onUploadId } = options;
   const stream = blobStream(blob);
   if (!isBucketStorage) {
     const encryptedSize = calculateEncryptedSize(blob.size);
@@ -144,11 +155,9 @@ export async function sendBlob(
     });
 
     // Using a type guard since a JsonResponse can be a single object or an array
-    if (Array.isArray(result)) {
-      return result[0].id;
-    } else {
-      return result.id;
-    }
+    const id = Array.isArray(result) ? result[0].id : result.id;
+    onUploadId?.(id);
+    return id;
   }
 
   try {
@@ -160,6 +169,10 @@ export async function sendBlob(
       },
       'POST'
     );
+
+    // Record the id now — the bytes may land at this key even if the PUT below
+    // fails partway, so the caller must be able to clean it up.
+    onUploadId?.(id);
 
     progressTracker.setProcessStage('encrypting');
     progressTracker.setText('Encrypting file');
@@ -182,6 +195,7 @@ export async function sendBlob(
       url,
       readableStream,
       progressTracker,
+      signal,
     });
     return id;
   } catch (error) {

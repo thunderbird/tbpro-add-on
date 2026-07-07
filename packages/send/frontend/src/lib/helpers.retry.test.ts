@@ -20,6 +20,7 @@ import {
 } from 'vitest';
 import {
   getUploadRetryDelayMs,
+  UPLOAD_ABORTED,
   UPLOAD_HTTP_RETRY_LIMIT,
   uploadWithTracker,
 } from './helpers';
@@ -180,7 +181,7 @@ describe('uploadWithTracker — HTTP-level retry', () => {
     expect(calls).toBe(2);
   });
 
-  it('retries on 4xx (verifies retry isn\'t gated on 5xx-only)', async () => {
+  it("retries on 4xx (verifies retry isn't gated on 5xx-only)", async () => {
     // Documents current behavior: any non-2xx triggers retry. This may not be
     // semantically correct (a 4xx is the client's fault and won't get better
     // on retry), but it's what the code does today.
@@ -188,7 +189,8 @@ describe('uploadWithTracker — HTTP-level retry', () => {
     server.use(
       http.put(TEST_URL, () => {
         calls++;
-        if (calls === 1) return HttpResponse.text('bad request', { status: 400 });
+        if (calls === 1)
+          return HttpResponse.text('bad request', { status: 400 });
         return HttpResponse.text('ok', { status: 200 });
       })
     );
@@ -202,6 +204,32 @@ describe('uploadWithTracker — HTTP-level retry', () => {
     ).resolves.toBeDefined();
 
     expect(calls).toBe(2);
+  });
+
+  it('does not attempt the PUT when the signal is already aborted', async () => {
+    let calls = 0;
+    server.use(
+      http.put(TEST_URL, () => {
+        calls++;
+        return HttpResponse.text('ok', { status: 200 });
+      })
+    );
+
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      uploadWithTracker({
+        url: TEST_URL,
+        readableStream: makeStream(),
+        progressTracker: mockProgressTracker,
+        signal: controller.signal,
+      })
+    ).rejects.toThrow(UPLOAD_ABORTED);
+
+    // Aborted before it started: no request, and no backoff scheduled.
+    expect(calls).toBe(0);
+    expect(scheduledDelays).toHaveLength(0);
   });
 
   it('resets progress to 0 before each retry attempt', async () => {
@@ -223,8 +251,9 @@ describe('uploadWithTracker — HTTP-level retry', () => {
     // First attempt: no setProgress(0) (attempt === 0).
     // Second attempt (retry #1): setProgress(0).
     // Third attempt (retry #2): setProgress(0).
-    const zeroResetCalls = (mockProgressTracker.setProgress as ReturnType<typeof vi.fn>).mock.calls
-      .filter((args) => args[0] === 0).length;
+    const zeroResetCalls = (
+      mockProgressTracker.setProgress as ReturnType<typeof vi.fn>
+    ).mock.calls.filter((args) => args[0] === 0).length;
     expect(zeroResetCalls).toBeGreaterThanOrEqual(2);
   });
 });

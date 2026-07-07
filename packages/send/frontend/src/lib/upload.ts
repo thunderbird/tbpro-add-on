@@ -10,7 +10,7 @@ import { NamedBlob, sendBlob } from '@send-frontend/lib/filesync';
 import { Keychain } from '@send-frontend/lib/keychain';
 import { UserType } from '@send-frontend/types';
 import * as Sentry from '@sentry/vue';
-import { SPLIT_SIZE } from './const';
+import { MAX_CONCURRENT_PARTS, SPLIT_SIZE } from './const';
 import {
   hashFiles,
   retryUntilSuccessOrTimeout,
@@ -51,6 +51,43 @@ export default class Uploader {
     // from an existing session or to populate from an initial login.
     this.keychain = keychain;
     this.api = api;
+  }
+
+  /**
+   * Asks the backend to delete every part this upload attempt wrote to storage.
+   * Called when a multipart upload fails partway so that already-uploaded (and
+   * partially-uploaded) parts don't linger as orphaned bytes in the bucket.
+   */
+  private async deleteWrittenUploads(api: ApiConnection, ids: string[]) {
+    if (ids.length === 0) {
+      return;
+    }
+    await api.call('uploads/cleanup', { ids }, 'POST');
+  }
+
+  /**
+   * Fire-and-forget cleanup for use during page teardown (pagehide), when an
+   * upload is still in flight and the normal `if (fatalError)` cleanup will
+   * never run. Uses a `keepalive` fetch so the request survives the page being
+   * torn down, and cookie auth (`credentials: 'include'`) since requireJWT reads
+   * the auth cookie — a Bearer header can't be attached reliably at unload time.
+   * Best-effort only: hard kills/crashes still rely on the server-side reaper.
+   */
+  private teardownCleanup(api: ApiConnection, ids: string[]) {
+    if (ids.length === 0) {
+      return;
+    }
+    try {
+      void fetch(`${api.serverUrl}/api/uploads/cleanup`, {
+        method: 'POST',
+        keepalive: true,
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+    } catch {
+      // best-effort; nothing we can do at teardown
+    }
   }
 
   /**
@@ -190,7 +227,13 @@ export default class Uploader {
       fileBlob.size // Pass original file size
     );
 
-    // Process all uploads concurrently for better performance
+    // When any part fails permanently we abort the in-flight PUTs of the other
+    // parts (via this signal) and clean up every storage object we started
+    // writing (tracked in `writtenUploadIds`) so no orphaned bytes are left in
+    // the bucket.
+    const abortController = new AbortController();
+    const writtenUploadIds = new Set<string>();
+
     const uploadPart = async (
       blob: NamedBlob,
       index: number
@@ -200,102 +243,129 @@ export default class Uploader {
 
       const partTracker = multipartTracker.getPartTracker(index);
 
-      // Retry the entire upload block if either the upload POST or itemObj call fail
+      // We set the part number starting from 1 to avoid problems with part 0 evaluating to false
+      const part = shouldSplit ? index + 1 : undefined;
+
+      // Encrypt + upload the part exactly once. The PUT owns its own
+      // retry/backoff (uploadWithTracker) and honors the abort signal, so we
+      // never re-encrypt or re-request a signed URL on a transient network
+      // failure. sendBlob throws once the PUT retries are exhausted.
+      const id = await sendBlob(blob, key, api, partTracker, isBucketStorage, {
+        signal: abortController.signal,
+        onUploadId: (uploadId) => writtenUploadIds.add(uploadId),
+      });
+
+      if (!id) {
+        throw new Error('Failed to send blob');
+      }
+
+      // Wait for storage to confirm the object is fully written before creating
+      // the DB entry. This is REQUIRED for bucket storage too: the object lands
+      // via the S3 presigned PUT, but the backend size-check (create-entry)
+      // reads via the native B2 API, which is not immediately read-after-write
+      // consistent. Skipping this races that lag and makes create-entry fail
+      // intermittently with UPLOAD_SIZE_ERROR (500). Poll up to 3 min.
+      await retryUntilSuccessOrTimeout(
+        async () => {
+          const { size } = await this.api.call<{ size: null | number }>(
+            `uploads/${id}/stat`
+          );
+          // Return a boolean, telling us if the size is null or not
+          return !!size;
+        },
+        2_000,
+        180_000
+      );
+
+      // Create the DB Content entry + Item. These are cheap POSTs, so we retry
+      // them independently of the (already-completed) upload — a transient API
+      // failure here must not re-drive the PUT or re-encrypt the blob.
       let uploadResult: {
         upload: UploadResponse;
         itemObj: ItemResponse;
       } | null = null;
+      // The Upload row is created once and reused across retries: if create-entry
+      // succeeds but item-creation fails, we must NOT re-POST /uploads (the id is
+      // fixed, so a re-POST would race the same row). Hold the created row here so
+      // a retry only re-attempts the step that actually failed.
+      let upload: UploadResponse | null = null;
       let retryCount = 0;
       const maxRetries = 5;
 
-      // We set the part number starting from 1 to avoid problems with part 0 evaluating to false
-      const part = shouldSplit ? index + 1 : undefined;
-
       while (retryCount < maxRetries && !uploadResult) {
+        // Stop retrying DB writes if a sibling part already doomed the upload.
+        if (abortController.signal.aborted) {
+          throw new Error('Upload aborted');
+        }
         try {
-          // Blob is encrypted as it is uploaded through a websocket connection
-          const id = await sendBlob(
-            blob,
-            key,
-            api,
-            partTracker,
-            isBucketStorage
-          );
-
-          if (!id) {
-            throw new Error('Failed to send blob');
-          }
-
-          if (!isBucketStorage) {
-            // Poll the api to check if the file is in storage
-            await retryUntilSuccessOrTimeout(async () => {
-              const { size } = await this.api.call<{ size: null | number }>(
-                `uploads/${id}/stat`
-              );
-              // Return a boolean, telling us if the size is null or not
-              return !!size;
-            });
-          }
-
-          // Create a Content entry in the database.
-          // Capture why this call fails (network vs API 4xx/5xx + status) so
-          // Sentry can break "Failed to create upload entry" down by cause and
-          // rate. Observability only (#914) — no retry/timeout change here.
-          let createEntryFailure: ApiCallFailure | undefined;
-          const result = await this.api.call<{
-            upload: UploadResponse;
-          }>(
-            'uploads',
-            {
-              id: id,
-              size: blob.size,
-              ownerId: this.user.id,
-              type: blob.type,
-              containerId,
-              part, // if the file was split into multiple zips, we add the part
-              fileHash: hashes[index],
-            },
-            'POST',
-            {},
-            {
-              onFailure: (failure) => {
-                createEntryFailure = failure;
+          if (!upload) {
+            // Create a Content entry in the database.
+            // Capture why this call fails (network vs API 4xx/5xx + status) so
+            // Sentry can break "Failed to create upload entry" down by cause and
+            // rate. Observability only (#914) — no retry/timeout change here.
+            let createEntryFailure: ApiCallFailure | undefined;
+            const result = await this.api.call<{
+              upload: UploadResponse;
+            }>(
+              'uploads',
+              {
+                id: id,
+                size: blob.size,
+                ownerId: this.user.id,
+                type: blob.type,
+                containerId,
+                part, // if the file was split into multiple zips, we add the part
+                fileHash: hashes[index],
               },
-            }
-          );
-          if (!result) {
-            const cause = createEntryFailureToCause(createEntryFailure);
-            Sentry.captureException(cause, {
-              tags: {
-                upload_stage: 'create_entry',
-                create_entry_failure_kind: createEntryFailure?.kind ?? 'unknown',
-                ...(createEntryFailure?.kind === 'http'
-                  ? { create_entry_http_status: String(createEntryFailure.status) }
-                  : {}),
-              },
-              contexts: {
-                create_entry: {
-                  kind: createEntryFailure?.kind ?? 'unknown',
-                  status:
-                    createEntryFailure?.kind === 'http'
-                      ? createEntryFailure.status
-                      : null,
-                  statusText:
-                    createEntryFailure?.kind === 'http'
-                      ? createEntryFailure.statusText
-                      : undefined,
-                  body:
-                    createEntryFailure?.kind === 'http'
-                      ? createEntryFailure.body
-                      : undefined,
+              'POST',
+              {},
+              {
+                onFailure: (failure) => {
+                  createEntryFailure = failure;
                 },
-              },
-            });
-            throw new Error('Failed to create upload entry', { cause });
+              }
+            );
+            if (!result) {
+              const cause = createEntryFailureToCause(createEntryFailure);
+              Sentry.captureException(cause, {
+                tags: {
+                  upload_stage: 'create_entry',
+                  create_entry_failure_kind:
+                    createEntryFailure?.kind ?? 'unknown',
+                  ...(createEntryFailure?.kind === 'http'
+                    ? {
+                        create_entry_http_status: String(
+                          createEntryFailure.status
+                        ),
+                      }
+                    : {}),
+                },
+                contexts: {
+                  create_entry: {
+                    kind: createEntryFailure?.kind ?? 'unknown',
+                    status:
+                      createEntryFailure?.kind === 'http'
+                        ? createEntryFailure.status
+                        : null,
+                    statusText:
+                      createEntryFailure?.kind === 'http'
+                        ? createEntryFailure.statusText
+                        : undefined,
+                    body:
+                      createEntryFailure?.kind === 'http'
+                        ? createEntryFailure.body
+                        : undefined,
+                  },
+                },
+              });
+              throw new Error('Failed to create upload entry', { cause });
+            }
+            upload = result.upload;
           }
-          const upload = result.upload;
 
-          // For the Content entry, create the corresponding Item in the Container
+          // Create the corresponding Item in the Container. This runs on every
+          // retry until it succeeds; because `upload` is created once and reused,
+          // a transient item-creation failure never re-POSTs /uploads.
           const itemObj = await this.api.call<ItemResponse>(
             `containers/${containerId}/item`,
             {
@@ -316,16 +386,13 @@ export default class Uploader {
           uploadResult = { upload, itemObj };
         } catch (error) {
           retryCount++;
-          console.error(`Upload attempt ${retryCount} failed:`, error);
+          console.error(`Create-entry attempt ${retryCount} failed:`, error);
 
           if (retryCount >= maxRetries) {
             const failureMessage =
               `Upload failed for ${fileBlob.name} after ${maxRetries} attempts` +
               (part ? ` (part ${part})` : '');
             console.error(failureMessage, error);
-            progressTracker.setProcessStage('error');
-            progressTracker.setText(failureMessage);
-            progressTracker.error = failureMessage;
             throw new Error(failureMessage);
           }
 
@@ -334,10 +401,6 @@ export default class Uploader {
             setTimeout(resolve, Math.pow(2, retryCount) * 1000)
           );
         }
-      }
-
-      if (!uploadResult) {
-        return null;
       }
 
       const { itemObj } = uploadResult;
@@ -357,35 +420,77 @@ export default class Uploader {
       return item;
     };
 
-    // Process uploads in batches of 5 for better resource management
-    const uploadResponses: Item[] = [];
-    const BATCH_SIZE = 5;
+    // Upload parts through a bounded-concurrency pool: up to
+    // MAX_CONCURRENT_PARTS run at once and, as each finishes, the next queued
+    // part starts immediately. There is no per-batch barrier, so a slow or
+    // failing part never blocks unrelated parts from starting. The first part
+    // that fails permanently records the error and aborts the rest.
+    const uploadResponses: Item[] = new Array(blobs.length);
+    let nextIndex = 0;
+    let fatalError: unknown = null;
 
-    for (let i = 0; i < blobs.length; i += BATCH_SIZE) {
-      const batch = blobs.slice(i, i + BATCH_SIZE);
-      const batchPromises = batch.map((blob, batchIndex) => {
-        const index = i + batchIndex;
-        return uploadPart(blob, index);
-      });
+    const runWorker = async (): Promise<void> => {
+      while (true) {
+        if (fatalError) {
+          return;
+        }
+        const index = nextIndex++;
+        if (index >= blobs.length) {
+          return;
+        }
+        try {
+          const item = await uploadPart(blobs[index], index);
+          if (!item) {
+            throw new Error(`Upload part ${index} returned no item`);
+          }
+          uploadResponses[index] = item;
+        } catch (error) {
+          // First failure dooms the upload: record it and cancel the in-flight
+          // PUTs of the sibling parts. Those PUTs are cancelled instead of
+          // running to completion, so no more bytes are written past this point.
+          if (!fatalError) {
+            fatalError = error;
+          }
+          abortController.abort();
+          return;
+        }
+      }
+    };
 
-      const batchResults = await Promise.all(batchPromises);
+    // If the tab is closed or navigated away while parts are still in flight,
+    // the normal failure cleanup below never runs — so strand-proof it with a
+    // teardown-time cleanup of whatever we've started writing. Registered only
+    // for the duration of the pool run and removed in the finally.
+    const onPageHide = () => this.teardownCleanup(api, [...writtenUploadIds]);
+    window.addEventListener('pagehide', onPageHide);
 
-      // Check if any uploads in this batch failed
-      if (batchResults.some((response) => response === null)) {
-        return null;
+    try {
+      const workerCount = Math.min(MAX_CONCURRENT_PARTS, blobs.length);
+      await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+
+      if (fatalError) {
+        // Best-effort cleanup so a failed multipart upload doesn't strand bytes
+        // in the bucket. Never let a cleanup failure mask the original error.
+        await this.deleteWrittenUploads(api, [...writtenUploadIds]).catch(
+          () => {}
+        );
+
+        const failureMessage =
+          fatalError instanceof Error
+            ? fatalError.message
+            : `Upload failed for ${fileBlob.name}`;
+        progressTracker.setProcessStage('error');
+        progressTracker.setText(failureMessage);
+        progressTracker.error = failureMessage;
+
+        throw fatalError instanceof Error
+          ? fatalError
+          : new Error(failureMessage);
       }
 
-      uploadResponses.push(...batchResults);
+      return uploadResponses;
+    } finally {
+      window.removeEventListener('pagehide', onPageHide);
     }
-
-    if (uploadResponses.length !== blobs.length) {
-      const failureMessage = `Upload failed for ${fileBlob.name}`;
-      progressTracker.setProcessStage('error');
-      progressTracker.setText(failureMessage);
-      progressTracker.error = failureMessage;
-      throw new Error(failureMessage);
-    }
-
-    return uploadResponses;
   }
 }

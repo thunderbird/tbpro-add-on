@@ -31,6 +31,14 @@ export const MAX_ACCESS_LINK_RETRIES = 5;
 const SPLIT_SIZE_IN_MB: number = import.meta.env.VITE_SPLIT_SIZE_IN_MB || 100; // Default to 100 MB if not set
 export const SPLIT_SIZE = SPLIT_SIZE_IN_MB * ONE_MB_IN_BYTES;
 
+// Maximum number of parts of a multipart upload that are uploaded concurrently.
+// Parts are run through a bounded pool (not fixed sequential batches), so a slow
+// or failing part never blocks unrelated parts from starting.
+// Tuned to 4: uploads are bandwidth-bound (aggregate throughput is flat from 2
+// to 8 concurrent parts), so 4 keeps the pipe saturated without buffering more
+// ciphertext in memory than necessary. See docs/UploadReliabilityOptimizations.md.
+export const MAX_CONCURRENT_PARTS = 4;
+
 // Cache durations
 const ONE_MINUTE_IN_MILLISECONDS = 60 * 1000;
 export const FIFTEEN_MINUTES = 15 * ONE_MINUTE_IN_MILLISECONDS; // 15 minutes in milliseconds
