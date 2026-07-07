@@ -262,7 +262,14 @@ type UploadOptions = {
   url: string;
   readableStream: ReadableStream;
   progressTracker: ProgressTracker;
+  // When aborted, the in-flight PUT is cancelled and no further retries run.
+  // Used to cancel sibling parts once a multipart upload is known to be doomed.
+  signal?: AbortSignal;
 };
+
+// Thrown when a PUT is cancelled via the AbortSignal. Distinct from a transient
+// failure so the retry loop knows not to retry it.
+export const UPLOAD_ABORTED = 'UPLOAD_ABORTED';
 
 // Upload PUT retry policy. The hard B2 failures seen in production
 // (Sentry SEND-SUITE-FRONTEND-24H) are multi-minute stalls, so we retry a
@@ -302,11 +309,17 @@ export const uploadWithTracker = ({
   url,
   readableStream,
   progressTracker,
+  signal,
 }: UploadOptions) => {
   const { setProgress } = progressTracker;
-  const XHR_TIMEOUT_MS = 60000;
+  const XHR_TIMEOUT_MS = 180000;
 
   const attemptPut = (blob: Blob, attempt: number): Promise<string> => {
+    // Bail out immediately if a sibling part already failed and aborted us.
+    if (signal?.aborted) {
+      return Promise.reject(new Error(UPLOAD_ABORTED));
+    }
+
     // Reset progress on retry so the UI gets a clean signal
     // rather than silently jumping backwards
     if (attempt > 0) {
@@ -319,6 +332,10 @@ export const uploadWithTracker = ({
       xhr.setRequestHeader('Content-Type', 'application/octet-stream');
       xhr.timeout = XHR_TIMEOUT_MS;
 
+      const onAbort = () => xhr.abort();
+      signal?.addEventListener('abort', onAbort, { once: true });
+      const cleanup = () => signal?.removeEventListener('abort', onAbort);
+
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
           // For multipart uploads, the progress tracker will handle the proper calculation
@@ -328,6 +345,7 @@ export const uploadWithTracker = ({
       };
 
       xhr.onload = () => {
+        cleanup();
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(xhr.response);
         } else {
@@ -336,13 +354,24 @@ export const uploadWithTracker = ({
         }
       };
 
-      xhr.onerror = () => reject(new Error('XHR: UPLOAD_FAILED'));
-      xhr.ontimeout = () =>
+      xhr.onabort = () => {
+        cleanup();
+        reject(new Error(UPLOAD_ABORTED));
+      };
+      xhr.onerror = () => {
+        cleanup();
+        reject(new Error('XHR: UPLOAD_FAILED'));
+      };
+      xhr.ontimeout = () => {
+        cleanup();
         reject(new Error(`Upload timed out after ${XHR_TIMEOUT_MS / 1000}s`));
+      };
 
       xhr.send(blob);
     }).catch((error) => {
-      if (attempt < UPLOAD_HTTP_RETRY_LIMIT) {
+      // Never retry an abort — it means the whole upload has been cancelled.
+      const aborted = signal?.aborted || error?.message === UPLOAD_ABORTED;
+      if (!aborted && attempt < UPLOAD_HTTP_RETRY_LIMIT) {
         const delayMs = getUploadRetryDelayMs(attempt);
         console.warn(
           `HTTP PUT attempt ${attempt + 1} failed, retrying in ${delayMs}ms...`,

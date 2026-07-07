@@ -1,10 +1,10 @@
 import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
 import { ApiConnection } from '@send-frontend/lib/api';
-import { SPLIT_SIZE } from '@send-frontend/lib/const';
-import { NamedBlob } from '@send-frontend/lib/filesync';
+import { MAX_CONCURRENT_PARTS, SPLIT_SIZE } from '@send-frontend/lib/const';
+import { NamedBlob, sendBlob } from '@send-frontend/lib/filesync';
 import { Keychain } from '@send-frontend/lib/keychain';
 import Uploader from '@send-frontend/lib/upload';
-import { hashFiles } from '@send-frontend/lib/utils';
+import { hashFiles, splitIntoMultipleZips } from '@send-frontend/lib/utils';
 import { UserType } from '@send-frontend/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -369,6 +369,150 @@ describe('Uploader', () => {
       expect(mockProgressTracker.setText).toHaveBeenCalledWith(
         'Preparing file for upload'
       );
+    });
+  });
+
+  describe('doUpload concurrency & failure handling', () => {
+    // A lightweight stand-in for the source file: doUpload only reads .size /
+    // .name off it and passes it to the (mocked) splitter + hasher, so we avoid
+    // allocating a real >SPLIT_SIZE (500MB) buffer.
+    const makeSourceBlob = (): NamedBlob =>
+      ({
+        size: SPLIT_SIZE + 1000,
+        name: 'big.txt',
+        type: 'text/plain',
+      }) as unknown as NamedBlob;
+
+    const makeParts = (n: number): NamedBlob[] =>
+      Array.from({ length: n }, (_, i) =>
+        Object.assign(new Blob([`part${i}`]), { name: `big-${i}.txt` })
+      ) as NamedBlob[];
+
+    const indexFromName = (blob: Blob): number =>
+      Number((blob as NamedBlob).name.match(/big-(\d+)/)?.[1] ?? 0);
+
+    const resolveDbCalls = () =>
+      vi.fn().mockImplementation((endpoint: string) => {
+        if (endpoint === 'uploads') {
+          return Promise.resolve({ upload: { id: 'upload-db-id' } });
+        }
+        if (endpoint.includes('item')) {
+          return Promise.resolve({ id: 'item-id' });
+        }
+        // uploads/cleanup and anything else
+        return Promise.resolve({ message: 'ok' });
+      });
+
+    beforeEach(() => {
+      vi.mocked(sendBlob).mockReset().mockResolvedValue('upload-id');
+    });
+
+    it('passes an abort signal and an onUploadId reporter to each part', async () => {
+      vi.mocked(splitIntoMultipleZips).mockResolvedValueOnce(makeParts(2));
+      vi.mocked(hashFiles).mockResolvedValueOnce(['h0', 'h1']);
+      mockApi.call = resolveDbCalls();
+
+      await uploader.doUpload(
+        makeSourceBlob(),
+        'container-id',
+        mockApi,
+        mockProgressTracker
+      );
+
+      expect(sendBlob).toHaveBeenCalledTimes(2);
+      const options = vi.mocked(sendBlob).mock.calls[0][5];
+      expect(options?.signal).toBeInstanceOf(AbortSignal);
+      expect(typeof options?.onUploadId).toBe('function');
+    });
+
+    it('does not block later parts behind a stalled earlier part (no batch barrier)', async () => {
+      const partCount = MAX_CONCURRENT_PARTS + 2; // 7 parts, 5 concurrent
+      vi.mocked(splitIntoMultipleZips).mockResolvedValueOnce(
+        makeParts(partCount)
+      );
+      vi.mocked(hashFiles).mockResolvedValueOnce(
+        Array.from({ length: partCount }, (_, i) => `h${i}`)
+      );
+      mockApi.call = resolveDbCalls();
+
+      const startedIndexes: number[] = [];
+      let releasePart0: () => void = () => {};
+      const part0Gate = new Promise<void>((resolve) => {
+        releasePart0 = resolve;
+      });
+
+      vi.mocked(sendBlob).mockImplementation(
+        async (blob, _key, _api, _tracker, _isBucket, options) => {
+          const index = indexFromName(blob);
+          startedIndexes.push(index);
+          const id = `upload-${index}`;
+          options?.onUploadId?.(id);
+          // Part 0 stalls; every other part completes normally.
+          if (index === 0) {
+            await part0Gate;
+          }
+          return id;
+        }
+      );
+
+      const uploadPromise = uploader.doUpload(
+        makeSourceBlob(),
+        'container-id',
+        mockApi,
+        mockProgressTracker
+      );
+
+      // The last part must be able to start while part 0 is still stalled — a
+      // fixed batch-of-5 barrier would keep parts 5 & 6 from starting at all.
+      await vi.waitFor(() => expect(startedIndexes).toContain(partCount - 1));
+      expect(startedIndexes).toContain(MAX_CONCURRENT_PARTS); // index 5 started
+
+      releasePart0();
+      const result = await uploadPromise;
+      expect(result).toHaveLength(partCount);
+    });
+
+    it('cleans up every written part and aborts siblings when a part fails', async () => {
+      const parts = makeParts(3);
+      vi.mocked(splitIntoMultipleZips).mockResolvedValueOnce(parts);
+      vi.mocked(hashFiles).mockResolvedValueOnce(['h0', 'h1', 'h2']);
+      mockApi.call = resolveDbCalls();
+
+      let capturedSignal: AbortSignal | undefined;
+      vi.mocked(sendBlob).mockImplementation(
+        async (blob, _key, _api, _tracker, _isBucket, options) => {
+          const index = indexFromName(blob);
+          const id = `upload-${index}`;
+          // Record the id before the (possible) failure, exactly as the real
+          // sendBlob does right after obtaining the presigned URL.
+          options?.onUploadId?.(id);
+          capturedSignal = options?.signal;
+          if (index === 1) {
+            throw new Error('UPLOAD_FAILED');
+          }
+          return id;
+        }
+      );
+
+      await expect(
+        uploader.doUpload(
+          makeSourceBlob(),
+          'container-id',
+          mockApi,
+          mockProgressTracker
+        )
+      ).rejects.toThrow();
+
+      // Siblings were cancelled.
+      expect(capturedSignal?.aborted).toBe(true);
+
+      // The backend was asked to remove the parts we began writing, including
+      // the one that failed.
+      const cleanupCall = vi
+        .mocked(mockApi.call)
+        .mock.calls.find(([endpoint]) => endpoint === 'uploads/cleanup');
+      expect(cleanupCall).toBeDefined();
+      expect(cleanupCall?.[1]?.ids).toContain('upload-1');
     });
   });
 });
