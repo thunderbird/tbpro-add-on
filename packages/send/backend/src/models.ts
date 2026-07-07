@@ -330,6 +330,68 @@ export async function deleteUpload(id: string) {
   });
 }
 
+/**
+ * Best-effort cleanup of uploads by id, used when a (multipart) upload fails
+ * partway and the client wants to remove any parts it already wrote to storage.
+ *
+ * Removes the stored bytes (keyed by upload id) and, when present, the DB
+ * `Upload` row.
+ *
+ * Trust boundary: an upload's bytes are keyed by a server-generated UUID that is
+ * only ever returned to the client that requested the presigned URL, so the ids
+ * are effectively unguessable. When a DB `Upload` row exists we additionally
+ * require the requester to be its owner and refuse otherwise. Storage-only
+ * orphans — a PUT that landed bytes but never created a row — have no owner to
+ * check and are removed by id.
+ */
+export async function deleteUploadsByIds(ids: string[], requesterId: string) {
+  const rows = await prisma.upload.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, ownerId: true },
+  });
+  const ownerById = new Map(rows.map(({ id, ownerId }) => [id, ownerId]));
+
+  const deleted: string[] = [];
+  const skipped: string[] = [];
+  const errors: string[] = [];
+
+  // Deduplicate so a repeated id isn't processed twice.
+  await Promise.all(
+    [...new Set(ids)].map(async (id) => {
+      const owner = ownerById.get(id);
+
+      // A row exists but belongs to someone else — refuse to touch it.
+      if (owner !== undefined && owner !== requesterId) {
+        skipped.push(id);
+        return;
+      }
+
+      // Remove bytes first. Absent bytes (e.g. a part whose PUT never landed)
+      // are fine — the goal is idempotent "make sure it's gone".
+      try {
+        await storage.del(id);
+      } catch (e) {
+        console.warn(`[deleteUploadsByIds] storage.del(${id}) failed`, e);
+      }
+
+      // Only remove a DB row we actually found.
+      if (owner !== undefined) {
+        try {
+          await deleteUpload(id);
+        } catch (e) {
+          console.error(`[deleteUploadsByIds] deleteUpload(${id}) failed`, e);
+          errors.push(id);
+          return;
+        }
+      }
+
+      deleted.push(id);
+    })
+  );
+
+  return { deleted, skipped, errors };
+}
+
 export async function getContainersOwnedByUser(id: string) {
   return await prisma.container.findMany({
     where: {
