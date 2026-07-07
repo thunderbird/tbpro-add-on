@@ -202,7 +202,7 @@ function handleFolderClick(uuid: string) {
 </script>
 
 <template>
-  <div class="w-full flex flex-col gap-3 wrapper">
+  <div class="w-full flex flex-col gap-3">
     <h2 class="title">Your Files</h2>
     <span
       v-if="folderStore.rootFolder?.items.length"
