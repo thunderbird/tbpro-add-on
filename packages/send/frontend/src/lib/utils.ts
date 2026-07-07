@@ -380,13 +380,18 @@ const hashAndCheck = async (api: ApiConnection, fileBlob: NamedBlob) => {
 export const hashFiles = async (
   api: ApiConnection,
   fileBlob: NamedBlob,
-  maxSize: number
+  maxSize: number,
+  // Optional callback invoked as each chunk is hashed/scanned, so callers can
+  // surface progress during this phase — for large files it reads and hashes
+  // the whole file and can take several seconds before any bytes upload (#968).
+  onProgress?: (completed: number, total: number) => void
 ): Promise<string[]> => {
   const hashFromChunk: string[] = [];
 
   // If the blob is smaller than maxSize, return it as a single zip
   if (fileBlob.size <= maxSize) {
     const hashedBlob = await hashAndCheck(api, fileBlob);
+    onProgress?.(1, 1);
     return [hashedBlob];
   }
 
@@ -407,6 +412,7 @@ export const hashFiles = async (
     const zippedChunk = await hashAndCheck(api, chunkBlob);
 
     hashFromChunk.push(zippedChunk);
+    onProgress?.(i + 1, numChunks);
   }
   return hashFromChunk;
 };
