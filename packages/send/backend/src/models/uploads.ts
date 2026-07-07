@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import storage from '../storage';
 import { fromPrismaV2 } from './prisma-helper';
 const prisma = new PrismaClient();
@@ -47,6 +47,24 @@ export async function createUpload(
       },
     });
   } catch (error) {
+    // Create-entry is retried by the client with the SAME server-minted id
+    // (the id is generated once at /uploads/signed and reused across retries).
+    // So a retry after the row already committed hits a unique-constraint
+    // violation (Prisma P2002). That is not a failure — the row exists exactly
+    // as we'd create it — so return it and let item-creation proceed, instead
+    // of throwing forever and dooming the whole (multipart) upload. Only treat
+    // it as success when the existing row belongs to the SAME owner, so a
+    // (vanishingly unlikely) id collision across users can never hand back
+    // another user's upload.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const existing = await prisma.upload.findUnique({ where: { id } });
+      if (existing && existing.ownerId === ownerId) {
+        return existing;
+      }
+    }
     console.error('ERROR creating upload:', error);
     throw new BaseError(UPLOAD_NOT_CREATED);
   }

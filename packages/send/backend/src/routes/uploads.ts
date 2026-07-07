@@ -22,7 +22,7 @@ import {
 } from '../models/uploads';
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
-import { reportUpload } from '@send-backend/models';
+import { deleteUploadsByIds, reportUpload } from '@send-backend/models';
 import storage from '@send-backend/storage';
 import { useMetrics } from '../metrics';
 import {
@@ -176,6 +176,64 @@ router.post(
     }
   })
 );
+
+// Zod schema for cleaning up failed-upload parts
+const cleanupSchema = z.object({
+  ids: z.array(z.string()).min(1, 'At least one ID is required'),
+});
+
+/**
+ * @openapi
+ * /api/uploads/cleanup:
+ *   post:
+ *     summary: Delete uploaded parts of a failed upload
+ *     description: >-
+ *       Removes stored bytes (and any DB rows) for the given upload ids. Used by
+ *       the client to clean up a multipart upload that failed partway, so no
+ *       orphaned parts are left in storage. Only removes rows owned by the
+ *       authenticated user; storage-only orphans (no DB row) are removed by id.
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *             required:
+ *               - ids
+ *     responses:
+ *       200:
+ *         description: Cleanup completed
+ *       400:
+ *         description: Invalid request body
+ *       500:
+ *         description: Failed to clean up uploads
+ */
+router.post('/cleanup', requireJWT, async (req, res) => {
+  try {
+    const { ids } = cleanupSchema.parse(req.body);
+    const { id: requesterId } = getDataFromAuthenticatedRequest(req);
+    const result = await deleteUploadsByIds(ids, requesterId);
+    return res.status(200).json({ message: 'Cleanup complete', ...result });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        message: 'Invalid request body',
+        errors: error.errors,
+      });
+    }
+    console.error('Error cleaning up uploads:', error);
+    return res.status(500).json({ message: 'Failed to clean up uploads' });
+  }
+});
 
 /**
  * @openapi
