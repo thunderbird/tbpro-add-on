@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { getAllowedOrigins } from './auth/client';
+import { X_LOGOUT_HEADER } from './config';
 import cors from 'cors';
 
 const allowedOrigins = getAllowedOrigins();
@@ -27,6 +28,6 @@ export const originsHandler = (
     },
     credentials: true,
     // Expose the forced-logout header so the browser can read it cross-origin (#960)
-    exposedHeaders: ['x-logout'],
+    exposedHeaders: [X_LOGOUT_HEADER],
   })(req, res, next);
 };

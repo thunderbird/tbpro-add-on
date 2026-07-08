@@ -121,3 +121,36 @@ describe('auth-store token refresh', () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 });
+
+describe('auth-store forced logout (#960)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('clears session, dispatches tbpro:force-logout, and can run again (guard resets)', async () => {
+    setThunderbirdHost(false);
+    const removeUser = vi
+      .spyOn(UserManager.prototype, 'removeUser')
+      .mockResolvedValue(undefined as never);
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+
+    const auth = useAuthStore();
+    auth.isLoggedIn = true;
+
+    await auth.handleForcedLogout();
+    await auth.handleForcedLogout();
+
+    // Guard resets in `finally`, so a second forced logout still runs — it is
+    // not a permanent no-op.
+    expect(removeUser).toHaveBeenCalledTimes(2);
+    expect(auth.isLoggedIn).toBe(false);
+    const forceLogoutEvents = dispatch.mock.calls.filter(
+      ([e]) => (e as Event).type === 'tbpro:force-logout'
+    );
+    expect(forceLogoutEvents).toHaveLength(2);
+  });
+});

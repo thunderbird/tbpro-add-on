@@ -50,6 +50,12 @@ export const JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS = ONE_WEEK;
 // Determines how many times a file can be attempted to be downloaded with the wrong password before it gets locked
 export const MAX_ACCESS_LINK_RETRIES = 5;
 
+// Response header that tells the client its session is gone and it should clear
+// local auth and return to login (#960). Lives here (a dependency-light module)
+// so both the Express middleware and the tRPC middleware can import it without
+// pulling in the heavier models/prisma graph.
+export const X_LOGOUT_HEADER = 'x-logout';
+
 export function getEnvironmentName(): EnvironmentName {
   if (BASE_URL.includes('send-backend.tb.pro')) {
     return 'prod';

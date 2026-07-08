@@ -101,6 +101,9 @@ describe('requireJWT', () => {
       setHeader: vi.fn(),
     };
     process.env.ACCESS_TOKEN_SECRET = 'your_secret_key';
+    // Default: no bearer / not revoked. Individual tests override.
+    vi.mocked(extractBearerToken).mockReturnValue(null);
+    vi.mocked(isAccessTokenRevoked).mockResolvedValue(false);
   });
 
   it('should deny with 401 and set x-logout when the OIDC session is revoked (#960)', async () => {
@@ -431,7 +434,27 @@ describe('requireAuth', () => {
     mockResponse = {
       json: vi.fn(),
       status: vi.fn(() => mockResponse),
+      setHeader: vi.fn(),
     };
+    // Default: no bearer / not revoked. Individual tests override.
+    vi.mocked(extractBearerToken).mockReturnValue(null);
+    vi.mocked(isAccessTokenRevoked).mockResolvedValue(false);
+  });
+
+  it('denies with 401 + x-logout when the OIDC session is revoked (#960)', async () => {
+    mockRequest.headers.authorization = 'Bearer revoked.token';
+    vi.mocked(extractBearerToken).mockReturnValue('revoked.token');
+    vi.mocked(isAccessTokenRevoked).mockResolvedValue(true);
+
+    await requireAuth(
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction
+    );
+
+    expect(mockResponse.setHeader).toHaveBeenCalledWith('x-logout', '1');
+    expect(mockResponse.status).toHaveBeenCalledWith(401);
+    expect(nextFunction).not.toHaveBeenCalled();
   });
 
   it('should call next() and set oidcUser for a valid OIDC token', async () => {

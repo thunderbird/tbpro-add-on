@@ -94,7 +94,7 @@ const wsClient = wsClientConfig ? createWSClient(wsClientConfig) : null;
 // revocation was never enforced there — and (b) honors the backend's x-logout
 // header by clearing local auth (#960). Cookies are still sent for the legacy
 // JWT fallback.
-async function fetchWithLogoutCheck(
+export async function fetchWithLogoutCheck(
   url: RequestInfo | URL,
   options: RequestInit
 ): Promise<Response> {

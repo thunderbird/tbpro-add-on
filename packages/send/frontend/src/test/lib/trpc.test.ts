@@ -1,7 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { detectTesting, getWsClientConfig } from '@send-frontend/lib/trpc';
+import {
+  detectTesting,
+  fetchWithLogoutCheck,
+  getWsClientConfig,
+} from '@send-frontend/lib/trpc';
 import { TRPC_WS_PATH } from '@send-frontend/lib/config';
+
+const { mockGetAccessToken, mockForcedLogout } = vi.hoisted(() => ({
+  mockGetAccessToken: vi.fn(),
+  mockForcedLogout: vi.fn(),
+}));
+vi.mock('@send-frontend/stores/auth-store', () => ({
+  useAuthStore: () => ({
+    getAccessToken: mockGetAccessToken,
+    handleForcedLogout: mockForcedLogout,
+  }),
+}));
 
 /**
  * Regression guard for Bug 2036665.
@@ -39,5 +54,72 @@ describe('detectTesting', () => {
   // absent and detection falls back to the WebExtension `browser.test` API.
   it('reports a test context when VITE_TESTING is set', () => {
     expect(detectTesting()).toBe(true);
+  });
+});
+
+describe('fetchWithLogoutCheck (#960)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it('attaches the OIDC access token and cookies when no Authorization is set', async () => {
+    mockGetAccessToken.mockResolvedValue('tok123');
+    let init: RequestInit | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url, opts) => {
+        init = opts;
+        return Promise.resolve({
+          headers: { get: () => null },
+        } as unknown as Response);
+      })
+    );
+
+    await fetchWithLogoutCheck('https://x/trpc', {});
+
+    expect((init?.headers as Headers).get('Authorization')).toBe(
+      'Bearer tok123'
+    );
+    expect(init?.credentials).toBe('include');
+  });
+
+  it('does not override an Authorization header the caller already set', async () => {
+    mockGetAccessToken.mockResolvedValue('tok123');
+    let init: RequestInit | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url, opts) => {
+        init = opts;
+        return Promise.resolve({
+          headers: { get: () => null },
+        } as unknown as Response);
+      })
+    );
+
+    await fetchWithLogoutCheck('https://x/trpc', {
+      headers: { Authorization: 'Bearer existing' },
+    });
+
+    expect((init?.headers as Headers).get('Authorization')).toBe(
+      'Bearer existing'
+    );
+    expect(mockGetAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('forces logout when the response carries x-logout', async () => {
+    mockGetAccessToken.mockResolvedValue(null);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          headers: { get: (k: string) => (k === 'x-logout' ? '1' : null) },
+        } as unknown as Response)
+      )
+    );
+
+    await fetchWithLogoutCheck('https://x/trpc', {});
+
+    expect(mockForcedLogout).toHaveBeenCalledTimes(1);
   });
 });

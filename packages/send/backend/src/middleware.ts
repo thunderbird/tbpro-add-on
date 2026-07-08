@@ -8,7 +8,7 @@ import {
   isAccessTokenRevoked,
   validateOIDCToken,
 } from './auth/oidc';
-import { VERSION } from './config';
+import { VERSION, X_LOGOUT_HEADER } from './config';
 import { getUsedStorage } from './models';
 import { fromPrismaV2 } from './models/prisma-helper';
 import { getAdminStatus, getUserByOIDCSubject } from './models/users';
@@ -73,23 +73,19 @@ export function reject(
   return;
 }
 
-// Response header that tells the client its session is gone and it should
-// clear local auth and return to login (#960).
-export const X_LOGOUT_HEADER = 'x-logout';
-
 /**
- * Per-request session liveness check (#960).
+ * Per-request session liveness gate (#960).
  *
- * If the request carries an OIDC access token and Keycloak reports it inactive
+ * If the request carries an OIDC access token that Keycloak reports inactive
  * (the user logged out, changed their password, or was force-logged-out by an
- * admin), set the `x-logout` header so the client clears its session, and
- * report that the request must be rejected.
- *
- * Only genuine revocations count: an already-expired token (handled by the
- * normal refresh flow) and an inconclusive introspection (Keycloak down) both
- * return `false` so we never force logout on routine expiry or an outage.
+ * admin), set the `x-logout` header, respond 401, and return `true` so the
+ * caller stops — a revoked session must not fall back to a still-unexpired JWT
+ * cookie. Returns `false` (caller continues) when there is no bearer token, the
+ * token is merely expired (handled by the normal refresh flow), or introspection
+ * is inconclusive (Keycloak down) — so we never force logout on routine expiry
+ * or an outage.
  */
-export async function isSessionRevoked(
+export async function rejectIfSessionRevoked(
   req: Request,
   res: Response
 ): Promise<boolean> {
@@ -99,6 +95,9 @@ export async function isSessionRevoked(
   }
   if (await isAccessTokenRevoked(token)) {
     res.setHeader(X_LOGOUT_HEADER, '1');
+    res
+      .status(401)
+      .json({ message: 'Not authorized: session is no longer active' });
     return true;
   }
   return false;
@@ -116,10 +115,8 @@ export async function requireAuth(
 ) {
   // A revoked OIDC session must lose access immediately — do not fall back to a
   // still-unexpired JWT cookie.
-  if (await isSessionRevoked(req, res)) {
-    return res
-      .status(401)
-      .json({ message: 'Not authorized: session is no longer active' });
+  if (await rejectIfSessionRevoked(req, res)) {
+    return;
   }
 
   // First, try OIDC authentication
@@ -210,10 +207,8 @@ export async function requireJWT(
 ) {
   // If the OIDC session behind this request has been revoked, deny and tell the
   // client to log out — regardless of the (still-unexpired) JWT cookie (#960).
-  if (await isSessionRevoked(req, res)) {
-    return res
-      .status(401)
-      .json({ message: 'Not authorized: session is no longer active' });
+  if (await rejectIfSessionRevoked(req, res)) {
+    return;
   }
 
   const jwtToken = getCookie(req?.headers?.cookie, 'authorization');

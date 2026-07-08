@@ -368,37 +368,44 @@ export const useAuthStore = defineStore('auth', () => {
    * would loop); it only clears client state and redirects.
    */
   async function handleForcedLogout() {
+    // Coalesce a burst of concurrent x-logout responses into one teardown. The
+    // guard is reset in `finally` so a later, separate revocation still logs the
+    // user out — the redirect is a client-side router navigation (no full reload
+    // that would reset a module-scope latch on its own).
     if (forcedLogoutInProgress) {
       return;
     }
     forcedLogoutInProgress = true;
-
-    isLoggedIn.value = false;
-    currentUser.value = null;
     try {
-      await userManager.removeUser();
-    } catch {
-      // best-effort — the session is already gone server-side
-    }
-    try {
-      // Extension context stores the session; clear it if present.
-      if (typeof browser !== 'undefined') {
-        await browser.storage.local.remove(STORAGE_KEY_AUTH);
-        browser.runtime.sendMessage({ type: SIGN_OUT });
+      isLoggedIn.value = false;
+      currentUser.value = null;
+      try {
+        await userManager.removeUser();
+      } catch {
+        // best-effort — the session is already gone server-side
       }
-    } catch {
-      // best-effort
-    }
-    // Ask the app UI to return to login. Dispatched as a window event rather
-    // than importing the Vue router here: this store is also bundled into the
-    // background script (vite.config.background.js has no Vue plugin), so
-    // importing the router — which pulls in every .vue page — breaks that build.
-    // The listener lives in the router module (app bundle only) and does a
-    // client-side navigation that is safe in both the web app and the add-on
-    // (moz-extension://), where a hard window.location path nav would not
-    // resolve.
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('tbpro:force-logout'));
+      try {
+        // Extension context stores the session; clear it if present.
+        if (typeof browser !== 'undefined') {
+          await browser.storage.local.remove(STORAGE_KEY_AUTH);
+          browser.runtime.sendMessage({ type: SIGN_OUT });
+        }
+      } catch {
+        // best-effort
+      }
+      // Ask the app UI to return to login. Dispatched as a window event rather
+      // than importing the Vue router here: this store is also bundled into the
+      // background script (vite.config.background.js has no Vue plugin), so
+      // importing the router — which pulls in every .vue page — breaks that
+      // build. The listener lives in the router module (app bundle only) and
+      // does a client-side navigation that is safe in both the web app and the
+      // add-on (moz-extension://), where a hard window.location path nav would
+      // not resolve.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('tbpro:force-logout'));
+      }
+    } finally {
+      forcedLogoutInProgress = false;
     }
   }
 

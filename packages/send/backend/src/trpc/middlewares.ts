@@ -4,8 +4,11 @@ import {
   isAccessTokenRevoked,
   validateOIDCToken,
 } from '@send-backend/auth/oidc';
-import { X_LOGOUT_HEADER } from '@send-backend/middleware';
-import { EnvironmentName, getEnvironmentName } from '@send-backend/config';
+import {
+  EnvironmentName,
+  X_LOGOUT_HEADER,
+  getEnvironmentName,
+} from '@send-backend/config';
 import { Context } from '@send-backend/trpc';
 import { TRPCError } from '@trpc/server';
 

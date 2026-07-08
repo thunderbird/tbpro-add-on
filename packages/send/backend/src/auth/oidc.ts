@@ -125,7 +125,15 @@ export async function isTokenActive(token: string): Promise<boolean | null> {
   }
 }
 
-/** Read a JWT's `exp` (seconds since epoch) without verifying the signature. */
+/**
+ * Read a JWT's `exp` (seconds since epoch) without verifying the signature.
+ * Returns `null` for a non-JWT/opaque token. NOTE: the refresh-vs-revoke
+ * distinction in isAccessTokenRevoked depends on this being readable — Keycloak
+ * issues JWT access tokens, so it is today. If access tokens ever become opaque,
+ * decodeTokenExp returns null, the expiry gate is skipped, and a routinely
+ * expired token would be treated as revoked (forced logout on expiry). Revisit
+ * this gate before switching token formats.
+ */
 function decodeTokenExp(token: string): number | null {
   try {
     const payload = token.split('.')[1];
