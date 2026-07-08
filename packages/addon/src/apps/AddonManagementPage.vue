@@ -5,6 +5,7 @@ import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { useAuth } from '@send-frontend/lib/auth';
 import AuthButtons from '@send-frontend/lib/auth/AuthButtons.vue';
 import { useAuthStore } from '@send-frontend/stores';
+import VersionTag from '@send-frontend/apps/common/VersionTag.vue';
 import AdminPage from './AdminPage.vue';
 
 const authStore = useAuthStore();
@@ -40,6 +41,8 @@ async function openLoginPage() {
       </div>
       <AdminPage v-else />
     </WithLoader>
+
+    <VersionTag />
   </div>
 </template>
 
