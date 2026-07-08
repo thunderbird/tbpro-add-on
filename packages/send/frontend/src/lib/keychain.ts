@@ -1,4 +1,5 @@
 import { Storage } from '@send-frontend/lib/storage';
+import { pullBridgedPassphrase } from '@send-frontend/lib/bridgePassphrase';
 import { Backup as BackupUserStore } from '@send-frontend/stores/user-store.types';
 
 export type JwkKeyPair = Record<'publicKey' | 'privateKey', string>;
@@ -720,6 +721,12 @@ export async function restoreKeysUsingLocalStorage(
   keychain: Keychain,
   api: ApiConnection
 ) {
+  // Pull any passphrase the web app shared via the token bridge into the
+  // keychain first. Both the popup and the background call this before
+  // restoring, so neither depends on the management page having already run the
+  // bridge→localStorage transfer (see pullBridgedPassphrase).
+  await pullBridgedPassphrase(keychain);
+
   console.log('🔑 auto restoring keys');
   if (!keychain.getPassphraseValue()) {
     console.log('Keychain passphrase is not initialized');
