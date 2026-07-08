@@ -199,7 +199,28 @@ export default class Uploader {
 
     let blobs: NamedBlob[];
 
-    const hashes = await hashFiles(api, fileBlob, SPLIT_SIZE);
+    // Give immediate UI feedback before the (potentially multi-second) hashing
+    // and zipping work below. For large files hashFiles reads and hashes the
+    // whole file in chunks and splitIntoMultipleZips re-compresses each chunk,
+    // all before any bytes are uploaded — without this the progress meter sits
+    // static with no indication anything is happening (#968).
+    // Don't call initialize() here as it resets fileName.
+    progressTracker.setUploadSize(fileBlob.size); // Use original file size for progress tracking
+    progressTracker.setProcessStage('preparing');
+    progressTracker.setText('Preparing file for upload');
+
+    const hashes = await hashFiles(
+      api,
+      fileBlob,
+      SPLIT_SIZE,
+      (completed, total) => {
+        if (total > 1) {
+          progressTracker.setText(
+            `Preparing file for upload (${completed}/${total})`
+          );
+        }
+      }
+    );
 
     const shouldSplit = fileBlob.size > SPLIT_SIZE;
     if (shouldSplit) {
@@ -213,11 +234,6 @@ export default class Uploader {
     if (!blobs || blobs.length === 0) {
       return null;
     }
-
-    // Initialize progress tracking for multipart uploads - don't call initialize() as it resets fileName
-    progressTracker.setUploadSize(fileBlob.size); // Use original file size for progress tracking
-    progressTracker.setProcessStage('preparing');
-    progressTracker.setText('Preparing file for upload');
 
     // Create a multipart progress tracker that manages overall progress
     const multipartTracker = this.createMultipartProgressTracker(

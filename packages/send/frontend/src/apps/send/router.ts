@@ -65,6 +65,10 @@ export const routes: RouteRecordRaw[] = [
     redirect: '/send',
   },
   {
+    path: '/profile',
+    redirect: '/send/profile',
+  },
+  {
     path: '/auto-login',
     component: LoginPage,
   },
