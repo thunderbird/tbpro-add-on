@@ -389,9 +389,18 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       // best-effort
     }
-    // Send the user to a clean state; the app shows login when unauthenticated.
-    if (typeof window !== 'undefined') {
-      window.location.assign('/send');
+    // Return to login via the client-side router. This works both in the web
+    // app and inside the add-on (moz-extension://), where a hard
+    // window.location navigation to a route path would not resolve. Fall back
+    // to a hard navigation only if the router isn't available.
+    try {
+      const { default: router } =
+        await import('@send-frontend/apps/send/router');
+      await router.replace('/login');
+    } catch {
+      if (typeof window !== 'undefined') {
+        window.location.assign('/send');
+      }
     }
   }
 
