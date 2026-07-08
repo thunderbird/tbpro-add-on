@@ -7,6 +7,7 @@ import { onMounted } from 'vue';
 
 import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
 import useMetricsStore from '@send-frontend/stores/metrics';
+import VersionTag from '@send-frontend/apps/common/VersionTag.vue';
 import PopupView from './views/PopupView.vue';
 
 const userStore = useUserStore();
@@ -27,6 +28,7 @@ useMetricsUpdate();
 <template>
   <div id="send-page" class="container">
     <PopupView />
+    <VersionTag />
   </div>
 </template>
 
