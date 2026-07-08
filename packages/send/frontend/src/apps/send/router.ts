@@ -361,4 +361,16 @@ router.beforeEach(async (to, from, next) => {
   next();
 });
 
+// When the auth store forces a logout (x-logout header, #960), return to the
+// login screen via a client-side navigation. Registered here — in the app
+// bundle that owns the router — so the auth store (also bundled into the
+// background script, which has no Vue build) never has to import the router.
+if (typeof window !== 'undefined') {
+  window.addEventListener('tbpro:force-logout', () => {
+    router.replace('/login').catch(() => {
+      /* already navigating / not in a routable context */
+    });
+  });
+}
+
 export default router;

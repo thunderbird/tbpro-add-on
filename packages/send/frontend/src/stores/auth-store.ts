@@ -389,18 +389,16 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       // best-effort
     }
-    // Return to login via the client-side router. This works both in the web
-    // app and inside the add-on (moz-extension://), where a hard
-    // window.location navigation to a route path would not resolve. Fall back
-    // to a hard navigation only if the router isn't available.
-    try {
-      const { default: router } =
-        await import('@send-frontend/apps/send/router');
-      await router.replace('/login');
-    } catch {
-      if (typeof window !== 'undefined') {
-        window.location.assign('/send');
-      }
+    // Ask the app UI to return to login. Dispatched as a window event rather
+    // than importing the Vue router here: this store is also bundled into the
+    // background script (vite.config.background.js has no Vue plugin), so
+    // importing the router — which pulls in every .vue page — breaks that build.
+    // The listener lives in the router module (app bundle only) and does a
+    // client-side navigation that is safe in both the web app and the add-on
+    // (moz-extension://), where a hard window.location path nav would not
+    // resolve.
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tbpro:force-logout'));
     }
   }
 
