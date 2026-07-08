@@ -57,8 +57,26 @@ if ! grep -q "tbpro-system-add-on@thunderbird.net" "$DIST/manifest.json"; then
   exit 1
 fi
 
+# Remove every sourcemap from a directory tree: delete standalone *.map files and
+# strip the trailing sourceMappingURL comments from JS/CSS (the background bundle
+# uses an inline `sourcemap: 'inline'` data: URI, so it has no separate .map to
+# delete). The system add-on ships to users via comm-central and must not carry
+# sourcemaps; Sentry symbolication is unaffected because the maps are uploaded to
+# Sentry during the vite build, before this sync runs.
+strip_sourcemaps() {
+  local dir="$1"
+  find "$dir" -type f -name '*.map' -delete
+  find "$dir" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.css' \) \
+    -exec perl -ni -e 'print unless m{^\s*(//|/\*)# sourceMappingURL=}' {} +
+}
+
 echo "Syncing $DIST/ -> $DEST/"
 # --delete so files removed from the build don't linger in the vendored copy.
-rsync -a --delete "$DIST/" "$DEST/"
+# --exclude='*.map' keeps sourcemaps out of the vendored copy (see strip_sourcemaps).
+rsync -a --delete --exclude='*.map' "$DIST/" "$DEST/"
 
-echo "Synced. Now: cd \"\$TB_COMM_SRC\" && ./mach build faster && ./mach run --temp-profile"
+# rsync's --exclude can't touch the inline background sourcemap or clean stale
+# .map files already in $DEST (they're protected by the exclude), so scrub $DEST.
+strip_sourcemaps "$DEST"
+
+echo "Synced (sourcemaps stripped). Now: cd \"\$TB_COMM_SRC\" && ./mach build faster && ./mach run --temp-profile"

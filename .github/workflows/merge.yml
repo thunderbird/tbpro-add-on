@@ -490,6 +490,17 @@ jobs:
           mkdir -p /tmp/system-addon-unpack
           unzip "packages/addon/$PROD_XPI" -d /tmp/system-addon-unpack
           bun run packages/addon/scripts/set-system-id.ts /tmp/system-addon-unpack/manifest.json
+
+          # Strip sourcemaps from the shipped system add-on: delete standalone
+          # *.map files and remove the sourceMappingURL comments (the background
+          # bundle inlines its map as a data: URI, so it has no separate file).
+          # The maps were already uploaded to Sentry during the addon build
+          # above, so crash symbolication is unaffected — we only stop shipping
+          # them into comm-central.
+          find /tmp/system-addon-unpack -type f -name '*.map' -delete
+          find /tmp/system-addon-unpack -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.css' \) \
+            -exec perl -ni -e 'print unless m{^\s*(//|/\*)# sourceMappingURL=}' {} +
+
           cd /tmp/system-addon-unpack
           zip -r "$GITHUB_WORKSPACE/packages/addon/$SYSTEM_XPI" .
 
