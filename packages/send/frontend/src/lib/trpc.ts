@@ -89,6 +89,24 @@ const wsClient = wsClientConfig ? createWSClient(wsClientConfig) : null;
 /**
  * We only import the `AppRouter` type from the server - this is not available at runtime
  */
+// tRPC transport fetch that honors the backend's x-logout header (#960): if a
+// response says the session is gone, clear local auth. Also carries cookies.
+async function fetchWithLogoutCheck(
+  url: RequestInfo | URL,
+  options: RequestInit
+): Promise<Response> {
+  const res = await fetch(url, { ...options, credentials: 'include' });
+  if (res.headers?.get?.('x-logout')) {
+    try {
+      const { useAuthStore } = await import('@send-frontend/stores/auth-store');
+      await useAuthStore().handleForcedLogout();
+    } catch (error) {
+      console.error('Forced-logout handling failed:', error);
+    }
+  }
+  return res;
+}
+
 export const trpc: TRPCClient<AppRouter> = createTRPCClient<AppRouter>({
   links: [
     splitLink({
@@ -126,13 +144,7 @@ export const trpc: TRPCClient<AppRouter> = createTRPCClient<AppRouter>({
         }),
         httpBatchLink({
           url: trpcUrl,
-          fetch(url, options: RequestInit) {
-            return fetch(url, {
-              ...options,
-              // Include credentials for cookies
-              credentials: 'include',
-            });
-          },
+          fetch: fetchWithLogoutCheck,
         }),
       ],
       // Handle subscriptions with WebSocket
@@ -146,12 +158,7 @@ export const trpc: TRPCClient<AppRouter> = createTRPCClient<AppRouter>({
             // Fallback to HTTP for subscriptions in testing
             httpBatchLink({
               url: trpcUrl,
-              fetch(url, options: RequestInit) {
-                return fetch(url, {
-                  ...options,
-                  credentials: 'include',
-                });
-              },
+              fetch: fetchWithLogoutCheck,
             }),
           ],
     }),

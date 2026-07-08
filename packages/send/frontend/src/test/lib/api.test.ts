@@ -7,6 +7,17 @@
 import { ApiCallFailure, ApiConnection } from '@send-frontend/lib/api';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// Stub the auth store so api.call's dynamic imports (getAccessToken and the
+// x-logout handler) don't pull in pinia/oidc at test time.
+const { mockForcedLogout } = vi.hoisted(() => ({ mockForcedLogout: vi.fn() }));
+vi.mock('@send-frontend/stores/auth-store', () => ({
+  useAuthStore: () => ({
+    getAccessToken: async () => null,
+    handleForcedLogout: mockForcedLogout,
+    refreshToken: async () => null,
+  }),
+}));
+
 const SERVER = 'https://send.test.local';
 
 function mockFetch(impl: () => Promise<Response> | Response) {
@@ -113,9 +124,59 @@ describe('ApiConnection.call — onFailure diagnostics', () => {
     const api = new ApiConnection(SERVER);
     let failure: ApiCallFailure | undefined;
 
-    await api.call('uploads', {}, 'POST', {}, { onFailure: (f) => (failure = f) });
+    await api.call(
+      'uploads',
+      {},
+      'POST',
+      {},
+      { onFailure: (f) => (failure = f) }
+    );
 
     expect(failure?.kind).toBe('http');
     expect((failure as { body: string }).body).toHaveLength(500);
+  });
+});
+
+describe('ApiConnection.call — x-logout forced logout (#960)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    mockForcedLogout.mockClear();
+  });
+
+  it('clears the session and returns null when the response has x-logout', async () => {
+    mockFetch(
+      () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: (k: string) => (k === 'x-logout' ? '1' : null) },
+          json: async () => ({ ok: true }),
+        }) as unknown as Response
+    );
+
+    const api = new ApiConnection(SERVER);
+    const result = await api.call('uploads', {}, 'POST');
+
+    expect(mockForcedLogout).toHaveBeenCalledTimes(1);
+    expect(result).toBeNull();
+  });
+
+  it('does not force logout when the header is absent', async () => {
+    mockFetch(
+      () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ ok: true }),
+        }) as unknown as Response
+    );
+
+    const api = new ApiConnection(SERVER);
+    const result = await api.call('uploads', {}, 'POST');
+
+    expect(mockForcedLogout).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true });
   });
 });

@@ -166,6 +166,20 @@ export class ApiConnection {
       }
     }
 
+    // The backend sets x-logout when the OIDC session is no longer active
+    // (logout / password change / admin force-logout). Clear local auth and
+    // stop — regardless of the response status (#960).
+    if (resp.headers?.get?.('x-logout')) {
+      try {
+        const { useAuthStore } =
+          await import('@send-frontend/stores/auth-store');
+        await useAuthStore().handleForcedLogout();
+      } catch (error) {
+        console.error('Forced-logout handling failed:', error);
+      }
+      return null;
+    }
+
     if (!resp.ok) {
       // Surface the status/body for the caller's diagnostics before discarding
       // the response. Reading the body is safe here because we return null

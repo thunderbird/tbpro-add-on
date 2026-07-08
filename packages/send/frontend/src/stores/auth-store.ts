@@ -55,6 +55,10 @@ function isGenuineAuthFailure(error: unknown): boolean {
   return typeof code === 'string' && GENUINE_AUTH_FAILURE_CODES.includes(code);
 }
 
+// Ensures a forced logout (triggered by the x-logout header, #960) runs once
+// even if several in-flight requests come back with the header at the same time.
+let forcedLogoutInProgress = false;
+
 export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
   const { isExtension, isThunderbirdHost } = useConfigStore();
@@ -357,6 +361,41 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
+   * Forced logout in response to the backend's x-logout header (#960): the
+   * session was ended server-side (logout elsewhere, password change, admin
+   * revoke). Clear local auth and return to a clean state. Deliberately does
+   * NOT call the API (that path is what surfaced x-logout, so calling it again
+   * would loop); it only clears client state and redirects.
+   */
+  async function handleForcedLogout() {
+    if (forcedLogoutInProgress) {
+      return;
+    }
+    forcedLogoutInProgress = true;
+
+    isLoggedIn.value = false;
+    currentUser.value = null;
+    try {
+      await userManager.removeUser();
+    } catch {
+      // best-effort — the session is already gone server-side
+    }
+    try {
+      // Extension context stores the session; clear it if present.
+      if (typeof browser !== 'undefined') {
+        await browser.storage.local.remove(STORAGE_KEY_AUTH);
+        browser.runtime.sendMessage({ type: SIGN_OUT });
+      }
+    } catch {
+      // best-effort
+    }
+    // Send the user to a clean state; the app shows login when unauthenticated.
+    if (typeof window !== 'undefined') {
+      window.location.assign('/send');
+    }
+  }
+
+  /**
    * Logout from OIDC and clear local state
    */
   async function logoutFromOIDC() {
@@ -594,6 +633,7 @@ export const useAuthStore = defineStore('auth', () => {
     checkAuthStatus,
     getAccessToken,
     logoutFromOIDC,
+    handleForcedLogout,
     refreshToken,
     loginToKeyCloak, // Alias for loginToOIDC
 

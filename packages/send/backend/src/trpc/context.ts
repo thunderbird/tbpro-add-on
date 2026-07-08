@@ -7,6 +7,7 @@ import { getCookie } from '../utils';
 
 export const createContext = ({
   req,
+  res,
 }: trpcExpress.CreateExpressContextOptions) => {
   const jwtToken = getCookie(req?.headers?.cookie, 'authorization');
   const jwtRefreshToken = getCookie(req?.headers?.cookie, 'refresh_token');
@@ -19,7 +20,8 @@ export const createContext = ({
     const { daysToExpiry, hasLimitedStorage } = getStorageLimit(req);
 
     return {
-      // req, // Include request object for OIDC middleware
+      // Response is exposed so auth middleware can set the x-logout header (#960)
+      res,
       authorization: req.headers?.authorization || null,
       user: {
         id: id.toString(),
@@ -38,7 +40,7 @@ export const createContext = ({
   } catch {
     // If the user is not authenticated, we return only the cookies
     return {
-      // req, // Include request object for OIDC middleware
+      res,
       authorization: req.headers?.authorization || null,
       user: null,
       cookies: {

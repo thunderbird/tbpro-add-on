@@ -26,5 +26,7 @@ export const originsHandler = (
       }
     },
     credentials: true,
+    // Expose the forced-logout header so the browser can read it cross-origin (#960)
+    exposedHeaders: ['x-logout'],
   })(req, res, next);
 };

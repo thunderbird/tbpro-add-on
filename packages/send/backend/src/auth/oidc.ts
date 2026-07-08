@@ -1,4 +1,3 @@
-import { JWT_EXPIRY_IN_MILLISECONDS } from '@send-backend/config';
 import axios from 'axios';
 import 'dotenv/config';
 
@@ -22,6 +21,12 @@ interface TokenCacheEntry {
 
 // Simple in-memory cache for token introspection results
 const tokenCache = new Map<string, TokenCacheEntry>();
+
+// How long an introspection result is trusted before we ask Keycloak again.
+// Short enough that a revoked session loses access promptly (#960), long
+// enough that a burst of requests (e.g. a multipart upload) isn't one
+// introspection call per request.
+export const INTROSPECTION_CACHE_MS = 60 * 1000;
 
 /**
  * Introspects an OIDC token with the configured authorization server
@@ -68,13 +73,15 @@ export async function introspectToken(
 
     const introspectionResult: TokenIntrospectionResponse = response.data;
 
-    // Cache the result for the same duration as the jwt or until token expires (whichever is shorter)
-
+    // Cache the result briefly so per-request introspection doesn't hammer
+    // Keycloak (e.g. during multipart uploads), while still catching a revoked
+    // session — logout / password change / admin force-logout — within
+    // INTROSPECTION_CACHE_MS. Never cache past the token's own expiry.
     const tokenExpiry = introspectionResult.exp
       ? introspectionResult.exp * 1000
-      : Date.now() + JWT_EXPIRY_IN_MILLISECONDS;
+      : Date.now() + INTROSPECTION_CACHE_MS;
     const cacheExpiry = Math.min(
-      Date.now() + JWT_EXPIRY_IN_MILLISECONDS,
+      Date.now() + INTROSPECTION_CACHE_MS,
       tokenExpiry
     );
 
@@ -102,6 +109,23 @@ export async function introspectToken(
 }
 
 /**
+ * Per-request liveness check for an access token (#960).
+ * @returns `true` if Keycloak reports the token active, `false` if it reports
+ * it inactive (session revoked/expired), and `null` if introspection could not
+ * be performed (misconfig or Keycloak unreachable). Callers should treat `null`
+ * as inconclusive and fail OPEN — a Keycloak blip must not sign everyone out.
+ */
+export async function isTokenActive(token: string): Promise<boolean | null> {
+  try {
+    const result = await introspectToken(token);
+    return result.active === true;
+  } catch (error) {
+    console.error('Token introspection unavailable (failing open):', error);
+    return null;
+  }
+}
+
+/**
  * Validates an OIDC token and returns user information if valid
  * @param token The access token to validate
  * @returns Promise<{isValid: boolean, userInfo?: any}>
@@ -119,15 +143,9 @@ export async function validateOIDCToken(token: string): Promise<{
   try {
     const introspectionResult = await introspectToken(token);
 
+    // `active` already reflects expiry and revocation, so it is the single
+    // source of truth — an expired or revoked token comes back active:false.
     if (!introspectionResult.active) {
-      return { isValid: false };
-    }
-
-    // Check if token is expired
-    if (
-      introspectionResult.exp &&
-      introspectionResult.exp < Date.now() / JWT_EXPIRY_IN_MILLISECONDS
-    ) {
       return { isValid: false };
     }
 

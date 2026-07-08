@@ -1,7 +1,11 @@
 import { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDataFromAuthenticatedRequest } from '../auth/client';
-import { extractBearerToken, validateOIDCToken } from '../auth/oidc';
+import {
+  extractBearerToken,
+  isTokenActive,
+  validateOIDCToken,
+} from '../auth/oidc';
 import { validateJWT } from '../auth/jwt';
 import {
   addVersionHeader,
@@ -67,6 +71,7 @@ vi.mock('../types/custom', () => ({
 vi.mock('../auth/oidc', () => ({
   extractBearerToken: vi.fn(),
   validateOIDCToken: vi.fn(),
+  isTokenActive: vi.fn(),
 }));
 
 vi.mock('../models/users', () => ({
@@ -93,8 +98,42 @@ describe('requireJWT', () => {
     mockResponse = {
       json: vi.fn(),
       status: vi.fn(() => mockResponse),
+      setHeader: vi.fn(),
     };
     process.env.ACCESS_TOKEN_SECRET = 'your_secret_key';
+  });
+
+  it('should deny with 401 and set x-logout when the OIDC session is revoked (#960)', async () => {
+    mockRequest.headers.authorization = 'Bearer revoked.token';
+    vi.mocked(extractBearerToken).mockReturnValue('revoked.token');
+    vi.mocked(isTokenActive).mockResolvedValue(false);
+
+    await requireJWT(
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction
+    );
+
+    expect(mockResponse.setHeader).toHaveBeenCalledWith('x-logout', '1');
+    expect(mockResponse.status).toHaveBeenCalledWith(401);
+    expect(nextFunction).not.toHaveBeenCalled();
+  });
+
+  it('should fail open (not log out) when introspection is unavailable (#960)', async () => {
+    mockRequest.headers.authorization = 'Bearer some.token';
+    mockRequest.headers.cookie = `authorization=Bearer%20valid.token`;
+    vi.mocked(extractBearerToken).mockReturnValue('some.token');
+    vi.mocked(isTokenActive).mockResolvedValue(null); // inconclusive
+    vi.mocked(validateJWT).mockReturnValue('valid');
+
+    await requireJWT(
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction
+    );
+
+    expect(mockResponse.setHeader).not.toHaveBeenCalledWith('x-logout', '1');
+    expect(nextFunction).toHaveBeenCalled();
   });
 
   it('should call next() for a valid token', async () => {
