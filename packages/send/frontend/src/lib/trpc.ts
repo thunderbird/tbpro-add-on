@@ -89,13 +89,30 @@ const wsClient = wsClientConfig ? createWSClient(wsClientConfig) : null;
 /**
  * We only import the `AppRouter` type from the server - this is not available at runtime
  */
-// tRPC transport fetch that honors the backend's x-logout header (#960): if a
-// response says the session is gone, clear local auth. Also carries cookies.
+// tRPC transport fetch that (a) attaches the OIDC access token so the backend
+// can introspect it per request — the tRPC path was previously cookie-only, so
+// revocation was never enforced there — and (b) honors the backend's x-logout
+// header by clearing local auth (#960). Cookies are still sent for the legacy
+// JWT fallback.
 async function fetchWithLogoutCheck(
   url: RequestInfo | URL,
   options: RequestInit
 ): Promise<Response> {
-  const res = await fetch(url, { ...options, credentials: 'include' });
+  const headers = new Headers(options.headers);
+  try {
+    const { useAuthStore } = await import('@send-frontend/stores/auth-store');
+    if (!headers.has('Authorization')) {
+      const token = await useAuthStore().getAccessToken();
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+    }
+  } catch {
+    // No token available — fall back to cookie auth.
+  }
+
+  const res = await fetch(url, { ...options, headers, credentials: 'include' });
+
   if (res.headers?.get?.('x-logout')) {
     try {
       const { useAuthStore } = await import('@send-frontend/stores/auth-store');

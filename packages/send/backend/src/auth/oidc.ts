@@ -125,6 +125,43 @@ export async function isTokenActive(token: string): Promise<boolean | null> {
   }
 }
 
+/** Read a JWT's `exp` (seconds since epoch) without verifying the signature. */
+function decodeTokenExp(token: string): number | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) {
+      return null;
+    }
+    const claims = JSON.parse(
+      Buffer.from(payload, 'base64url').toString('utf8')
+    );
+    return typeof claims?.exp === 'number' ? claims.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True only when the access token is still within its lifetime but Keycloak
+ * reports it inactive — i.e. the session was revoked (logout elsewhere,
+ * password change, admin force-logout), NOT merely expired (#960).
+ *
+ * An expired token returns `false` on purpose: routine expiry must go through
+ * the normal refresh flow (a refresh succeeds if the session is still alive and
+ * fails — logging the user out — if it isn't). Introspection errors also return
+ * `false` (fail open) so a Keycloak outage can't sign everyone out. This keeps
+ * forced logout limited to genuine revocations, per the refresh requirement in
+ * the issue discussion.
+ */
+export async function isAccessTokenRevoked(token: string): Promise<boolean> {
+  const exp = decodeTokenExp(token);
+  if (exp !== null && exp * 1000 <= Date.now()) {
+    return false; // expired — let the refresh flow decide, don't force logout
+  }
+  const active = await isTokenActive(token);
+  return active === false;
+}
+
 /**
  * Validates an OIDC token and returns user information if valid
  * @param token The access token to validate

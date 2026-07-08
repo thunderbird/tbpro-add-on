@@ -5,7 +5,7 @@ import { getDataFromAuthenticatedRequest } from './auth/client';
 import { validateJWT } from './auth/jwt';
 import {
   extractBearerToken,
-  isTokenActive,
+  isAccessTokenRevoked,
   validateOIDCToken,
 } from './auth/oidc';
 import { VERSION } from './config';
@@ -85,9 +85,9 @@ export const X_LOGOUT_HEADER = 'x-logout';
  * admin), set the `x-logout` header so the client clears its session, and
  * report that the request must be rejected.
  *
- * Returns `false` (allow) when there is no bearer token or when introspection
- * is inconclusive — we fail OPEN so a Keycloak outage can't sign everyone out;
- * the normal JWT check still applies in that case.
+ * Only genuine revocations count: an already-expired token (handled by the
+ * normal refresh flow) and an inconclusive introspection (Keycloak down) both
+ * return `false` so we never force logout on routine expiry or an outage.
  */
 export async function isSessionRevoked(
   req: Request,
@@ -97,8 +97,7 @@ export async function isSessionRevoked(
   if (!token) {
     return false;
   }
-  const active = await isTokenActive(token);
-  if (active === false) {
+  if (await isAccessTokenRevoked(token)) {
     res.setHeader(X_LOGOUT_HEADER, '1');
     return true;
   }

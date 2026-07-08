@@ -1,7 +1,7 @@
 import { validateJWT } from '@send-backend/auth/jwt';
 import {
   extractBearerToken,
-  isTokenActive,
+  isAccessTokenRevoked,
   validateOIDCToken,
 } from '@send-backend/auth/oidc';
 import { X_LOGOUT_HEADER } from '@send-backend/middleware';
@@ -27,10 +27,10 @@ export async function isOIDCAuthed(opts: { ctx: Context; next: NextFunction }) {
   const token = extractBearerToken(authHeader);
 
   if (token) {
-    // A revoked session must lose access immediately — don't fall back to a
-    // still-unexpired JWT cookie. Signal the client to log out (#960).
-    const active = await isTokenActive(token);
-    if (active === false) {
+    // A revoked (but not merely expired) session must lose access immediately —
+    // don't fall back to a still-unexpired JWT cookie. Signal the client to log
+    // out (#960).
+    if (await isAccessTokenRevoked(token)) {
       ctx?.res?.setHeader?.(X_LOGOUT_HEADER, '1');
       throw new TRPCError({ code: 'FORBIDDEN' });
     }
