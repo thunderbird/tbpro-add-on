@@ -202,7 +202,10 @@ export const useBackupAndRestore = () => {
    */
   async function makeBackup() {
     backupStore.setErrorMessage('');
-    keychain.storePassPhrase(passphraseString.value);
+    // Awaited so the encrypted at-rest write actually lands (storePassPhrase is
+    // now async: IndexedDB + AES-GCM). The in-memory cache is set synchronously
+    // regardless, so the reads below still see the value immediately.
+    await keychain.storePassPhrase(passphraseString.value);
 
     try {
       await backupKeys(keychain, api, errorMessage);
@@ -230,7 +233,7 @@ export const useBackupAndRestore = () => {
     backupStore.setErrorMessage('');
     try {
       await restoreKeys(keychain, api, errorMessage, passphraseString.value);
-      keychain.storePassPhrase(passphraseString.value);
+      await keychain.storePassPhrase(passphraseString.value);
       sendMessageToBridge(passphraseString.value);
     } catch (e) {
       metrics.capture('send.restoreKeys.error', {
