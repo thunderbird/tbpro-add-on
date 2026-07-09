@@ -122,23 +122,21 @@ export const useBackupAndRestore = () => {
   });
 
   /**
-   * Mutation to reset all user keys.
-   * This will:
-   * 1. Delete files from the server
-   * 2. Reload the page
+   * Mutation to delete all of the user's Send files from the server.
+   * On success, `filesDeleted` flips to true so the page can show a
+   * confirmation screen; returning to the dashboard from there does the
+   * hard reload that recreates a default folder. `deleteFailed` lets the
+   * page surface an error instead of leaving the user without feedback.
    */
-  const { mutate: deleteFiles } = useMutation({
+  const {
+    mutate: deleteFiles,
+    isSuccess: filesDeleted,
+    isError: deleteFailed,
+    reset: resetDeleteFiles,
+  } = useMutation({
     mutationKey: ['deleteFiles'],
     mutationFn: async () => {
       return await trpc.deleteFiles.mutate();
-    },
-    onSuccess: async () => {
-      await router.push('/send/profile');
-      // hard reload to force a new default folder to be created since all previous ones are now deleted
-      window.location.reload();
-      window.alert(
-        'All your files have been deleted. You can start fresh now!'
-      );
     },
   });
 
@@ -268,6 +266,9 @@ export const useBackupAndRestore = () => {
     routeToKeyRestore,
     resetKeys,
     deleteFiles,
+    filesDeleted,
+    deleteFailed,
+    resetDeleteFiles,
     // Passphrase
     words,
     passphraseString,

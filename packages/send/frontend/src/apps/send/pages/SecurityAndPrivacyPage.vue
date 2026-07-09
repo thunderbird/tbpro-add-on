@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useBackupAndRestore } from '../composables/useBackupAndRestore';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import DeleteSendDataCard from '../views/DeleteSendDataCard.vue';
+import DeleteSendDataSuccessCard from '../views/DeleteSendDataSuccessCard.vue';
 import ResetEncryptionKeyV2 from '../views/ResetEncryptionKeyV2.vue';
 import RestoreKeys from '../views/RestoreKeys.vue';
 import SecurityAndPrivacy from '../views/SecurityAndPrivacy.vue';
@@ -21,17 +22,18 @@ const {
   shouldReset,
   resetKeys,
   deleteFiles,
+  filesDeleted,
+  deleteFailed,
+  resetDeleteFiles,
 } = useBackupAndRestore();
 
 const showDeleteCard = computed(() => route.query.delete === 'true');
 const storedPassphrase = computed(() => keychain.getPassphraseValue() ?? '');
 
 const closeDeleteCard = () => {
+  // Clear a failed-delete state so reopening the form doesn't show a stale error.
+  resetDeleteFiles();
   router.push('/send/security-and-privacy');
-};
-
-const handleDelete = async () => {
-  deleteFiles();
 };
 </script>
 <template>
@@ -40,10 +42,22 @@ const handleDelete = async () => {
     <div class="row" :class="{ single: showDeleteCard }">
       <!-- Backup and Restore Section -->
       <section>
+        <!--
+          `filesDeleted` is the delete mutation's success flag; it only flips
+          back on a fresh page load, which is exactly what the success card's
+          "Return to dashboard" does, so it can't get stuck showing a stale
+          confirmation.
+        -->
+        <DeleteSendDataSuccessCard v-if="showDeleteCard && filesDeleted" />
         <DeleteSendDataCard
-          v-if="showDeleteCard"
+          v-else-if="showDeleteCard"
           :stored-passphrase="storedPassphrase"
-          @confirm="handleDelete"
+          :server-error="
+            deleteFailed
+              ? 'Something went wrong deleting your data. Please try again.'
+              : ''
+          "
+          @confirm="deleteFiles"
           @cancel="closeDeleteCard"
         />
         <RestoreKeys
