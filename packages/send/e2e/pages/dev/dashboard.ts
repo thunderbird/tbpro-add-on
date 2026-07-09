@@ -40,40 +40,57 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
 }
 
 /**
- * Unlock the keychain for a session restored from storageState.
+ * Bring a session restored from storageState to the unlocked file UI.
  *
- * The encryption passphrase is stored encrypted at rest (AES-GCM, key in
- * IndexedDB). Playwright's storageState carries localStorage + cookies but NOT
- * IndexedDB, so a context restored from a saved session has the ciphertext
- * without the key to decrypt it, and the app shows "Recover Access" instead of
- * the file UI. Enter the passphrase once to unlock this context — the same
- * thing a real user does on a new session. No-op when the keychain is already
- * unlocked or when no passphrase has been captured yet (e.g. run in isolation).
+ * Because the passphrase is encrypted at rest with a non-extractable AES key in
+ * IndexedDB, and Playwright's storageState carries localStorage + cookies but
+ * NOT IndexedDB, a restored context can't decrypt its passphrase. The app's
+ * validator then clears the session and forces re-login (see validations.ts),
+ * so a restored context lands in one of three states: (a) logged out at the
+ * login form, (b) logged in but keychain-locked ("Recover Access"), or (c)
+ * already on the file UI. Normalize all three to (c): log in if needed, then
+ * restore keys with the captured passphrase if needed — the same steps a real
+ * user takes on a new device.
  */
-export async function ensureKeysUnlocked(page: Page) {
-  const passphrase = playwrightConfig.passphrase;
-  if (!passphrase) return;
-
-  const { recoverAccessButton, restorekeyInput, restoreKeysButton } =
-    dashboardLocators(page);
+export async function ensureReady(page: Page) {
+  const {
+    emailField,
+    passwordField,
+    submitLogin,
+    recoverAccessButton,
+    restorekeyInput,
+    restoreKeysButton,
+  } = dashboardLocators(page);
   const newFolderButton = page.getByTestId("new-folder-button");
+  const passphrase = playwrightConfig.passphrase;
 
-  // Wait until the app settles into either the locked (recover) or the
-  // unlocked (file UI) state, then only restore if it's locked.
-  await recoverAccessButton
-    .or(newFolderButton)
-    .first()
-    .waitFor({ state: "visible", timeout: 15000 })
-    .catch(() => {});
+  const settle = () =>
+    emailField
+      .or(recoverAccessButton)
+      .or(newFolderButton)
+      .first()
+      .waitFor({ state: "visible", timeout: 20000 })
+      .catch(() => {});
 
-  if (await recoverAccessButton.isVisible().catch(() => false)) {
+  await settle();
+
+  // (a) Forced back to login → sign in with the account register_and_login made.
+  if (await emailField.isVisible().catch(() => false)) {
+    await emailField.fill(email);
+    await passwordField.fill(password);
+    await submitLogin.click();
+    await settle();
+  }
+
+  // (b) Locked → restore keys from the server backup with the captured phrase.
+  if (passphrase && (await recoverAccessButton.isVisible().catch(() => false))) {
     await recoverAccessButton.click();
     await restorekeyInput.fill(passphrase);
     await restoreKeysButton.click();
-    // Restore must actually unlock the keychain — assert here so a genuine
-    // failure surfaces at the real cause, not 15s later in the test body.
-    await expect(newFolderButton).toBeVisible({ timeout: 15000 });
   }
+
+  // (c) Must end on the unlocked file UI.
+  await expect(newFolderButton).toBeVisible({ timeout: 20000 });
 }
 
 export async function log_out_restore_keys() {
@@ -98,8 +115,10 @@ export async function log_out_restore_keys() {
 
   // restore keys
   const passphrase = playwrightConfig.passphrase;
-  // await secondPage.goto("/send/profile");
   await secondPage.waitForLoadState("networkidle");
+  // Wait for the locked/recover state to render before clicking (post-login the
+  // backup check is async, so the button may appear after networkidle).
+  await recoverAccessButton.waitFor({ state: "visible", timeout: 20000 });
   await recoverAccessButton.click();
   await restorekeyInput.fill(passphrase!);
   await restoreKeysButton.click();
@@ -108,7 +127,9 @@ export async function log_out_restore_keys() {
   await secondPage.goto("/send");
 
   // Create a new folder
-  await secondPage.getByTestId("new-folder-button").click();
+  const newFolderButton = secondPage.getByTestId("new-folder-button");
+  await newFolderButton.waitFor({ state: "visible", timeout: 20000 });
+  await newFolderButton.click();
 
   // Check that newly created folder exists
   await secondPage.waitForSelector(folderRowSelector);
