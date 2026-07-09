@@ -29,15 +29,10 @@ import { useModal, useModalSlot } from 'vue-final-modal';
 const folderStore = useFolderStore();
 const sharingStore = useSharingStore();
 
-function closePanel() {
-  folderStore.clearSelection();
-}
-
 async function onDeleteConfirm() {
-  await folderStore.deleteItem(
-    folderStore.selectedFile.id,
-    folderStore.rootFolder.id
-  );
+  const file = folderStore.selectedFile;
+  if (!file) return;
+  await folderStore.deleteItem(file.id, folderStore.rootFolder.id);
 }
 
 const { open: openDeleteModal, close: closeDeleteModal } = useModal({
@@ -142,7 +137,7 @@ Note about shareOnly containers.
         class="self-end -mt-1 -mr-1 p-1 text-gray-500 hover:text-gray-800"
         data-testid="close-file-info"
         aria-label="Close file info"
-        @click="closePanel"
+        @click="folderStore.clearSelection"
       >
         <IconX class="w-5 h-5" />
       </button>

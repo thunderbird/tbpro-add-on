@@ -47,15 +47,21 @@ const hasSelection = computed(() => {
     </main>
 
     <!--
-      Info panel. On desktop (md+) this is the original inline w-64 column. Below
-      md it becomes a full-screen overlay (z-[1000], above the app nav which is
-      z-999) with its own close control, so it no longer covers the file list's
-      action buttons or traps the user (see #977). The overlay classes are
-      `max-md:`-scoped so the desktop layout is byte-for-byte the original.
+      Info panel. On desktop (md+) this is the original always-present inline
+      w-64 column (empty until something is selected), so the desktop layout is
+      unchanged and doesn't reflow. Below md it is hidden until a file/folder is
+      selected, then shown as a full-screen overlay (z-[1000], above the app nav
+      which is z-999) with its own close control, so it no longer covers the file
+      list's action buttons or traps the user (see #977).
     -->
     <aside
-      v-if="showFileComponents && hasSelection"
-      class="w-64 border border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-0 max-md:z-[1000] max-md:w-full max-md:overflow-y-auto max-md:border-0"
+      v-if="showFileComponents"
+      class="w-64 border border-gray-300 bg-gray-50 p-2.5"
+      :class="
+        hasSelection
+          ? 'max-md:fixed max-md:inset-0 max-md:z-[1000] max-md:w-full max-md:overflow-y-auto max-md:border-0'
+          : 'max-md:hidden'
+      "
     >
       <FileInfo v-if="folderStore.selectedFile" />
       <FolderInfo v-if="folderStore.selectedFolder" />

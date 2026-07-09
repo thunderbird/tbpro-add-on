@@ -15,10 +15,6 @@ const folderStore = useFolderStore();
 const statusStore = useStatusStore();
 const { isRouterLoading } = storeToRefs(statusStore);
 
-function closePanel() {
-  folderStore.clearSelection();
-}
-
 // const { currentFolder } = inject('folderManager');
 // const { sharedByMe } = inject('sharingManager');
 
@@ -58,7 +54,7 @@ const showForm = ref(false);
           class="self-end -mt-1 -mr-1 p-1 text-gray-500 hover:text-gray-800"
           data-testid="close-folder-info"
           aria-label="Close folder info"
-          @click="closePanel"
+          @click="folderStore.clearSelection"
         >
           <IconX class="w-5 h-5" />
         </button>
