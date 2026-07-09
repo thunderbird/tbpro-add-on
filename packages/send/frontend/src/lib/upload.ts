@@ -69,11 +69,17 @@ export default class Uploader {
    * Fire-and-forget cleanup for use during page teardown (pagehide), when an
    * upload is still in flight and the normal `if (fatalError)` cleanup will
    * never run. Uses a `keepalive` fetch so the request survives the page being
-   * torn down, and cookie auth (`credentials: 'include'`) since requireJWT reads
-   * the auth cookie — a Bearer header can't be attached reliably at unload time.
-   * Best-effort only: hard kills/crashes still rely on the server-side reaper.
+   * torn down. Sends the Bearer `token` (pre-captured at upload start, since we
+   * can't await `getAccessToken` at unload) so it authenticates in the add-on,
+   * which has no backend cookie; `credentials: 'include'` remains as the web
+   * cookie fallback. Best-effort only: hard kills/crashes still rely on the
+   * server-side reaper.
    */
-  private teardownCleanup(api: ApiConnection, ids: string[]) {
+  private teardownCleanup(
+    api: ApiConnection,
+    ids: string[],
+    token: string | null
+  ) {
     if (ids.length === 0) {
       return;
     }
@@ -82,7 +88,10 @@ export default class Uploader {
         method: 'POST',
         keepalive: true,
         credentials: 'include',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ ids }),
       });
     } catch {
@@ -304,6 +313,28 @@ export default class Uploader {
     // the bucket.
     const abortController = new AbortController();
     const writtenUploadIds = new Set<string>();
+
+    // Capture the OIDC access token now, while we can still await, so the
+    // pagehide teardown below (which fires at unload and cannot await) can send
+    // an authenticated cleanup. The add-on authenticates with a Bearer token,
+    // not the cookie the raw teardown fetch relied on, so without this the
+    // cleanup 401s in the add-on and orphaned parts are never removed. Falls
+    // back to cookie-only auth (the web app) when no token is available.
+    // Dynamic import mirrors api.ts to avoid a circular dependency.
+    let authToken: string | null = null;
+    try {
+      const { useAuthStore } = await import('@send-frontend/stores/auth-store');
+      authToken = await useAuthStore().getAccessToken();
+    } catch (error) {
+      // Mirror api.ts: authToken stays null (its initial value), so teardown
+      // cleanup falls back to cookie-only auth. Leave a breadcrumb since a
+      // silently-null token is the difference between an authenticated cleanup
+      // and a 401.
+      console.debug(
+        'Could not capture OIDC token for teardown cleanup:',
+        error
+      );
+    }
 
     const uploadPart = async (
       blob: NamedBlob,
@@ -540,7 +571,8 @@ export default class Uploader {
     // the normal failure cleanup below never runs — so strand-proof it with a
     // teardown-time cleanup of whatever we've started writing. Registered only
     // for the duration of the pool run and removed in the finally.
-    const onPageHide = () => this.teardownCleanup(api, [...writtenUploadIds]);
+    const onPageHide = () =>
+      this.teardownCleanup(api, [...writtenUploadIds], authToken);
     window.addEventListener('pagehide', onPageHide);
 
     try {

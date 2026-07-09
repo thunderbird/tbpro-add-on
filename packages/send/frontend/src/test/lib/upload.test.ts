@@ -6,7 +6,7 @@ import { Keychain } from '@send-frontend/lib/keychain';
 import Uploader from '@send-frontend/lib/upload';
 import { hashFiles, streamZippedParts } from '@send-frontend/lib/utils';
 import { UserType } from '@send-frontend/types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock dependencies
 vi.mock('@send-frontend/lib/filesync', () => ({
@@ -20,6 +20,15 @@ vi.mock('@send-frontend/lib/utils', () => ({
   hashFiles: vi.fn().mockResolvedValue(['abc123def456']),
   // Multipart path: a streaming producer yielding one {blob, hash} per window.
   streamZippedParts: vi.fn(),
+}));
+
+// doUpload pre-captures the OIDC access token (via a dynamic import) so the
+// pagehide teardown can send an authenticated cleanup — this is what makes the
+// cleanup work in the add-on, which has no backend cookie.
+vi.mock('@send-frontend/stores/auth-store', () => ({
+  useAuthStore: () => ({
+    getAccessToken: vi.fn().mockResolvedValue('test-bearer-token'),
+  }),
 }));
 
 // Builds the async generator the mocked streamZippedParts returns, yielding one
@@ -419,6 +428,12 @@ describe('Uploader', () => {
       vi.mocked(sendBlob).mockReset().mockResolvedValue('upload-id');
     });
 
+    // Restore any global stubbed within a test (e.g. the fetch stub used by the
+    // pagehide-teardown test) even if an assertion throws mid-test.
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
     it('passes an abort signal and an onUploadId reporter to each part', async () => {
       vi.mocked(streamZippedParts).mockImplementationOnce(() =>
         yieldParts(makeParts(2))
@@ -544,6 +559,66 @@ describe('Uploader', () => {
           mockProgressTracker
         )
       ).rejects.toThrow(/expected parts/);
+    });
+
+    it('sends an authenticated keepalive cleanup on pagehide while parts are in flight', async () => {
+      // Guards the add-on divergence: the teardown cleanup that fires when the
+      // user closes the tab/popup mid-upload must carry the Bearer token, since
+      // the add-on has no backend cookie for the raw `credentials: 'include'`
+      // fetch to rely on. A regression here would silently strand orphaned parts
+      // in the add-on only.
+      vi.mocked(streamZippedParts).mockImplementationOnce(() =>
+        yieldParts(makeParts(3))
+      );
+      mockApi.call = resolveDbCalls();
+
+      const fetchMock = vi.fn().mockResolvedValue(undefined);
+      vi.stubGlobal('fetch', fetchMock);
+
+      // Hold every part open so the upload is still in flight (and the pagehide
+      // listener still registered) when the page hides.
+      let releaseParts: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        releaseParts = resolve;
+      });
+      vi.mocked(sendBlob).mockImplementation(
+        async (blob, _key, _api, _tracker, _isBucket, options) => {
+          const id = `upload-${indexFromName(blob)}`;
+          options?.onUploadId?.(id); // populates writtenUploadIds before stalling
+          await gate;
+          return id;
+        }
+      );
+
+      const uploadPromise = uploader.doUpload(
+        makeSourceBlob(3),
+        'container-id',
+        mockApi,
+        mockProgressTracker
+      );
+
+      // Wait until at least one part has registered its upload id.
+      await vi.waitFor(() =>
+        expect(vi.mocked(sendBlob).mock.calls.length).toBeGreaterThan(0)
+      );
+
+      // User closes the tab/popup mid-upload.
+      window.dispatchEvent(new Event('pagehide'));
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://localhost/api/uploads/cleanup');
+      expect(init).toMatchObject({
+        method: 'POST',
+        keepalive: true,
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-bearer-token',
+        }),
+      });
+      expect(JSON.parse(init.body).ids.length).toBeGreaterThan(0);
+
+      releaseParts();
+      await uploadPromise;
     });
   });
 });
