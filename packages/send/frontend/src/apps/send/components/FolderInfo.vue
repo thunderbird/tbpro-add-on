@@ -8,11 +8,16 @@ import FolderAccessLinksList from '@send-frontend/apps/send/components/FolderAcc
 import FolderNameForm from '@send-frontend/apps/send/elements/FolderNameForm.vue';
 import { formatBytes } from '@send-frontend/lib/utils';
 import { useStatusStore } from '@send-frontend/stores';
+import { IconX } from '@tabler/icons-vue';
 import { storeToRefs } from 'pinia';
 
 const folderStore = useFolderStore();
 const statusStore = useStatusStore();
 const { isRouterLoading } = storeToRefs(statusStore);
+
+function closePanel() {
+  folderStore.clearSelection();
+}
 
 // const { currentFolder } = inject('folderManager');
 // const { sharedByMe } = inject('sharingManager');
@@ -49,6 +54,14 @@ const showForm = ref(false);
     <div v-if="folderStore.selectedFolder" class="flex flex-col gap-6 h-full">
       <!-- info -->
       <header class="flex flex-col items-center gap-3 pt-6">
+        <button
+          class="self-end -mt-1 -mr-1 p-1 text-gray-500 hover:text-gray-800"
+          data-testid="close-folder-info"
+          aria-label="Close folder info"
+          @click="closePanel"
+        >
+          <IconX class="w-5 h-5" />
+        </button>
         <img
           src="@send-frontend/apps/send/assets/folder.svg"
           class="w-20 h-20"

@@ -5,6 +5,8 @@ import { trpc } from '@send-frontend/lib/trpc';
 import { useMutation } from '@tanstack/vue-query';
 import { computed, ref } from 'vue';
 
+import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
+import DeleteConfirmation from '@send-frontend/apps/send/components/DeleteConfirmation.vue';
 import FileAccessLinksList from '@send-frontend/apps/send/components/FileAccessLinksList.vue';
 import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import FileNameForm from '@send-frontend/apps/send/elements/FileNameForm.vue';
@@ -13,11 +15,50 @@ import {
   formatBytes,
   getExpirationDate,
 } from '@send-frontend/lib/utils';
-import { IconDownload, IconEye, IconEyeOff, IconLink } from '@tabler/icons-vue';
+import {
+  IconDownload,
+  IconEye,
+  IconEyeOff,
+  IconLink,
+  IconTrash,
+  IconX,
+} from '@tabler/icons-vue';
 import { useClipboard, useDebounceFn } from '@vueuse/core';
+import { useModal, useModalSlot } from 'vue-final-modal';
 
 const folderStore = useFolderStore();
 const sharingStore = useSharingStore();
+
+function closePanel() {
+  folderStore.clearSelection();
+}
+
+async function onDeleteConfirm() {
+  await folderStore.deleteItem(
+    folderStore.selectedFile.id,
+    folderStore.rootFolder.id
+  );
+}
+
+const { open: openDeleteModal, close: closeDeleteModal } = useModal({
+  component: DeleteModal,
+  attrs: {
+    title: 'Delete File?',
+  },
+  slots: {
+    default: useModalSlot({
+      component: DeleteConfirmation,
+      attrs: {
+        closefn: () => closeDeleteModal(),
+        confirm: onDeleteConfirm,
+        get itemName() {
+          return folderStore.selectedFile?.name || '';
+        },
+        itemType: 'file',
+      },
+    }),
+  },
+});
 
 const showRenameForm = ref(false);
 
@@ -97,6 +138,14 @@ Note about shareOnly containers.
   >
     <!-- info -->
     <header class="flex flex-col items-center">
+      <button
+        class="self-end -mt-1 -mr-1 p-1 text-gray-500 hover:text-gray-800"
+        data-testid="close-file-info"
+        aria-label="Close file info"
+        @click="closePanel"
+      >
+        <IconX class="w-5 h-5" />
+      </button>
       <img src="@send-frontend/apps/send/assets/file.svg" class="w-20 h-20" />
       <div class="font-semibold pt-4">
         <span
@@ -206,6 +255,9 @@ Note about shareOnly containers.
               )
             "
         /></Btn>
+        <Btn danger data-testid="delete-file-info" @click="openDeleteModal">
+          <IconTrash class="w-4 h-4" />
+        </Btn>
       </div>
     </footer>
   </div>

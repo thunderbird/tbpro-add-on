@@ -8,3 +8,6 @@
 
 # BrowserStack logging
 /log
+
+# Local visual artifacts from the #977 mobile suite
+screenshots977/
