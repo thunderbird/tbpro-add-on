@@ -397,6 +397,15 @@ export class Keychain {
     return this._storage.getPassPhrase();
   }
 
+  /**
+   * Decrypt and cache the stored passphrase so getPassphraseValue() can read it
+   * synchronously. Await once per context before reading; keychain.load() and
+   * restoreKeysUsingLocalStorage() already do. Delegates to Storage.
+   */
+  async initializePassphrase(): Promise<void> {
+    await this._storage.initializePassphrase();
+  }
+
   count(): number {
     return Object.keys(this._keys).length;
   }
@@ -492,6 +501,10 @@ export class Keychain {
 
       // load other keys
       this.keys = await this.fallbackToStoredKeys(keys);
+
+      // decrypt + cache the passphrase from storage so getPassphraseValue works
+      await this._storage.initializePassphrase();
+
       return true;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
@@ -721,10 +734,15 @@ export async function restoreKeysUsingLocalStorage(
   keychain: Keychain,
   api: ApiConnection
 ) {
-  // Pull any passphrase the web app shared via the token bridge into the
-  // keychain first. Both the popup and the background call this before
-  // restoring, so neither depends on the management page having already run the
-  // bridge→localStorage transfer (see pullBridgedPassphrase).
+  // Hydrate the decrypted passphrase cache from storage first: the popup and
+  // background call this before init()/keychain.load() has run, so the cache
+  // may otherwise be empty and getPassphraseValue() would read nothing.
+  await keychain.initializePassphrase();
+
+  // Then pull any passphrase the web app shared via the token bridge, which
+  // overwrites with the freshly-shared value. Both the popup and background
+  // call this, so neither depends on the management page having run the
+  // bridge→storage transfer first (see pullBridgedPassphrase).
   await pullBridgedPassphrase(keychain);
 
   console.log('🔑 auto restoring keys');

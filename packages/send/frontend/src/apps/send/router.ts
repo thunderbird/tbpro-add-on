@@ -249,6 +249,16 @@ router.beforeEach(async (to, from, next) => {
   const { queryAddonLoginState } = useSendConfig();
   const keychainIsLocked = keychain?.locked;
 
+  // Decrypt the stored passphrase into the in-memory cache before any guard
+  // check or component reads it. getPassphraseValue() is synchronous and
+  // cache-backed, so a fresh JS context — a cold reload, or the separate window
+  // opened for /passphrase printing — would otherwise read an empty passphrase
+  // until something calls storePassPhrase/initializePassphrase. This runs on
+  // every navigation and is a no-op outside the browser or when nothing is stored.
+  if (keychain) {
+    await keychain.initializePassphrase();
+  }
+
   // We want to show the loading state when navigating to folder routes (on web)
   if (to.path.includes('/folder')) {
     isRouterLoading.value = true;
