@@ -12,6 +12,7 @@ import {
  } from "../../../const/const"
 
 import {
+  ensureKeysUnlocked,
   log_out_restore_keys,
   register_and_login,
   reset_keys,
@@ -111,6 +112,8 @@ test.describe("File workflows", {
     ({ page, context } = await setup_browser());
     await page.goto("/send");
     await expect(page).toHaveTitle(/Thunderbird Send/);
+    // Restored sessions start with a locked keychain (see ensureKeysUnlocked).
+    await ensureKeysUnlocked(page);
   });
 
   const workflows = [
@@ -138,6 +141,8 @@ test.describe("Key restore", {
     ({ page, context } = await setup_browser());
     await page.goto("/send");
     await expect(page).toHaveTitle(/Thunderbird Send/);
+    // Restored sessions start with a locked keychain (see ensureKeysUnlocked).
+    await ensureKeysUnlocked(page);
   });
 
   const workflows = [{ title: "Reset keys", action: reset_keys }];

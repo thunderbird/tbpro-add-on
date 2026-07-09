@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { dashboardLocators, fileLocators } from "./locators";
 import { PlaywrightProps } from "../../tests/desktop/dev/send.spec";
 import { playwrightConfig, saveStorage, setup_browser } from "../../utils/dev/testUtils";
@@ -37,6 +37,43 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
 
   await saveStorage(context);
   // context.close();
+}
+
+/**
+ * Unlock the keychain for a session restored from storageState.
+ *
+ * The encryption passphrase is stored encrypted at rest (AES-GCM, key in
+ * IndexedDB). Playwright's storageState carries localStorage + cookies but NOT
+ * IndexedDB, so a context restored from a saved session has the ciphertext
+ * without the key to decrypt it, and the app shows "Recover Access" instead of
+ * the file UI. Enter the passphrase once to unlock this context — the same
+ * thing a real user does on a new session. No-op when the keychain is already
+ * unlocked or when no passphrase has been captured yet (e.g. run in isolation).
+ */
+export async function ensureKeysUnlocked(page: Page) {
+  const passphrase = playwrightConfig.passphrase;
+  if (!passphrase) return;
+
+  const { recoverAccessButton, restorekeyInput, restoreKeysButton } =
+    dashboardLocators(page);
+  const newFolderButton = page.getByTestId("new-folder-button");
+
+  // Wait until the app settles into either the locked (recover) or the
+  // unlocked (file UI) state, then only restore if it's locked.
+  await recoverAccessButton
+    .or(newFolderButton)
+    .first()
+    .waitFor({ state: "visible", timeout: 15000 })
+    .catch(() => {});
+
+  if (await recoverAccessButton.isVisible().catch(() => false)) {
+    await recoverAccessButton.click();
+    await restorekeyInput.fill(passphrase);
+    await restoreKeysButton.click();
+    // Restore must actually unlock the keychain — assert here so a genuine
+    // failure surfaces at the real cause, not 15s later in the test body.
+    await expect(newFolderButton).toBeVisible({ timeout: 15000 });
+  }
 }
 
 export async function log_out_restore_keys() {
