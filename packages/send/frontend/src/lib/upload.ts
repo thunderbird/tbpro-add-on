@@ -14,7 +14,7 @@ import { MAX_CONCURRENT_PARTS, SPLIT_SIZE } from './const';
 import {
   hashFiles,
   retryUntilSuccessOrTimeout,
-  splitIntoMultipleZips,
+  streamZippedParts,
 } from './utils';
 
 /**
@@ -95,17 +95,18 @@ export default class Uploader {
    */
   private createMultipartProgressTracker(
     mainTracker: ProgressTracker,
-    blobs: NamedBlob[],
+    // Per-part sizes, known up front from the window boundaries even though the
+    // (zipped) part blobs are produced lazily as the file streams in.
+    blobSizes: number[],
     isMultipart: boolean,
     originalFileSize: number
   ) {
-    const blobSizes = blobs.map((blob) => blob.size);
     const totalBlobSize = blobSizes.reduce((sum, size) => sum + size, 0);
     // Track progress for each part individually to handle concurrent uploads
-    const partProgress = new Array(blobs.length).fill(0);
+    const partProgress = new Array(blobSizes.length).fill(0);
 
     const updateOverallProgress = () => {
-      if (!isMultipart || blobs.length === 1) {
+      if (!isMultipart || blobSizes.length === 1) {
         // For single file uploads, use the part progress directly
         mainTracker.setProgress(Math.min(partProgress[0], originalFileSize));
       } else {
@@ -146,11 +147,7 @@ export default class Uploader {
             mainTracker.setProcessStage(stage);
           },
           setText: (message: string) => {
-            if (isMultipart && blobs.length > 1) {
-              mainTracker.setText(message);
-            } else {
-              mainTracker.setText(message);
-            }
+            mainTracker.setText(message);
           },
           setProgress: (progress: number) => {
             // Update this part's progress
@@ -197,48 +194,106 @@ export default class Uploader {
       wrappingKey
     );
 
-    let blobs: NamedBlob[];
+    const shouldSplit = fileBlob.size > SPLIT_SIZE;
+    const numChunks = shouldSplit ? Math.ceil(fileBlob.size / SPLIT_SIZE) : 1;
 
-    // Give immediate UI feedback before the (potentially multi-second) hashing
-    // and zipping work below. For large files hashFiles reads and hashes the
-    // whole file in chunks and splitIntoMultipleZips re-compresses each chunk,
-    // all before any bytes are uploaded — without this the progress meter sits
-    // static with no indication anything is happening (#968).
-    // Don't call initialize() here as it resets fileName.
-    progressTracker.setUploadSize(fileBlob.size); // Use original file size for progress tracking
-    progressTracker.setProcessStage('preparing');
-    progressTracker.setText('Preparing file for upload');
-
-    const hashes = await hashFiles(
-      api,
-      fileBlob,
-      SPLIT_SIZE,
-      (completed, total) => {
-        if (total > 1) {
-          progressTracker.setText(
-            `Preparing file for upload (${completed}/${total})`
-          );
-        }
-      }
+    // Per-part raw-size estimates, known from the window boundaries up front.
+    // The actual (zipped) part blobs are produced lazily as the file streams in,
+    // so the progress tracker is seeded with these estimates.
+    const partSizes = Array.from({ length: numChunks }, (_, i) =>
+      Math.min(SPLIT_SIZE, fileBlob.size - i * SPLIT_SIZE)
     );
 
-    const shouldSplit = fileBlob.size > SPLIT_SIZE;
-    if (shouldSplit) {
-      const zips = await splitIntoMultipleZips(fileBlob, SPLIT_SIZE);
-      blobs = zips || []; // Ensure blobs is never undefined
-    } else {
-      blobs = [fileBlob];
-    }
+    // Give immediate UI feedback: hashing a large file (read + SHA-256 + a
+    // suspicious-file check per window) can take several seconds. Previously the
+    // whole file was hashed AND zipped before any byte uploaded (#968); now we
+    // stream it and start uploading window 0 as soon as it is ready (#980).
+    // Don't call initialize() here as it resets fileName.
+    progressTracker.setUploadSize(fileBlob.size);
+    progressTracker.setProcessStage('hashing');
+    progressTracker.setText('Hashing file');
 
-    // Ensure we have valid blobs before proceeding
-    if (!blobs || blobs.length === 0) {
-      return null;
+    // Parts and their raw-bytes hashes are produced in order by the streaming
+    // producer below. partReady[i] resolves once parts[i]/hashes[i] are
+    // populated, so an upload worker can await just the part it needs and start
+    // uploading it while later windows are still being hashed/zipped.
+    // Elements are undefined until the producer fills them, and are nulled again
+    // once uploaded (see the release below) — hence the honest `| undefined`.
+    const parts: (NamedBlob | undefined)[] = new Array(numChunks);
+    const hashes: string[] = new Array(numChunks);
+    const partReady = Array.from({ length: numChunks }, () => {
+      let resolve!: () => void;
+      let reject!: (err: unknown) => void;
+      const promise = new Promise<void>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      // Guarantee the rejection is always "handled" so a part that no worker
+      // ends up awaiting (e.g. after the pool aborts) doesn't surface as an
+      // unhandled promise rejection. Workers still observe it via their await.
+      void promise.catch(() => {});
+      return { promise, resolve, reject };
+    });
+
+    if (shouldSplit) {
+      // Fire-and-forget: streams the file from offset 0, filling parts/hashes in
+      // order. Reading via a stream (never a high-offset slice/arrayBuffer) is
+      // what lets files >2 GB upload at all (#981). A failure (read error or
+      // suspicious file) rejects every not-yet-ready part so the awaiting worker
+      // throws and the pool's normal abort+cleanup path runs.
+      void (async () => {
+        let produced = 0;
+        try {
+          for await (const part of streamZippedParts(
+            api,
+            fileBlob,
+            SPLIT_SIZE,
+            (bytesHashed) => {
+              // Only drive the hashing label until the first part is ready.
+              // After that, upload workers are running and own the tracker text,
+              // so continuing to write "Hashing…" here would flip-flop with
+              // their "Uploading…"/"Encrypting…" updates during the overlap.
+              if (parts[0] !== undefined) return;
+              const pct = Math.round((bytesHashed / fileBlob.size) * 100);
+              progressTracker.setText(`Hashing file (${pct}%)`);
+            }
+          )) {
+            parts[produced] = part.blob;
+            hashes[produced] = part.hash;
+            partReady[produced].resolve();
+            produced++;
+          }
+          // The producer completed without yielding every expected window — e.g.
+          // the on-disk file was truncated between selection and this (possibly
+          // minutes-long) streamed read. The waiting workers would otherwise hang
+          // forever with no cleanup, so funnel it into the fatal/cleanup path.
+          if (produced < numChunks) {
+            const err = new Error(
+              `Streaming produced ${produced} of ${numChunks} expected parts`
+            );
+            for (let i = produced; i < numChunks; i++) {
+              partReady[i].reject(err);
+            }
+          }
+        } catch (err) {
+          for (let i = produced; i < numChunks; i++) {
+            partReady[i].reject(err);
+          }
+        }
+      })();
+    } else {
+      // Single small part: safe to hash up front (bounded by SPLIT_SIZE) and it
+      // uploads raw (not zipped), matching the non-multipart download path.
+      const [singleHash] = await hashFiles(api, fileBlob, SPLIT_SIZE);
+      parts[0] = fileBlob;
+      hashes[0] = singleHash;
+      partReady[0].resolve();
     }
 
     // Create a multipart progress tracker that manages overall progress
     const multipartTracker = this.createMultipartProgressTracker(
       progressTracker,
-      blobs,
+      partSizes,
       shouldSplit,
       fileBlob.size // Pass original file size
     );
@@ -441,7 +496,7 @@ export default class Uploader {
     // part starts immediately. There is no per-batch barrier, so a slow or
     // failing part never blocks unrelated parts from starting. The first part
     // that fails permanently records the error and aborts the rest.
-    const uploadResponses: Item[] = new Array(blobs.length);
+    const uploadResponses: Item[] = new Array(numChunks);
     let nextIndex = 0;
     let fatalError: unknown = null;
 
@@ -451,15 +506,23 @@ export default class Uploader {
           return;
         }
         const index = nextIndex++;
-        if (index >= blobs.length) {
+        if (index >= numChunks) {
           return;
         }
         try {
-          const item = await uploadPart(blobs[index], index);
+          // Wait until the streaming producer has hashed + zipped this window.
+          // Rejects if hashing failed (read error / suspicious file), which the
+          // catch below turns into a fatal, cleanup-triggering upload error.
+          await partReady[index].promise;
+          // Non-null: awaiting partReady guarantees the producer populated it.
+          const item = await uploadPart(parts[index]!, index);
           if (!item) {
             throw new Error(`Upload part ${index} returned no item`);
           }
           uploadResponses[index] = item;
+          // Release the zipped part blob now that it's uploaded so a multi-GB
+          // file doesn't keep every window resident until the whole upload ends.
+          parts[index] = undefined;
         } catch (error) {
           // First failure dooms the upload: record it and cancel the in-flight
           // PUTs of the sibling parts. Those PUTs are cancelled instead of
@@ -481,7 +544,7 @@ export default class Uploader {
     window.addEventListener('pagehide', onPageHide);
 
     try {
-      const workerCount = Math.min(MAX_CONCURRENT_PARTS, blobs.length);
+      const workerCount = Math.min(MAX_CONCURRENT_PARTS, numChunks);
       await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
 
       if (fatalError) {
