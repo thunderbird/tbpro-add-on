@@ -287,7 +287,7 @@ function handleFolderClick(uuid: string) {
             >
               <div class="flex justify-between">
                 <div
-                  class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
+                  class="flex gap-2 opacity-100 md:opacity-0 md:group-hover:!opacity-100 transition-opacity"
                   :class="{
                     '!opacity-100':
                       folder.id === folderStore.selectedFolder?.id,
@@ -341,7 +341,7 @@ function handleFolderClick(uuid: string) {
               <FolderTableRowCell>
                 <div class="flex justify-between">
                   <div
-                    class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
+                    class="flex gap-2 opacity-100 md:opacity-0 md:group-hover:!opacity-100 transition-opacity"
                   >
                     <Btn
                       v-if="!item.upload.expired"

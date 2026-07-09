@@ -16,6 +16,10 @@ const { currentRoute } = useRouter();
 const showFileComponents = computed(() => {
   return currentRoute.value.path.includes('/folder');
 });
+
+const hasSelection = computed(() => {
+  return Boolean(folderStore.selectedFile || folderStore.selectedFolder);
+});
 </script>
 
 <template>
@@ -42,9 +46,16 @@ const showFileComponents = computed(() => {
       </div>
     </main>
 
+    <!--
+      Info panel. On desktop (md+) this is the original inline w-64 column. Below
+      md it becomes a full-screen overlay (z-[1000], above the app nav which is
+      z-999) with its own close control, so it no longer covers the file list's
+      action buttons or traps the user (see #977). The overlay classes are
+      `max-md:`-scoped so the desktop layout is byte-for-byte the original.
+    -->
     <aside
-      v-if="showFileComponents"
-      class="w-64 border border-gray-300 bg-gray-50 p-2.5"
+      v-if="showFileComponents && hasSelection"
+      class="w-64 border border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-0 max-md:z-[1000] max-md:w-full max-md:overflow-y-auto max-md:border-0"
     >
       <FileInfo v-if="folderStore.selectedFile" />
       <FolderInfo v-if="folderStore.selectedFolder" />

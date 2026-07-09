@@ -54,6 +54,7 @@ export interface FolderStore {
   goToRootFolder: (folderId: string) => Promise<void>;
   setSelectedFolder: (folderId: string) => void;
   setSelectedFile: (itemId: number) => Promise<void>;
+  clearSelection: () => void;
   renameFolder: (folderId: string, name: string) => Promise<Container>;
   deleteFolder: (folderId: string) => Promise<void>;
   uploadItem: (
@@ -176,6 +177,12 @@ const useFolderStore = defineStore('folderManager', () => {
   async function setSelectedFile(itemId: number): Promise<void> {
     selectedFolderId.value = null;
     selectedFileId.value = itemId;
+  }
+
+  // Clears the current file/folder selection so the info panel closes.
+  function clearSelection(): void {
+    selectedFileId.value = null;
+    selectedFolderId.value = null;
   }
 
   async function createFolder(
@@ -351,7 +358,7 @@ const useFolderStore = defineStore('folderManager', () => {
     );
     if (result) {
       if (selectedFileId.value === itemId) {
-        setSelectedFile(null);
+        clearSelection();
       }
       if (rootFolder.value?.items) {
         const deletedKey = result.wrappedKey;
@@ -705,6 +712,7 @@ const useFolderStore = defineStore('folderManager', () => {
     sync: async () => await goToRootFolder(null),
     setSelectedFolder,
     setSelectedFile,
+    clearSelection,
     createFolder,
     renameFolder,
     deleteFolder,
