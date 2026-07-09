@@ -11,6 +11,30 @@ export class ApiConnection {
   serverUrl: string;
   isBucketStorage: boolean;
 
+  private normalizeApiPath(path: string): string {
+    const trimmed = (path ?? '').trim();
+    if (!trimmed) {
+      throw new Error('Invalid API path');
+    }
+
+    // Block absolute/protocol-relative URL injection attempts.
+    if (/^(?:[a-zA-Z][a-zA-Z\d+\-.]*:)?\/\//.test(trimmed)) {
+      throw new Error('Invalid API path');
+    }
+
+    const normalized = trimmed.replace(/^\/+/, '');
+    const segments = normalized.split('/');
+    if (
+      segments.some(
+        (segment) => !segment || !/^[A-Za-z0-9._-]+$/.test(segment)
+      )
+    ) {
+      throw new Error('Invalid API path');
+    }
+
+    return segments.map((segment) => encodeURIComponent(segment)).join('/');
+  }
+
   constructor(serverUrl: string) {
     if (!serverUrl) {
       throw Error('No Server URL provided.');
@@ -82,8 +106,12 @@ export class ApiConnection {
     headers: Record<string, any> = {},
     options?: Options
   ): Promise<Response | T | null> {
-    const url = `${this.serverUrl}/api/${path}`;
-    const refreshTokenUrl = `${this.serverUrl}/api/auth/refresh`;
+    const safePath = this.normalizeApiPath(path);
+    const url = new URL(`/api/${safePath}`, this.serverUrl).toString();
+    const refreshTokenUrl = new URL(
+      '/api/auth/refresh',
+      this.serverUrl
+    ).toString();
 
     // Try to get OIDC access token and add to headers if available
     const requestHeaders = { ...headers };
