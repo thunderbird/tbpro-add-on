@@ -98,25 +98,42 @@ export async function fetchWithLogoutCheck(
   url: RequestInfo | URL,
   options: RequestInit
 ): Promise<Response> {
-  const headers = new Headers(options.headers);
-  try {
-    const { useAuthStore } = await import('@send-frontend/stores/auth-store');
-    if (!headers.has('Authorization')) {
-      const token = await useAuthStore().getAccessToken();
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
+  // Attach the current OIDC access token (unless the caller already set one).
+  // Rebuilt for the post-refresh retry so it picks up the freshly-rotated token.
+  async function buildHeaders(): Promise<Headers> {
+    const headers = new Headers(options.headers);
+    try {
+      const { useAuthStore } = await import('@send-frontend/stores/auth-store');
+      if (!headers.has('Authorization')) {
+        const token = await useAuthStore().getAccessToken();
+        if (token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
       }
+    } catch {
+      // No token available — fall back to cookie auth.
     }
-  } catch {
-    // No token available — fall back to cookie auth.
+    return headers;
   }
 
-  const res = await fetch(url, { ...options, headers, credentials: 'include' });
+  const res = await fetch(url, {
+    ...options,
+    headers: await buildHeaders(),
+    credentials: 'include',
+  });
 
   if (res.headers?.get?.('x-logout')) {
     try {
       const { useAuthStore } = await import('@send-frontend/stores/auth-store');
-      await useAuthStore().handleForcedLogout();
+      // A revoked access token may just need refreshing — recover and retry
+      // rather than forcing logout when the refresh token is still alive (#974).
+      if (await useAuthStore().recoverOrForceLogout()) {
+        return await fetch(url, {
+          ...options,
+          headers: await buildHeaders(),
+          credentials: 'include',
+        });
+      }
     } catch (error) {
       console.error('Forced-logout handling failed:', error);
     }

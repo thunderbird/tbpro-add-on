@@ -79,6 +79,14 @@ export const useAuthStore = defineStore('auth', () => {
   // invalid_grant, which reads as a spurious logout.
   let inFlightRefresh: Promise<User | null> | null = null;
 
+  // Outcome of the most recently completed refresh: `true` when it failed
+  // genuinely (refresh token revoked/expired), `false` on success or a transient
+  // error. recoverOrForceLogout reads this to decide force-logout vs fail-open,
+  // rather than inferring from isLoggedIn — which can already be false (e.g. an
+  // extension cold-start request fires before checkAuthStatus flips it true) and
+  // would otherwise turn a network blip into a spurious logout.
+  let lastRefreshFailedGenuinely = false;
+
   /**
    * Notify the add-on background that the session is over so its menu reverts
    * to logged-out. Only meaningful inside Thunderbird, where the token-bridge
@@ -107,6 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (inFlightRefresh) return inFlightRefresh;
 
     inFlightRefresh = (async () => {
+      lastRefreshFailedGenuinely = false;
       try {
         const user = await userManager.signinSilent();
         currentUser.value = user;
@@ -118,6 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
         return user;
       } catch (error) {
         if (isGenuineAuthFailure(error)) {
+          lastRefreshFailedGenuinely = true;
           console.warn(
             `Silent token refresh failed — session ended (${
               (error as { error?: string }).error
@@ -442,6 +452,39 @@ export const useAuthStore = defineStore('auth', () => {
     return user?.access_token ?? null;
   }
 
+  /**
+   * The backend reported the current access token revoked (x-logout, #960).
+   * Before tearing the session down, try a silent refresh: a revoked/expired
+   * *access* token can often be replaced using a still-valid *refresh* token,
+   * so the session keeps rolling instead of bouncing the user to login (PR #974
+   * review). Only force logout when the refresh token is also gone; on a
+   * transient refresh error keep the session (fail open).
+   *
+   * Goes through refreshAccessToken() — an unconditional signinSilent — rather
+   * than getAccessToken(), because the token behind x-logout is still within
+   * its lifetime (the backend exp-gates the signal), so getAccessToken() would
+   * hand back the same stale, revoked token without refreshing.
+   *
+   * @returns `true` if the session was recovered — the caller should retry the
+   * request with the fresh token — and `false` otherwise (forced logout on a
+   * genuine failure, or session kept on a transient error).
+   */
+  async function recoverOrForceLogout(): Promise<boolean> {
+    const user = await refreshAccessToken();
+    if (user && !user.expired) {
+      return true; // refresh token still valid → session continues
+    }
+    // Force logout ONLY on a genuine refresh failure (refresh token gone). A
+    // transient error keeps the session (fail open). We read the failure kind
+    // refreshAccessToken just recorded rather than inferring from isLoggedIn —
+    // there is no await between its resolution above and this read, so the flag
+    // still reflects this refresh.
+    if (lastRefreshFailedGenuinely) {
+      await handleForcedLogout(); // genuine failure → clear state and redirect
+    }
+    return false;
+  }
+
   async function loadUser() {
     // Always check for a stored user instead of getting it from
     // the userManager.
@@ -648,6 +691,7 @@ export const useAuthStore = defineStore('auth', () => {
     getAccessToken,
     logoutFromOIDC,
     handleForcedLogout,
+    recoverOrForceLogout,
     refreshToken,
     loginToKeyCloak, // Alias for loginToOIDC
 

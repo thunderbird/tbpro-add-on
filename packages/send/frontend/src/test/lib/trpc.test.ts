@@ -7,14 +7,14 @@ import {
 } from '@send-frontend/lib/trpc';
 import { TRPC_WS_PATH } from '@send-frontend/lib/config';
 
-const { mockGetAccessToken, mockForcedLogout } = vi.hoisted(() => ({
+const { mockGetAccessToken, mockRecover } = vi.hoisted(() => ({
   mockGetAccessToken: vi.fn(),
-  mockForcedLogout: vi.fn(),
+  mockRecover: vi.fn(async () => false),
 }));
 vi.mock('@send-frontend/stores/auth-store', () => ({
   useAuthStore: () => ({
     getAccessToken: mockGetAccessToken,
-    handleForcedLogout: mockForcedLogout,
+    recoverOrForceLogout: mockRecover,
   }),
 }));
 
@@ -107,19 +107,46 @@ describe('fetchWithLogoutCheck (#960)', () => {
     expect(mockGetAccessToken).not.toHaveBeenCalled();
   });
 
-  it('forces logout when the response carries x-logout', async () => {
+  it('recovers (no retry) and returns the original response when recovery fails', async () => {
     mockGetAccessToken.mockResolvedValue(null);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        Promise.resolve({
-          headers: { get: (k: string) => (k === 'x-logout' ? '1' : null) },
-        } as unknown as Response)
-      )
-    );
+    mockRecover.mockResolvedValue(false);
+    const original = {
+      headers: { get: (k: string) => (k === 'x-logout' ? '1' : null) },
+    } as unknown as Response;
+    const fetchFn = vi.fn(() => Promise.resolve(original));
+    vi.stubGlobal('fetch', fetchFn);
+
+    const res = await fetchWithLogoutCheck('https://x/trpc', {});
+
+    expect(mockRecover).toHaveBeenCalledTimes(1);
+    expect(fetchFn).toHaveBeenCalledTimes(1); // no retry
+    expect(res).toBe(original);
+  });
+
+  it('retries once with a refreshed token when recovery succeeds', async () => {
+    mockRecover.mockResolvedValue(true);
+    // First call: initial request has no token; retry: getAccessToken yields one.
+    mockGetAccessToken.mockResolvedValueOnce(null).mockResolvedValueOnce('fresh');
+
+    const inits: RequestInit[] = [];
+    let call = 0;
+    const fetchFn = vi.fn((_url, opts) => {
+      inits.push(opts);
+      call += 1;
+      return Promise.resolve({
+        headers: {
+          get: (k: string) => (call === 1 && k === 'x-logout' ? '1' : null),
+        },
+      } as unknown as Response);
+    });
+    vi.stubGlobal('fetch', fetchFn);
 
     await fetchWithLogoutCheck('https://x/trpc', {});
 
-    expect(mockForcedLogout).toHaveBeenCalledTimes(1);
+    expect(mockRecover).toHaveBeenCalledTimes(1);
+    expect(fetchFn).toHaveBeenCalledTimes(2); // retried once
+    expect((inits[1].headers as Headers).get('Authorization')).toBe(
+      'Bearer fresh'
+    );
   });
 });
