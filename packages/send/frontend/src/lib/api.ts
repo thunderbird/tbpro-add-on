@@ -7,33 +7,48 @@ export type AsyncJsonResponse<T = { [key: string]: any }> = Promise<
   JsonResponse<T>
 > | null;
 
+/**
+ * Build an absolute `/api/...` request URL from a caller-supplied, possibly
+ * user-derived `path`, pinned to `serverUrl`'s origin.
+ *
+ * Guards against server-side request forgery (code-scanning alert #43): a `path`
+ * containing a scheme or authority (`http://evil`, `//evil`) is rejected, and
+ * the resulting URL's origin is asserted to equal the configured server origin
+ * before it is ever used. Legitimate paths — including query strings
+ * (`.../links?type=file`), trailing slashes and non-ASCII-safe segments such as
+ * email addresses (`users/lookup/a@b.com/`) — are preserved unchanged.
+ */
+export function buildApiUrl(serverUrl: string, path: string): string {
+  const trimmed = (path ?? '').trim();
+  if (!trimmed) {
+    throw new Error('Invalid API path');
+  }
+
+  // Reject absolute/protocol-relative paths up front. The `/api/` prefix below
+  // already de-fangs these (they resolve into the path, not the authority), so
+  // this is not what pins the host — it just fails loudly on a clearly bad path
+  // instead of silently building `/api/http://evil.com`.
+  if (/^(?:[a-zA-Z][a-zA-Z\d+\-.]*:)?\/\//.test(trimmed)) {
+    throw new Error('Invalid API path');
+  }
+
+  // Stripping leading slashes and prepending the constant `/api/` makes the
+  // path an absolute-*path* reference, which can never carry an authority, so
+  // the origin is always `serverUrl`'s. The origin assertion is therefore
+  // unreachable at runtime; it is kept as the explicit host-allowlist barrier
+  // CodeQL's request-forgery query recognizes, and as defense in depth.
+  const relativePath = trimmed.replace(/^\/+/, '');
+  const url = new URL(`/api/${relativePath}`, serverUrl);
+  if (url.origin !== new URL(serverUrl).origin) {
+    throw new Error('Invalid API path');
+  }
+
+  return url.toString();
+}
+
 export class ApiConnection {
   serverUrl: string;
   isBucketStorage: boolean;
-
-  private normalizeApiPath(path: string): string {
-    const trimmed = (path ?? '').trim();
-    if (!trimmed) {
-      throw new Error('Invalid API path');
-    }
-
-    // Block absolute/protocol-relative URL injection attempts.
-    if (/^(?:[a-zA-Z][a-zA-Z\d+\-.]*:)?\/\//.test(trimmed)) {
-      throw new Error('Invalid API path');
-    }
-
-    const normalized = trimmed.replace(/^\/+/, '');
-    const segments = normalized.split('/');
-    if (
-      segments.some(
-        (segment) => !segment || !/^[A-Za-z0-9._-]+$/.test(segment)
-      )
-    ) {
-      throw new Error('Invalid API path');
-    }
-
-    return segments.map((segment) => encodeURIComponent(segment)).join('/');
-  }
 
   constructor(serverUrl: string) {
     if (!serverUrl) {
@@ -81,6 +96,7 @@ export class ApiConnection {
    * @param {string} method - The HTTP Request method.
    * @param {Record<string, any>} headers - Optional Request headers to include.
    * @returns {AsyncJsonResponse<T>} Returns a Promise that resolves to the response data (or null).
+   * @throws If `path` is empty or an absolute/protocol-relative URL (see {@link buildApiUrl}).
    *
    */
   // `fullResponse: true` returns the raw Response (required, so an omitted
@@ -106,12 +122,8 @@ export class ApiConnection {
     headers: Record<string, any> = {},
     options?: Options
   ): Promise<Response | T | null> {
-    const safePath = this.normalizeApiPath(path);
-    const url = new URL(`/api/${safePath}`, this.serverUrl).toString();
-    const refreshTokenUrl = new URL(
-      '/api/auth/refresh',
-      this.serverUrl
-    ).toString();
+    const url = buildApiUrl(this.serverUrl, path);
+    const refreshTokenUrl = buildApiUrl(this.serverUrl, 'auth/refresh');
 
     // Try to get OIDC access token and add to headers if available
     const requestHeaders = { ...headers };
