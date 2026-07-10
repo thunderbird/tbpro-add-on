@@ -99,7 +99,7 @@ const confirmDeletion = () => {
             v-model="password"
             data-testid="delete-password"
             :type="isPasswordVisible ? 'text' : 'password'"
-            placeholder="Your Encryption Key goes here"
+            placeholder="Your passphrase goes here"
             class="password-input light"
           />
           <button

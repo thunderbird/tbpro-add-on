@@ -19,7 +19,7 @@ const returnToDashboard = () => {
         permanently deleted. You can start fresh now.
       </p>
 
-      <p class="description">Your Thundermail subscription was not affected.</p>
+      <p class="description">Your Thundermail data was not affected.</p>
 
       <BaseButton
         data-testid="delete-send-data-return"

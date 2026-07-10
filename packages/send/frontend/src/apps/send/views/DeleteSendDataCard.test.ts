@@ -34,7 +34,7 @@ describe('DeleteSendDataCard.vue', () => {
     expect(wrapper.text()).toContain('Enter your Encryption Key to confirm');
     expect(
       wrapper.find('[data-testid="delete-password"]').attributes('placeholder')
-    ).toBe('Your Encryption Key goes here');
+    ).toBe('Your passphrase goes here');
   });
 
   it('confirms deletion when the entered Encryption Key matches', async () => {
