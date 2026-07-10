@@ -137,7 +137,7 @@ Note about shareOnly containers.
     class="flex flex-col gap-6 h-full"
   >
     <!-- info -->
-    <header class="flex flex-col items-center">
+    <header class="flex flex-col items-center w-full min-w-0">
       <button
         class="self-end -mt-1 -mr-1 p-1 text-gray-500 hover:text-gray-800"
         data-testid="close-file-info"
@@ -147,7 +147,7 @@ Note about shareOnly containers.
         <IconX class="w-5 h-5" />
       </button>
       <img src="@send-frontend/apps/send/assets/file.svg" class="w-20 h-20" />
-      <div class="font-semibold pt-4">
+      <div class="font-semibold pt-4 w-full text-center break-words">
         <span
           v-if="!showRenameForm"
           class="cursor-pointer"
