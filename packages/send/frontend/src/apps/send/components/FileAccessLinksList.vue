@@ -87,7 +87,7 @@ TODO: implement "regeneration" of links
         type="text"
         :value="`${BASE_URL}/share/${link.id}`"
         :data-testid="`link-${index}`"
-        class="flex-1"
+        class="flex-1 min-w-0"
         @click="copyToClipboard(link.id)"
       />
       <button

@@ -23,12 +23,18 @@ const hasSelection = computed(() => {
 </script>
 
 <template>
-  <div id="send-page" class="flex h-full relative">
+  <div id="send-page" class="flex max-md:flex-col h-full relative">
     <!-- Router Loading Overlay -->
 
+    <!--
+      Upload sidebar. On desktop (md+) it's the original left-hand w-64 column.
+      Below md it drops to the bottom of the page (order-last) and spans the full
+      width, so the file list gets the whole screen instead of sharing it with a
+      cramped side column (see #977).
+    -->
     <aside
       v-if="showFileComponents"
-      class="w-64 border-r border-gray-300 bg-gray-50"
+      class="w-64 border-r border-gray-300 bg-gray-50 max-md:order-last max-md:w-full max-md:border-r-0 max-md:border-t"
     >
       <FolderNavigation />
     </aside>
@@ -51,11 +57,12 @@ const hasSelection = computed(() => {
       md it becomes a full-screen overlay (z-[1000], above the app nav which is
       z-999) with its own close control, so it no longer covers the file list's
       action buttons or traps the user (see #977). The overlay classes are
-      `max-md:`-scoped so the desktop layout is byte-for-byte the original.
+      `max-md:`-scoped; the only desktop change is that the panel now hides when
+      nothing is selected (previously it rendered an empty bordered column).
     -->
     <aside
       v-if="showFileComponents && hasSelection"
-      class="w-64 border border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-0 max-md:z-[1000] max-md:w-full max-md:overflow-y-auto max-md:border-0"
+      class="w-64 border border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-0 max-md:z-[1000] max-md:w-full max-md:overflow-y-auto max-md:overflow-x-hidden max-md:border-0"
     >
       <FileInfo v-if="folderStore.selectedFile" />
       <FolderInfo v-if="folderStore.selectedFolder" />

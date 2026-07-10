@@ -2,14 +2,18 @@
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { ref } from 'vue';
 
+import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
 import LoadingComponent from '@send-frontend/apps/common/LoadingComponent.vue';
 import CreateAccessLink from '@send-frontend/apps/send/components/CreateAccessLink.vue';
+import DeleteConfirmation from '@send-frontend/apps/send/components/DeleteConfirmation.vue';
 import FolderAccessLinksList from '@send-frontend/apps/send/components/FolderAccessLinksList.vue';
+import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import FolderNameForm from '@send-frontend/apps/send/elements/FolderNameForm.vue';
 import { formatBytes } from '@send-frontend/lib/utils';
 import { useStatusStore } from '@send-frontend/stores';
-import { IconX } from '@tabler/icons-vue';
+import { IconTrash, IconX } from '@tabler/icons-vue';
 import { storeToRefs } from 'pinia';
+import { useModal, useModalSlot } from 'vue-final-modal';
 
 const folderStore = useFolderStore();
 const statusStore = useStatusStore();
@@ -18,6 +22,33 @@ const { isRouterLoading } = storeToRefs(statusStore);
 function closePanel() {
   folderStore.clearSelection();
 }
+
+async function onDeleteConfirm() {
+  await folderStore.deleteFolder(folderStore.selectedFolder.id);
+  // deleteFolder doesn't clear the selection itself (unlike deleteItem), so the
+  // panel would keep showing the now-deleted folder — clear it to close it.
+  folderStore.clearSelection();
+}
+
+const { open: openDeleteModal, close: closeDeleteModal } = useModal({
+  component: DeleteModal,
+  attrs: {
+    title: 'Delete Folder?',
+  },
+  slots: {
+    default: useModalSlot({
+      component: DeleteConfirmation,
+      attrs: {
+        closefn: () => closeDeleteModal(),
+        confirm: onDeleteConfirm,
+        get itemName() {
+          return folderStore.selectedFolder?.name || '';
+        },
+        itemType: 'folder',
+      },
+    }),
+  },
+});
 
 // const { currentFolder } = inject('folderManager');
 // const { sharedByMe } = inject('sharingManager');
@@ -122,8 +153,10 @@ const showForm = ref(false);
           <div class="text-xs">{{ folderStore.selectedFolder.updatedAt }}</div>
         </label>
         <div class="flex justify-end gap-2">
-          <!-- <Btn><IconDownload class="w-4 h-4" /></Btn> -->
           <!-- <Btn primary><IconShare class="w-4 h-4" /> Share</Btn> -->
+          <Btn danger data-testid="delete-folder-info" @click="openDeleteModal">
+            <IconTrash class="w-4 h-4" />
+          </Btn>
         </div>
       </footer>
     </div>
