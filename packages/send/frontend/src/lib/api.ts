@@ -144,17 +144,19 @@ export class ApiConnection {
         const authStore = useAuthStore();
         const recovered = await authStore.recoverOrForceLogout();
 
-        if (recovered && requestHeaders['Authorization']) {
-          // Session rolled forward — retry once with the freshly-rotated token.
-          const newToken = await authStore.getAccessToken();
-          if (newToken) {
-            opts.headers['Authorization'] = `Bearer ${newToken}`;
-            resp = await fetch(url, opts);
-          }
-        } else if (!recovered) {
+        if (!recovered) {
           // Genuine logout (state already cleared) or a transient error (session
           // kept, fail open) — either way this request is done.
           return null;
+        }
+
+        // Session rolled forward — retry once with the freshly-rotated token.
+        // We only reach here on a request that carried Authorization (the backend
+        // emits x-logout solely for bearer-carrying requests), so no guard needed.
+        const newToken = await authStore.getAccessToken();
+        if (newToken) {
+          opts.headers['Authorization'] = `Bearer ${newToken}`;
+          resp = await fetch(url, opts);
         }
       } catch (error) {
         console.error('Forced-logout handling failed:', error);
