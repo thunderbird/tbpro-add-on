@@ -66,7 +66,10 @@ to Send tabs when the prefs change. `token-bridge.js` relays both between
 ### Sentry & PostHog
 
 - `sentry.ts` — `initSentry(app)` runs only with consent; session replay removed,
-  `sendDefaultPii: false`, `beforeSend` scrubs identity and request payloads.
+  `sendDefaultPii: false`, `beforeSend` (`scrubEvent`) scrubs identity and request
+  payloads and strips the query/fragment from `request.url`, and `beforeBreadcrumb`
+  (`scrubBreadcrumb`) strips the query and fragment from auto-captured breadcrumb
+  URLs (`data.url`/`to`/`from`) — the access-link secret lives in the URL fragment.
   `closeSentry()` tears down on runtime opt-out.
 - `posthog.js` — `init()` is deferred until first opt-in; `setPosthogConsent()`
   opts in/out at runtime.
