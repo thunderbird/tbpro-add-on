@@ -1,5 +1,7 @@
 import '@send-frontend/lib/logger';
-import posthogPlugin from '@send-frontend/plugins/posthog';
+import posthogPlugin, {
+  setPosthogConsent,
+} from '@send-frontend/plugins/posthog';
 import { VueQueryPlugin } from '@tanstack/vue-query';
 import '@thunderbirdops/services-ui/style.css';
 import FloatingVue from 'floating-vue';
@@ -43,12 +45,15 @@ const I18nTStub = {
   },
 };
 
-export function setupApp(app) {
+export function setupApp(app, telemetryAllowed = false) {
   const pinia = getSharedPinia();
   app.use(VueQueryPlugin);
   app.use(pinia);
   app.use(FloatingVue);
   app.use(posthogPlugin);
+  // Honor the Thunderbird telemetry opt-out: PostHog only initializes (and
+  // sends anything) when telemetry is allowed. See issue #892.
+  setPosthogConsent(telemetryAllowed);
 
   // TODO: Remove this once proper i18n is configured, currently required for the StandardFooter component.
   // Stub $t and i18n-t for services-ui components until proper i18n is configured
