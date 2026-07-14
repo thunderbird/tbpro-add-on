@@ -180,11 +180,11 @@ const initialize = async () => {
       <div v-if="!isConfigured" class="finish-setup">
         <h1>Finish setting up Send</h1>
         <p>
-          A window has been opened to manage your encryption keys. Once you're
-          done, it will close automatically and you can continue your upload.
+          To continue your upload, please complete your passphrase
+          setup/recovery.
         </p>
         <ProButton v-if="!isSecurityPopupOpen" @click="openSecurityPopup">
-          Open Security &amp; Privacy
+          Continue Setup
         </ProButton>
       </div>
       <div v-else>
