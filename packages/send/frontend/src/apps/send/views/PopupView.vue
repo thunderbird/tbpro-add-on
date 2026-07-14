@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import init from '@send-frontend/lib/init';
 
@@ -10,8 +10,9 @@ import ErrorUploading from '@send-frontend/apps/send/components/ErrorUploading.v
 import { useUploadAndShare } from '@send-frontend/apps/send/composables/useUploadAndShare';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 
-import BackupAndRestore from '@send-frontend/apps/common/BackupAndRestore.vue';
+import ProButton from '@send-frontend/apps/common/ProButton.vue';
 import WithLoader from '@send-frontend/apps/common/WithLoader.vue';
+import { BASE_URL } from '@send-frontend/apps/common/constants';
 import PromptPopupLogin from '@send-frontend/apps/send/views/PromptLogin.vue';
 import { useAuth } from '@send-frontend/lib/auth';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@send-frontend/lib/const';
 import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
+import { openPopup } from '@send-frontend/lib/login';
 import { canUploadQuery } from '@send-frontend/lib/queries';
 import useApiStore from '@send-frontend/stores/api-store';
 import { useQuery } from '@tanstack/vue-query';
@@ -66,7 +68,11 @@ const { error: uploadBlockedDuetoSize } = useQuery({
   queryFn: canUploadQuery,
 });
 
-const { data: isConfigured, refetch } = useQuery({
+const {
+  data: isConfigured,
+  refetch,
+  isLoading: isLoadingConfigured,
+} = useQuery({
   queryKey: ['is-configured-for-upload'],
   queryFn: async () => {
     await refetchAuth();
@@ -89,6 +95,39 @@ const { data: isConfigured, refetch } = useQuery({
   },
   refetchOnWindowFocus: true,
   refetchOnMount: true,
+});
+
+const isSecurityPopupOpen = ref(false);
+
+// When the user isn't set up for uploads, send them to the Security & Privacy
+// page in its own window instead of embedding the backup/restore flow in this
+// small popup. We only re-check configuration once that window is closed.
+async function openSecurityPopup() {
+  if (isSecurityPopupOpen.value) {
+    return;
+  }
+  isSecurityPopupOpen.value = true;
+  // `closeOnComplete` tells the page to close itself once the passphrase has
+  // been accepted; that close triggers the callback below, which re-checks
+  // configuration and advances to the upload flow.
+  const opened = await openPopup(
+    `${BASE_URL}/send/security-and-privacy?closeOnComplete=true`,
+    () => {
+      isSecurityPopupOpen.value = false;
+      refetch();
+    }
+  );
+  // If the window failed to open, reset so the user isn't stuck with the retry
+  // button hidden and no window on screen.
+  if (!opened) {
+    isSecurityPopupOpen.value = false;
+  }
+}
+
+watch(isConfigured, (configured) => {
+  if (configured === false && isLoggedIn.value) {
+    openSecurityPopup();
+  }
 });
 
 const initialize = async () => {
@@ -135,11 +174,18 @@ const initialize = async () => {
 </script>
 
 <template>
-  <WithLoader :is-loading="isLoadingAuth">
+  <WithLoader :is-loading="isLoadingAuth || isLoadingConfigured">
     <PromptPopupLogin v-if="!isLoggedIn" />
     <div v-else>
-      <div v-if="!isConfigured">
-        <BackupAndRestore @backup-completed="refetch" />
+      <div v-if="!isConfigured" class="finish-setup">
+        <h1>Finish setting up Send</h1>
+        <p>
+          To continue your upload, please complete your passphrase
+          setup/recovery.
+        </p>
+        <ProButton v-if="!isSecurityPopupOpen" @click="openSecurityPopup">
+          Continue Setup
+        </ProButton>
       </div>
       <div v-else>
         <!-- We only show the error message when storage limit has been exceeded -->
@@ -161,3 +207,16 @@ const initialize = async () => {
     </div>
   </WithLoader>
 </template>
+
+<style lang="css" scoped>
+@import '@send-frontend/apps/common/tbpro-styles.css';
+.finish-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+</style>

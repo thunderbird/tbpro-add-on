@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { FORCE_CLOSE_WINDOW, SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
+import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
+import { forceCloseWindow } from '@send-frontend/lib/login';
 import { onMounted } from 'vue';
 
 // Removed as we re-evaluate the system add-on FTUE
@@ -37,19 +38,10 @@ async function closeOnSignInComplete() {
     console.error('Error posting SIGN_IN_COMPLETE message:', error);
   }
 
-  try {
-    window.postMessage({ type: FORCE_CLOSE_WINDOW }, window.location.origin);
-  } catch (error) {
-    console.error('Error posting FORCE_CLOSE_WINDOW message:', error);
-  }
-
-  // Fallback for contexts without the token bridge. This is a no-op in a normal
-  // Thunderbird tab (which only the background can close), but harmless here.
-  try {
-    window.close();
-  } catch (error) {
-    console.error('Error closing window:', error);
-  }
+  // Explicitly close *this* tab (in case the background's closeLoginTab()
+  // doesn't match it), with a window.close() fallback for contexts without the
+  // token bridge.
+  forceCloseWindow();
 }
 
 onMounted(async () => {
