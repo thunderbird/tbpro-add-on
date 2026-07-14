@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { forceCloseWindow } from '@send-frontend/lib/login';
+import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBackupAndRestore } from '../composables/useBackupAndRestore';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
@@ -25,10 +26,30 @@ const {
   filesDeleted,
   deleteFailed,
   resetDeleteFiles,
+  keysInLocalStorage,
 } = useBackupAndRestore();
 
 const showDeleteCard = computed(() => route.query.delete === 'true');
 const storedPassphrase = computed(() => keychain.getPassphraseValue() ?? '');
+
+// When this page is opened from the add-on upload popup (`closeOnComplete`),
+// close it as soon as the passphrase has been accepted and the keys are in
+// local storage — the bridge has the passphrase at that point. Closing this
+// window lets the upload popup re-check configuration and continue the upload.
+const closeOnComplete = computed(() => route.query.closeOnComplete === 'true');
+
+// The `keybackup` query is async, so on a fresh window load `keysInLocalStorage`
+// starts false and flips to true once the passphrase is accepted (or the page
+// resolves as already set up) — a transition this watcher catches. We
+// deliberately don't use `immediate`: closing on the very first tick would race
+// the bridge relay and could tear the page down before the passphrase reaches
+// the add-on.
+watch(keysInLocalStorage, (ready) => {
+  if (!ready || !closeOnComplete.value) {
+    return;
+  }
+  forceCloseWindow();
+});
 
 const closeDeleteCard = () => {
   // Clear a failed-delete state so reopening the form doesn't show a stale error.

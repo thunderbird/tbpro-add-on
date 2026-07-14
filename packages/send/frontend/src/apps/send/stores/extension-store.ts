@@ -43,7 +43,7 @@ export const useExtensionStore = defineStore('extension', () => {
       );
 
       if (!result.success) {
-        console.error(
+        console.warn(
           `[extension-store] Failed to create cloud file account: ${result.error}`
         );
       } else if (result.alreadyExists) {
@@ -56,7 +56,7 @@ export const useExtensionStore = defineStore('extension', () => {
         );
       }
     } catch (error) {
-      console.error(
+      console.warn(
         `[extension-store] Error creating cloud file account:`,
         error
       );
