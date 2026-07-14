@@ -1,4 +1,14 @@
-import { generateFileHash, getDaysUntilDate } from '@send-frontend/lib/utils';
+import { ApiConnection } from '@send-frontend/lib/api';
+import { NamedBlob } from '@send-frontend/types';
+import {
+  generateFileHash,
+  getDaysUntilDate,
+  sha256Hex,
+  streamZippedParts,
+  unzipArrayBuffer,
+  zipBlob,
+} from '@send-frontend/lib/utils';
+import JSZip from 'jszip';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('generateFileHash', () => {
@@ -126,6 +136,176 @@ describe('generateFileHash', () => {
     results.forEach((hash) => {
       expect(hash).toBe(firstHash);
     });
+  });
+});
+
+describe('zipBlob', () => {
+  it('produces an application/zip Blob that round-trips through unzipArrayBuffer', async () => {
+    const original = 'hello world — round trip me';
+    const blob = new Blob([new TextEncoder().encode(original)]);
+
+    const zipped = await zipBlob(blob, 'hello.txt');
+    expect(zipped).toBeInstanceOf(Blob);
+    expect(zipped.type).toBe('application/zip');
+
+    const out = await unzipArrayBuffer(await zipped.arrayBuffer());
+    expect(new TextDecoder().decode(out)).toBe(original);
+  });
+
+  it('preserves binary content exactly', async () => {
+    const bytes = new Uint8Array(4096);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 7) % 256;
+    const zipped = await zipBlob(new Blob([bytes]), 'data.bin');
+
+    const out = new Uint8Array(
+      await unzipArrayBuffer(await zipped.arrayBuffer())
+    );
+    expect(out.length).toBe(bytes.length);
+    expect(Array.from(out)).toEqual(Array.from(bytes));
+  });
+
+  it('is byte-identical to JSZip one-shot output (backwards compatible) and spans multiple chunks', async () => {
+    // Big enough that the STORE archive is emitted across several stream chunks,
+    // exercising the multi-member Blob assembly (the reason for the rewrite).
+    const bytes = new Uint8Array(512 * 1024);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 31) % 256;
+
+    const streamedZip = await zipBlob(new Blob([bytes]), 'big.bin');
+    const streamed = new Uint8Array(await streamedZip.arrayBuffer());
+
+    // The pre-change implementation: one-shot generateAsync.
+    const jszip = new JSZip();
+    jszip.file('big.bin', new Blob([bytes]));
+    const oneShot = await jszip.generateAsync({ type: 'uint8array' });
+
+    expect(Array.from(streamed)).toEqual(Array.from(oneShot));
+  });
+
+  // The >2 GB case (the #981 crash: JSZip's one-shot blob output builds a single
+  // >2 GB Blob member and Firefox rejects it) is validated end-to-end by the e2e
+  // drag-drop test with a typeless 3 GB file — a 2 GB fixture is impractical in a
+  // unit test. This suite locks in that the streamed assembly stays byte-correct.
+});
+
+describe('streamZippedParts', () => {
+  // A fake API whose suspicious-file check always passes and records the hashes
+  // it was asked about.
+  const makeApi = (checked: string[]) =>
+    ({
+      call: vi.fn(async (path: string) => {
+        checked.push(path.replace('uploads/check-upload-hash/', ''));
+        return { isSuspicious: false };
+      }),
+    }) as unknown as ApiConnection;
+
+  const makeBlob = (size: number): NamedBlob => {
+    // Deterministic, non-uniform bytes so per-window hashes differ.
+    const bytes = new Uint8Array(size);
+    for (let i = 0; i < size; i++) bytes[i] = i % 251;
+    const blob = new Blob([bytes], { type: 'text/plain' }) as NamedBlob;
+    blob.name = 'source.bin';
+    return blob;
+  };
+
+  const collect = async (
+    blob: NamedBlob,
+    maxSize: number,
+    api: ApiConnection
+  ) => {
+    const hashProgress: number[] = [];
+    const parts: { blob: NamedBlob; hash: string }[] = [];
+    for await (const part of streamZippedParts(api, blob, maxSize, (n) =>
+      hashProgress.push(n)
+    )) {
+      parts.push(part);
+    }
+    return { parts, hashProgress };
+  };
+
+  it('splits a file into ceil(size / maxSize) windows across stream reads', async () => {
+    const api = makeApi([]);
+    const { parts } = await collect(makeBlob(250), 100, api);
+    // 250 bytes / 100 => 3 windows (100, 100, 50)
+    expect(parts).toHaveLength(3);
+  });
+
+  it('hashes the RAW bytes of each window (matching the per-chunk upload hash)', async () => {
+    const api = makeApi([]);
+    const source = makeBlob(250);
+    const { parts } = await collect(source, 100, api);
+
+    const buf = new Uint8Array(await source.arrayBuffer());
+    const boundaries = [
+      [0, 100],
+      [100, 200],
+      [200, 250],
+    ];
+    for (let i = 0; i < boundaries.length; i++) {
+      const [start, end] = boundaries[i];
+      const expected = await sha256Hex(buf.slice(start, end).buffer);
+      expect(parts[i].hash).toBe(expected);
+    }
+  });
+
+  it('yields zipped parts that unzip back to the exact raw window bytes', async () => {
+    const api = makeApi([]);
+    const source = makeBlob(250);
+    const { parts } = await collect(source, 100, api);
+
+    const buf = new Uint8Array(await source.arrayBuffer());
+    const boundaries = [
+      [0, 100],
+      [100, 200],
+      [200, 250],
+    ];
+    for (let i = 0; i < parts.length; i++) {
+      const [start, end] = boundaries[i];
+      const out = new Uint8Array(
+        await unzipArrayBuffer(await parts[i].blob.arrayBuffer())
+      );
+      expect(Array.from(out)).toEqual(Array.from(buf.slice(start, end)));
+    }
+  });
+
+  it('runs the suspicious-file check once per window and reports cumulative progress', async () => {
+    const checked: string[] = [];
+    const api = makeApi(checked);
+    const { parts, hashProgress } = await collect(makeBlob(250), 100, api);
+
+    expect(checked).toEqual(parts.map((p) => p.hash));
+    expect(hashProgress).toEqual([100, 200, 250]);
+  });
+
+  it('yields a single part for a file that fits in one window', async () => {
+    const api = makeApi([]);
+    const { parts } = await collect(makeBlob(40), 100, api);
+    expect(parts).toHaveLength(1);
+  });
+
+  it('aborts as soon as a window is flagged suspicious', async () => {
+    vi.stubGlobal('alert', vi.fn());
+    let seen = 0;
+    const api = {
+      call: vi.fn(async () => {
+        seen++;
+        return { isSuspicious: seen === 2 };
+      }),
+    } as unknown as ApiConnection;
+
+    await expect(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const _ of streamZippedParts(
+        api,
+        makeBlob(250),
+        100,
+        () => {}
+      )) {
+        // drain
+      }
+    }).rejects.toThrow('Suspicious file detected');
+    // Stopped at the second window; never checked the third.
+    expect(seen).toBe(2);
+    vi.unstubAllGlobals();
   });
 });
 

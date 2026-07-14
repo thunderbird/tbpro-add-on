@@ -10,6 +10,7 @@ import { computed, ref } from 'vue';
 // Define the possible process stages
 export type ProcessStage =
   | 'idle'
+  | 'hashing'
   | 'preparing'
   | 'encrypting'
   | 'uploading'
