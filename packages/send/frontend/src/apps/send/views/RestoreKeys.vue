@@ -65,7 +65,7 @@ const onContinue = async () => {
               v-model="encryptionKey"
               type="text"
               class="passphrase-input"
-              placeholder="text - text - text - text"
+              placeholder="text - text - text - text - text - text"
               data-testid="restore-key-input"
             />
           </div>
