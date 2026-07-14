@@ -1,7 +1,8 @@
+import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getLoginState } from '../menu';
+import { getLoginState, menuLogout } from '../menu';
 
 /**
  * Regression guard: getLoginState() is a read-only probe (called by the Send
@@ -10,24 +11,30 @@ import { getLoginState } from '../menu';
  * (short-lived `expires_at`) is NOT logged out — the web app refreshes it
  * silently with the refresh_token — so it must keep returning isLoggedIn: true
  * and leave open send.tb.pro tabs alone. Previously the expiry branch called
- * closeAllTbProTabs(), which closed the Send dashboard tab opened from the
+ * closeAllAddOnTabs(), which closed the Send dashboard tab opened from the
  * accounts dashboard.
  */
 
 const USERNAME = 'user@example.com';
 
-function setupBrowserMock(authValue: unknown) {
+function setupBrowserMock(
+  authValue: unknown,
+  tabs: Array<{ id?: number; url?: string }> = []
+) {
   vi.stubGlobal('browser', {
     storage: {
       local: {
-        get: vi.fn().mockResolvedValue(
-          authValue === undefined ? {} : { [STORAGE_KEY_AUTH]: authValue }
-        ),
+        get: vi
+          .fn()
+          .mockResolvedValue(
+            authValue === undefined ? {} : { [STORAGE_KEY_AUTH]: authValue }
+          ),
         remove: vi.fn().mockResolvedValue(undefined),
         clear: vi.fn().mockResolvedValue(undefined),
       },
     },
     tabs: {
+      query: vi.fn().mockResolvedValue(tabs),
       remove: vi.fn().mockResolvedValue(undefined),
       create: vi.fn().mockResolvedValue({ id: 1 }),
     },
@@ -106,5 +113,68 @@ describe('getLoginState', () => {
 
     expect(state).toEqual({ isLoggedIn: false, username: null });
     expect(browser.tabs.remove).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * menuLogout() is the genuine-logout chokepoint (menu Logout click + SIGN_OUT
+ * message). Unlike getLoginState(), it MAY have destructive side effects: it
+ * closes stale Send tabs left on the now-ended session. It must only close tabs
+ * pointing at the Send web app (BASE_URL) and must still open the /logout page.
+ */
+describe('menuLogout', () => {
+  it('closes only Send tabs and leaves unrelated tabs alone', async () => {
+    setupBrowserMock(undefined, [
+      { id: 1, url: `${BASE_URL}/send/profile` },
+      { id: 2, url: `${BASE_URL}/logout` },
+      { id: 3, url: 'https://accounts.tb.pro/dashboard' },
+      { id: 4, url: 'https://example.com/' },
+      { id: 5, url: undefined },
+    ]);
+
+    await menuLogout();
+
+    expect(browser.tabs.remove).toHaveBeenCalledWith(1);
+    expect(browser.tabs.remove).toHaveBeenCalledWith(2);
+    expect(browser.tabs.remove).not.toHaveBeenCalledWith(3);
+    expect(browser.tabs.remove).not.toHaveBeenCalledWith(4);
+    expect(browser.tabs.remove).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens the logout page and clears storage after closing tabs', async () => {
+    setupBrowserMock(undefined, [{ id: 1, url: `${BASE_URL}/send` }]);
+
+    await menuLogout();
+
+    expect(browser.storage.local.clear).toHaveBeenCalled();
+    expect(browser.tabs.create).toHaveBeenCalledWith({
+      url: `${BASE_URL}/logout`,
+    });
+
+    // Order is load-bearing: the freshly opened /logout tab also matches
+    // startsWith(BASE_URL), so tabs must be closed BEFORE it is created or it
+    // would be swept up and logout would break.
+    const removeOrder = (browser.tabs.remove as ReturnType<typeof vi.fn>).mock
+      .invocationCallOrder[0];
+    const createOrder = (browser.tabs.create as ReturnType<typeof vi.fn>).mock
+      .invocationCallOrder[0];
+    expect(removeOrder).toBeLessThan(createOrder);
+  });
+
+  it('keeps closing tabs and opens logout even if one removal fails', async () => {
+    setupBrowserMock(undefined, [
+      { id: 1, url: `${BASE_URL}/a` },
+      { id: 2, url: `${BASE_URL}/b` },
+    ]);
+    (browser.tabs.remove as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('cannot remove')
+    );
+
+    await menuLogout();
+
+    expect(browser.tabs.remove).toHaveBeenCalledTimes(2);
+    expect(browser.tabs.create).toHaveBeenCalledWith({
+      url: `${BASE_URL}/logout`,
+    });
   });
 });

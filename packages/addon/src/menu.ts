@@ -128,10 +128,29 @@ export async function menuLogout() {
 
   console.log('✅ Cleared extension storage');
 
+  // Close any stale Send tabs left on the now-ended session, then open the
+  // logout page (kept open so it can clear the web session).
+  await closeAllAddOnTabs();
+
   // Open logout page to complete sign-out process
   await browser.tabs.create({
     url: `${BASE_URL}/logout`,
   });
+}
+
+// Close any tabs still pointing at the Send web app. Called only on genuine
+// logout (menuLogout) — never from the getLoginState() probe (see #948/#949).
+async function closeAllAddOnTabs() {
+  const tabs = await browser.tabs.query({});
+  for (const tab of tabs) {
+    if (tab.id && tab.url?.startsWith(BASE_URL)) {
+      try {
+        await browser.tabs.remove(tab.id);
+      } catch {
+        console.warn(`Could not close Send tab with id ${tab.id}`);
+      }
+    }
+  }
 }
 
 /*
