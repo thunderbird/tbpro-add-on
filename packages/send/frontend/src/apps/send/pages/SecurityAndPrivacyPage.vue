@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { forceCloseWindow } from '@send-frontend/lib/login';
+import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBackupAndRestore } from '../composables/useBackupAndRestore';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import DeleteSendDataCard from '../views/DeleteSendDataCard.vue';
+import DeleteSendDataSuccessCard from '../views/DeleteSendDataSuccessCard.vue';
 import ResetEncryptionKeyV2 from '../views/ResetEncryptionKeyV2.vue';
 import RestoreKeys from '../views/RestoreKeys.vue';
 import SecurityAndPrivacy from '../views/SecurityAndPrivacy.vue';
@@ -21,17 +23,38 @@ const {
   shouldReset,
   resetKeys,
   deleteFiles,
+  filesDeleted,
+  deleteFailed,
+  resetDeleteFiles,
+  keysInLocalStorage,
 } = useBackupAndRestore();
 
 const showDeleteCard = computed(() => route.query.delete === 'true');
 const storedPassphrase = computed(() => keychain.getPassphraseValue() ?? '');
 
-const closeDeleteCard = () => {
-  router.push('/send/security-and-privacy');
-};
+// When this page is opened from the add-on upload popup (`closeOnComplete`),
+// close it as soon as the passphrase has been accepted and the keys are in
+// local storage — the bridge has the passphrase at that point. Closing this
+// window lets the upload popup re-check configuration and continue the upload.
+const closeOnComplete = computed(() => route.query.closeOnComplete === 'true');
 
-const handleDelete = async () => {
-  deleteFiles();
+// The `keybackup` query is async, so on a fresh window load `keysInLocalStorage`
+// starts false and flips to true once the passphrase is accepted (or the page
+// resolves as already set up) — a transition this watcher catches. We
+// deliberately don't use `immediate`: closing on the very first tick would race
+// the bridge relay and could tear the page down before the passphrase reaches
+// the add-on.
+watch(keysInLocalStorage, (ready) => {
+  if (!ready || !closeOnComplete.value) {
+    return;
+  }
+  forceCloseWindow();
+});
+
+const closeDeleteCard = () => {
+  // Clear a failed-delete state so reopening the form doesn't show a stale error.
+  resetDeleteFiles();
+  router.push('/send/security-and-privacy');
 };
 </script>
 <template>
@@ -40,10 +63,22 @@ const handleDelete = async () => {
     <div class="row" :class="{ single: showDeleteCard }">
       <!-- Backup and Restore Section -->
       <section>
+        <!--
+          `filesDeleted` is the delete mutation's success flag; it only flips
+          back on a fresh page load, which is exactly what the success card's
+          "Return to dashboard" does, so it can't get stuck showing a stale
+          confirmation.
+        -->
+        <DeleteSendDataSuccessCard v-if="showDeleteCard && filesDeleted" />
         <DeleteSendDataCard
-          v-if="showDeleteCard"
+          v-else-if="showDeleteCard"
           :stored-passphrase="storedPassphrase"
-          @confirm="handleDelete"
+          :server-error="
+            deleteFailed
+              ? 'Something went wrong deleting your data. Please try again.'
+              : ''
+          "
+          @confirm="deleteFiles"
           @cancel="closeDeleteCard"
         />
         <RestoreKeys

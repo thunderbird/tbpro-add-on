@@ -11,13 +11,21 @@ import { trpc } from './trpc';
  * @returns {Promise<string>} - Returns a Promise that resolves to the hexadecimal hash string
  */
 export async function generateFileHash(fileBlob: Blob): Promise<string> {
+  // Small blobs (<= SPLIT_SIZE) only: reading the whole blob into one buffer is
+  // safe here. Large files are hashed window-by-window via streamZippedParts,
+  // which never materializes the whole file (and never slices at high offsets).
   const fileArrayBuffer = await fileBlob.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', fileArrayBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const fileHash = hashArray
+  return sha256Hex(fileArrayBuffer);
+}
+
+/**
+ * Hex-encodes the SHA-256 digest of an already-in-memory buffer.
+ */
+export async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
-  return fileHash;
 }
 
 /*
@@ -197,11 +205,48 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-export async function zipBlob(blob: Blob, filename: string) {
+/**
+ * Zips `blob` under `filename` and returns the archive as a Blob.
+ *
+ * Why this is not just `zip.generateAsync({ type: 'blob' })`:
+ * JSZip's one-shot blob output builds the entire archive as a single
+ * `Uint8Array` and then calls `new Blob([thatArray])`. Firefox rejects any
+ * single ArrayBuffer/ArrayBufferView Blob member larger than 2 GB with
+ * "can't construct the Blob ... larger than 2 GB" — so zipping a file bigger
+ * than ~2 GB (e.g. a typeless file wrapped by {@link formatBlob}) throws before
+ * a single byte is uploaded (#981). Note this is a hard per-member limit, not an
+ * out-of-memory condition: the same Firefox happily allocates a 6 GiB
+ * ArrayBuffer, but refuses a >2 GB Blob member.
+ *
+ * Instead we consume JSZip's streaming output and hand the (individually
+ * sub-2 GB) chunks to the Blob constructor as separate members. A Blob's *total*
+ * size may exceed 2 GB as long as no single member does, so the archive can be
+ * arbitrarily large.
+ *
+ * Backwards compatibility: `generateAsync` is itself implemented on top of this
+ * same internal stream with the same default settings (STORE, no compression),
+ * so the archive bytes are identical to the previous implementation. Files
+ * zipped before and after this change are byte-for-byte interchangeable and the
+ * download/unzip path is unaffected — this only changes how the output Blob is
+ * assembled in memory, not its contents.
+ */
+export async function zipBlob(blob: Blob, filename: string): Promise<Blob> {
   const zip = new JSZip();
   zip.file(filename, blob);
 
-  return zip.generateAsync({ type: 'blob' });
+  // Typed as BlobPart[] (not Uint8Array[]) so the chunks pass straight to the
+  // Blob constructor without tripping the Uint8Array<ArrayBufferLike> vs
+  // Uint8Array<ArrayBuffer> generic mismatch in newer lib.dom typings.
+  const chunks: BlobPart[] = [];
+  await new Promise<void>((resolve, reject) => {
+    zip
+      .generateInternalStream({ type: 'uint8array' })
+      .on('data', (chunk: Uint8Array) => chunks.push(chunk as BlobPart))
+      .on('error', reject)
+      .on('end', () => resolve())
+      .resume();
+  });
+  return new Blob(chunks, { type: 'application/zip' });
 }
 
 export async function unzipArrayBuffer(
@@ -306,6 +351,11 @@ export async function unzipMultipartPiece(
 
 export const formatBlob = async (blob: NamedBlob): Promise<NamedBlob> => {
   if (blob.type === '') {
+    // Typeless files are wrapped in a whole-file zip here, before doUpload. For
+    // files > ~2 GB this used to throw "can't construct the Blob" (#981); it now
+    // works because zipBlob assembles its output from sub-2 GB chunks. Wrapping
+    // the resulting (possibly >2 GB) Blob in another Blob is fine — the 2 GB cap
+    // is per ArrayBuffer/View member, not per Blob member.
     const zippedBlob = await zipBlob(blob, blob.name);
     const compressedBlob = new Blob([zippedBlob], {
       type: 'application/zip',
@@ -358,12 +408,11 @@ export const splitIntoMultipleZips = async (
   return chunks;
 };
 
-const hashAndCheck = async (api: ApiConnection, fileBlob: NamedBlob) => {
-  // generate a hash from the file
-  const fileHash = await generateFileHash(fileBlob);
-  console.log('File hash (SHA-256):', fileHash);
-
-  // check fileHash against suspicious files
+/**
+ * Checks a precomputed file hash against the suspicious-files list and blocks
+ * the upload (alert + throw) if it matches.
+ */
+const assertNotSuspicious = async (api: ApiConnection, fileHash: string) => {
   const { isSuspicious } = await api.call<{ isSuspicious: boolean }>(
     `uploads/check-upload-hash/${fileHash}`
   );
@@ -374,6 +423,13 @@ const hashAndCheck = async (api: ApiConnection, fileBlob: NamedBlob) => {
     );
     throw new Error('Suspicious file detected');
   }
+};
+
+const hashAndCheck = async (api: ApiConnection, fileBlob: NamedBlob) => {
+  // generate a hash from the file
+  const fileHash = await generateFileHash(fileBlob);
+  console.log('File hash (SHA-256):', fileHash);
+  await assertNotSuspicious(api, fileHash);
   return fileHash;
 };
 
@@ -416,6 +472,104 @@ export const hashFiles = async (
   }
   return hashFromChunk;
 };
+
+/**
+ * A single multipart piece ready to upload: the zipped chunk blob plus the
+ * SHA-256 hash of its *raw* (pre-zip) bytes, matching the per-chunk hash the
+ * backend records via the `uploads` create-entry call.
+ */
+export type UploadPart = { blob: NamedBlob; hash: string };
+
+/**
+ * Streams a large file into upload-ready parts, one `maxSize` window at a time.
+ *
+ * Crucially, it reads the file **sequentially from offset 0 via
+ * `fileBlob.stream()`** and never calls `.slice()`/`.arrayBuffer()` at a high
+ * byte offset. The previous approach (hashFiles + splitIntoMultipleZips) sliced
+ * the file at offsets past ~2 GiB, which Firefox rejects with a NotReadableError
+ * / "can't construct the Blob" on files larger than ~2 GB (#981). Reading via a
+ * ReadableStream keeps each in-memory buffer bounded to one window and avoids
+ * the 2^31 offset boundary entirely.
+ *
+ * Parts are yielded **in order as they become ready**, so a caller can begin
+ * uploading window 0 while later windows are still being read/hashed/zipped
+ * (#980).
+ *
+ * For each window it hashes the raw bytes, runs the suspicious-file check, then
+ * zips the window — producing the exact same wire format as
+ * splitIntoMultipleZips (a zip of the raw chunk, named after the original file).
+ */
+export async function* streamZippedParts(
+  api: ApiConnection,
+  fileBlob: NamedBlob,
+  maxSize: number,
+  // Invoked with cumulative bytes hashed so callers can show hashing progress.
+  onBytesHashed?: (bytesHashed: number) => void
+): AsyncGenerator<UploadPart, void, unknown> {
+  const reader = fileBlob.stream().getReader();
+  let windowChunks: Uint8Array[] = [];
+  let windowSize = 0;
+  let totalHashed = 0;
+
+  // Turn the accumulated (<= maxSize) window into an upload-ready part.
+  const flushWindow = async (): Promise<UploadPart> => {
+    const windowBytes = new Uint8Array(windowSize);
+    let offset = 0;
+    for (const piece of windowChunks) {
+      windowBytes.set(piece, offset);
+      offset += piece.byteLength;
+    }
+    windowChunks = [];
+    windowSize = 0;
+
+    const hash = await sha256Hex(windowBytes.buffer);
+    await assertNotSuspicious(api, hash);
+
+    const rawBlob = new Blob([windowBytes], {
+      type: fileBlob.type,
+    }) as NamedBlob;
+    rawBlob.name = fileBlob.name;
+    const zipped = await zipBlob(rawBlob, fileBlob.name);
+    const zippedBlob = new Blob([zipped], {
+      type: 'application/zip',
+    }) as NamedBlob;
+    zippedBlob.name = fileBlob.name;
+
+    return { blob: zippedBlob, hash };
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      let chunk = value;
+      // A single stream read can straddle one or more window boundaries.
+      while (windowSize + chunk.byteLength >= maxSize) {
+        const take = maxSize - windowSize;
+        windowChunks.push(chunk.subarray(0, take));
+        windowSize += take;
+        totalHashed += take;
+        onBytesHashed?.(totalHashed);
+        yield await flushWindow();
+        chunk = chunk.subarray(take);
+      }
+      if (chunk.byteLength > 0) {
+        windowChunks.push(chunk);
+        windowSize += chunk.byteLength;
+      }
+    }
+
+    // Trailing partial window.
+    if (windowSize > 0) {
+      totalHashed += windowSize;
+      onBytesHashed?.(totalHashed);
+      yield await flushWindow();
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
 
 export const checkBlobSize = async (blob: NamedBlob) => {
   console.log(blob);

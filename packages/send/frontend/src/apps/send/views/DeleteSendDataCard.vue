@@ -8,9 +8,11 @@ import KeysTemplate from './KeysTemplate.vue';
 
 type Props = {
   storedPassphrase: string;
+  // Error surfaced by the parent when the delete request itself fails.
+  serverError?: string;
 };
 
-const { storedPassphrase } = defineProps<Props>();
+const { storedPassphrase, serverError = '' } = defineProps<Props>();
 
 const emit = defineEmits<{
   cancel: [];
@@ -39,12 +41,13 @@ const confirmDeletion = () => {
     const parsedInput = parsePassphrase(password.value);
     const parsedStored = parsePassphrase(storedPassphrase);
     if (parsedInput !== parsedStored) {
-      validationError.value = 'Passphrase does not match. Please try again.';
+      validationError.value =
+        'Encryption Key does not match. Please try again.';
       return;
     }
   } catch (error) {
     validationError.value =
-      error instanceof Error ? error.message : 'Invalid passphrase format';
+      error instanceof Error ? error.message : 'Invalid Encryption Key format';
     return;
   }
 
@@ -86,7 +89,7 @@ const confirmDeletion = () => {
       </div>
 
       <label class="password-label" for="delete-password">
-        Enter your password to confirm <span class="required">*</span>
+        Enter your Encryption Key to confirm <span class="required">*</span>
       </label>
 
       <div class="actions">
@@ -101,8 +104,12 @@ const confirmDeletion = () => {
           />
           <button
             class="icon-button"
-            :title="isPasswordVisible ? 'Hide password' : 'Show password'"
-            :aria-label="isPasswordVisible ? 'Hide password' : 'Show password'"
+            :title="
+              isPasswordVisible ? 'Hide Encryption Key' : 'Show Encryption Key'
+            "
+            :aria-label="
+              isPasswordVisible ? 'Hide Encryption Key' : 'Show Encryption Key'
+            "
             @click="togglePasswordVisibility"
           >
             <EyeIcon v-if="isPasswordVisible" />
@@ -119,8 +126,8 @@ const confirmDeletion = () => {
         </DangerButton>
       </div>
 
-      <div v-if="validationError" class="error-field">
-        {{ validationError }}
+      <div v-if="validationError || serverError" class="error-field">
+        {{ validationError || serverError }}
       </div>
 
       <button class="cancel-link light" @click="emit('cancel')">Cancel</button>

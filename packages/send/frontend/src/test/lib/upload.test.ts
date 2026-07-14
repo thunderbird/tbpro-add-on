@@ -4,7 +4,7 @@ import { MAX_CONCURRENT_PARTS, SPLIT_SIZE } from '@send-frontend/lib/const';
 import { NamedBlob, sendBlob } from '@send-frontend/lib/filesync';
 import { Keychain } from '@send-frontend/lib/keychain';
 import Uploader from '@send-frontend/lib/upload';
-import { hashFiles, splitIntoMultipleZips } from '@send-frontend/lib/utils';
+import { hashFiles, streamZippedParts } from '@send-frontend/lib/utils';
 import { UserType } from '@send-frontend/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,16 +14,21 @@ vi.mock('@send-frontend/lib/filesync', () => ({
 }));
 
 vi.mock('@send-frontend/lib/utils', () => ({
-  splitIntoMultipleZips: vi
-    .fn()
-    .mockResolvedValue([
-      Object.assign(new Blob(['part1']), { name: 'large-file.txt' }),
-      Object.assign(new Blob(['part2']), { name: 'large-file.txt' }),
-    ]),
   retryUntilSuccessOrTimeout: vi.fn().mockResolvedValue(undefined),
   generateFileHash: vi.fn().mockResolvedValue('abc123def456'),
+  // Single-part (small file) path.
   hashFiles: vi.fn().mockResolvedValue(['abc123def456']),
+  // Multipart path: a streaming producer yielding one {blob, hash} per window.
+  streamZippedParts: vi.fn(),
 }));
+
+// Builds the async generator the mocked streamZippedParts returns, yielding one
+// upload-ready part per blob (hash "h<index>"), mirroring the real producer.
+async function* yieldParts(parts: NamedBlob[]) {
+  for (let i = 0; i < parts.length; i++) {
+    yield { blob: parts[i], hash: `h${i}` };
+  }
+}
 
 describe('Uploader', () => {
   let uploader: Uploader;
@@ -94,7 +99,7 @@ describe('Uploader', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tracker = (uploader as any).createMultipartProgressTracker(
         mockProgressTracker,
-        [blob],
+        [blob.size],
         false,
         originalFileSize
       );
@@ -117,12 +122,10 @@ describe('Uploader', () => {
       }) as NamedBlob;
       blob2.name = 'test.zip';
 
-      const blobs = [blob1, blob2];
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tracker = (uploader as any).createMultipartProgressTracker(
         mockProgressTracker,
-        blobs,
+        [blob1.size, blob2.size],
         true,
         originalFileSize
       );
@@ -165,7 +168,7 @@ describe('Uploader', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tracker = (uploader as any).createMultipartProgressTracker(
         mockProgressTracker,
-        [blob1, blob2],
+        [blob1.size, blob2.size],
         true,
         2000
       );
@@ -185,7 +188,7 @@ describe('Uploader', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tracker = (uploader as any).createMultipartProgressTracker(
         mockProgressTracker,
-        [blob],
+        [blob.size],
         false,
         1000
       );
@@ -209,7 +212,7 @@ describe('Uploader', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tracker = (uploader as any).createMultipartProgressTracker(
         mockProgressTracker,
-        [blob],
+        [blob.size],
         false,
         originalFileSize
       );
@@ -327,8 +330,17 @@ describe('Uploader', () => {
       }) as NamedBlob;
       largeBlob.name = 'large-file.txt';
 
-      // Mock hashFiles to return two hashes for multipart upload
-      vi.mocked(hashFiles).mockResolvedValueOnce(['hash1', 'hash2']);
+      // Mock the streaming producer to yield two parts for this multipart upload.
+      vi.mocked(streamZippedParts).mockImplementationOnce(() =>
+        yieldParts([
+          Object.assign(new Blob(['part0']), {
+            name: 'large-file.txt',
+          }) as NamedBlob,
+          Object.assign(new Blob(['part1']), {
+            name: 'large-file.txt',
+          }) as NamedBlob,
+        ])
+      );
 
       // Mock API calls for both parts - handle concurrent calls by checking the endpoint
       let uploadCallCount = 0;
@@ -364,21 +376,21 @@ describe('Uploader', () => {
         largeFileSize
       ); // Original file size
       expect(mockProgressTracker.setProcessStage).toHaveBeenCalledWith(
-        'preparing'
+        'hashing'
       );
-      expect(mockProgressTracker.setText).toHaveBeenCalledWith(
-        'Preparing file for upload'
-      );
+      expect(mockProgressTracker.setText).toHaveBeenCalledWith('Hashing file');
     });
   });
 
   describe('doUpload concurrency & failure handling', () => {
     // A lightweight stand-in for the source file: doUpload only reads .size /
-    // .name off it and passes it to the (mocked) splitter + hasher, so we avoid
-    // allocating a real >SPLIT_SIZE (500MB) buffer.
-    const makeSourceBlob = (): NamedBlob =>
+    // .name off it and passes it to the (mocked) streaming producer, so we avoid
+    // allocating a real >SPLIT_SIZE buffer. Its size must yield exactly
+    // `nChunks` windows (ceil(size / SPLIT_SIZE)) so numChunks matches the number
+    // of parts the mocked producer yields.
+    const makeSourceBlob = (nChunks = 2): NamedBlob =>
       ({
-        size: SPLIT_SIZE + 1000,
+        size: SPLIT_SIZE * (nChunks - 1) + 1000,
         name: 'big.txt',
         type: 'text/plain',
       }) as unknown as NamedBlob;
@@ -408,8 +420,9 @@ describe('Uploader', () => {
     });
 
     it('passes an abort signal and an onUploadId reporter to each part', async () => {
-      vi.mocked(splitIntoMultipleZips).mockResolvedValueOnce(makeParts(2));
-      vi.mocked(hashFiles).mockResolvedValueOnce(['h0', 'h1']);
+      vi.mocked(streamZippedParts).mockImplementationOnce(() =>
+        yieldParts(makeParts(2))
+      );
       mockApi.call = resolveDbCalls();
 
       await uploader.doUpload(
@@ -427,11 +440,8 @@ describe('Uploader', () => {
 
     it('does not block later parts behind a stalled earlier part (no batch barrier)', async () => {
       const partCount = MAX_CONCURRENT_PARTS + 2; // 7 parts, 5 concurrent
-      vi.mocked(splitIntoMultipleZips).mockResolvedValueOnce(
-        makeParts(partCount)
-      );
-      vi.mocked(hashFiles).mockResolvedValueOnce(
-        Array.from({ length: partCount }, (_, i) => `h${i}`)
+      vi.mocked(streamZippedParts).mockImplementationOnce(() =>
+        yieldParts(makeParts(partCount))
       );
       mockApi.call = resolveDbCalls();
 
@@ -456,7 +466,7 @@ describe('Uploader', () => {
       );
 
       const uploadPromise = uploader.doUpload(
-        makeSourceBlob(),
+        makeSourceBlob(partCount),
         'container-id',
         mockApi,
         mockProgressTracker
@@ -474,8 +484,9 @@ describe('Uploader', () => {
 
     it('cleans up every written part and aborts siblings when a part fails', async () => {
       const parts = makeParts(3);
-      vi.mocked(splitIntoMultipleZips).mockResolvedValueOnce(parts);
-      vi.mocked(hashFiles).mockResolvedValueOnce(['h0', 'h1', 'h2']);
+      vi.mocked(streamZippedParts).mockImplementationOnce(() =>
+        yieldParts(parts)
+      );
       mockApi.call = resolveDbCalls();
 
       let capturedSignal: AbortSignal | undefined;
@@ -496,7 +507,7 @@ describe('Uploader', () => {
 
       await expect(
         uploader.doUpload(
-          makeSourceBlob(),
+          makeSourceBlob(3),
           'container-id',
           mockApi,
           mockProgressTracker
@@ -513,6 +524,26 @@ describe('Uploader', () => {
         .mock.calls.find(([endpoint]) => endpoint === 'uploads/cleanup');
       expect(cleanupCall).toBeDefined();
       expect(cleanupCall?.[1]?.ids).toContain('upload-1');
+    });
+
+    it('fails (instead of hanging) when the producer yields fewer parts than expected', async () => {
+      // Source implies 3 windows, but the stream only yields 2 (e.g. the file
+      // was truncated between selection and the streamed read). The waiting
+      // worker for the missing part must fail, not hang forever.
+      vi.mocked(streamZippedParts).mockImplementationOnce(() =>
+        yieldParts(makeParts(2))
+      );
+      mockApi.call = resolveDbCalls();
+      vi.mocked(sendBlob).mockResolvedValue('upload-id');
+
+      await expect(
+        uploader.doUpload(
+          makeSourceBlob(3),
+          'container-id',
+          mockApi,
+          mockProgressTracker
+        )
+      ).rejects.toThrow(/expected parts/);
     });
   });
 });

@@ -20,6 +20,11 @@ const stageInfo = computed(() => {
     { text: string; color: string; bgColor: string }
   > = {
     idle: {
+      text: 'Starting...',
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-100',
+    },
+    hashing: {
       text: 'Hashing...',
       color: 'text-gray-600',
       bgColor: 'bg-gray-100',
@@ -144,7 +149,9 @@ const progressDisplay = computed(() => {
             'bg-purple-500': progress.processStage === 'decrypting',
             'bg-indigo-500': progress.processStage === 'processing',
             'bg-red-500': progress.processStage === 'error',
-            'bg-gray-400': progress.processStage === 'idle',
+            'bg-gray-400':
+              progress.processStage === 'idle' ||
+              progress.processStage === 'hashing',
           }"
         ></div>
       </div>

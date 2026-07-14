@@ -1,8 +1,5 @@
-import {
-  GET_LOGIN_STATE,
-  LOGIN_STATE_RESPONSE,
-  SEND_MESSAGE_TO_BRIDGE,
-} from '@send-frontend/lib/const';
+import { GET_LOGIN_STATE, LOGIN_STATE_RESPONSE } from '@send-frontend/lib/const';
+import { pullBridgedPassphrase } from '@send-frontend/lib/bridgePassphrase';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import init from '@send-frontend/lib/init';
 import { validateToken } from '@send-frontend/lib/validations';
@@ -31,35 +28,12 @@ export function useSendConfig() {
   const { isLoggedIn } = storeToRefs(authStore);
 
   /**
-   * Checks browser extension storage for SEND_MESSAGE_TO_BRIDGE value
-   * and transfers it to localStorage under 'lb/passphrase' key.
-   * The value is stored as an object with passPhrase property.
+   * Pulls a passphrase shared from the web app via the token bridge into the
+   * keychain (delegates to pullBridgedPassphrase). Called before the login
+   * checks in loadLogin so the passphrase is present when keys are restored.
    */
   const checkAndTransferBridgeMessage = async () => {
-    try {
-      const result = await browser.storage.local.get(SEND_MESSAGE_TO_BRIDGE);
-
-      if (result[SEND_MESSAGE_TO_BRIDGE]) {
-        const value = result[SEND_MESSAGE_TO_BRIDGE];
-        const passphraseObject = {
-          passPhrase: value,
-        };
-
-        localStorage.setItem('lb/passphrase', JSON.stringify(passphraseObject));
-        console.log('✅ Transferred bridge message to localStorage');
-
-        // Delete the value from extension storage after successful transfer
-        await browser.storage.local.remove(SEND_MESSAGE_TO_BRIDGE);
-        console.log('✅ Removed bridge message from extension storage');
-
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Error checking bridge message:', error);
-      return false;
-    }
+    return pullBridgedPassphrase(keychain);
   };
   // Set up listener for bridge message transfer trigger
   try {
@@ -209,8 +183,8 @@ export function useSendConfig() {
      */
     useLoginQuery,
     /**
-     * Checks browser extension storage for SEND_MESSAGE_TO_BRIDGE value
-     * and transfers it to localStorage under 'lb/passphrase' key.
+     * Pulls a passphrase shared from the web app via the token bridge into the
+     * keychain (delegates to pullBridgedPassphrase).
      */
     checkAndTransferBridgeMessage,
     /**
