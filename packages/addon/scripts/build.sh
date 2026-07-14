@@ -168,6 +168,22 @@ if [ "$ADDON_VARIANT" = "system" ]; then
     bun run scripts/set-system-id.ts dist/manifest.json --allow-stage
 fi
 
+### Scope the token-bridge content script to remote app origins only for
+### production. public/manifest.json lists http://localhost/* so local dev builds
+### inject the bridge into the local Send app, but a released build must not trust
+### any localhost page: the bridge forwards messages to the privileged background
+### (OIDC tokens, encryption passphrase), and the same-origin guard in
+### token-bridge.js does not stop a hostile page that is itself served from
+### localhost. Strip it here for prod; non-prod builds keep localhost for dev.
+if [ "$NODE_ENV" = "production" ]; then
+    echo "================================================================"
+    echo "=============== prod: drop localhost bridge match =============="
+    tmp_manifest="$(mktemp)"
+    jq '(.content_scripts[].matches) |= map(select(. != "http://localhost/*"))' \
+        dist/manifest.json > "$tmp_manifest"
+    mv "$tmp_manifest" dist/manifest.json
+fi
+
 cd dist
 # Create xpi with version number
 zip -r -FS ../tbpro-addon-${VERSION}.xpi *

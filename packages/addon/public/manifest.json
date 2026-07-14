@@ -143,7 +143,9 @@
   "content_scripts": [
     {
       "matches": [
-        "<all_urls>"
+        "https://send.tb.pro/*",
+        "https://send-stage.tb.pro/*",
+        "http://localhost/*"
       ],
       "js": [
         "token-bridge.js"

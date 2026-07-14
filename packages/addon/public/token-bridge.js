@@ -30,21 +30,6 @@ const TELEMETRY_STATE_CHANGED = 'TB/TELEMETRY_STATE_CHANGED';
 window.postMessage({ type: BRIDGE_READY }, window.location.origin);
 console.log(`[🌉 token-bridge] the token bridge has loaded.`);
 
-// Visual cue, make sure to remove.
-const tag = document.createElement('div');
-tag.textContent = '✅ Content script injected';
-Object.assign(tag.style, {
-  position: 'fixed',
-  zIndex: 999999,
-  inset: '8px auto auto 8px',
-  padding: '6px 10px',
-  background: 'lime',
-  color: 'black',
-  fontFamily: 'monospace',
-  boxShadow: '0 2px 8px rgba(0,0,0,.25)',
-});
-// document.documentElement.appendChild(tag);
-
 // Initial message to the background
 browser.runtime.sendMessage({
   type: PING,
@@ -52,9 +37,17 @@ browser.runtime.sendMessage({
 });
 
 window.addEventListener('message', (e) => {
-  // if (e.origin !== APP_ORIGIN) return;   // security: only trust your app
-  // if (e.source !== window) return;       // same-page messages only
-  // if (!e.data || e.data.type !== "TB_PING") return;
+  // Security: this bridge forwards messages straight to the privileged add-on
+  // background (OIDC tokens, the encryption passphrase, sign-in/out). Only trust
+  // messages the app page posted to itself:
+  //   • e.source !== window  → came from an embedded/cross-origin frame or
+  //     another window, not the top app page. Reject.
+  //   • e.origin !== window.location.origin → not same-origin. Reject.
+  // Combined with the scoped content_scripts `matches` in the manifest (the
+  // bridge is only injected on the Send app's own origins), this keeps a
+  // third-party page or frame from driving the add-on.
+  if (e.source !== window) return;
+  if (e.origin !== window.location.origin) return;
 
   // ----- Web to add-on: Step 6b — refresh token → background (Thundermail) -----
   // handleOIDCCallback() posts OIDC_TOKEN with the refresh_token so that
