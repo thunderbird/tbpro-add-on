@@ -129,8 +129,40 @@ export class ApiConnection {
       return null;
     }
 
-    // Handle authentication errors
-    if (resp.status === 401) {
+    // Handle authentication errors. x-logout always rides on a 401, so branch on
+    // it first and keep the two paths mutually exclusive — a revoked session
+    // gets exactly one recovery attempt, never a second refresh from the plain
+    // 401 branch below.
+    if (resp.headers?.get?.('x-logout')) {
+      // The backend flags a revoked OIDC session (logout / password change /
+      // admin force-logout). Try to recover with the refresh token before
+      // tearing down; recoverOrForceLogout forces logout only if the refresh
+      // token is also dead, and keeps the session on a transient error (#974).
+      try {
+        const { useAuthStore } =
+          await import('@send-frontend/stores/auth-store');
+        const authStore = useAuthStore();
+        const recovered = await authStore.recoverOrForceLogout();
+
+        if (!recovered) {
+          // Genuine logout (state already cleared) or a transient error (session
+          // kept, fail open) — either way this request is done.
+          return null;
+        }
+
+        // Session rolled forward — retry once with the freshly-rotated token.
+        // We only reach here on a request that carried Authorization (the backend
+        // emits x-logout solely for bearer-carrying requests), so no guard needed.
+        const newToken = await authStore.getAccessToken();
+        if (newToken) {
+          opts.headers['Authorization'] = `Bearer ${newToken}`;
+          resp = await fetch(url, opts);
+        }
+      } catch (error) {
+        console.error('Forced-logout handling failed:', error);
+        return null;
+      }
+    } else if (resp.status === 401) {
       // If we're using OIDC and get 401, try to refresh the token
       if (requestHeaders['Authorization']) {
         try {

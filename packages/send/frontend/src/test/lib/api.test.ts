@@ -7,6 +7,23 @@
 import { ApiCallFailure, ApiConnection } from '@send-frontend/lib/api';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// Stub the auth store so api.call's dynamic imports (getAccessToken and the
+// x-logout handler) don't pull in pinia/oidc at test time.
+const { mockGetAccessToken, mockRecover, mockRefreshToken } = vi.hoisted(
+  () => ({
+    mockGetAccessToken: vi.fn<() => Promise<string | null>>(async () => null),
+    mockRecover: vi.fn<() => Promise<boolean>>(async () => false),
+    mockRefreshToken: vi.fn<() => Promise<string | null>>(async () => null),
+  })
+);
+vi.mock('@send-frontend/stores/auth-store', () => ({
+  useAuthStore: () => ({
+    getAccessToken: mockGetAccessToken,
+    recoverOrForceLogout: mockRecover,
+    refreshToken: mockRefreshToken,
+  }),
+}));
+
 const SERVER = 'https://send.test.local';
 
 function mockFetch(impl: () => Promise<Response> | Response) {
@@ -113,9 +130,101 @@ describe('ApiConnection.call — onFailure diagnostics', () => {
     const api = new ApiConnection(SERVER);
     let failure: ApiCallFailure | undefined;
 
-    await api.call('uploads', {}, 'POST', {}, { onFailure: (f) => (failure = f) });
+    await api.call(
+      'uploads',
+      {},
+      'POST',
+      {},
+      { onFailure: (f) => (failure = f) }
+    );
 
     expect(failure?.kind).toBe('http');
     expect((failure as { body: string }).body).toHaveLength(500);
+  });
+});
+
+describe('ApiConnection.call — x-logout session recovery (#960/#974)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    mockGetAccessToken.mockReset().mockResolvedValue(null);
+    mockRecover.mockReset().mockResolvedValue(false);
+    mockRefreshToken.mockReset().mockResolvedValue(null);
+  });
+
+  it('returns null without retrying when recovery fails (refresh token dead)', async () => {
+    mockRecover.mockResolvedValue(false);
+    const fetchFn = mockFetch(
+      () =>
+        ({
+          ok: false,
+          status: 401,
+          headers: { get: (k: string) => (k === 'x-logout' ? '1' : null) },
+          json: async () => ({ ok: true }),
+        }) as unknown as Response
+    );
+
+    const api = new ApiConnection(SERVER);
+    const result = await api.call('uploads', {}, 'POST');
+
+    expect(mockRecover).toHaveBeenCalledTimes(1);
+    expect(fetchFn).toHaveBeenCalledTimes(1); // no retry
+    expect(result).toBeNull();
+  });
+
+  it('retries with a fresh token and returns the retry body when recovery succeeds', async () => {
+    // Present an OIDC bearer token so the retry path (which needs an existing
+    // Authorization header) is taken.
+    mockGetAccessToken.mockResolvedValueOnce('stale'); // initial request token
+    mockRecover.mockResolvedValue(true);
+    mockGetAccessToken.mockResolvedValueOnce('fresh'); // token used on retry
+
+    let call = 0;
+    const fetchFn = mockFetch(() => {
+      call += 1;
+      if (call === 1) {
+        return {
+          ok: false,
+          status: 401,
+          headers: { get: (k: string) => (k === 'x-logout' ? '1' : null) },
+          json: async () => ({ stale: true }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => ({ ok: true }),
+      } as unknown as Response;
+    });
+
+    const api = new ApiConnection(SERVER);
+    const result = await api.call('uploads', {}, 'POST');
+
+    expect(mockRecover).toHaveBeenCalledTimes(1);
+    expect(fetchFn).toHaveBeenCalledTimes(2); // retried once
+    const retryOpts = (fetchFn.mock.calls[1] as unknown[])[1] as {
+      headers: Record<string, string>;
+    };
+    expect(retryOpts.headers['Authorization']).toBe('Bearer fresh');
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('does not attempt recovery when the header is absent', async () => {
+    mockFetch(
+      () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ ok: true }),
+        }) as unknown as Response
+    );
+
+    const api = new ApiConnection(SERVER);
+    const result = await api.call('uploads', {}, 'POST');
+
+    expect(mockRecover).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true });
   });
 });

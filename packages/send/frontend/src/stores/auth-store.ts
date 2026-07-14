@@ -55,6 +55,10 @@ function isGenuineAuthFailure(error: unknown): boolean {
   return typeof code === 'string' && GENUINE_AUTH_FAILURE_CODES.includes(code);
 }
 
+// Ensures a forced logout (triggered by the x-logout header, #960) runs once
+// even if several in-flight requests come back with the header at the same time.
+let forcedLogoutInProgress = false;
+
 export const useAuthStore = defineStore('auth', () => {
   const { api } = useApiStore();
   const { isExtension, isThunderbirdHost } = useConfigStore();
@@ -74,6 +78,14 @@ export const useAuthStore = defineStore('auth', () => {
   // rotation, every extra concurrent refresh races the others and loses with
   // invalid_grant, which reads as a spurious logout.
   let inFlightRefresh: Promise<User | null> | null = null;
+
+  // Outcome of the most recently completed refresh: `true` when it failed
+  // genuinely (refresh token revoked/expired), `false` on success or a transient
+  // error. recoverOrForceLogout reads this to decide force-logout vs fail-open,
+  // rather than inferring from isLoggedIn — which can already be false (e.g. an
+  // extension cold-start request fires before checkAuthStatus flips it true) and
+  // would otherwise turn a network blip into a spurious logout.
+  let lastRefreshFailedGenuinely = false;
 
   /**
    * Notify the add-on background that the session is over so its menu reverts
@@ -103,6 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (inFlightRefresh) return inFlightRefresh;
 
     inFlightRefresh = (async () => {
+      lastRefreshFailedGenuinely = false;
       try {
         const user = await userManager.signinSilent();
         currentUser.value = user;
@@ -114,6 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
         return user;
       } catch (error) {
         if (isGenuineAuthFailure(error)) {
+          lastRefreshFailedGenuinely = true;
           console.warn(
             `Silent token refresh failed — session ended (${
               (error as { error?: string }).error
@@ -357,6 +371,55 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
+   * Forced logout in response to the backend's x-logout header (#960): the
+   * session was ended server-side (logout elsewhere, password change, admin
+   * revoke). Clear local auth and return to a clean state. Deliberately does
+   * NOT call the API (that path is what surfaced x-logout, so calling it again
+   * would loop); it only clears client state and redirects.
+   */
+  async function handleForcedLogout() {
+    // Coalesce a burst of concurrent x-logout responses into one teardown. The
+    // guard is reset in `finally` so a later, separate revocation still logs the
+    // user out — the redirect is a client-side router navigation (no full reload
+    // that would reset a module-scope latch on its own).
+    if (forcedLogoutInProgress) {
+      return;
+    }
+    forcedLogoutInProgress = true;
+    try {
+      isLoggedIn.value = false;
+      currentUser.value = null;
+      try {
+        await userManager.removeUser();
+      } catch {
+        // best-effort — the session is already gone server-side
+      }
+      try {
+        // Extension context stores the session; clear it if present.
+        if (typeof browser !== 'undefined') {
+          await browser.storage.local.remove(STORAGE_KEY_AUTH);
+          browser.runtime.sendMessage({ type: SIGN_OUT });
+        }
+      } catch {
+        // best-effort
+      }
+      // Ask the app UI to return to login. Dispatched as a window event rather
+      // than importing the Vue router here: this store is also bundled into the
+      // background script (vite.config.background.js has no Vue plugin), so
+      // importing the router — which pulls in every .vue page — breaks that
+      // build. The listener lives in the router module (app bundle only) and
+      // does a client-side navigation that is safe in both the web app and the
+      // add-on (moz-extension://), where a hard window.location path nav would
+      // not resolve.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('tbpro:force-logout'));
+      }
+    } finally {
+      forcedLogoutInProgress = false;
+    }
+  }
+
+  /**
    * Logout from OIDC and clear local state
    */
   async function logoutFromOIDC() {
@@ -387,6 +450,39 @@ export const useAuthStore = defineStore('auth', () => {
   async function refreshToken() {
     const user = await refreshAccessToken();
     return user?.access_token ?? null;
+  }
+
+  /**
+   * The backend reported the current access token revoked (x-logout, #960).
+   * Before tearing the session down, try a silent refresh: a revoked/expired
+   * *access* token can often be replaced using a still-valid *refresh* token,
+   * so the session keeps rolling instead of bouncing the user to login (PR #974
+   * review). Only force logout when the refresh token is also gone; on a
+   * transient refresh error keep the session (fail open).
+   *
+   * Goes through refreshAccessToken() — an unconditional signinSilent — rather
+   * than getAccessToken(), because the token behind x-logout is still within
+   * its lifetime (the backend exp-gates the signal), so getAccessToken() would
+   * hand back the same stale, revoked token without refreshing.
+   *
+   * @returns `true` if the session was recovered — the caller should retry the
+   * request with the fresh token — and `false` otherwise (forced logout on a
+   * genuine failure, or session kept on a transient error).
+   */
+  async function recoverOrForceLogout(): Promise<boolean> {
+    const user = await refreshAccessToken();
+    if (user && !user.expired) {
+      return true; // refresh token still valid → session continues
+    }
+    // Force logout ONLY on a genuine refresh failure (refresh token gone). A
+    // transient error keeps the session (fail open). We read the failure kind
+    // refreshAccessToken just recorded rather than inferring from isLoggedIn —
+    // there is no await between its resolution above and this read, so the flag
+    // still reflects this refresh.
+    if (lastRefreshFailedGenuinely) {
+      await handleForcedLogout(); // genuine failure → clear state and redirect
+    }
+    return false;
   }
 
   async function loadUser() {
@@ -594,6 +690,8 @@ export const useAuthStore = defineStore('auth', () => {
     checkAuthStatus,
     getAccessToken,
     logoutFromOIDC,
+    handleForcedLogout,
+    recoverOrForceLogout,
     refreshToken,
     loginToKeyCloak, // Alias for loginToOIDC
 

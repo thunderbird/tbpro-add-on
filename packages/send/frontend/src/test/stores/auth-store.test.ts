@@ -121,3 +121,124 @@ describe('auth-store token refresh', () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 });
+
+describe('auth-store forced logout (#960)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('clears session, dispatches tbpro:force-logout, and can run again (guard resets)', async () => {
+    setThunderbirdHost(false);
+    const removeUser = vi
+      .spyOn(UserManager.prototype, 'removeUser')
+      .mockResolvedValue(undefined as never);
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+
+    const auth = useAuthStore();
+    auth.isLoggedIn = true;
+
+    await auth.handleForcedLogout();
+    await auth.handleForcedLogout();
+
+    // Guard resets in `finally`, so a second forced logout still runs — it is
+    // not a permanent no-op.
+    expect(removeUser).toHaveBeenCalledTimes(2);
+    expect(auth.isLoggedIn).toBe(false);
+    const forceLogoutEvents = dispatch.mock.calls.filter(
+      ([e]) => (e as Event).type === 'tbpro:force-logout'
+    );
+    expect(forceLogoutEvents).toHaveLength(2);
+  });
+});
+
+describe('auth-store recoverOrForceLogout (#974)', () => {
+  let signinSilent: ReturnType<typeof vi.spyOn>;
+  let removeUser: ReturnType<typeof vi.spyOn>;
+  let dispatch: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    signinSilent = vi.spyOn(UserManager.prototype, 'signinSilent');
+    removeUser = vi
+      .spyOn(UserManager.prototype, 'removeUser')
+      .mockResolvedValue(undefined as never);
+    dispatch = vi.spyOn(window, 'dispatchEvent');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function forceLogoutCount() {
+    return dispatch.mock.calls.filter(
+      ([e]) => (e as Event).type === 'tbpro:force-logout'
+    ).length;
+  }
+
+  it('recovers (keeps the session) when the refresh token is still valid', async () => {
+    setThunderbirdHost(false);
+    signinSilent.mockResolvedValue({
+      access_token: 'fresh',
+      expired: false,
+    } as never);
+
+    const auth = useAuthStore();
+    auth.isLoggedIn = true;
+
+    const recovered = await auth.recoverOrForceLogout();
+
+    expect(recovered).toBe(true);
+    expect(auth.isLoggedIn).toBe(true);
+    expect(forceLogoutCount()).toBe(0);
+  });
+
+  it('forces logout on a genuine refresh failure (session truly gone)', async () => {
+    setThunderbirdHost(false);
+    signinSilent.mockRejectedValue({ error: 'invalid_grant' } as never);
+
+    const auth = useAuthStore();
+    auth.isLoggedIn = true;
+
+    const recovered = await auth.recoverOrForceLogout();
+
+    expect(recovered).toBe(false);
+    expect(auth.isLoggedIn).toBe(false);
+    expect(removeUser).toHaveBeenCalled();
+    expect(forceLogoutCount()).toBe(1);
+  });
+
+  it('keeps the session (no forced logout) on a transient refresh error', async () => {
+    setThunderbirdHost(false);
+    signinSilent.mockRejectedValue(new Error('network down') as never);
+
+    const auth = useAuthStore();
+    auth.isLoggedIn = true;
+
+    const recovered = await auth.recoverOrForceLogout();
+
+    expect(recovered).toBe(false);
+    expect(auth.isLoggedIn).toBe(true); // fail open — no logout on a blip
+    expect(forceLogoutCount()).toBe(0);
+  });
+
+  it('does not force logout on a transient error even when isLoggedIn is already false', async () => {
+    // Extension cold-start: a stored token fires a request before checkAuthStatus
+    // flips isLoggedIn true. A transient refresh error here must still fail open —
+    // the decision keys off the refresh failure kind, not isLoggedIn.
+    setThunderbirdHost(false);
+    signinSilent.mockRejectedValue(new Error('network down') as never);
+
+    const auth = useAuthStore();
+    auth.isLoggedIn = false;
+
+    const recovered = await auth.recoverOrForceLogout();
+
+    expect(recovered).toBe(false);
+    expect(removeUser).not.toHaveBeenCalled();
+    expect(forceLogoutCount()).toBe(0);
+  });
+});
