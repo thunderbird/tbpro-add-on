@@ -317,6 +317,12 @@ router.post(
     // - it serves as record-keeping (e.g., we can prevent someone
     // from re-joining after their access has been revoked)
     const newInvitation = await createInvitationFromAccessLink(linkId, id);
+    // The container owner accepting their own access link already has full
+    // access, so there is no invitation to accept — return success as a no-op.
+    if (!newInvitation) {
+      res.status(200).json({ success: true });
+      return;
+    }
     const result = await acceptInvitation(newInvitation.id);
     res.status(200).json(result);
   })

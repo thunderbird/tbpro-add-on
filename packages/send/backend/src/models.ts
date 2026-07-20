@@ -4,7 +4,6 @@ import {
   BaseError,
   CONTAINER_NOT_FOUND,
   CONTAINER_NOT_UPDATED,
-  GROUP_NOT_FOUND,
   INVITATION_NOT_DELETED,
   INVITATION_NOT_FOUND,
   INVITATION_NOT_UPDATED,
@@ -527,23 +526,29 @@ export async function removeInvitationAndGroup(invitationId: number) {
 }
 
 export async function removeGroupMember(containerId: string, userId: string) {
-  const findGroupQuery = {
-    where: {
-      container: {
-        id: containerId,
-      },
+  const container = await fromPrismaV2(
+    prisma.container.findUniqueOrThrow,
+    {
+      where: { id: containerId },
+      select: { groupId: true, ownerId: true },
     },
-  };
-
-  const group = await fromPrismaV2(
-    prisma.group.findFirstOrThrow,
-    findGroupQuery,
-    GROUP_NOT_FOUND
+    CONTAINER_NOT_FOUND
   );
+
+  // The owner's ADMIN membership shares the (groupId, userId) composite key with
+  // any invitee row for that same user, so removing an invitation whose recipient
+  // is the owner would otherwise delete the owner's real ownership row and
+  // permanently lock them out of their own container. Never remove the owner's
+  // membership through this path; return the untouched row instead. See #1004.
+  if (userId === container.ownerId) {
+    return await fromPrismaV2(prisma.membership.findFirst, {
+      where: { groupId: container.groupId, userId },
+    });
+  }
 
   const deleteMembershipQuery = {
     where: {
-      groupId_userId: { groupId: group.id, userId },
+      groupId_userId: { groupId: container.groupId, userId },
     },
   };
 
