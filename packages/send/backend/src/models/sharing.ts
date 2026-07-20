@@ -13,12 +13,14 @@ import { MAX_ACCESS_LINK_RETRIES } from '@send-backend/config';
 import {
   ACCESSLINK_NOT_DELETED,
   ACCESSLINK_NOT_FOUND,
+  BaseError,
   CONTAINER_NOT_DELETED,
   CONTAINER_NOT_FOUND,
   GROUP_NOT_DELETED,
   INVITATION_NOT_CREATED,
   INVITATION_NOT_FOUND,
   INVITATION_NOT_UPDATED,
+  INVITATION_RECIPIENT_IS_OWNER,
   ITEM_NOT_DELETED,
   MEMBERSHIP_NOT_DELETED,
   SHARE_NOT_CREATED,
@@ -288,6 +290,19 @@ export async function createInvitation(
   recipientId: string,
   permission: number
 ) {
+  // The owner already holds an ADMIN membership on their container, so inviting
+  // them is meaningless — and it is the precondition for the destructive lockout
+  // in #1004: removing such an invitation would delete the owner's own membership
+  // row. Refuse to create an invitation that names the owner as recipient.
+  const container = await fromPrismaV2(
+    prisma.container.findUniqueOrThrow,
+    { where: { id: containerId }, select: { ownerId: true } },
+    CONTAINER_NOT_FOUND
+  );
+  if (recipientId === container.ownerId) {
+    throw new BaseError(INVITATION_RECIPIENT_IS_OWNER);
+  }
+
   let share: Share;
   try {
     const findShareQuery = {
@@ -381,13 +396,28 @@ export async function createInvitationFromAccessLink(
   // NOTE: we're just copying over the password-wrapped key
   // we *are not* wrapping the key with the user's publicKey
   // that's what's supposed to be in that field.
-  const invitation = await createInvitation(
-    accessLink.share.containerId,
-    accessLink.wrappedKey,
-    accessLink.share.senderId,
-    recipientId,
-    accessLink.permission
-  );
+  let invitation: Invitation;
+  try {
+    invitation = await createInvitation(
+      accessLink.share.containerId,
+      accessLink.wrappedKey,
+      accessLink.share.senderId,
+      recipientId,
+      accessLink.permission
+    );
+  } catch (err) {
+    // The container owner accepting their own access link is a no-op: they
+    // already hold an ADMIN membership. createInvitation refuses to create an
+    // owner-recipient invitation (see #1004), so treat that specific rejection
+    // as "already a member" rather than surfacing a hard error.
+    if (
+      err instanceof BaseError &&
+      err.message === INVITATION_RECIPIENT_IS_OWNER
+    ) {
+      return null;
+    }
+    throw err;
+  }
 
   const updateInvitationQuery = {
     where: {
