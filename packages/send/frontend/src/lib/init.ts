@@ -7,6 +7,10 @@ import {
 import { useFolderStore } from '@send-frontend/stores';
 import useApiStore from '@send-frontend/stores/api-store';
 import { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
+import {
+  acquireDefaultFolderLock,
+  releaseDefaultFolderLock,
+} from '@send-frontend/lib/initFolderLock';
 
 /**
  * Loads user and keychain from storage; creates default folder if necessary.
@@ -48,26 +52,58 @@ async function _init(
   const defaultFolderKeyIsMissing =
     defaultFolder && !keychain.keys[defaultFolder.id];
 
-  if (defaultFolderKeyIsMissing) {
-    console.warn(
-      `Default folder ${defaultFolder.id} exists but has no key. Deleting orphaned container and recreating.`
-    );
-    await folderStore.deleteFolder(defaultFolder.id);
-  }
-
   if (!defaultFolder || defaultFolderKeyIsMissing) {
-    const createFolderResp = await folderStore.createFolder();
-    if (!createFolderResp?.id) {
-      return INIT_ERRORS.COULD_NOT_CREATE_DEFAULT_FOLDER;
+    // The delete+recreate branch below is the one that must never run twice
+    // concurrently for the same account (see #930, #1032): background, popup,
+    // and any web-app tab each hold their own JS module instance of this file,
+    // so the in-process `inFlight` guard in init() below only protects against
+    // duplicate runs WITHIN one of those contexts, not across them. This
+    // storage-backed lock is the cross-context equivalent -- it's a no-op (and
+    // this whole branch just proceeds unguarded) in any context where
+    // `browser.storage.local` isn't available, since only extension contexts
+    // can race each other this way; a lone web-app tab has no sibling context
+    // to race against.
+    const lockToken = await acquireDefaultFolderLock(userStore.user?.id);
+
+    if (lockToken === null) {
+      // Another context currently holds the lock and is already deciding
+      // whether to delete + recreate this exact account's default folder.
+      // Don't pile on: re-sync and trust whatever that other context leaves
+      // behind rather than racing it. If it fails partway (e.g. the tab
+      // closes), the lock's short TTL lets the next init() attempt through.
+      await folderStore.sync();
+      return folderStore?.defaultFolder ? INIT_ERRORS.NONE : INIT_ERRORS.NO_KEYCHAIN;
+    }
+
+    try {
+      if (defaultFolderKeyIsMissing) {
+        console.warn(
+          `Default folder ${defaultFolder.id} exists but has no key. Deleting orphaned container and recreating.`
+        );
+        await folderStore.deleteFolder(defaultFolder.id);
+      }
+
+      const createFolderResp = await folderStore.createFolder();
+      if (!createFolderResp?.id) {
+        return INIT_ERRORS.COULD_NOT_CREATE_DEFAULT_FOLDER;
+      }
+    } finally {
+      await releaseDefaultFolderLock(userStore.user?.id, lockToken);
     }
   }
 
   return INIT_ERRORS.NONE;
 }
 
-// Single-flight guard: concurrent callers (e.g. the login flow and dbUserSetup
-// firing during the same rapid navigation) share one run instead of each
-// independently deciding to delete + recreate the default folder. See issue #930.
+// Single-flight guard: concurrent callers WITHIN THE SAME CONTEXT (e.g. the
+// login flow and dbUserSetup firing during the same rapid navigation) share
+// one run instead of each independently deciding to delete + recreate the
+// default folder. See issue #930.
+//
+// This only helps callers sharing this exact module instance. It does NOT
+// coordinate across background/popup/web-tab contexts, each of which loads
+// its own independent copy of this module -- that's what the storage-backed
+// lock inside _init() above is for. See issue #1032.
 let inFlight: Promise<INIT_ERRORS> | null = null;
 
 function init(
