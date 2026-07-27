@@ -29,6 +29,7 @@
     "sync:builtin": "pnpm build:dev:system && ./scripts/sync-to-builtin.sh",
     "sync:builtin:local": "pnpm build:dev:system:local && ./scripts/sync-to-builtin.sh",
     "test": "VITE_TESTING=true vitest run --silent",
+    "test:integration": "VITE_TESTING=true VITE_SEND_CLIENT_URL=https://send.tb.pro VITE_SEND_SERVER_URL=https://localhost:8088 vitest run src/test/integration --silent",
     "test:watch": "VITE_TESTING=true vitest --watch",
     "test-debug": "VITE_TESTING=true vitest --inspect-brk --single-thread",
     "typecheck": "tsc --noEmit",
