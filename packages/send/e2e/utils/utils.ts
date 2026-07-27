@@ -7,7 +7,6 @@ import {
   TB_SEND_TARGET_ENV,
   TB_SEND_BASE_URL,
   TIMEOUT_5_SECONDS,
-  TIMEOUT_10_SECONDS,
   TIMEOUT_30_SECONDS,
 } from "../const/const";
 
@@ -18,7 +17,7 @@ import {
  * the TB Accounts username (email) and password; when signing in on the local dev environment
  * you provide a username (email) and password already created for your local dev stack. After
  * sign-in we expect to arrive on the TB Send dashboard. After we are signed in, restore the send
- * encryption key using the values provided in the e2e/.env file. 
+ * encryption key using the values provided in the e2e/.env file.
  */
 export const signInAndRestoreSendKey = async (page: Page) => {
   console.log(`navigating to send ${TB_SEND_TARGET_ENV} (${TB_SEND_BASE_URL})`);

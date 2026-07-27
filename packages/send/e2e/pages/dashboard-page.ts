@@ -105,6 +105,12 @@ export class DashboardPage {
     await new EncryptedFilesPage(this.page).expectVisible();
   }
 
+  async goToEncryptedFilesFromHeader() {
+    await this.sendHdrEncryptedLink.click();
+    await this.page.waitForTimeout(TIMEOUT_1_SECOND);
+    await new EncryptedFilesPage(this.page).expectVisible();
+  }
+
   async goToSecurityAndPrivacyFromDashboard() {
     await this.encryptionKeyButton.click();
     await this.page.waitForTimeout(TIMEOUT_1_SECOND);
