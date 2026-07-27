@@ -18,38 +18,52 @@
  * web-app tab each load their own independent copy of this module (see
  * shared-pinia.ts's per-context-singleton comment, and A4/D1's identical
  * reasoning) -- so this guard only ever prevents duplicate concurrent runs
- * WITHIN one JS execution context. It provides zero protection if two
- * different contexts both decide, at the same moment, that the default
- * folder's key is missing and both proceed to delete+recreate it.
+ * WITHIN one JS execution context. On its own it provides zero protection
+ * if two different contexts both decide, at the same moment, that the
+ * default folder's key is missing and both proceed to delete+recreate it.
  *
- * This test drives the REAL `init.ts` module (not a reimplementation) via
- * two separate module instances (simulating two execution contexts, the
- * same technique used in the B5 spec to simulate a background restart) and
- * proves BOTH contexts' `inFlight` guards independently allow `_init()` to
- * run concurrently for the same "orphaned default folder" scenario -- i.e.
- * neither context's guard has any awareness of the other.
+ * FIX (see issue #1032): init.ts now also acquires a short-TTL lock in
+ * `browser.storage.local`, keyed by account id, around the delete+recreate
+ * branch specifically. That storage is the one thing every context
+ * genuinely shares, so it's what lets one context's in-flight decision be
+ * visible to the others. This test drives the REAL `init.ts` module (not a
+ * reimplementation) via two separate module instances stubbed onto two
+ * separate fake-host contexts (the same technique used in the B5 spec to
+ * simulate a background restart), and proves that with the fix in place,
+ * only ONE of the two contexts performs the delete+recreate for a given
+ * account's default folder -- the other observes the lock and defers
+ * instead of independently recreating it.
  */
 import { INIT_ERRORS } from '@send-frontend/apps/send/const';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDeferred } from './testHelpers';
+import { createDeferred, setupHost, stubContext, teardownHost } from './testHelpers';
+import type { FakeHost } from './fakeThunderbirdHost';
 
-describe('D3: init.ts single-flight guard does not coordinate across contexts', () => {
+describe('D3: init.ts single-flight guard does not coordinate across contexts (fixed via storage lock)', () => {
+  let host: FakeHost;
+
   beforeEach(() => {
-    vi.resetModules();
+    host = setupHost();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    teardownHost();
   });
 
-  it('CONFIRMED BUG: two independent module instances (contexts) both run _init() concurrently for the same account with no shared lock', async () => {
+  it('FIXED: the lock does not deadlock -- a second context can still acquire it and run its own init after the first releases it', async () => {
+    const sharedAccountId = 'shared-account-id';
+
     // --- "Context 1" (e.g. background) ---
+    stubContext(host, 'background');
     const initModule1 = await import('@send-frontend/lib/init');
     const init1 = initModule1.default;
 
     const sync1Deferred = createDeferred<void>();
     let context1SyncCalled = false;
-    const userStore1 = { loadFromLocalStorage: vi.fn().mockResolvedValue(true) };
+    const userStore1 = {
+      user: { id: sharedAccountId },
+      loadFromLocalStorage: vi.fn().mockResolvedValue(true),
+    };
     const keychain1 = {
       load: vi.fn().mockResolvedValue(true),
       keys: {}, // no key for the default folder -> triggers delete+recreate branch
@@ -76,57 +90,135 @@ describe('D3: init.ts single-flight guard does not coordinate across contexts', 
     // Let context 1 actually enter _init() and reach folderStore.sync().
     await vi.waitFor(() => expect(context1SyncCalled).toBe(true));
 
-    // --- "Context 2" (e.g. popup), a totally separate module instance ---
+    // Let context 1 finish sync and go on to acquire the lock and run
+    // deleteFolder/createFolder, before context 2 gets a chance to try.
+    sync1Deferred.resolve();
+    await vi.waitFor(() => expect(folderStore1.createFolder).toHaveBeenCalled());
+
+    // --- "Context 2" (e.g. popup), a totally separate module instance,
+    // stubbed onto a SEPARATE fake-host context that shares the same
+    // underlying browser.storage.local backing store as context 1. ---
     vi.resetModules();
+    stubContext(host, 'popup');
     const initModule2 = await import('@send-frontend/lib/init');
     const init2 = initModule2.default;
 
     expect(init2).not.toBe(init1); // confirms genuinely separate module instances
 
-    const userStore2 = { loadFromLocalStorage: vi.fn().mockResolvedValue(true) };
+    const userStore2 = {
+      user: { id: sharedAccountId }, // SAME account
+      loadFromLocalStorage: vi.fn().mockResolvedValue(true),
+    };
     const keychain2 = {
       load: vi.fn().mockResolvedValue(true),
       keys: {},
     };
     const folderStore2 = {
-      sync: vi.fn().mockResolvedValue(undefined), // resolves immediately
-      defaultFolder: { id: 'shared-account-default-folder' }, // SAME account/folder
+      sync: vi.fn().mockResolvedValue(undefined),
+      defaultFolder: { id: 'shared-account-default-folder' }, // SAME folder
       deleteFolder: vi.fn().mockResolvedValue(undefined),
       createFolder: vi.fn().mockResolvedValue({ id: 'another-new-folder-id' }),
     };
 
-    // THE BUG: context 2's `inFlight` is `null` (it's a fresh module
-    // instance -- it has never heard of context 1's in-progress run), so
-    // its single-flight guard does NOT block this call. Context 2 proceeds
-    // straight through to its own delete+recreate decision for the exact
-    // same account's default folder that context 1 is still deciding on.
+    // By the time context 2 runs, context 1 has already released its lock
+    // (its delete+recreate finished above), so context 2 must be free to
+    // acquire it fresh and run its own decision -- the lock must not get
+    // stuck held forever after a clean release. (The actual overlap-
+    // prevention claim is covered by the next test, where the two contexts
+    // genuinely race.)
     const context2Result = await init2(
       userStore2 as any,
       keychain2 as any,
       folderStore2 as any
     );
 
-    // Context 2 completed its own independent delete+recreate cycle,
-    // completely unaware of context 1's still-pending run.
     expect(context2Result).toBe(INIT_ERRORS.NONE);
-    expect(folderStore2.deleteFolder).toHaveBeenCalledWith(
-      'shared-account-default-folder'
-    );
     expect(folderStore2.createFolder).toHaveBeenCalled();
 
-    // Now let context 1 finish too.
-    sync1Deferred.resolve();
     const context1Result = await context1InitPromise;
     expect(context1Result).toBe(INIT_ERRORS.NONE);
+    expect(folderStore1.createFolder).toHaveBeenCalled();
+  });
 
-    // THE BUG's endpoint: BOTH contexts independently ran delete+recreate
-    // for the SAME account's default folder, with no coordination of any
-    // kind between them -- exactly reintroducing the duplicate-default-
-    // folder race that issue #930's single-flight guard was meant to fix,
-    // just moved from "within one context" to "across contexts."
-    expect(folderStore1.deleteFolder).toHaveBeenCalledWith(
-      'shared-account-default-folder'
+  it('FIXED: a context racing an in-progress delete+recreate defers instead of running its own', async () => {
+    const sharedAccountId = 'another-shared-account-id';
+
+    // --- "Context 1" holds the lock and is mid delete+recreate ---
+    stubContext(host, 'background');
+    const initModule1 = await import('@send-frontend/lib/init');
+    const init1 = initModule1.default;
+
+    const deleteDeferred = createDeferred<void>();
+    let deleteFolderCalled = false;
+    const userStore1 = {
+      user: { id: sharedAccountId },
+      loadFromLocalStorage: vi.fn().mockResolvedValue(true),
+    };
+    const keychain1 = {
+      load: vi.fn().mockResolvedValue(true),
+      keys: {},
+    };
+    const folderStore1 = {
+      sync: vi.fn().mockResolvedValue(undefined),
+      defaultFolder: { id: 'another-shared-default-folder' },
+      deleteFolder: vi.fn().mockImplementation(async () => {
+        deleteFolderCalled = true;
+        return deleteDeferred.promise;
+      }),
+      createFolder: vi.fn().mockResolvedValue({ id: 'new-folder-id' }),
+    };
+
+    const context1InitPromise = init1(
+      userStore1 as any,
+      keychain1 as any,
+      folderStore1 as any
     );
+
+    // Let context 1 reach deleteFolder -- it now holds the lock and is
+    // blocked inside the guarded section.
+    await vi.waitFor(() => expect(deleteFolderCalled).toBe(true));
+
+    // --- "Context 2" tries to init() for the SAME account while context 1
+    // still holds the lock. ---
+    vi.resetModules();
+    stubContext(host, 'popup');
+    const initModule2 = await import('@send-frontend/lib/init');
+    const init2 = initModule2.default;
+
+    const userStore2 = {
+      user: { id: sharedAccountId },
+      loadFromLocalStorage: vi.fn().mockResolvedValue(true),
+    };
+    const keychain2 = {
+      load: vi.fn().mockResolvedValue(true),
+      keys: {},
+    };
+    const folderStore2 = {
+      // After deferring to the lock, init() re-syncs and reports whatever
+      // context 1 leaves behind. Simulate that context 1's new folder is
+      // now visible.
+      sync: vi.fn().mockResolvedValue(undefined),
+      defaultFolder: { id: 'context-1s-recreated-folder' },
+      deleteFolder: vi.fn().mockResolvedValue(undefined),
+      createFolder: vi.fn().mockResolvedValue({ id: 'should-not-be-used' }),
+    };
+
+    const context2Result = await init2(
+      userStore2 as any,
+      keychain2 as any,
+      folderStore2 as any
+    );
+
+    // THE FIX: context 2 must NOT run its own delete+recreate while
+    // context 1's is still in flight for the same account.
+    expect(folderStore2.deleteFolder).not.toHaveBeenCalled();
+    expect(folderStore2.createFolder).not.toHaveBeenCalled();
+    expect(context2Result).toBe(INIT_ERRORS.NONE);
+
+    // Let context 1 finish.
+    deleteDeferred.resolve();
+    const context1Result = await context1InitPromise;
+    expect(context1Result).toBe(INIT_ERRORS.NONE);
     expect(folderStore1.createFolder).toHaveBeenCalled();
   });
 });
