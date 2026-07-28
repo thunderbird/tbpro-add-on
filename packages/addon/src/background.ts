@@ -300,7 +300,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     //     going through accounts.tb.pro again.
     //   • Scenario B's authenticateWithAddonToken() can call signinSilent() when
     //     it only has a refresh token and needs a fresh access_token.
-    case OIDC_USER:
+    case OIDC_USER: {
       // Mutual exclusion: if STORAGE_KEY_AUTH already holds a session,
       // this OIDC_USER is a concurrent login flow (e.g. an AccountHub
       // login racing a hamburger-menu web login for the same account)
@@ -324,6 +324,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       menuLoggedIn({ username: email });
 
       break;
+    }
 
     // ----- Web to add-on: Step 7b — provision the Thundermail account -----
     // Forwarded from token-bridge.js after handleOIDCCallback() posts OIDC_TOKEN
