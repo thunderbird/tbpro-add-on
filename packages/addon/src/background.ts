@@ -351,6 +351,28 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       break;
 
     case SIGN_OUT:
+      // Abort any in-flight uploads immediately so they don't complete
+      // using the now-invalid session. See
+      // https://github.com/thunderbird/tbpro-add-on/issues/1019.
+      rejectAllInQueue(new Error('User signed out.'));
+      // Close the upload popup if it's open so the user isn't left with
+      // a dead UI. Best-effort: the window may already be gone.
+      if (popupWindowId) {
+        try {
+          await browser.windows.remove(popupWindowId);
+        } catch (e) {
+          console.warn('Error closing popup on sign-out:', e);
+        }
+        popupWindowId = null;
+      }
+      // Broadcast SIGN_OUT to other contexts (the popup if still alive,
+      // and any open Send web tabs) so they can flip their UI state to
+      // the logged-out view. See #1019.
+      try {
+        browser.runtime.sendMessage({ type: SIGN_OUT });
+      } catch {
+        // broadcast is best-effort
+      }
       menuLogout();
       // Hide the Send provider again so a signed-out profile matches the
       // fresh-install baseline (provider only exists while signed in).
