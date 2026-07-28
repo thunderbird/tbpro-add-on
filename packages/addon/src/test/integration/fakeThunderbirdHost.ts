@@ -249,6 +249,12 @@ export function createFakeThunderbirdHost(): FakeHost {
             });
           });
         }),
+        // Real Thunderbird/WebExtension provides windows.remove(); the fake
+        // records the removed id and drops it from the tracked window map so
+        // tests can assert the popup was actually closed (e.g. on SIGN_OUT).
+        remove: vi.fn(async (id: number) => {
+          windowState.windows.delete(id);
+        }),
         onRemoved: {
           addListener: vi.fn((fn: WindowRemovedListener) => {
             windowState.removedListeners.push(fn);

@@ -86,6 +86,12 @@ describe('A1: SIGN_OUT aborts in-flight uploads and notifies the popup', () => {
     expect(bg.browser.runtime.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'SIGN_OUT' })
     );
+    // FIX: SIGN_OUT closes the open upload popup via browser.windows.remove().
+    // The fake host now stubs windows.remove (real Thunderbird provides it),
+    // so this asserts the popup-close path actually runs -- previously the
+    // call threw "windows.remove is not a function" and was silently swallowed
+    // by the handler's try/catch, giving a false pass.
+    expect(bg.browser.windows.remove).toHaveBeenCalledTimes(1);
   });
 
   it('FIXED: PopupView.vue\'s runtime.onMessage listener handles SIGN_OUT', () => {
