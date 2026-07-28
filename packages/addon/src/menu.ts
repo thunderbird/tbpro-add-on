@@ -115,8 +115,11 @@ export async function menuLogout() {
   console.log('🧹 Clearing menu items and storage');
   await browser.TBProMenu.clear('root');
 
-  // Clear all extension storage
-  await browser.storage.local.clear();
+  // Only remove the auth session; leave unrelated in-flight data untouched
+  // (PENDING_ADDON_TOKEN staged for an AccountHub login, SEND_MESSAGE_TO_BRIDGE
+  // passphrase handoff, cloud-file account configs, etc.) -- they live in the
+  // same browser.storage.local namespace but aren't ours to wipe. See #1023.
+  await browser.storage.local.remove(STORAGE_KEY_AUTH);
 
   // Clear localStorage (if running in a context that has access to it)
   try {

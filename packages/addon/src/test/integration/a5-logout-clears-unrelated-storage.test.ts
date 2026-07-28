@@ -4,25 +4,24 @@
  * See ADDON-BUG-REPORTS-2026-07-22.md #A5 and
  * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A5.
  *
- * Mechanism under test (menu.ts, menuLogout()):
+ * Mechanism that used to be under test (menu.ts, menuLogout()):
  *   await browser.storage.local.clear();
  *
- * This unconditional, blanket clear lives in the same browser.storage.local
+ * That unconditional blanket clear lived in the same browser.storage.local
  * namespace as unrelated in-flight staged data:
  *   - PENDING_ADDON_TOKEN (background.ts's triggerAddonLogin() staging key
  *     for an AccountHub-driven login in progress)
  *   - SEND_MESSAGE_TO_BRIDGE (a passphrase staged for the bridge handoff)
  *
- * This test drives the real `menuLogout()` against the fake host's shared
- * storage and proves that BOTH of those unrelated keys are destroyed by a
- * logout that has nothing to do with them, with no error surfaced to
- * whichever flow was relying on them.
+ * The fix replaces the blanket clear with a scoped remove() targeting only
+ * STORAGE_KEY_AUTH, so the unrelated in-flight keys SURVIVE an unrelated
+ * logout. This spec asserts the FIXED behavior.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type FakeHost } from './fakeThunderbirdHost';
 import { setupHost, stubContext, teardownHost } from './testHelpers';
 
-describe('A5: menuLogout() blanket storage.local.clear() wipes unrelated in-flight data', () => {
+describe('A5: menuLogout() must scope its storage clear to STORAGE_KEY_AUTH only', () => {
   let host: FakeHost;
 
   beforeEach(() => {
@@ -33,7 +32,7 @@ describe('A5: menuLogout() blanket storage.local.clear() wipes unrelated in-flig
     teardownHost();
   });
 
-  it('CONFIRMED BUG: a concurrent AccountHub login and bridged passphrase are silently destroyed by an unrelated logout', async () => {
+  it('FIXED: a concurrent AccountHub login and bridged passphrase survive an unrelated logout', async () => {
     const ctx = stubContext(host);
     const { menuLogout } = await import('../../menu');
 
@@ -67,22 +66,21 @@ describe('A5: menuLogout() blanket storage.local.clear() wipes unrelated in-flig
     // are still mid-flight.
     await menuLogout();
 
-    // THE BUG: menuLogout() calls browser.storage.local.clear() -- a
-    // blanket wipe, not scoped to STORAGE_KEY_AUTH -- so all three unrelated
-    // keys are silently destroyed with no error surfaced to either the
-    // AccountHub login flow or the passphrase bridge handoff.
+    // FIX: menuLogout() now uses a scoped remove() targeting only
+    // STORAGE_KEY_AUTH, so the three unrelated in-flight keys all SURVIVE
+    // the logout that has nothing to do with them.
     const after = await ctx.browser.storage.local.get([
       'tbpro-pending-addon-token',
       'SEND_MESSAGE_TO_BRIDGE',
       'account-123',
     ]);
-    expect(after['tbpro-pending-addon-token']).toBeUndefined();
-    expect(after['SEND_MESSAGE_TO_BRIDGE']).toBeUndefined();
-    expect(after['account-123']).toBeUndefined();
+    expect(after['tbpro-pending-addon-token']).toBeDefined();
+    expect(after['SEND_MESSAGE_TO_BRIDGE']).toBeDefined();
+    expect(after['account-123']).toBeDefined();
 
-    // Confirm this was via the blanket clear() call specifically (not a
-    // scoped set of individual remove() calls for an allow-list), which is
-    // exactly the fix target identified in the bug report.
-    expect(ctx.browser.storage.local.clear).toHaveBeenCalledTimes(1);
+    // Confirm no blanket clear() was used (the original bug mechanism) --
+    // menuLogout() must use a scoped remove() targeting STORAGE_KEY_AUTH
+    // specifically, not a wipe.
+    expect(ctx.browser.storage.local.clear).not.toHaveBeenCalled();
   });
 });
