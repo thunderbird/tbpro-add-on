@@ -146,7 +146,10 @@ describe('menuLogout', () => {
 
     await menuLogout();
 
-    expect(browser.storage.local.clear).toHaveBeenCalled();
+    // menuLogout() now does a scoped remove of STORAGE_KEY_AUTH only, not a
+    // blanket storage.local.clear() (see #1023 / A5).
+    expect(browser.storage.local.remove).toHaveBeenCalledWith(STORAGE_KEY_AUTH);
+    expect(browser.storage.local.clear).not.toHaveBeenCalled();
     expect(browser.tabs.create).toHaveBeenCalledWith({
       url: `${BASE_URL}/logout`,
     });

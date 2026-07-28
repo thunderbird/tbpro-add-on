@@ -7,6 +7,7 @@
  * staged data, so menuLogout() should behave exactly as intended.
  */
 import { BASE_URL } from '@send-frontend/apps/common/constants';
+import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type FakeHost } from './fakeThunderbirdHost';
 import { setupHost, stubContext, teardownHost } from './testHelpers';
@@ -36,9 +37,12 @@ describe('Happy path: clean logout with no in-flight work', () => {
     expect(ctx.browser.tabs.remove).toHaveBeenCalledTimes(1);
     expect(ctx.browser.tabs.remove).toHaveBeenCalledWith(1);
 
-    // Storage was cleared (there was nothing unrelated in it to lose, so
-    // this is the intended, harmless case).
-    expect(ctx.browser.storage.local.clear).toHaveBeenCalledTimes(1);
+    // Auth storage was scoped-removed (STORAGE_KEY_AUTH only), NOT a blanket
+    // storage.local.clear() -- see #1023 / A5.
+    expect(ctx.browser.storage.local.remove).toHaveBeenCalledWith(
+      STORAGE_KEY_AUTH
+    );
+    expect(ctx.browser.storage.local.clear).not.toHaveBeenCalled();
 
     // Menu was reset to the logged-out state.
     expect(ctx.browser.TBProMenu.clear).toHaveBeenCalledWith('root');
