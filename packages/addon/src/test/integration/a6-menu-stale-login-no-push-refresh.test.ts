@@ -1,6 +1,8 @@
 /**
- * A6 — Hamburger menu / web UserMenu shows stale `isLoggedIn`; no push
- * refresh on `SIGN_OUT`/`OIDC_USER`.
+ * A6 — Hamburger menu / web UserMenu no longer shows stale `isLoggedIn`:
+ * token-bridge.js now forwards `SIGN_OUT`/`OIDC_USER` from background into
+ * the page, and `UserMenu.vue` listens for those messages and re-checks its
+ * auth state.
  *
  * See ADDON-BUG-REPORTS-2026-07-22.md #A6 and
  * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A6.
@@ -9,27 +11,22 @@
  * by the manifest -- it cannot be `import`-ed and driven through a runtime
  * harness the way background.ts/menu.ts can. Instead, this spec loads the
  * REAL production file's source text and structurally verifies the two
- * halves of the confirmed gap directly against that source, which is
- * exactly as strong evidence as reading the file by hand (stronger,
- * actually, since it's re-verified on every CI run instead of only at
- * review time and will fail loudly the moment someone adds forwarding).
+ * halves of the fix directly against that source.
  *
  * Two things this test proves are simultaneously true in the real source:
  *   1. `browser.runtime.onMessage.addListener` (background -> bridge
- *      direction) has explicit handling to forward LOGIN_STATE_RESPONSE,
- *      OIDC_TOKEN, PENDING_ADDON_TOKEN_RESPONSE, and TELEMETRY_STATE_CHANGED
- *      into the page via `window.postMessage`, but has NO branch at all for
- *      an inbound `SIGN_OUT` or `OIDC_USER` message type -- so even if
- *      background broadcast either of those (which it does today, e.g. via
- *      initStorageWatcher()'s `browser.runtime.sendMessage({type: SIGN_OUT})`
- *      on an external STORAGE_KEY_AUTH removal), the web page NEVER learns
- *      about it.
- *   2. `UserMenu.vue` only ever SENDS `SIGN_OUT` (on logout button click) --
- *      it registers no listener of any kind (`window.addEventListener`,
- *      `browser.runtime.onMessage`) for an inbound sign-out/session-changed
- *      notification, so there is no reactive re-check of `isLoggedIn`
- *      wired up on the receiving end either, even if bridge forwarding
- *      existed.
+ *      direction) now also forwards `SIGN_OUT` and `OIDC_USER` into the
+ *      page via `window.postMessage` -- so a session-changed notification
+ *      broadcast by background.ts actually reaches the page.
+ *   2. `UserMenu.vue` now registers a `window.addEventListener('message', ...)`
+ *      that re-runs the logout path on `SIGN_OUT` and refetches auth on
+ *      `OIDC_USER`, so its "signed in" UI flips in step with the rest of
+ *      the add-on without a reload.
+ *
+ * (UserMenu.vue is a web-context component and must NOT use the
+ * WebExtensions-only `browser.runtime.onMessage.addListener` API directly;
+ * the bridge is what bridges to the page. That negative assertion is
+ * preserved below so the gap doesn't regress to a wrong-direction fix.)
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -42,8 +39,8 @@ const USER_MENU_PATH = resolve(
   'node_modules/send-frontend/src/apps/send/components/UserMenu.vue'
 );
 
-describe('A6: no push-based refresh path exists for SIGN_OUT/OIDC_USER into the web UI', () => {
-  it('CONFIRMED BUG: token-bridge.js forwards other background->page messages but has no SIGN_OUT/OIDC_USER inbound branch', () => {
+describe('A6: SIGN_OUT/OIDC_USER push refreshes the web UI', () => {
+  it('FIXED: token-bridge.js forwards SIGN_OUT and OIDC_USER to the page', () => {
     const source = readFileSync(TOKEN_BRIDGE_PATH, 'utf-8');
 
     // Isolate the browser.runtime.onMessage.addListener block, which is
@@ -63,27 +60,28 @@ describe('A6: no push-based refresh path exists for SIGN_OUT/OIDC_USER into the 
     );
     expect(listenerBlock).toContain('message.type === TELEMETRY_STATE_CHANGED');
 
-    // THE BUG: no branch anywhere in this listener checks for an inbound
-    // SIGN_OUT or OIDC_USER message to relay into the page via
-    // window.postMessage. (Both constants ARE referenced elsewhere in the
-    // file -- as outbound page->bridge->background forwards -- so a naive
-    // `expect(source).not.toContain('SIGN_OUT')` would be wrong; the
-    // precise claim is that the *inbound* onMessage listener block has no
-    // `message.type === SIGN_OUT` / `message.type === OIDC_USER` check.)
-    expect(listenerBlock).not.toContain('message.type === SIGN_OUT');
-    expect(listenerBlock).not.toContain('message.type === OIDC_USER');
+    // FIX: the inbound onMessage listener block now has explicit branches
+    // for SIGN_OUT and OIDC_USER that relay them into the page via
+    // window.postMessage so the page's UI can react.
+    expect(listenerBlock).toContain('message.type === SIGN_OUT');
+    expect(listenerBlock).toContain('message.type === OIDC_USER');
   });
 
-  it('CONFIRMED BUG: UserMenu.vue only sends SIGN_OUT, never listens for an inbound session-changed notification', () => {
+  it('FIXED: UserMenu.vue listens for an inbound session-changed notification', () => {
     const source = readFileSync(USER_MENU_PATH, 'utf-8');
 
     // Confirm it does send SIGN_OUT on logout (the half that DOES exist).
     expect(source).toContain("type: SIGN_OUT");
     expect(source).toContain('window.postMessage');
 
-    // THE BUG: no listener registration of any kind for an inbound
-    // sign-out/session-changed push notification exists in this component.
-    expect(source).not.toContain('window.addEventListener');
+    // FIX: UserMenu.vue now registers a window.addEventListener for the
+    // bridge-forwarded SIGN_OUT/OIDC_USER messages and re-checks auth
+    // state when they arrive.
+    expect(source).toContain('window.addEventListener');
+
+    // Still: UserMenu.vue is a web-context component and must NOT reach
+    // into WebExtensions-only APIs directly -- the bridge is what bridges
+    // to the page.
     expect(source).not.toMatch(/runtime\.onMessage\.addListener/);
   });
 });

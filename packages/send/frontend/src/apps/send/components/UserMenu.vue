@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { UserAvatar } from '@thunderbirdops/services-ui';
-import { SIGN_OUT } from '@send-frontend/lib/const';
+import { OIDC_USER, SIGN_OUT } from '@send-frontend/lib/const';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useStatusStore, useUserStore } from '@send-frontend/stores';
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
@@ -17,7 +17,7 @@ defineProps<{
 const { isRunningInsideThunderbird } = useIsExtension();
 const { validators } = useStatusStore();
 const { clearUserFromStorage } = useUserStore();
-const { logOutAuth } = useAuth();
+const { logOutAuth, refetchAuth } = useAuth();
 
 const showMenu = ref(false);
 const menuRef = useTemplateRef<HTMLElement>('menuRef');
@@ -58,12 +58,41 @@ const handleLogout = async () => {
   }
 };
 
+// Listen for inbound session-changed notifications relayed by token-bridge.js.
+// When the session ends in another context (menu, web tab, AccountHub
+// logout, etc.) background.ts broadcasts SIGN_OUT to all open tabs and the
+// bridge forwards it to us as a window.postMessage -- re-running the local
+// logout path keeps the page's "signed in" UI in sync without a reload.
+// See https://github.com/thunderbird/tbpro-add-on/issues/1024.
+const handleInboundMessage = async (event: MessageEvent) => {
+  if (event.source !== window) return;
+  if (event.origin !== window.location.origin) return;
+  const type = event.data?.type;
+  if (type === SIGN_OUT) {
+    try {
+      await clearUserFromStorage();
+      await logOutAuth();
+      await validators();
+    } catch (error) {
+      console.error('Error handling inbound SIGN_OUT in UserMenu:', error);
+    }
+  } else if (type === OIDC_USER) {
+    try {
+      await refetchAuth();
+    } catch (error) {
+      console.error('Error handling inbound OIDC_USER in UserMenu:', error);
+    }
+  }
+};
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
+  window.addEventListener('message', handleInboundMessage);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('message', handleInboundMessage);
 });
 </script>
 
