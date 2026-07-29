@@ -146,10 +146,11 @@ describe('menuLogout', () => {
 
     await menuLogout();
 
-    // menuLogout() now does a scoped remove of STORAGE_KEY_AUTH only, not a
-    // blanket storage.local.clear() (see #1023 / A5).
-    expect(browser.storage.local.remove).toHaveBeenCalledWith(STORAGE_KEY_AUTH);
-    expect(browser.storage.local.clear).not.toHaveBeenCalled();
+    // menuLogout() fully wipes the add-on's storage via a blanket
+    // storage.local.clear() -- a genuine logout returns the add-on to a clean,
+    // logged-out state. storage.local is per-extension isolated, so this only
+    // touches TB-Send's own data (see #1054 / A5).
+    expect(browser.storage.local.clear).toHaveBeenCalledTimes(1);
     expect(browser.tabs.create).toHaveBeenCalledWith({
       url: `${BASE_URL}/logout`,
     });
