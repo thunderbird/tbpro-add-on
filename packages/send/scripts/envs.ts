@@ -56,14 +56,17 @@ async function main() {
   console.log("👀 Comparing sample and .env files");
 
   if (backendUniqueKeys.length || frontendUniqueKeys.length) {
-    const errorMessage = `
-    Found unique keys between your .env and .env.sample files. 
+    const warningMessage = `
+    ⚠️  Found unique keys between your .env and .env.sample files.
     This may cause issues with your application.
     If this is intentional, ignore this message:\n
     Backend: ${backendUniqueKeys.join(", ")}\n
     Frontend: ${frontendUniqueKeys.join(", ")}`;
 
-    throw new Error(errorMessage);
+    // Warn only: .env is gitignored and per-developer, so a key present in the
+    // tracked .env.sample (or vice versa) should not hard-fail unrelated commits.
+    console.warn(warningMessage);
+    return;
   }
   console.log("✅ Your env files are in order!");
 }
