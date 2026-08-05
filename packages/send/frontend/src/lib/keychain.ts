@@ -4,6 +4,25 @@ import { Backup as BackupUserStore } from '@send-frontend/stores/user-store.type
 
 export type JwkKeyPair = Record<'publicKey' | 'privateKey', string>;
 
+/**
+ * Thrown when a restore fails specifically because the passphrase cannot unwrap
+ * the backup content key — i.e. the passphrase is genuinely wrong/mismatched.
+ *
+ * This lets restoreKeys distinguish a real "keys are incorrect" situation (which
+ * SHOULD lock the keychain and route the user to /passphrase-changed) from a
+ * transient/incidental failure (crypto blip, storage write race, concurrent
+ * restore interleave) that must NOT produce a permanent lockout on an otherwise
+ * correct passphrase.
+ */
+export class IncorrectPassphraseError extends Error {
+  constructor(cause?: unknown) {
+    super('Passphrase is incorrect');
+    this.name = 'IncorrectPassphraseError';
+    // Preserve the underlying error for logging/debugging.
+    (this as { cause?: unknown }).cause = cause;
+  }
+}
+
 // Stored keys are always strings.
 // They are parsed as needed for encrypting/decrypting.
 export type StoredKey = {
@@ -678,11 +697,20 @@ async function decryptAll(
 ) {
   const salt = Util.base64ToArrayBuffer(saltStr);
 
-  const key = await keychainFromParams.password.unwrapContentKey(
-    passwordWrappedKeyStr,
-    password,
-    salt
-  );
+  // Unwrapping the content key with the user's password is the one step that
+  // genuinely validates the passphrase: a wrong/mismatched passphrase fails
+  // here. Tag that failure so restoreKeys can lock the keychain ONLY for a real
+  // incorrect passphrase, and treat later crypto/storage errors as transient.
+  let key: CryptoKey;
+  try {
+    key = await keychainFromParams.password.unwrapContentKey(
+      passwordWrappedKeyStr,
+      password,
+      salt
+    );
+  } catch (e) {
+    throw new IncorrectPassphraseError(e);
+  }
 
   const protectedKeypair = JSON.parse(protectedKeypairStr);
   const publicKeyCiphertext = protectedKeypair.publicKey;
@@ -735,7 +763,33 @@ export async function restoreKeysUsingLocalStorage(
   return restoreKeys(keychain, api);
 }
 
-export async function restoreKeys(
+// Single-flight guard: restoreKeys is fired from 6+ call sites (router auto-
+// restore, init.ts, background.ts, validations.ts, PopupView, the composable)
+// against one shared Keychain singleton. Without this, concurrent restores can
+// interleave on the shared state and a transient failure in one leg would flip
+// the shared `locked` flag for an otherwise-successful leg. We collapse
+// overlapping restores per keychain instance into a single in-flight promise,
+// mirroring the pattern already used in init.ts (issue #930).
+const restoreInFlight = new WeakMap<Keychain, Promise<void>>();
+
+export function restoreKeys(
+  keychain: Keychain,
+  api: ApiConnection,
+  msg?: Ref<string>,
+  passPhrase?: string
+): Promise<void> {
+  const existing = restoreInFlight.get(keychain);
+  if (existing) {
+    return existing;
+  }
+  const run = _restoreKeys(keychain, api, msg, passPhrase).finally(() => {
+    restoreInFlight.delete(keychain);
+  });
+  restoreInFlight.set(keychain, run);
+  return run;
+}
+
+async function _restoreKeys(
   keychain: Keychain,
   api: ApiConnection,
   msg?: Ref<string>,
@@ -792,15 +846,27 @@ export async function restoreKeys(
     await keychain.load(keypair, containerKeys);
     await keychain.store();
 
+    // A successful restore recovers the keychain: clear any prior lock so a
+    // single earlier blip doesn't stay sticky until a full reload.
+    keychain.locked = false;
     msg.value = '✅ Restore complete';
   } catch (e) {
-    keychain.locked = true;
-    const KEY_RESTORE_ERROR = `⛔️ Could not restore keys. Please make sure your backup phrase is correct.`;
+    // Only a genuine incorrect-passphrase failure (unwrapping the content key)
+    // should lock the keychain and route the user to /passphrase-changed.
+    // Transient failures (crypto blip, storage write race, concurrent restore
+    // interleave) must NOT permanently lock an otherwise-correct passphrase.
+    if (e instanceof IncorrectPassphraseError) {
+      keychain.locked = true;
+      const KEY_RESTORE_ERROR = `⛔️ Could not restore keys. Please make sure your backup phrase is correct.`;
+      console.error(KEY_RESTORE_ERROR, e);
+      msg.value = MSG_INCORRECT_PASSPHRASE;
+      throw new Error(KEY_RESTORE_ERROR);
+    }
 
-    console.error(KEY_RESTORE_ERROR, e);
-
-    msg.value = MSG_INCORRECT_PASSPHRASE;
-    throw new Error(KEY_RESTORE_ERROR);
+    // Transient/incidental failure: surface it for retry without locking.
+    console.error('Transient error during key restore (not locking):', e);
+    msg.value = MSG_COULD_NOT_RETRIEVE;
+    throw e;
   }
 }
 
