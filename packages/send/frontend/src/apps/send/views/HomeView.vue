@@ -34,7 +34,7 @@ const showFileComponents = computed(() => {
         v-if="showFileComponents"
         class="w-full sticky top-0 flex items-center justify-between px-4 py-2 bg-white/90 border-b border-gray-300"
       >
-        <span>{{ user.thundermailEmail }}</span>
+        <span class="text-sm text-gray-600">{{ user.thundermailEmail }}</span>
         <NewFolder />
       </header>
       <div class="flex flex-col gap-4 px-4 content-layout page-wrapper">
@@ -43,8 +43,11 @@ const showFileComponents = computed(() => {
     </main>
 
     <aside
-      v-if="showFileComponents"
-      class="w-64 border border-gray-300 bg-gray-50 p-2.5"
+      v-if="
+        showFileComponents &&
+        (folderStore.selectedFile || folderStore.selectedFolder)
+      "
+      class="w-64 border-l border-gray-300 bg-gray-50 p-2.5"
     >
       <FileInfo v-if="folderStore.selectedFile" />
       <FolderInfo v-if="folderStore.selectedFolder" />
@@ -56,6 +59,7 @@ const showFileComponents = computed(() => {
 @import '@send-frontend/apps/common/tbpro-styles.css';
 .page-wrapper {
   margin: 0 auto;
+  width: 100%;
   max-width: 1200px;
 }
 </style>
