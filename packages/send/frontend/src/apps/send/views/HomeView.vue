@@ -22,11 +22,11 @@ const hasSelection = computed(() => {
   return Boolean(folderStore.selectedFile || folderStore.selectedFolder);
 });
 
-// Matches Tailwind's `md` breakpoint (768px); below it the info panel is a
-// bottom-docked sheet instead of an inline column (see #977).
+// Matches Tailwind's `md` breakpoint (768px); below it the upload sidebar is a
+// bottom-docked bar instead of an inline column (see #977).
 const isMobile = useMediaQuery('(max-width: 767.98px)');
 
-// How far the bottom-docked mobile panel is lifted off the bottom of the
+// How far the bottom-docked upload sidebar is lifted off the bottom of the
 // viewport. It stays at 0 (flush to the bottom) until the footer scrolls into
 // view, then rides up by exactly the footer's visible height so it sits just
 // above the footer instead of overlapping it.
@@ -83,17 +83,17 @@ function setupFooterWatch() {
   updateFooterOffset();
 }
 
-// Only run the footer-tracking machinery while the mobile panel is actually
-// on screen (mobile viewport + something selected).
-const panelDocked = computed(
-  () => isMobile.value && showFileComponents.value && hasSelection.value
+// Only run the footer-tracking machinery while the mobile upload bar is
+// actually on screen (mobile viewport + inside a folder).
+const uploadDocked = computed(
+  () => isMobile.value && showFileComponents.value
 );
 
 watch(
-  panelDocked,
+  uploadDocked,
   (active) => {
     if (active) {
-      // Defer to next tick so the footer element is present in the DOM.
+      // Defer to next frame so the footer element is present in the DOM.
       requestAnimationFrame(setupFooterWatch);
     } else {
       teardownFooterWatch();
@@ -111,13 +111,18 @@ onBeforeUnmount(teardownFooterWatch);
 
     <!--
       Upload sidebar. On desktop (md+) it's the original left-hand w-64 column.
-      Below md it drops to the bottom of the page (order-last) and spans the full
-      width, so the file list gets the whole screen instead of sharing it with a
-      cramped side column (see #977).
+      Below md it becomes a bottom-docked bar (fixed to the bottom of the
+      viewport, full width) so the file list gets the whole screen instead of
+      sharing it with a cramped side column (see #977). While the footer is
+      off-screen the bar sits flush to the bottom; once the footer scrolls into
+      view an IntersectionObserver lifts the bar by the footer's visible height
+      (footerOffset) so it parks just above the footer instead of overlapping
+      it. The `max-md:`-scoped classes leave desktop untouched.
     -->
     <aside
       v-if="showFileComponents"
-      class="w-64 border-r border-gray-300 bg-gray-50 max-md:order-last max-md:w-full max-md:border-r-0 max-md:border-t"
+      class="w-64 border-r border-gray-300 bg-gray-50 max-md:fixed max-md:inset-x-0 max-md:z-[1000] max-md:w-full max-md:border-r-0 max-md:border-t max-md:shadow-[0_-4px_12px_rgba(0,0,0,0.12)] max-md:transition-[bottom] max-md:duration-150"
+      :style="isMobile ? { bottom: `${footerOffset}px` } : undefined"
     >
       <FolderNavigation />
     </aside>
@@ -137,20 +142,15 @@ onBeforeUnmount(teardownFooterWatch);
 
     <!--
       Info panel. On desktop (md+) this is the original inline w-64 column. Below
-      md it becomes a bottom-docked sheet (fixed to the bottom of the viewport,
-      z-[1000] above the app nav which is z-999) with its own close control, so
-      it no longer covers the file list's action buttons or traps the user (see
-      #977). While the footer is off-screen the sheet sits flush to the bottom;
-      once the footer scrolls into view the sheet rides up by the footer's
-      visible height (footerOffset) so it parks just above the footer instead of
-      overlapping it. The `max-md:`-scoped classes leave desktop untouched
-      except that the panel now hides when nothing is selected (previously it
-      rendered an empty bordered column).
+      md it becomes a full-screen overlay (z-[1000], above the app nav which is
+      z-999) with its own close control, so it no longer covers the file list's
+      action buttons or traps the user (see #977). The overlay classes are
+      `max-md:`-scoped; the only desktop change is that the panel now hides when
+      nothing is selected (previously it rendered an empty bordered column).
     -->
     <aside
       v-if="showFileComponents && hasSelection"
-      class="w-64 border border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-x-0 max-md:z-[1000] max-md:w-full max-md:max-h-[70vh] max-md:overflow-y-auto max-md:overflow-x-hidden max-md:border-0 max-md:border-t max-md:shadow-[0_-4px_12px_rgba(0,0,0,0.12)] max-md:transition-[bottom] max-md:duration-150"
-      :style="isMobile ? { bottom: `${footerOffset}px` } : undefined"
+      class="w-64 border border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-0 max-md:z-[1001] max-md:w-full max-md:overflow-y-auto max-md:overflow-x-hidden max-md:border-0"
     >
       <FileInfo v-if="folderStore.selectedFile" />
       <FolderInfo v-if="folderStore.selectedFolder" />

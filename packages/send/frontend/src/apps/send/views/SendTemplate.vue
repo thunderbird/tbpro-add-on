@@ -19,9 +19,9 @@ const isPrintMode = route.query.print !== undefined;
     </div>
 
     <!--
-      id used by the mobile file/folder info panel (HomeView) to detect when the
-      footer scrolls into view so the bottom-docked panel can park above it
-      instead of overlapping it (see #977).
+      id used by the mobile upload sidebar (HomeView) to detect when the footer
+      scrolls into view so the bottom-docked bar can park above it instead of
+      overlapping it (see #977).
     -->
     <div id="send-footer">
       <FooterBar />
