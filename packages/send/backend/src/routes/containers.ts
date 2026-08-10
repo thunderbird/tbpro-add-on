@@ -23,6 +23,7 @@ import {
   requireAdminPermission,
   requireJWT,
   requireReadPermission,
+  requireSharePermission,
   requireWritePermission,
 } from '../middleware';
 
@@ -586,6 +587,8 @@ router.post(
 // Remove invitation and group membership
 router.delete(
   '/:containerId/member/remove/:invitationId',
+  getGroupMemberPermissions,
+  requireSharePermission,
   addErrorHandling(CONTAINER_ERRORS.INVITATION_NOT_DELETED),
   wrapAsyncHandler(async (req, res) => {
     const { invitationId } = req.params;
