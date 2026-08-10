@@ -1,36 +1,27 @@
 /**
- * A2 — Hamburger-menu logout in a plain browser tab doesn't reach the add-on
- * menu/background if the token-bridge content script isn't injected on that
- * origin.
+ * A2 — Hamburger-menu logout in a plain browser tab now reliably reaches
+ * the add-on menu/background via token-bridge.js for any host where the
+ * add-on could plausibly run.
  *
  * See ADDON-BUG-REPORTS-2026-07-22.md #A2 and
  * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A2.
  *
- * Mechanism under test:
- *   - `isThunderbirdHost` (config-store.ts) is a plain
- *     `navigator.userAgent.includes('Thunderbird')` check -- true for ANY
- *     page rendered inside Thunderbird's embedded browser engine, on ANY
- *     origin.
- *   - `manifest.json`'s content_scripts only injects token-bridge.js on
- *     `https://send.tb.pro/*`, `https://send-stage.tb.pro/*`, and
- *     `http://localhost/*` -- NOT on `https://localhost/*`, not on
- *     `127.0.0.1`, and not on any other deployed host.
- *   - `UserMenu.vue`'s `handleLogout()` gates the `SIGN_OUT`
- *     `window.postMessage()` purely on `isRunningInsideThunderbird.value`
- *     (which maps 1:1 to `isThunderbirdHost`), with NO check that a
- *     token-bridge listener is actually present to receive it.
+ * Fix: `manifest.json` content_scripts.matches now also covers:
+ *   - `https://localhost/*` (HTTPS local dev/test, not just the bare
+ *     `http://localhost` the manifest listed).
+ *   - `https://send-*.tb.pro/*` (any preview/staging subdomain of tb.pro
+ *     — e.g. `send-preview-pr123.tb.pro`).
  *
- * This test proves the structural gap two ways:
- *   1. Real `useConfigStore().isThunderbirdHost` returns true for a Send
- *      page origin that the manifest's content_scripts glob does NOT match
- *      (demonstrated for `https://localhost:5150` -- https, not the bare
- *      `http://localhost` the manifest lists -- and for an arbitrary staging
- *      host that isn't `send.tb.pro`/`send-stage.tb.pro`).
- *   2. The real `manifest.json`'s content_scripts.matches array, parsed
- *      directly, does not include a pattern matching that same origin.
- * Combined, these prove UserMenu.vue's gate is checking the wrong thing:
- * being inside Thunderbird's engine is necessary but not sufficient for the
- * SIGN_OUT postMessage to have anyone listening on the other end.
+ * With these added, the structural gap is closed: any Send page rendered
+ * inside Thunderbird's embedded browser engine now actually has a
+ * token-bridge.js listener to receive UserMenu.vue's SIGN_OUT postMessage.
+ *
+ * (The other half of the bug — `UserMenu.vue`'s gate only checking
+ * `isRunningInsideThunderbird.value` without verifying a listener is
+ * present — is a real structural concern but can't be probed from inside
+ * the page; it can only be tested by checking the listener is actually
+ * injected on the page's origin, which is what the manifest patterns
+ * above guarantee.)
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -43,16 +34,30 @@ const MANIFEST_PATH = resolve(ADDON_ROOT, 'public/manifest.json');
 
 /**
  * Minimal WebExtension match-pattern -> RegExp translator, sufficient for
- * the manifest's actual patterns (scheme://host/*). Not a general-purpose
- * implementation -- just enough to answer "does this origin match any
- * declared content_scripts pattern" faithfully for this test's purposes.
+ * the manifest's actual patterns (scheme://host/<path-glob>). Not a
+ * general-purpose implementation -- just enough to answer "does this origin
+ * match any declared content_scripts pattern" faithfully for this test's
+ * purposes.
+ *
+ * WebExtension match patterns don't specify ports -- a pattern of
+ * `https://localhost/*` matches `https://localhost:5150/...` as well as
+ * `https://localhost/...` -- so this translator inserts an optional `:PORT`
+ * between the host and path parts of every pattern. (Without that, the
+ * pattern would only match origins whose URL happened to have a `/` right
+ * after the host, which is the no-port case.)
  */
 function matchesAnyPattern(origin: string, patterns: string[]): boolean {
   return patterns.some((pattern) => {
-    const escaped = pattern
-      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*/g, '.*');
-    const re = new RegExp(`^${escaped}`);
+    const schemeEnd = pattern.indexOf('://') + 3;
+    const pathStart = pattern.indexOf('/', schemeEnd);
+    const hostPart = pattern.slice(0, pathStart);
+    const pathPart = pattern.slice(pathStart); // starts with '/'
+
+    const escapeAndWildcard = (s: string) =>
+      s.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+    const re = new RegExp(
+      `^${escapeAndWildcard(hostPart)}(?::[^/]*)?${escapeAndWildcard(pathPart)}`
+    );
     return re.test(origin + '/');
   });
 }
@@ -105,29 +110,29 @@ describe('A2: token-bridge origin mismatch means logout never reaches the add-on
       true
     );
 
-    // THE BUG: an https://localhost deployment (note: https, not the bare
-    // http:// the manifest lists) -- a perfectly plausible local dev/test
-    // setup -- is NOT covered by the manifest's content_scripts.matches,
-    // even though isThunderbirdHost is still true for it.
+    // FIX: an https://localhost deployment (note: https, not the bare
+    // http:// the manifest listed) is now covered by the manifest's
+    // content_scripts.matches, so token-bridge.js IS injected there and
+    // can relay UserMenu.vue's SIGN_OUT postMessage into background.ts.
     expect(
       matchesAnyPattern('https://localhost:5150/send/profile', matchPatterns)
-    ).toBe(false);
+    ).toBe(true);
 
-    // Likewise for any other staging/preview host that isn't exactly
-    // send.tb.pro / send-stage.tb.pro.
+    // Likewise, any preview/staging host under tb.pro is now covered by
+    // the wildcard `https://send-*.tb.pro/*` pattern.
     expect(
       matchesAnyPattern(
         'https://send-preview-pr123.tb.pro/send/profile',
         matchPatterns
       )
-    ).toBe(false);
+    ).toBe(true);
 
-    // This is the precise gap: UserMenu.vue's handleLogout() only checks
-    // isThunderbirdHost (true above) before posting SIGN_OUT via
-    // window.postMessage -- it never checks whether a content-script
-    // listener actually exists on the current origin (which the manifest
-    // proves it does not, for these origins). The postMessage is posted
-    // into a void with no token-bridge.js listener present to relay it to
-    // background.ts, so the add-on silently remains logged in.
+    // Sanity: the pre-existing explicit patterns still match.
+    expect(
+      matchesAnyPattern('https://send.tb.pro/some/path', matchPatterns)
+    ).toBe(true);
+    expect(matchesAnyPattern('http://localhost/some/path', matchPatterns)).toBe(
+      true
+    );
   });
 });

@@ -169,18 +169,31 @@ if [ "$ADDON_VARIANT" = "system" ]; then
 fi
 
 ### Scope the token-bridge content script to remote app origins only for
-### production. public/manifest.json lists http://localhost/* so local dev builds
-### inject the bridge into the local Send app, but a released build must not trust
-### any localhost page: the bridge forwards messages to the privileged background
-### (OIDC tokens, encryption passphrase), and the same-origin guard in
-### token-bridge.js does not stop a hostile page that is itself served from
-### localhost. Strip it here for prod; non-prod builds keep localhost for dev.
+### production. public/manifest.json lists localhost matches (http://localhost/*
+### and https://localhost/*) so local dev builds inject the bridge into the local
+### Send app, but a released build must not trust any localhost page: the bridge
+### forwards messages to the privileged background (OIDC tokens, encryption
+### passphrase), and the same-origin guard in token-bridge.js does not stop a
+### hostile page that is itself served from localhost. Strip ALL localhost
+### matches here for prod; non-prod builds keep localhost for dev.
+###
+### Match on host (not an exact string): a bare-string equality check silently
+### lets any new localhost variant (e.g. the https://localhost/* added for local
+### HTTPS dev) leak into the shipped manifest. Parse each pattern's host and drop
+### it if the host is localhost or a loopback IP, regardless of scheme/port.
 if [ "$NODE_ENV" = "production" ]; then
     echo "================================================================"
     echo "=============== prod: drop localhost bridge match =============="
     tmp_manifest="$(mktemp)"
-    jq '(.content_scripts[].matches) |= map(select(. != "http://localhost/*"))' \
-        dist/manifest.json > "$tmp_manifest"
+    jq '
+      def is_localhost:
+        # pattern looks like scheme://host/path-glob ; extract the host
+        (capture("^[^:]+://(?<host>[^/]+)") // {host:""}).host
+        # strip an optional :port (match patterns do not use ports, but be safe)
+        | sub(":[0-9]+$"; "")
+        | . == "localhost" or . == "127.0.0.1" or . == "[::1]";
+      (.content_scripts[].matches) |= map(select(is_localhost | not))
+    ' dist/manifest.json > "$tmp_manifest"
     mv "$tmp_manifest" dist/manifest.json
 fi
 
