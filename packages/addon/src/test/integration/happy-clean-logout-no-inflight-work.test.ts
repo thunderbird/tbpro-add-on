@@ -36,8 +36,10 @@ describe('Happy path: clean logout with no in-flight work', () => {
     expect(ctx.browser.tabs.remove).toHaveBeenCalledTimes(1);
     expect(ctx.browser.tabs.remove).toHaveBeenCalledWith(1);
 
-    // Storage was cleared (there was nothing unrelated in it to lose, so
-    // this is the intended, harmless case).
+    // Storage was fully wiped via the blanket clear() -- a genuine logout
+    // returns the add-on to a clean, logged-out state. storage.local is
+    // per-extension isolated, so this only touches TB-Send's own data.
+    // See #1054 / A5.
     expect(ctx.browser.storage.local.clear).toHaveBeenCalledTimes(1);
 
     // Menu was reset to the logged-out state.

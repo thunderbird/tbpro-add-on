@@ -115,7 +115,25 @@ export async function menuLogout() {
   console.log('🧹 Clearing menu items and storage');
   await browser.TBProMenu.clear('root');
 
-  // Clear all extension storage
+  // Full wipe of the add-on's storage to a clean, logged-out state.
+  //
+  // browser.storage.local is namespaced PER-EXTENSION (keyed to this add-on's
+  // gecko id) -- it is NOT shared with Thunderbird core or any other add-on.
+  // So every key in here is TB-Send's own: STORAGE_KEY_AUTH, the staged
+  // passphrase (SEND_MESSAGE_TO_BRIDGE), the pending OIDC token set
+  // (PENDING_ADDON_TOKEN), folder-lock records, cloud-file account configs, etc.
+  //
+  // On a genuine logout the product requirement is a clean wipe: auth token,
+  // passphrase, and ALL other add-on data must be gone so the next launch
+  // requires a fresh login. A scoped single-key remove() leaks the passphrase
+  // and a live refresh token past logout (see #1023 / #1054). A concurrent
+  // in-flight login (PENDING_ADDON_TOKEN) is intentionally cancelled here --
+  // logout wins over a half-finished login by design.
+  //
+  // This blanket clear() is ONLY reached from a genuine logout (menuLogout(),
+  // driven by the LOGOUT menu action / the SIGN_OUT message). The read-only
+  // getLoginState() probe (60s timer + route guard) MUST NOT reach this and
+  // does not -- it only ever calls storage.local.get(). See #948/#949.
   await browser.storage.local.clear();
 
   // Clear localStorage (if running in a context that has access to it)

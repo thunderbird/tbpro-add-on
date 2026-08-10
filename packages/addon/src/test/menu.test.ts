@@ -146,7 +146,11 @@ describe('menuLogout', () => {
 
     await menuLogout();
 
-    expect(browser.storage.local.clear).toHaveBeenCalled();
+    // menuLogout() fully wipes the add-on's storage via a blanket
+    // storage.local.clear() -- a genuine logout returns the add-on to a clean,
+    // logged-out state. storage.local is per-extension isolated, so this only
+    // touches TB-Send's own data (see #1054 / A5).
+    expect(browser.storage.local.clear).toHaveBeenCalledTimes(1);
     expect(browser.tabs.create).toHaveBeenCalledWith({
       url: `${BASE_URL}/logout`,
     });
