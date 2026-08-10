@@ -300,7 +300,21 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     //     going through accounts.tb.pro again.
     //   • Scenario B's authenticateWithAddonToken() can call signinSilent() when
     //     it only has a refresh token and needs a fresh access_token.
-    case OIDC_USER:
+    case OIDC_USER: {
+      // Mutual exclusion: if STORAGE_KEY_AUTH already holds a session,
+      // this OIDC_USER is a concurrent login flow (e.g. an AccountHub
+      // login racing a hamburger-menu web login for the same account)
+      // and silently overwriting would clobber the in-flight session.
+      // Drop the incoming write to preserve the existing session.
+      // See https://github.com/thunderbird/tbpro-add-on/issues/1025.
+      const existingAuth = await browser.storage.local.get(STORAGE_KEY_AUTH);
+      if (existingAuth[STORAGE_KEY_AUTH]) {
+        console.warn(
+          '[onMessage] Dropping OIDC_USER: STORAGE_KEY_AUTH already holds a session'
+        );
+        break;
+      }
+
       await browser.storage.local.set({
         [STORAGE_KEY_AUTH]: message.user,
       });
@@ -310,6 +324,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       menuLoggedIn({ username: email });
 
       break;
+    }
 
     // ----- Web to add-on: Step 7b — provision the Thundermail account -----
     // Forwarded from token-bridge.js after handleOIDCCallback() posts OIDC_TOKEN

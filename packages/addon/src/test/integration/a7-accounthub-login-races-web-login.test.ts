@@ -1,33 +1,36 @@
 /**
- * A7 — AccountHub-driven add-on login races a concurrent hamburger-menu web
- * login for the same account; both write to the same shared
- * STORAGE_KEY_AUTH with "last write wins" semantics and no mutual exclusion.
+ * A7 — AccountHub-driven add-on login no longer races a concurrent
+ * hamburger-menu web login for the same account: the OIDC_USER handler in
+ * background.ts now drops a write when STORAGE_KEY_AUTH already holds a
+ * session, preserving the first login instead of silently clobbering it.
  *
  * See ADDON-BUG-REPORTS-2026-07-22.md #A7 and
  * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A7.
  *
- * Mechanism under test:
+ * Mechanism that used to be under test (before the fix):
  *   - background.ts's initAccountHubListener() fires on
  *     browser.AccountHub.onAccountAdded, calling menuLoggedIn() then
  *     triggerAddonLogin({refresh_token: token}).
  *   - Independently, a "web" context (simulating the /addon-auth or a
- *     manually-opened login tab's auth-store) can post an OIDC_USER message
- *     that background's onMessage handler stores directly into
+ *     manually-opened login tab's auth-store) posts an OIDC_USER message
+ *     that background's onMessage handler stored directly into
  *     STORAGE_KEY_AUTH with an unconditional browser.storage.local.set --
- *     no check for whether another login is already in progress for the
+ *     no check for whether another login was already in progress for the
  *     same account.
- *   - There is no shared "login in progress" lock anywhere in either path.
+ *   - There was no shared "login in progress" lock anywhere in either path.
  *
- * This test drives both flows against the SAME fake host (shared storage)
- * and shows that whichever OIDC_USER-equivalent write happens last silently
- * overwrites the other's stored auth data, exactly as described.
+ * Fix: OIDC_USER handler now reads STORAGE_KEY_AUTH before writing; if it's
+ * already populated, the incoming write is dropped (with a console.warn)
+ * instead of silently overwriting the existing session. A genuine
+ * re-auth would first clear STORAGE_KEY_AUTH via SIGN_OUT, which always
+ * happens as part of any explicit logout flow.
  */
 import { OIDC_USER } from '@send-frontend/lib/const';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type FakeHost } from './fakeThunderbirdHost';
 import { setupHost, stubContext, teardownHost } from './testHelpers';
 
-describe('A7: AccountHub add-on login races a concurrent web login for the same account', () => {
+describe('A7: concurrent OIDC_USER writes are rejected if STORAGE_KEY_AUTH already holds a session', () => {
   let host: FakeHost;
 
   beforeEach(() => {
@@ -38,7 +41,7 @@ describe('A7: AccountHub add-on login races a concurrent web login for the same 
     teardownHost();
   });
 
-  it('CONFIRMED BUG: last OIDC_USER write wins, silently overwriting the other login flow\'s session with no coordination', async () => {
+  it('FIXED: the first OIDC_USER write wins; a concurrent second OIDC_USER is dropped to preserve the in-flight session', async () => {
     const bg = stubContext(host);
     await import('../../background');
 
@@ -96,19 +99,18 @@ describe('A7: AccountHub add-on login races a concurrent web login for the same 
       },
     });
 
-    // THE BUG: no mutual-exclusion guard existed anywhere in either flow to
-    // detect "a login for this account is already in progress/complete" --
-    // the second OIDC_USER message unconditionally overwrites
-    // STORAGE_KEY_AUTH via background.ts's plain
-    // `browser.storage.local.set({[STORAGE_KEY_AUTH]: message.user})`,
-    // silently discarding the AccountHub-driven session that had just been
-    // established, with no error, warning, or reconciliation of any kind.
+    // FIX: the OIDC_USER handler now reads STORAGE_KEY_AUTH before
+    // writing; the second OIDC_USER sees the AccountHub-driven session
+    // already there and is dropped, preserving the in-flight session.
     const afterFlow2 = await bg.browser.storage.local.get('STORAGE_KEY_AUTH');
     expect(afterFlow2['STORAGE_KEY_AUTH'].refresh_token).toBe(
-      'manual-web-login-session-token'
+      'accounthub-session-token'
+    );
+    expect(afterFlow2['STORAGE_KEY_AUTH'].refresh_token).toBe(
+      afterFlow1['STORAGE_KEY_AUTH'].refresh_token
     );
     expect(afterFlow2['STORAGE_KEY_AUTH'].refresh_token).not.toBe(
-      afterFlow1['STORAGE_KEY_AUTH'].refresh_token
+      'manual-web-login-session-token'
     );
   });
 });
