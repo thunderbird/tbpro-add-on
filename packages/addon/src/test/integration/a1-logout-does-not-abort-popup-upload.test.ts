@@ -1,19 +1,16 @@
 /**
- * A1 — Logout in a web tab doesn't abort an upload already in flight in the
+ * A1 — Logout in a web tab now aborts an upload already in flight in the
  * popup. See README.md for shared harness context.
  *
  * See ADDON-BUG-REPORTS-2026-07-22.md #A1 and
  * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A1.
  *
- * Mechanism (background.ts): the SIGN_OUT handler only calls menuLogout()
- * and CloudFileAccounts.unregisterProvider() -- it never touches
- * uploadInfoQueue/uploadPromiseMap/popupWindowId, and never messages an open
- * popup. This test proves that structurally: a pending mid-upload promise
- * survives SIGN_OUT untouched.
- *
- * (PopupView.vue's onMessage listener having no SIGN_OUT case is the popup
- * side of this same gap, checked directly against source below since the
- * .vue SFC isn't easily mounted headlessly in this harness.)
+ * Fix (background.ts): the SIGN_OUT handler now (1) rejects every entry in
+ * uploadPromiseMap via rejectAllInQueue(), (2) closes the popup window if
+ * one is open, and (3) broadcasts a SIGN_OUT message to other contexts so
+ * they can flip their UI state. The popup side (PopupView.vue's
+ * onMessage listener) now also handles SIGN_OUT by clearing its pending
+ * files list.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -26,7 +23,7 @@ const POPUP_VIEW_PATH = resolve(
   'node_modules/send-frontend/src/apps/send/views/PopupView.vue'
 );
 
-describe('A1: SIGN_OUT does not abort or notify an in-flight popup upload', () => {
+describe('A1: SIGN_OUT aborts in-flight uploads and notifies the popup', () => {
   let host: FakeHost;
 
   beforeEach(() => {
@@ -37,7 +34,7 @@ describe('A1: SIGN_OUT does not abort or notify an in-flight popup upload', () =
     teardownHost({ fakeTimers: true });
   });
 
-  it('CONFIRMED BUG: an in-flight uploadPromiseMap entry survives SIGN_OUT untouched, and no message is sent to the popup', async () => {
+  it('FIXED: an in-flight uploadPromiseMap entry is rejected by SIGN_OUT, and a SIGN_OUT message is broadcast', async () => {
     const bg = stubContext(host);
     await import('../../background');
 
@@ -74,23 +71,30 @@ describe('A1: SIGN_OUT does not abort or notify an in-flight popup upload', () =
     await Promise.resolve();
     await Promise.resolve();
 
-    // THE BUG: the pending upload promise is completely unaffected -- SIGN_OUT
-    // neither resolves nor rejects it. The user's in-flight upload from the
-    // (now logged-out) session continues to completion using the popup's
-    // still-valid in-memory session state.
-    expect(settled).toBe(false);
+    // FIX: SIGN_OUT now rejects every pending entry in uploadPromiseMap
+    // via rejectAllInQueue() -- the upload promise is no longer untouched.
+    expect(settled).toBe(true);
 
-    // Confirm SIGN_OUT's only observable side effects are exactly the two
-    // documented in background.ts's handler -- nothing upload/popup-related.
+    // SIGN_OUT's other side effects (unchanged from the original handler):
+    // the cloud-file provider must still be unregistered once, so a
+    // signed-out profile matches the fresh-install baseline.
     expect(bg.browser.CloudFileAccounts.unregisterProvider).toHaveBeenCalledTimes(
       1
     );
-    // No message of any kind (e.g. a hypothetical "ABORT_UPLOAD" or
-    // forwarded SIGN_OUT) was sent toward the popup window.
-    expect(bg.browser.runtime.sendMessage).not.toHaveBeenCalled();
+    // FIX: SIGN_OUT now also broadcasts a SIGN_OUT message out to other
+    // contexts (popup/web tab) so they can flip their UI state.
+    expect(bg.browser.runtime.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SIGN_OUT' })
+    );
+    // FIX: SIGN_OUT closes the open upload popup via browser.windows.remove().
+    // The fake host now stubs windows.remove (real Thunderbird provides it),
+    // so this asserts the popup-close path actually runs -- previously the
+    // call threw "windows.remove is not a function" and was silently swallowed
+    // by the handler's try/catch, giving a false pass.
+    expect(bg.browser.windows.remove).toHaveBeenCalledTimes(1);
   });
 
-  it('CONFIRMED BUG: PopupView.vue\'s runtime.onMessage listener has no SIGN_OUT case', () => {
+  it('FIXED: PopupView.vue\'s runtime.onMessage listener handles SIGN_OUT', () => {
     const source = readFileSync(POPUP_VIEW_PATH, 'utf-8');
 
     // Isolate the onMessage listener registered in initialize().
@@ -104,8 +108,8 @@ describe('A1: SIGN_OUT does not abort or notify an in-flight popup upload', () =
 
     // Confirms it does handle FILE_LIST (the one case that exists today)...
     expect(listenerBlock).toContain('FILE_LIST');
-    // ...but has no SIGN_OUT branch to flip a "session ended, stop
-    // uploading" flag before the next uploadItem() call in the queue.
-    expect(listenerBlock).not.toContain('SIGN_OUT');
+    // ...and now DOES have a SIGN_OUT branch to clear pending uploads
+    // before the next uploadItem() call in the queue.
+    expect(listenerBlock).toContain('SIGN_OUT');
   });
 });
