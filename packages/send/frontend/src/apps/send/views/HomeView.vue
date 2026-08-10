@@ -6,7 +6,7 @@ import FolderInfo from '@send-frontend/apps/send/components/FolderInfo.vue';
 import FolderNavigation from '@send-frontend/apps/send/components/FolderNavigation.vue';
 import { useUserStore } from '@send-frontend/stores';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { useMediaQuery } from '@vueuse/core';
+import { useElementSize, useMediaQuery } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 import NewFolder from '../components/NewFolder.vue';
 
@@ -34,6 +34,19 @@ const footerOffset = ref(0);
 
 let footerObserver: IntersectionObserver | null = null;
 let footerEl: HTMLElement | null = null;
+
+// The docked bar is `fixed`, so it's out of flow and would sit on top of the
+// last rows of the file list once the user scrolls to the bottom. Measure it
+// and reserve the same amount of space under <main> so the list can always
+// scroll clear of it. Measured rather than hardcoded because the bar's height
+// varies: inside Thunderbird the upload zone isn't rendered at all
+// (RenderOnEnvironment), leaving a much shorter bar.
+const uploadBarEl = ref<HTMLElement | null>(null);
+const { height: uploadBarHeight } = useElementSize(
+  uploadBarEl,
+  { width: 0, height: 0 },
+  { box: 'border-box' }
+);
 
 function updateFooterOffset() {
   if (!footerEl) {
@@ -68,7 +81,9 @@ function setupFooterWatch() {
   footerObserver = new IntersectionObserver(
     ([entry]) => {
       if (entry.isIntersecting) {
-        window.addEventListener('scroll', updateFooterOffset, { passive: true });
+        window.addEventListener('scroll', updateFooterOffset, {
+          passive: true,
+        });
         window.addEventListener('resize', updateFooterOffset);
         updateFooterOffset();
       } else {
@@ -85,9 +100,7 @@ function setupFooterWatch() {
 
 // Only run the footer-tracking machinery while the mobile upload bar is
 // actually on screen (mobile viewport + inside a folder).
-const uploadDocked = computed(
-  () => isMobile.value && showFileComponents.value
-);
+const uploadDocked = computed(() => isMobile.value && showFileComponents.value);
 
 watch(
   uploadDocked,
@@ -121,13 +134,19 @@ onBeforeUnmount(teardownFooterWatch);
     -->
     <aside
       v-if="showFileComponents"
+      ref="uploadBarEl"
       class="w-64 border-r border-gray-300 bg-gray-50 max-md:fixed max-md:inset-x-0 max-md:z-[1000] max-md:w-full max-md:border-r-0 max-md:border-t max-md:shadow-[0_-4px_12px_rgba(0,0,0,0.12)] max-md:transition-[bottom] max-md:duration-150"
       :style="isMobile ? { bottom: `${footerOffset}px` } : undefined"
     >
       <FolderNavigation />
     </aside>
 
-    <main class="flex flex-col gap-4 grow">
+    <main
+      class="flex flex-col gap-4 grow"
+      :style="
+        uploadDocked ? { paddingBottom: `${uploadBarHeight}px` } : undefined
+      "
+    >
       <header
         v-if="showFileComponents"
         class="w-full sticky top-0 flex items-center justify-between px-4 py-2 bg-white/90 border-b border-gray-300"
