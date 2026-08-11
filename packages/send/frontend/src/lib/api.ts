@@ -12,11 +12,16 @@ export type AsyncJsonResponse<T = { [key: string]: any }> = Promise<
  * user-derived `path`, pinned to `serverUrl`'s origin.
  *
  * Guards against server-side request forgery (code-scanning alert #43): a `path`
- * containing a scheme or authority (`http://evil`, `//evil`) is rejected, and
- * the resulting URL's origin is asserted to equal the configured server origin
- * before it is ever used. Legitimate paths — including query strings
- * (`.../links?type=file`), trailing slashes and non-ASCII-safe segments such as
- * email addresses (`users/lookup/a@b.com/`) — are preserved unchanged.
+ * containing a scheme or authority (`http://evil`, `//evil`) is rejected, a
+ * `path` containing a backslash (which URL parsing may treat as a path
+ * separator) is rejected, and dot-segments (`.`/`..`) — which `new URL()` would
+ * normalize and could use to climb out of the `/api/` prefix (e.g. `../admin`
+ * → `/admin`) — are rejected. After construction the resulting URL's origin is
+ * asserted to equal the configured server origin, and its pathname is asserted
+ * to still live under `/api/`, before it is ever used. Legitimate paths —
+ * including query strings (`.../links?type=file`), trailing slashes and
+ * non-ASCII-safe segments such as email addresses (`users/lookup/a@b.com/`) —
+ * are preserved unchanged.
  */
 export function buildApiUrl(serverUrl: string, path: string): string {
   const trimmed = (path ?? '').trim();
@@ -32,14 +37,39 @@ export function buildApiUrl(serverUrl: string, path: string): string {
     throw new Error('Invalid API path');
   }
 
+  // Reject backslashes: URL parsing can treat `\` as a path separator, so
+  // `..\admin` or `\\evil` would otherwise smuggle traversal/authority past the
+  // forward-slash checks below.
+  if (trimmed.includes('\\')) {
+    throw new Error('Invalid API path');
+  }
+
+  // Reject dot-segments. `new URL()` normalizes `.`/`..`, so a path like
+  // `../admin` would resolve to `/admin` and escape the intended `/api/`
+  // prefix. Splitting on `/` and rejecting any segment that is exactly `.` or
+  // `..` blocks traversal while still preserving dots *inside* a segment (e.g.
+  // `a@b.com`, `file.txt`).
+  const relativePath = trimmed.replace(/^\/+/, '');
+  const segments = relativePath.split('/');
+  if (segments.some((segment) => segment === '.' || segment === '..')) {
+    throw new Error('Invalid API path');
+  }
+
   // Stripping leading slashes and prepending the constant `/api/` makes the
   // path an absolute-*path* reference, which can never carry an authority, so
   // the origin is always `serverUrl`'s. The origin assertion is therefore
   // unreachable at runtime; it is kept as the explicit host-allowlist barrier
   // CodeQL's request-forgery query recognizes, and as defense in depth.
-  const relativePath = trimmed.replace(/^\/+/, '');
   const url = new URL(`/api/${relativePath}`, serverUrl);
   if (url.origin !== new URL(serverUrl).origin) {
+    throw new Error('Invalid API path');
+  }
+
+  // Defense in depth against dot-segment normalization escaping the prefix: the
+  // resulting pathname must still live under `/api/`. If it does not, the path
+  // climbed out (e.g. via traversal that slipped past the segment check) and we
+  // fail loudly rather than issue a request to an unintended path.
+  if (!url.pathname.startsWith('/api/')) {
     throw new Error('Invalid API path');
   }
 

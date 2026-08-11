@@ -58,6 +58,45 @@ describe('buildApiUrl — path pinning (SSRF alert #43)', () => {
     expect(() => buildApiUrl(SERVER, '')).toThrow('Invalid API path');
     expect(() => buildApiUrl(SERVER, '   ')).toThrow('Invalid API path');
   });
+
+  it('rejects dot-segment traversal that would escape the /api/ prefix', () => {
+    // `new URL()` normalizes `..`, so without an explicit guard `../admin`
+    // would resolve to `/admin` and climb out of `/api/`.
+    expect(() => buildApiUrl(SERVER, '../admin')).toThrow('Invalid API path');
+    expect(() => buildApiUrl(SERVER, '../../admin')).toThrow(
+      'Invalid API path'
+    );
+    expect(() => buildApiUrl(SERVER, 'uploads/../../admin')).toThrow(
+      'Invalid API path'
+    );
+    expect(() => buildApiUrl(SERVER, '/../admin')).toThrow('Invalid API path');
+    // A single `.` segment is also normalized away and is rejected.
+    expect(() => buildApiUrl(SERVER, './admin')).toThrow('Invalid API path');
+    expect(() => buildApiUrl(SERVER, 'uploads/./stat')).toThrow(
+      'Invalid API path'
+    );
+  });
+
+  it('rejects backslashes, which URL parsing may treat as separators', () => {
+    expect(() => buildApiUrl(SERVER, '..\\admin')).toThrow('Invalid API path');
+    expect(() => buildApiUrl(SERVER, '\\\\evil.example/steal')).toThrow(
+      'Invalid API path'
+    );
+    expect(() => buildApiUrl(SERVER, 'uploads\\..\\admin')).toThrow(
+      'Invalid API path'
+    );
+  });
+
+  it('preserves dots inside a segment (not treated as traversal)', () => {
+    // Dots *within* a segment are legitimate (emails, filenames) and must
+    // survive; only segments that are exactly `.` or `..` are rejected.
+    expect(buildApiUrl(SERVER, 'users/lookup/a..b@example.com')).toBe(
+      'https://send.test.local/api/users/lookup/a..b@example.com'
+    );
+    expect(buildApiUrl(SERVER, 'uploads/file.name.txt/stat')).toBe(
+      'https://send.test.local/api/uploads/file.name.txt/stat'
+    );
+  });
 });
 
 function mockFetch(impl: () => Promise<Response> | Response) {
