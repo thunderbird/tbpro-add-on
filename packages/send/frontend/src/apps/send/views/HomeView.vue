@@ -164,11 +164,19 @@ onBeforeUnmount(teardownFooterWatch);
       md it becomes a full-screen overlay (z-[1000], above the app nav which is
       z-999) with its own close control, so it no longer covers the file list's
       action buttons or traps the user (see #977). The overlay classes are
-      `max-md:`-scoped; the only desktop change is that the panel now hides when
-      nothing is selected (previously it rendered an empty bordered column).
+      `max-md:`-scoped, so desktop layout is unchanged from before #977.
+
+      The selection gate is deliberately mobile-only. On desktop this column is
+      part of the flow, so mounting it on first selection would narrow the file
+      table mid-interaction. Double-clicking a folder row to open it fires
+      `@click` before `@dblclick`, so that reflow used to slide the row's
+      delete button under the pointer between the two clicks and pop the
+      "Delete Folder?" modal instead of navigating. Keeping the column mounted
+      on desktop (as it was before #977) keeps the table width stable. Below md
+      the panel is `fixed`, hence out of flow, so gating it there costs nothing.
     -->
     <aside
-      v-if="showFileComponents && hasSelection"
+      v-if="showFileComponents && (!isMobile || hasSelection)"
       class="w-64 border border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-0 max-md:z-[1001] max-md:w-full max-md:overflow-y-auto max-md:overflow-x-hidden max-md:border-0"
     >
       <FileInfo v-if="folderStore.selectedFile" />
