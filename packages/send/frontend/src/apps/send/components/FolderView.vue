@@ -126,16 +126,28 @@ const { open: openDeleteModal, close: closeDeleteModal } = useModal({
   },
 });
 
-const openModal = (item: ItemResponse) => {
+// Clicking a row selects it, which mounts the 16rem details sidebar (#903) and
+// so reflows the table under the cursor. The second click of a double click is
+// then dispatched at coordinates now covered by a different element — commonly
+// a row action button that just slid into place, including delete. Ignore any
+// click that the browser counted as part of a multi-click sequence: `detail`
+// uses the platform's own multi-click window, so this tracks the OS
+// double-click interval rather than guessing at it.
+const isStrayMultiClick = (event: MouseEvent) => event.detail > 1;
+
+const openModal = (event: MouseEvent, item: ItemResponse) => {
+  if (isStrayMultiClick(event)) return;
   selectedFile.value = item;
   open();
 };
 
 const openDeleteConfirmation = (
+  event: MouseEvent,
   id: string | number,
   name: string,
   type: 'folder' | 'file'
 ) => {
+  if (isStrayMultiClick(event)) return;
   deleteItemRef.value = { id, name, type };
   openDeleteModal();
 };
@@ -296,7 +308,12 @@ function handleFolderClick(uuid: string) {
                   <Btn
                     danger
                     @click.stop="
-                      openDeleteConfirmation(folder.id, folder.name, 'folder')
+                      openDeleteConfirmation(
+                        $event,
+                        folder.id,
+                        folder.name,
+                        'folder'
+                      )
                     "
                   >
                     <IconTrash class="w-4 h-4" />
@@ -346,7 +363,7 @@ function handleFolderClick(uuid: string) {
                     <Btn
                       v-if="!item.upload.expired"
                       secondary
-                      @click="openModal(item)"
+                      @click="openModal($event, item)"
                     >
                       <IconDownload class="w-4 h-4" />
                     </Btn>
@@ -355,7 +372,12 @@ function handleFolderClick(uuid: string) {
                       data-testid="delete-file"
                       danger
                       @click.stop="
-                        openDeleteConfirmation(item.id, item.name, 'file')
+                        openDeleteConfirmation(
+                          $event,
+                          item.id,
+                          item.name,
+                          'file'
+                        )
                       "
                     >
                       <IconTrash class="w-4 h-4" />
