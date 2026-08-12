@@ -19,10 +19,11 @@ import {
   computeMultipartFile,
   handleMultipartDownload,
 } from '@send-frontend/lib/folderView';
+import { useIsMobile } from '@send-frontend/composables/useIsMobile';
 import { useApiStore, useKeychainStore } from '@send-frontend/stores';
 import { IconDotsVertical, IconDownload, IconTrash } from '@tabler/icons-vue';
 import { ExpiryBadge, ExpiryUnitTypes } from '@thunderbirdops/services-ui';
-import { useDebounceFn, useMediaQuery } from '@vueuse/core';
+import { useDebounceFn } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useModal, useModalSlot } from 'vue-final-modal';
 import { useRoute, useRouter } from 'vue-router';
@@ -185,9 +186,8 @@ const isDev = import.meta.env.DEV;
 
 // On mobile we drop the per-row action column (download/delete/⋮) entirely so the
 // file list fits the viewport without horizontal scrolling; the actions remain
-// reachable from the file/folder info panel (see #977). Matches Tailwind's `md`
-// breakpoint (768px), so the JS state and the CSS utilities stay in sync.
-const isMobile = useMediaQuery('(max-width: 767.98px)');
+// reachable from the file/folder info panel (see #977).
+const isMobile = useIsMobile();
 
 const isEmpty = computed(() => {
   return (

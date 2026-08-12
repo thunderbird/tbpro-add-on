@@ -4,9 +4,10 @@ import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import FileInfo from '@send-frontend/apps/send/components/FileInfo.vue';
 import FolderInfo from '@send-frontend/apps/send/components/FolderInfo.vue';
 import FolderNavigation from '@send-frontend/apps/send/components/FolderNavigation.vue';
+import { useIsMobile } from '@send-frontend/composables/useIsMobile';
 import { useUserStore } from '@send-frontend/stores';
+import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { useElementSize, useMediaQuery } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 import NewFolder from '../components/NewFolder.vue';
 
@@ -22,9 +23,9 @@ const hasSelection = computed(() => {
   return Boolean(folderStore.selectedFile || folderStore.selectedFolder);
 });
 
-// Matches Tailwind's `md` breakpoint (768px); below it the upload sidebar is a
-// bottom-docked bar instead of an inline column (see #977).
-const isMobile = useMediaQuery('(max-width: 767.98px)');
+// Below the `md` breakpoint the upload sidebar is a bottom-docked bar instead
+// of an inline column (see #977).
+const isMobile = useIsMobile();
 
 // How far the bottom-docked upload sidebar is lifted off the bottom of the
 // viewport. It stays at 0 (flush to the bottom) until the footer scrolls into

@@ -85,9 +85,10 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
 
 /*
   Below md the parent aside (HomeView) turns this into a bottom-docked bar, so
-  the column gap just adds dead space — drop it and pad the bar instead. The
-  breakpoint matches Tailwind's `max-md:` exactly (md = 768px) so this stays in
-  sync with the parent's mobile classes.
+  the column gap just adds dead space — drop it and pad the bar instead.
+  Scoped CSS can't read a TS constant, so this bound is a hand-kept copy of
+  MOBILE_MEDIA_QUERY in composables/useIsMobile.ts (and of Tailwind's
+  `max-md:`); change all three together.
 */
 @media (max-width: 767.98px) {
   .folder-navigation {
