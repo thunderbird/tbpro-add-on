@@ -34,19 +34,22 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
+      - name: Install dependencies from committed lockfile
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+          pnpm install --frozen-lockfile --filter @thunderbird/tbpro-add-on
+          lerna run bootstrap
 
-      - name: Run pnpm audit --fix=override
+      - name: Run pnpm audit --fix
         id: audit-fix
         run: |
-          echo "Running pnpm audit --fix=override..."
-          pnpm audit --fix=override || true
-          echo "Audit fix completed"
-          pnpm install --frozen-lockfile
-          if git diff --exit-code pnpm-lock.yaml; then
+          echo "Running pnpm audit --fix..."
+          pnpm audit --fix || true
+
+          # audit --fix may change package.json overrides; now intentionally regenerate
+          # only the lockfile from that changed dependency policy.
+          pnpm install --lockfile-only --no-frozen-lockfile
+
+          if git diff --exit-code pnpm-lock.yaml package.json pnpm-workspace.yaml; then
             echo "audit-changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "audit-changed=true" >> "$GITHUB_OUTPUT"
