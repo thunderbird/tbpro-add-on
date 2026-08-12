@@ -145,7 +145,6 @@
       "matches": [
         "https://send.tb.pro/*",
         "https://send-stage.tb.pro/*",
-        "https://send-*.tb.pro/*",
         "http://localhost/*",
         "https://localhost/*"
       ],
