@@ -6,15 +6,15 @@
  * See ADDON-BUG-REPORTS-2026-07-22.md #A2 and
  * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A2.
  *
- * Fix: `manifest.json` content_scripts.matches now also covers:
- *   - `https://localhost/*` (HTTPS local dev/test, not just the bare
- *     `http://localhost` the manifest listed).
- *   - `https://send-*.tb.pro/*` (any preview/staging subdomain of tb.pro
- *     — e.g. `send-preview-pr123.tb.pro`).
+ * Fix: `manifest.json` content_scripts.matches now also covers
+ * `https://localhost/*` (HTTPS local dev/test, not just the bare
+ * `http://localhost` the manifest listed), so any Send page we actually
+ * ship or develop against has a token-bridge.js listener to receive
+ * UserMenu.vue's SIGN_OUT postMessage.
  *
- * With these added, the structural gap is closed: any Send page rendered
- * inside Thunderbird's embedded browser engine now actually has a
- * token-bridge.js listener to receive UserMenu.vue's SIGN_OUT postMessage.
+ * Coverage stops at the hosts we name. See
+ * manifest-match-patterns.test.ts for why a `send-*.tb.pro` wildcard
+ * can't be one of them.
  *
  * (The other half of the bug — `UserMenu.vue`'s gate only checking
  * `isRunningInsideThunderbird.value` without verifying a listener is
@@ -84,7 +84,7 @@ describe('A2: token-bridge origin mismatch means logout never reaches the add-on
     });
   }
 
-  it('CONFIRMED BUG: isThunderbirdHost is true for a Send-app origin the manifest does NOT inject token-bridge.js on', () => {
+  it('injects token-bridge.js on every Send origin we ship, and nowhere else', () => {
     // Any page rendered inside Thunderbird's embedded browser engine has
     // "Thunderbird" in its UA string, regardless of which origin it is.
     stubUserAgent(
@@ -118,21 +118,19 @@ describe('A2: token-bridge origin mismatch means logout never reaches the add-on
       matchesAnyPattern('https://localhost:5150/send/profile', matchPatterns)
     ).toBe(true);
 
-    // Likewise, any preview/staging host under tb.pro is now covered by
-    // the wildcard `https://send-*.tb.pro/*` pattern.
+    // Stage is covered by its own explicit pattern.
+    expect(
+      matchesAnyPattern('https://send-stage.tb.pro/send/profile', matchPatterns)
+    ).toBe(true);
+
+    // The bridge relays OIDC tokens and the passphrase to the privileged
+    // background, so it must only be injected on hosts we name -- never on
+    // an arbitrary `send-<anything>.tb.pro`.
     expect(
       matchesAnyPattern(
         'https://send-preview-pr123.tb.pro/send/profile',
         matchPatterns
       )
-    ).toBe(true);
-
-    // Sanity: the pre-existing explicit patterns still match.
-    expect(
-      matchesAnyPattern('https://send.tb.pro/some/path', matchPatterns)
-    ).toBe(true);
-    expect(matchesAnyPattern('http://localhost/some/path', matchPatterns)).toBe(
-      true
-    );
+    ).toBe(false);
   });
 });
