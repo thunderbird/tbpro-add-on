@@ -11,6 +11,11 @@ on:
     branches:
       - "**"
       - "!main"
+  # Fork branches are never pushed to this repo, so the push trigger above never
+  # fires for them. The pull_request trigger is what gives fork PRs their checks.
+  pull_request:
+    branches:
+      - main
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -21,6 +26,12 @@ permissions:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    # Branches in this repo are already covered by the push trigger, so only let the
+    # pull_request event do the work for forks. Every other job needs this one, so
+    # skipping it here skips the whole duplicate run.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
@@ -55,6 +66,10 @@ jobs:
       BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-fs
       FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-fs
       PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-fs
+      # A fork PR only ever gets a read-only GITHUB_TOKEN, so pushing to GHCR would
+      # fail with a 403. Build the images anyway — that they still build is the part
+      # of this workflow a fork PR can prove — and skip the push.
+      PUSH_IMAGES: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +98,7 @@ jobs:
           context: ./packages/send/backend/.docker-build
           file: ./packages/send/backend/.docker-build/Dockerfile
           build-args: BUILD_ENV=production
-          push: true
+          push: ${{ env.PUSH_IMAGES }}
           tags: ${{ env.BACKEND_IMAGE }}
           cache-from: type=gha,scope=e2e-backend-fs
           cache-to: type=gha,mode=max,scope=e2e-backend-fs
@@ -92,7 +107,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./packages/send/backend/tls-dev-proxy
-          push: true
+          push: ${{ env.PUSH_IMAGES }}
           tags: ${{ env.PROXY_IMAGE }}
           cache-from: type=gha,scope=e2e-reverse-proxy-fs
           cache-to: type=gha,mode=max,scope=e2e-reverse-proxy-fs
@@ -103,14 +118,22 @@ jobs:
           context: ./
           file: ./dockerfiles/Dockerfile-frontend
           build-args: BUILD_ENV=production
-          push: true
+          push: ${{ env.PUSH_IMAGES }}
           tags: ${{ env.FRONTEND_IMAGE }}
           cache-from: type=gha,scope=e2e-frontend-fs
           cache-to: type=gha,mode=max,scope=e2e-frontend-fs
 
   end-to-end-tests:
     needs: [detect-changes, build-e2e-images]
-    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    # GitHub never exposes repository secrets to a fork-triggered run, and this job
+    # needs them for the OIDC login the dev specs go through — plus the images the
+    # build job could not push. Stop after the image build for fork PRs rather than
+    # reporting a failure the contributor cannot act on.
+    if: >-
+      (needs.detect-changes.outputs.backend-changed == 'true' ||
+       needs.detect-changes.outputs.frontend-changed == 'true') &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
