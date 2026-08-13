@@ -2,6 +2,8 @@ import { createI18n } from 'vue-i18n';
 import en from '@send-frontend/locales/en.json';
 
 const fallbackLocale = 'en';
+// StandardFooter currently uses the catalogue bundled with services-ui. Keep
+// these messages as the starting point for Send's follow-up string migration.
 const messages = { en };
 
 export function defaultLocale(language?: string) {
@@ -21,5 +23,3 @@ const instance = createI18n({
 });
 
 export default instance;
-export const i18n = instance.global;
-export type i18nType = typeof i18n.t;
