@@ -10,6 +10,11 @@ on:
     branches:
       - "**"
       - "!main"
+  # Fork branches are never pushed to this repo, so the push trigger above never
+  # fires for them. The pull_request trigger is what gives fork PRs their checks.
+  pull_request:
+    branches:
+      - main
 
 permissions:
   packages: read
@@ -19,6 +24,12 @@ jobs:
   # This job detects which parts of the repo have been changed, setting future jobs up for conditional behavior.
   detect-changes:
     runs-on: ubuntu-latest
+    # Branches in this repo are already covered by the push trigger, so only let the
+    # pull_request event do the work for forks. Every other job needs this one, so
+    # skipping it here skips the whole duplicate run.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
