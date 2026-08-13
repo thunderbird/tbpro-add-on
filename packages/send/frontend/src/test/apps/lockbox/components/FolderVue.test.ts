@@ -11,16 +11,34 @@ let router;
 let wrapper;
 
 // Use a simpler approach without ref in the hoisted function
-const { refetchSpy, mockQueryData } = vi.hoisted(() => {
-  return {
-    refetchSpy: vi.fn(),
-    mockQueryData: {
-      value: {
-        type: 'subtree',
-        data: { id: 'test', name: 'Test Folder', items: [] },
-        folders: [],
+const { refetchSpy, openDeleteModalSpy, openDownloadModalSpy, mockQueryData } =
+  vi.hoisted(() => {
+    return {
+      refetchSpy: vi.fn(),
+      openDeleteModalSpy: vi.fn(),
+      openDownloadModalSpy: vi.fn(),
+      mockQueryData: {
+        value: {
+          type: 'subtree',
+          data: { id: 'test', name: 'Test Folder', items: [] },
+          folders: [],
+        },
       },
-    },
+    };
+  });
+
+// Only the delete modal is registered with a title, so that discriminates the
+// two useModal() calls without depending on the order they run in.
+vi.mock('vue-final-modal', () => {
+  return {
+    useModal: vi.fn((options) => ({
+      open:
+        options?.attrs?.title === 'Delete Item?'
+          ? openDeleteModalSpy
+          : openDownloadModalSpy,
+      close: vi.fn(),
+    })),
+    useModalSlot: vi.fn((slot) => slot),
   };
 });
 
@@ -44,7 +62,9 @@ vi.mock('@send-frontend/apps/send/stores/folder-store', () => {
     esmodule: true,
     default: vi.fn(() => ({
       rootFolder: { items: [], id: 'test', name: 'Test Folder' },
-      visibleFolders: [],
+      visibleFolders: [
+        { id: 'folder-1', name: 'Folder One', updatedAt: '2026-01-01' },
+      ],
       selectedFolder: null,
       selectedFile: null,
       setSelectedFile: vi.fn(),
@@ -131,5 +151,25 @@ describe('FolderView', () => {
 
     // Should have been called again for the new route
     expect(refetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  // Regression: selecting a row mounts the 16rem details sidebar, which reflows
+  // the table under the cursor, so the second click of a double click can land
+  // on the delete button that just slid into place (#903).
+  describe('folder row delete button', () => {
+    const deleteButton = () =>
+      wrapper.find('[data-testid="folder-row"] button.danger');
+
+    it('ignores a click that is part of a multi-click sequence', async () => {
+      await deleteButton().trigger('click', { detail: 2 });
+
+      expect(openDeleteModalSpy).not.toHaveBeenCalled();
+    });
+
+    it('opens the confirmation for a deliberate single click', async () => {
+      await deleteButton().trigger('click', { detail: 1 });
+
+      expect(openDeleteModalSpy).toHaveBeenCalledOnce();
+    });
   });
 });
