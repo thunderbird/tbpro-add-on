@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { VueFinalModal } from 'vue-final-modal';
+import { modalZIndex } from './modalLayer';
 
 defineProps<{
   title?: string;
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   <VueFinalModal
     class="flex justify-center items-center"
     content-class="flex flex-col p-4 bg-white rounded border border-gray-100 pb-8 pt-2"
+    :z-index-fn="modalZIndex"
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
     <div class="flex items-center h-10 relative">
