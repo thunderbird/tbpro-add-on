@@ -1,4 +1,4 @@
-import config from '@send-frontend/config';
+import config, { type Environment } from '@send-frontend/config';
 
 // Anytime we try to access import.meta.env, we need to check if it's running on the client or server
 // This function will return true if it's running on the client
@@ -13,12 +13,13 @@ function isClientExecution(): boolean {
   }
 }
 
-// Build-MODE flags (Vite's own `MODE`) -- these say whether this bundle came out
-// of `vite dev` or a production build. They are NOT environment identity; for
-// "which deployment is this configured for", use getEnvName() below.
-export const IS_PROD = isClientExecution()
-  ? import.meta.env.MODE === 'production'
-  : false;
+// Build-MODE flag (Vite's own `MODE`) -- says whether this bundle came out of
+// `vite dev` or a production build. It is NOT environment identity; for "which
+// deployment is this configured for", use getEnvName() below.
+//
+// The matching IS_PROD was deleted with this refactor: it had no consumers, and
+// leaving an exported MODE-based `IS_PROD` next to an environment-based
+// `isProd` (config-store) invites reaching for the wrong one.
 export const IS_DEV = isClientExecution()
   ? import.meta.env.MODE === 'development'
   : false;
@@ -31,8 +32,8 @@ export const IS_DEV = isClientExecution()
  * so tb-dev silently yielded `undefined`, and an unset client URL threw a
  * TypeError. It now reads the explicit `APP_ENV` / `VITE_APP_ENV` value, which
  * can name any environment and always resolves to a string.
+ *
+ * Kept as a function (rather than collapsed into `config.appEnv`) only because
+ * `packages/addon` imports it and must not be modified.
  */
-export const getEnvName = (): string => {
-  isClientExecution();
-  return config.appEnv;
-};
+export const getEnvName = (): Environment => config.appEnv;

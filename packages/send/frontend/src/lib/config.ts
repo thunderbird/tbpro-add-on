@@ -14,6 +14,10 @@
  *
  * @param envVarObject - env bag: `process.env`, or the `loadEnv()` result when
  *   called from vite.config. Required, as before.
+ *
+ *   NOTE for the `loadEnv()` case: it returns ONLY `VITE_`-prefixed keys, so
+ *   neither `NODE_ENV` nor `MODE` is in it and the mode fallback below would be
+ *   unreachable. vite.config.js therefore merges `MODE` in at the call site.
  * @returns the declared environment name, or the build mode when none is declared
  */
 export const getEnvironmentName = (
@@ -29,7 +33,8 @@ export const getEnvironmentName = (
   }
 
   // Nothing declared: the build mode is the most an un-configured bundle can
-  // honestly say about itself. See the KNOWN GAP note on `config.appEnv`.
+  // honestly say about itself. Mirrors `resolveAppEnv()` in src/config.ts, so the
+  // Sentry release metadata and the runtime `environment` tag agree.
   return (envVarObject.NODE_ENV || envVarObject.MODE) === 'development'
     ? 'development'
     : 'production';

@@ -46,7 +46,7 @@ export type Environment =
 
 export type AppConfig = {
   /** Explicit environment name. Replaces every URL-substring `IS_PROD` guess. */
-  appEnv?: string;
+  appEnv?: Environment;
   sendServerUrl?: string;
   sendClientUrl?: string;
   oidcRootUrl?: string;
@@ -116,49 +116,77 @@ const buildEnv = {
 } as Record<keyof AppConfig, string | undefined>;
 
 /**
- * Last-resort defaults for the sibling-service URLs.
+ * Last-resort defaults for the sibling-service URLs, selected by `appEnv`.
  *
- * These exist only so the Thunderbird add-on keeps rendering working links: its
- * build bakes no sibling URLs, and `packages/addon` must not be modified. They
- * are the PRODUCTION URLs, because the overwhelming majority of shipped XPIs are
- * production ones and pointing a production user at a staging account page is
- * the worse failure.
+ * These exist because the Thunderbird add-on bakes no sibling URLs and
+ * `packages/addon` must not be modified: without a default set, an XPI would
+ * render `undefined` links.
  *
- * Every non-production deployment MUST therefore set these explicitly -- APP_*
- * at runtime on EKS, or VITE_* at build time elsewhere. See `.env.sample`.
+ * Two defaults per key, not one. Before this refactor the same choice was made
+ * by `BASE_URL.includes('send.tb.pro')`, so a non-production build got the
+ * `-stage` set -- and collapsing to a single production default would silently
+ * point the stage add-on and the stage web app at production accounts. Keying
+ * off the DECLARED environment keeps that behaviour while fixing the two things
+ * that were wrong with the old switch: the environment is now stated rather than
+ * guessed from a URL substring, and every value is individually overridable.
+ *
+ * Any environment other than `production` gets the non-production set. That is
+ * still only two sets, so an environment that is neither (e.g. `mzla-tb-dev`)
+ * MUST set these explicitly -- APP_* at runtime on EKS, or VITE_* at build time
+ * elsewhere. See `.env.sample`.
  */
-const SIBLING_URL_DEFAULTS = {
-  accountsUrl: 'https://accounts.tb.pro',
-  dashboardUrl: 'https://accounts.tb.pro/send/dashboard',
-  contactFormUrl: 'https://accounts.tb.pro/contact',
-  thundermailUrl: 'https://accounts.tb.pro/mail',
-  appointmentUrl: 'https://appointment.tb.pro/',
+/** Exported for `src/test/config.test.ts` only. */
+export const SIBLING_URL_DEFAULTS = {
+  production: {
+    accountsUrl: 'https://accounts.tb.pro',
+    dashboardUrl: 'https://accounts.tb.pro/send/dashboard',
+    contactFormUrl: 'https://accounts.tb.pro/contact',
+    thundermailUrl: 'https://accounts.tb.pro/mail',
+    appointmentUrl: 'https://appointment.tb.pro/',
+  },
+  nonProduction: {
+    accountsUrl: 'https://accounts-stage.tb.pro',
+    dashboardUrl: 'https://accounts-stage.tb.pro/send/dashboard',
+    // Was hard-coded to PRODUCTION for every environment before this change.
+    contactFormUrl: 'https://accounts-stage.tb.pro/contact',
+    thundermailUrl: 'https://accounts-stage.tb.pro/mail',
+    appointmentUrl: 'https://appointment-stage.tb.pro/',
+  },
 } as const;
 
-const siblingUrl = (key: keyof typeof SIBLING_URL_DEFAULTS): string =>
-  pick(runtime()[key], buildEnv[key]) || SIBLING_URL_DEFAULTS[key];
+type SiblingUrlKey = keyof (typeof SIBLING_URL_DEFAULTS)['production'];
+
+/**
+ * The declared environment name.
+ *
+ * Never inferred from a URL. When nothing is declared, the Vite build mode is
+ * the most an unconfigured bundle can honestly say about itself.
+ *
+ * Every build path that has an environment DOES declare one: the container reads
+ * `APP_ENV` (see `docker/docker-entrypoint.d/40-send-config.sh`), and for the
+ * S3/ECS and XPI builds `scripts/build.sh` derives and exports `VITE_APP_ENV`
+ * from the environment `merge.yml` selects. Left undeclared this returns
+ * `production`, which is why every deployment must declare it -- see the
+ * SIBLING_URL_DEFAULTS note above for what silently changes if it does not.
+ */
+const resolveAppEnv = (): Environment =>
+  pick(runtime().appEnv, buildEnv.appEnv) ||
+  (import.meta.env.DEV ? 'development' : 'production');
+
+const siblingUrl = (key: SiblingUrlKey): string =>
+  pick(runtime()[key], buildEnv[key]) ||
+  SIBLING_URL_DEFAULTS[
+    resolveAppEnv() === 'production' ? 'production' : 'nonProduction'
+  ][key];
 
 /**
  * Runtime config accessor. Each getter resolves at call time, so it reflects
  * whatever `/config.js` injected before the bundle loaded.
  */
 export const config = {
-  /**
-   * Explicit environment name -- never inferred from a URL. Unset builds fall
-   * back to the Vite build mode, which is the best a bundle with nothing baked
-   * in can say about itself.
-   *
-   * KNOWN GAP: `merge.yml` builds both the stage and the prod bundle with
-   * `mode=production` and does not (yet) set VITE_APP_ENV, so the stage bundle
-   * currently reports `production`. Those workflows are deliberately out of
-   * scope here; adding `VITE_APP_ENV=staging` to the stage matrix entry closes
-   * it without touching this file.
-   */
+  /** Explicit environment name. See `resolveAppEnv` above. */
   get appEnv(): Environment {
-    return (
-      pick(runtime().appEnv, buildEnv.appEnv) ||
-      (import.meta.env.DEV ? 'development' : 'production')
-    );
+    return resolveAppEnv();
   },
   get sendServerUrl() {
     return pick(runtime().sendServerUrl, buildEnv.sendServerUrl);
@@ -222,23 +250,40 @@ export const config = {
  * or `APP_SEND_SERVER_URL` was unset) would otherwise boot an SPA that renders
  * and then fails every request against `undefined/api/...`.
  *
- * The server URL is the one essential value: nothing in Send works without it.
+ * Two values are required, not one:
+ *
+ *   - `sendServerUrl` -- nothing in Send reaches the API without it.
+ *   - `sendClientUrl` -- `apps/common/constants.ts` exports it as `BASE_URL`,
+ *     and every share link is built as `${BASE_URL}/share/<id>`. Unset, the app
+ *     boots green (nginx keeps answering `GET /` with 200, so a readiness probe
+ *     on `/` stays happy) and hands users `undefined/share/<id>` links. The
+ *     share link IS the product, so this has to be fatal too.
+ *
+ * The OIDC pair is deliberately NOT required: `.env.sample` ships it empty, so
+ * requiring it would break `pnpm dev`.
  *
  * Call once at startup from the WEB APP entry only (`apps/send/send.js`). The
  * extension and management entries must NOT call it -- they run inside the XPI,
  * where there is no `/config.js` and the baked VITE_* values are the real
- * config. Dev, unit tests and the existing S3/ECS build all resolve
- * `sendServerUrl` through that fallback, so this only throws when it is truly
- * unset.
+ * config. Dev, unit tests and the existing S3/ECS build all resolve both values
+ * through that fallback, so this only throws when they are truly unset.
  */
 export const assertConfigured = (): void => {
-  if (!config.sendServerUrl) {
+  const missing = (
+    [
+      ['sendServerUrl', 'APP_SEND_SERVER_URL'],
+      ['sendClientUrl', 'APP_SEND_CLIENT_URL'],
+    ] as const
+  ).filter(([key]) => !config[key]);
+
+  if (missing.length > 0) {
+    const detail = missing
+      .map(([key, appVar]) => `${key} (set ${appVar})`)
+      .join(', ');
     console.error(
-      '[config] window.__APP_CONFIG__ is missing/empty (no /config.js?). The SPA is unconfigured.'
+      `[config] window.__APP_CONFIG__ is missing/empty (no /config.js?). The SPA is unconfigured: ${detail}`
     );
-    throw new Error(
-      'Send SPA is unconfigured: config.sendServerUrl is empty (check /config.js).'
-    );
+    throw new Error(`Send SPA is unconfigured: ${detail}. Check /config.js.`);
   }
 };
 

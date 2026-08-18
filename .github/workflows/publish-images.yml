@@ -15,8 +15,13 @@
 name: publish-images
 
 concurrency:
-  group: publish-images-${{ github.ref }}
-  # Serialize (don't cancel) so every merged commit's :<sha> image gets published.
+  # Keyed on the SHA, not the ref, ON PURPOSE. `cancel-in-progress: false` only
+  # protects a RUNNING run: GitHub cancels the PENDING run of a group when a newer
+  # one queues, so a ref-keyed group would drop the middle of three quick merges
+  # and never publish that commit's :<sha> images -- exactly the matched-set hole
+  # this workflow exists to close. Per-SHA groups never displace each other, and
+  # concurrent runs are safe because the per-arch pushes are by digest.
+  group: publish-images-${{ github.sha }}
   cancel-in-progress: false
 
 on:
@@ -27,10 +32,25 @@ on:
     # are NOT path-filtered against each other -- see the note on the jobs below.
     paths:
       - packages/send/**
+      # Workspace-level build inputs: deploy.dockerfile COPYs these and installs
+      # with --frozen-lockfile, so a lockfile-only security bump does change what
+      # is in the image. Without them here the promoted image would keep shipping
+      # the pre-bump dependency tree until the next packages/send commit.
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - package.json
+      - lerna.json
+      - nx.json
+      - .npmrc
+      - packages/addon/package.json
       - .github/workflows/publish-images.yml
       - .github/workflows/build-multiarch-image.yml
   workflow_dispatch:
 
+# MUST stay at workflow scope and MUST include packages: write. A reusable
+# workflow can only DOWNGRADE the caller's GITHUB_TOKEN permissions, so dropping
+# packages: write here would break the GHCR push inside
+# build-multiarch-image.yml no matter what that file declares.
 permissions:
   contents: read
   packages: write
@@ -42,6 +62,9 @@ jobs:
   # it, so a backend-only change still ships under the frontend's version.
   version:
     runs-on: ubuntu-latest
+    # This job publishes nothing, so it does not need packages: write.
+    permissions:
+      contents: read
     outputs:
       value: ${{ steps.read-version.outputs.value }}
     steps:
@@ -51,8 +74,15 @@ jobs:
         id: read-version
         run: |
           set -euo pipefail
+          # `jq -e` already exits non-zero on a missing or null .version, and
+          # `set -e` aborts on it; this only has to catch an empty string. Written
+          # as an if-block rather than `A && B || C`, which trips shellcheck
+          # SC2015 and fails the actionlint gate in validate-workflows.yml.
           v="$(jq -er .version packages/send/frontend/package.json)"
-          [ -n "$v" ] && [ "$v" != "null" ] || { echo "::error::empty/invalid version in packages/send/frontend/package.json"; exit 1; }
+          if [ -z "$v" ]; then
+            echo "::error::empty version in packages/send/frontend/package.json"
+            exit 1
+          fi
           echo "value=$v" >> "$GITHUB_OUTPUT"
 
   # Build BOTH images on every run so both always carry the same :<sha>. The
@@ -87,3 +117,37 @@ jobs:
       version: ${{ needs.version.outputs.value }}
       artifact-prefix: frontend
       moving-tags: ${{ github.ref == 'refs/heads/main' }}
+
+  # Assert the matched set actually landed.
+  #
+  # Tagging happens per image, in each caller's own `merge` job, and neither
+  # references the other. If one image's build fails and the other succeeds, the
+  # run publishes HALF a matched set under :<sha> -- and a Kargo Warehouse with
+  # two image subscriptions would then silently pair frontend@newSha with
+  # backend@oldSha, because both tags it picked resolve. Fail the run loudly
+  # instead, so the hole is visible here rather than in a promotion.
+  verify-matched-set:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    # Read-only: this job inspects manifests, it never pushes.
+    permissions:
+      packages: read
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Both :<sha> images resolve
+        env:
+          BACKEND: ${{ needs.backend.outputs.image }}
+          FRONTEND: ${{ needs.frontend.outputs.image }}
+        run: |
+          set -euo pipefail
+          for ref in "$BACKEND" "$FRONTEND"; do
+            echo "checking $ref"
+            docker buildx imagetools inspect "$ref" >/dev/null
+          done
+          echo "matched set OK: $BACKEND + $FRONTEND"

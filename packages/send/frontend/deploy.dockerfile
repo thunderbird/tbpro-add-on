@@ -64,14 +64,17 @@ RUN pnpm exec vite build --config vite.config.js
 # Source maps are built (vite.config.js sets sourcemap: true) but are not shipped
 # here: the ECS/S3 pipeline is what uploads them to Sentry, and serving them from
 # a public origin hands out readable source. The nginx conf 404s *.map as well.
-RUN find dist-web -name '*.map' -delete
+#
+# The `//# sourceMappingURL=` comments have to go with them, or every devtools
+# session on the pod 404s against that guard. Do NOT set `sourcemap: false` in
+# the shared vite.config.js instead: the ECS/S3 pipeline needs the maps to upload
+# to Sentry.
+RUN find dist-web -name '*.map' -delete \
+    && find dist-web -type f -name '*.js' \
+       -exec sed -i '/^\/\/# sourceMappingURL=/d' {} +
 
 
 FROM nginx:stable AS runtime
-
-# RELEASE_VERSION is passed by the shared build workflow for the backend image.
-# Declared (and unused) here so the frontend build does not warn about it.
-ARG RELEASE_VERSION
 
 # jq: used by the runtime-config entrypoint to emit a JSON-escaped config.js.
 RUN apt-get update \

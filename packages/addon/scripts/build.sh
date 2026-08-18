@@ -36,6 +36,8 @@ if [ "$ADDON_ENV" = "local" ]; then
     ### Keep local builds out of the shared Sentry / PostHog projects.
     : "${VITE_SENTRY_DSN:=}"
     : "${VITE_POSTHOG_PROJECT_KEY:=}"
+    ### Local means development, whatever the derivation below would have said.
+    : "${VITE_APP_ENV:=development}"
     export VITE_SEND_SERVER_URL VITE_SEND_CLIENT_URL \
         VITE_OIDC_CLIENT_ID VITE_OIDC_ROOT_URL \
         VITE_SENTRY_DSN VITE_POSTHOG_PROJECT_KEY
@@ -49,6 +51,49 @@ if [ "$ADDON_ENV" = "local" ]; then
     ### backend must still have SEND_BACKEND_CORS_ORIGINS set (it throws
     ### otherwise) and include $VITE_SEND_CLIENT_URL, and Thunderbird must trust
     ### the self-signed https://localhost cert (used for fetch + wss uploads).
+fi
+
+### Declare the environment this XPI is being built FOR. The Send SPA ships
+### inside this add-on and reads VITE_APP_ENV
+### (packages/send/frontend/src/config.ts) instead of guessing from a URL
+### substring. An extension has no /config.js to be configured from at runtime,
+### so the baked value is the ONLY configuration it will ever get.
+###
+### src/menu.ts and src/background.ts both branch on it (getEnvName() / isProd),
+### and background.ts derives THUNDERMAIL_HOST from it -- so leaving it
+### undeclared points a stage add-on at PRODUCTION Thundermail.
+###
+### merge.yml (frozen) passes the environment as $ENV ("stage"/"prod") plus
+### $BASE_URL. $BASE_URL is the same signal scripts/config.ts getIsEnvProd()
+### already uses to pick the XPI id, so the id and the environment name can never
+### disagree. This is a compatibility shim for that frozen workflow -- delete it
+### if merge.yml ever sets VITE_APP_ENV itself.
+###
+### Only derived when there is a real signal ($ENV or $BASE_URL). With neither,
+### VITE_APP_ENV is left ALONE rather than guessed -- an exported value would take
+### precedence over Vite's .env loading, so guessing here would silently override a
+### developer's own `VITE_APP_ENV=` in .env (which the shell cannot see).
+if [ -z "${VITE_APP_ENV:-}" ]; then
+    case "${ENV:-}" in
+        prod|production) VITE_APP_ENV=production ;;
+        stage|staging)   VITE_APP_ENV=staging ;;
+        dev|development) VITE_APP_ENV=development ;;
+        *)
+            case "${BASE_URL:-}" in
+                *https://send.tb.pro*) VITE_APP_ENV=production ;;
+                *send-stage.tb.pro*)   VITE_APP_ENV=staging ;;
+                *localhost*)           VITE_APP_ENV=development ;;
+            esac
+            ;;
+    esac
+fi
+if [ -n "${VITE_APP_ENV:-}" ]; then
+    ### Exported so Vite's loadEnv reads it from process.env, where VITE_* vars
+    ### take precedence over the .env file.
+    export VITE_APP_ENV
+    echo "  VITE_APP_ENV=$VITE_APP_ENV"
+else
+    echo "  VITE_APP_ENV not set and not derivable from \$ENV/\$BASE_URL; leaving it to .env"
 fi
 
 # Get version from package.json and replace dots with hyphens

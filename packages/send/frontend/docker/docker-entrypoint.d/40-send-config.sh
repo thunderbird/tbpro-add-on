@@ -18,8 +18,14 @@ CONFIG_PATH="${APP_CONFIG_PATH:-/usr/share/nginx/html/config.js}"
 
 # Build config.js with jq so every value is properly JSON-escaped: a value
 # containing a quote, a backslash or a newline cannot produce invalid JS or
-# inject code into the page.
-config_json="$(jq -n \
+# inject code into the page. `-a` forces ASCII output, which also escapes raw
+# U+2028/U+2029 -- legal inside a JS string literal only since ES2019.
+#
+# A value containing `</script>` is harmless here ONLY because config.js is an
+# EXTERNAL .js file, not inline HTML: there is no HTML parser to break out of. Do
+# NOT inline this into index.html -- that would turn every APP_* var into an XSS
+# vector.
+config_json="$(jq -n -a \
   --arg appEnv "${APP_ENV:-}" \
   --arg sendServerUrl "${APP_SEND_SERVER_URL:-}" \
   --arg sendClientUrl "${APP_SEND_CLIENT_URL:-}" \
@@ -51,12 +57,20 @@ config_json="$(jq -n \
 printf 'window.__APP_CONFIG__ = %s;\n' "$config_json" > "$CONFIG_PATH"
 echo "send: wrote runtime config to $CONFIG_PATH"
 
-# APP_SEND_SERVER_URL is the one value the SPA cannot boot without -- src/config.ts
-# assertConfigured() throws in the browser if it is empty. Say so here too, while
-# there is still a container log to read it in.
-if [ -z "${APP_SEND_SERVER_URL:-}" ]; then
-  echo "send: WARNING APP_SEND_SERVER_URL is unset; the SPA will fail to boot" >&2
-fi
+# The two values the SPA cannot boot without -- src/config.ts assertConfigured()
+# throws in the browser if either is empty. Say so here too, while there is still
+# a container log to read it in.
+#
+# APP_SEND_CLIENT_URL matters as much as the server URL: it becomes BASE_URL, and
+# every share link is `${BASE_URL}/share/<id>`. Unset, nginx still answers GET /
+# with 200 -- so a readiness probe on / stays green while every copied link reads
+# `undefined/share/...`.
+for required in APP_SEND_SERVER_URL APP_SEND_CLIENT_URL; do
+  eval "value=\${${required}:-}"
+  if [ -z "$value" ]; then
+    echo "send: WARNING $required is unset; the SPA will fail to boot" >&2
+  fi
+done
 
 # Point the nginx API/tRPC proxy at the backend. On EKS the backend is a SEPARATE
 # Service, so the baked default (send-backend:8080, for a compose/sidecar
@@ -69,6 +83,30 @@ fi
 # start would find no `send-backend:8080` left to replace and silently keep the
 # first value.
 if [ -n "${APP_API_UPSTREAM:-}" ]; then
+  # Validate before substituting. This value is interpolated into an nginx config
+  # by sed, so an unvalidated one is both a config-injection point and a
+  # silent-corruption point:
+  #   * `&` in the replacement expands to the whole matched text
+  #     ("a&b:8080" -> "asend-backend:8080b:8080");
+  #   * a `}` closes the location block and everything after it is parsed as
+  #     server-scope nginx directives;
+  #   * the likeliest operator mistake, a scheme ("http://send-backend:8080"),
+  #     produces `invalid port in upstream`.
+  # All three crash-loop rather than mis-serve, but failing here names the cause.
+  case "${APP_API_UPSTREAM}" in
+    *[!A-Za-z0-9.:_-]*)
+      echo "send: FATAL APP_API_UPSTREAM must be host:port with no scheme or path: '${APP_API_UPSTREAM}'" >&2
+      exit 1
+      ;;
+  esac
+  # The substitution is one-shot against the baked default, so assert the default
+  # is still there. If it is not, /etc/nginx/conf.d is not coming from the image
+  # layer (a mounted volume?) and this would otherwise silently keep the previous
+  # start's upstream.
+  if ! grep -q 'send-backend:8080' /etc/nginx/conf.d/default.conf; then
+    echo "send: FATAL upstream placeholder already replaced; is /etc/nginx/conf.d on a persistent volume?" >&2
+    exit 1
+  fi
   sed -i "s|send-backend:8080|${APP_API_UPSTREAM}|g" /etc/nginx/conf.d/default.conf
   echo "send: set API upstream to ${APP_API_UPSTREAM}"
 else
