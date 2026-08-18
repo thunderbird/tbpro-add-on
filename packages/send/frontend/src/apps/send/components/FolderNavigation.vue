@@ -66,6 +66,7 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
 }
 
 .upload-section {
+  flex: 1;
   padding-inline: 0.625rem;
 }
 
@@ -73,7 +74,7 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 9rem;
+  min-height: 24rem;
   text-align: center;
   font-size: 1.125rem;
   line-height: 1.75rem;
@@ -94,6 +95,19 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
   .folder-navigation {
     gap: 0;
     padding: 1rem;
+  }
+
+  /*
+    The bar is docked to the bottom of the viewport, so the tall drop zone the
+    desktop column grows into would swallow most of the screen. Keep it at the
+    compact height the docked bar was designed around.
+  */
+  .upload-section {
+    flex: none;
+  }
+
+  .upload-zone {
+    min-height: 9rem;
   }
 }
 

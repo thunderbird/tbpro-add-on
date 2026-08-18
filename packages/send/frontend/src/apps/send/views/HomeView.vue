@@ -152,7 +152,7 @@ onBeforeUnmount(teardownFooterWatch);
         v-if="showFileComponents"
         class="w-full sticky top-0 flex items-center justify-between px-4 py-2 bg-white/90 border-b border-gray-300"
       >
-        <span>{{ user.thundermailEmail }}</span>
+        <span class="text-sm text-gray-600">{{ user.thundermailEmail }}</span>
         <NewFolder />
       </header>
       <div class="flex flex-col gap-4 px-4 content-layout page-wrapper">
@@ -161,24 +161,21 @@ onBeforeUnmount(teardownFooterWatch);
     </main>
 
     <!--
-      Info panel. On desktop (md+) this is the original inline w-64 column. Below
-      md it becomes a full-screen overlay (z-[1000], above the app nav which is
-      z-999) with its own close control, so it no longer covers the file list's
-      action buttons or traps the user (see #977). The overlay classes are
-      `max-md:`-scoped, so desktop layout is unchanged from before #977.
+      Info panel. On desktop (md+) this is the inline w-64 column, mounted on
+      first selection. Below md it becomes a full-screen overlay (z-[1001],
+      above the app nav at z-999 and the docked upload bar at z-1000) with its
+      own close control, so it no longer covers the file list's action buttons
+      or traps the user (see #977). The overlay classes are `max-md:`-scoped,
+      so desktop layout is whatever FolderView's own layout pass made it.
 
-      The selection gate is deliberately mobile-only. On desktop this column is
-      part of the flow, so mounting it on first selection would narrow the file
-      table mid-interaction. Double-clicking a folder row to open it fires
-      `@click` before `@dblclick`, so that reflow used to slide the row's
-      delete button under the pointer between the two clicks and pop the
-      "Delete Folder?" modal instead of navigating. Keeping the column mounted
-      on desktop (as it was before #977) keeps the table width stable. Below md
-      the panel is `fixed`, hence out of flow, so gating it there costs nothing.
+      Mounting the desktop column on first selection reflows the table under
+      the cursor, which used to slide a row's delete button under the second
+      click of a double click. FolderView guards its row actions against that
+      directly (isStrayMultiClick), so the gate is safe on every viewport.
     -->
     <aside
-      v-if="showFileComponents && (!isMobile || hasSelection)"
-      class="w-64 border border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-0 max-md:z-[1001] max-md:w-full max-md:overflow-y-auto max-md:overflow-x-hidden max-md:border-0"
+      v-if="showFileComponents && hasSelection"
+      class="w-64 border-l border-gray-300 bg-gray-50 p-2.5 max-md:fixed max-md:inset-0 max-md:z-[1001] max-md:w-full max-md:overflow-y-auto max-md:overflow-x-hidden max-md:border-0"
     >
       <FileInfo v-if="folderStore.selectedFile" />
       <FolderInfo v-if="folderStore.selectedFolder" />
@@ -190,6 +187,7 @@ onBeforeUnmount(teardownFooterWatch);
 @import '@send-frontend/apps/common/tbpro-styles.css';
 .page-wrapper {
   margin: 0 auto;
+  width: 100%;
   max-width: 1200px;
 }
 </style>
