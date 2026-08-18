@@ -5,6 +5,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Thunderbird Send</title>
+
+    <!-- Runtime config: sets window.__APP_CONFIG__ BEFORE the app bundle loads.
+         Replaced per-environment at container start (not rebuilt); the committed
+         public/config.js is all-empty so every other build path falls back to
+         its baked VITE_* values. See src/config.ts.
+
+         In <head>, and synchronous (no defer/module), so it runs before the app
+         bundle no matter where Vite injects that: `vite build` hoists the module
+         script into <head>, so a copy of this tag placed in <body> would only
+         still win by virtue of module scripts being deferred. This ordering is
+         not worth leaving implicit.
+
+         WEB APP ONLY. index.extension.html and index.management.html must NOT
+         load this: they run inside the add-on XPI, which has no server to serve
+         /config.js from, so window.__APP_CONFIG__ stays undefined there and the
+         baked VITE_* fallback is what configures the extension. -->
+    <script src="/config.js"></script>
   </head>
   <body>
     <div id="app" class="w-full min-h-screen mx-auto"></div>

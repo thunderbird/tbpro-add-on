@@ -1,0 +1,89 @@
+---
+# Additive image-publish pipeline for the EKS/Kargo path. On merge to main it
+# builds the Send backend and the Send frontend (nginx SPA) as native multi-arch
+# (amd64 + arm64) manifest lists and pushes them to GHCR, tagged :<sha>,
+# :v<version> and :latest.
+#
+# This is INDEPENDENT of the existing deploy pipeline (merge.yml / release.yml):
+# it uses no cloud credentials, runs no Pulumi, touches no S3/ECS/ECR/ATN, and
+# deploys nothing -- it only publishes images. The stage/prod S3 + ECS builds and
+# the XPI builds are left exactly as they were.
+#
+# The frontend image is configured at RUNTIME (window.__APP_CONFIG__ via
+# /config.js), so one built bundle runs in every environment. See
+# packages/send/frontend/src/config.ts.
+name: publish-images
+
+concurrency:
+  group: publish-images-${{ github.ref }}
+  # Serialize (don't cancel) so every merged commit's :<sha> image gets published.
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+    # Add-on-only commits must not publish Send images. The two images themselves
+    # are NOT path-filtered against each other -- see the note on the jobs below.
+    paths:
+      - packages/send/**
+      - .github/workflows/publish-images.yml
+      - .github/workflows/build-multiarch-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # Read the version once. lerna.json is `independent` and the root package.json
+  # is 0.0.0, so neither is a usable source; packages/send/frontend/package.json
+  # is the version the backend also carries. NOTE: both images are published under
+  # it, so a backend-only change still ships under the frontend's version.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      value: ${{ steps.read-version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from packages/send/frontend/package.json
+        id: read-version
+        run: |
+          set -euo pipefail
+          v="$(jq -er .version packages/send/frontend/package.json)"
+          [ -n "$v" ] && [ "$v" != "null" ] || { echo "::error::empty/invalid version in packages/send/frontend/package.json"; exit 1; }
+          echo "value=$v" >> "$GITHUB_OUTPUT"
+
+  # Build BOTH images on every run so both always carry the same :<sha>. The
+  # matched-set invariant (Kargo Freight = {backend@sha, frontend@sha} for the
+  # exact HEAD sha) requires both :<sha> refs to exist, so the images are
+  # deliberately NOT path-filtered against each other inside this workflow.
+  # Moving tags (:latest, :v<version>) are published only from the main branch.
+  backend:
+    needs: version
+    uses: ./.github/workflows/build-multiarch-image.yml
+    with:
+      image: ghcr.io/thunderbird/thunderbird-send
+      dockerfile: packages/send/backend/Dockerfile
+      # The backend Dockerfile ADDs pnpm-lock.yaml, which lives at the repo root,
+      # so it needs the assembled .docker-build context that this script creates
+      # -- the same context merge.yml builds the ECR image from.
+      prepare-script: packages/send/backend/scripts/build.sh
+      context: packages/send/backend/.docker-build
+      version: ${{ needs.version.outputs.value }}
+      artifact-prefix: backend
+      moving-tags: ${{ github.ref == 'refs/heads/main' }}
+
+  frontend:
+    needs: version
+    uses: ./.github/workflows/build-multiarch-image.yml
+    with:
+      image: ghcr.io/thunderbird/thunderbird-send-frontend
+      dockerfile: packages/send/frontend/deploy.dockerfile
+      # Repo root: the SPA build needs the pnpm workspace (lockfile + every
+      # member's package.json), not just the frontend directory.
+      context: .
+      version: ${{ needs.version.outputs.value }}
+      artifact-prefix: frontend
+      moving-tags: ${{ github.ref == 'refs/heads/main' }}

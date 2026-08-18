@@ -1,3 +1,4 @@
+import config from '@send-frontend/config';
 import { getEnvName } from '@send-frontend/lib/clientConfig';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -30,10 +31,8 @@ export const useConfigStore = defineStore('config', () => {
     return __APP_NAME__ === 'addon';
   });
 
-  const _serverUrl = ref(import.meta.env.VITE_SEND_SERVER_URL);
-  const _isPublicLogin = ref(
-    import.meta.env.VITE_ALLOW_PUBLIC_LOGIN === 'true'
-  );
+  const _serverUrl = ref(config.sendServerUrl);
+  const _isPublicLogin = ref(config.allowPublicLogin === 'true');
 
   const serverUrl = computed(() => _serverUrl.value);
   const isPublicLogin = computed(() => _isPublicLogin.value);

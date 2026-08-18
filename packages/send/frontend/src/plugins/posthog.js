@@ -1,5 +1,6 @@
 //./plugins/posthog.js
 
+import config from '@send-frontend/config';
 import posthog from 'posthog-js';
 
 let initialized = false;
@@ -8,8 +9,8 @@ function initPosthog() {
   if (initialized) {
     return;
   }
-  posthog.init(import.meta.env.VITE_POSTHOG_PROJECT_KEY, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST,
+  posthog.init(config.posthogProjectKey, {
+    api_host: config.posthogHost,
     persistence: 'memory',
   });
   posthog.register({

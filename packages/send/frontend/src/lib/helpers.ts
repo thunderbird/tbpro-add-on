@@ -5,6 +5,7 @@ import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
 import { INIT_ERRORS } from '@send-frontend/apps/send/const';
 import init from '@send-frontend/lib/init';
 import { UserStoreType } from '@send-frontend/stores/user-store';
+import config from '@send-frontend/config';
 import { Canceler, JsonResponse } from '@send-frontend/types';
 
 import { RouteLocationNormalized } from 'vue-router';
@@ -28,7 +29,7 @@ export async function _download({
   progressTracker,
   id,
 }: DownloadOptions): Promise<Blob> {
-  const endpoint = `${import.meta.env.VITE_SEND_SERVER_URL}/api/download`;
+  const endpoint = `${config.sendServerUrl}/api/download`;
   const xhr = new XMLHttpRequest();
   const { setProgress } = progressTracker;
   xhr.onprogress = (event) => {
@@ -65,7 +66,7 @@ export async function _upload(
   encryptedSize: number = -1,
   { canceler = {} as Canceler, progressTracker }: Options
 ): Promise<JsonResponse> {
-  let host = import.meta.env.VITE_SEND_SERVER_URL;
+  let host = config.sendServerUrl;
   if (host) {
     host = host.split('//')[1];
   } else {
@@ -274,15 +275,17 @@ export const UPLOAD_ABORTED = 'UPLOAD_ABORTED';
 // Upload PUT retry policy. The hard B2 failures seen in production
 // (Sentry SEND-SUITE-FRONTEND-24H) are multi-minute stalls, so we retry a
 // handful of times with exponentially-growing, jittered delays to widen the
-// recovery window before giving up. Defaults are overridable via Vite env
-// vars — note these are baked in at build time, so a change still needs a
-// frontend deploy; they exist for tuning, not live runtime config.
+// recovery window before giving up. Defaults are overridable per environment
+// via APP_UPLOAD_HTTP_RETRY_* (container runtime config) or the corresponding
+// VITE_* vars (baked, for dev / the S3 build / the add-on XPI) -- note these are
+// read once at module load, so a change still needs a pod restart or a rebuild;
+// they exist for tuning, not live reconfiguration.
 // UPLOAD_HTTP_RETRY_LIMIT is the number of *retries*; total attempts is
 // limit + 1 (default 3 retries => 4 attempts).
 export const UPLOAD_HTTP_RETRY_LIMIT: number =
-  Number(import.meta.env.VITE_UPLOAD_HTTP_RETRY_LIMIT) || 3;
+  Number(config.uploadHttpRetryLimit) || 3;
 export const UPLOAD_HTTP_RETRY_BASE_DELAY_MS: number =
-  Number(import.meta.env.VITE_UPLOAD_HTTP_RETRY_BASE_DELAY_MS) || 1000;
+  Number(config.uploadHttpRetryBaseDelayMs) || 1000;
 
 /**
  * Exponential backoff with jitter for the upload PUT retry schedule:

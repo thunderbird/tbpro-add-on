@@ -74,14 +74,20 @@ export const useExtensionStore = defineStore('extension', () => {
 
     // accountId: ${id}
     // SERVER: ${SERVER}
-    // currentServerUrl.value: ${serverUrl.value}
+    // currentServerUrl: ${serverUrl}
 
     // `);
 
+    // `serverUrl` is a plain string, NOT a ref: destructuring a Pinia store
+    // unwraps its refs. It used to be read as `serverUrl.value`, which is
+    // `undefined` -- so the cloudFile account was configured with no server and
+    // `setServerUrl` below wiped the store's URL. That went unnoticed because
+    // `import.meta.env.VITE_SEND_SERVER_URL` typed as `any`; moving the value
+    // behind the typed runtime config surfaced it.
     return browser.storage.local
       .set({
         [id]: {
-          [SERVER]: serverUrl.value,
+          [SERVER]: serverUrl,
         },
       })
       .catch((error) => {
@@ -89,7 +95,7 @@ export const useExtensionStore = defineStore('extension', () => {
       })
       .then(() => {
         setAccountConfigured(id);
-        setServerUrl(serverUrl.value);
+        setServerUrl(serverUrl);
         // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         DEBUG &&
           browser.storage.local.get(id).then((accountInfo) => {

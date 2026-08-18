@@ -1,12 +1,12 @@
 import * as Sentry from '@sentry/vue';
-import { getEnvironmentName } from './config';
+import config from '@send-frontend/config';
 
 type App = ReturnType<typeof import('vue').createApp>;
 
 const TRACING_LEVELS_PROD = ['error', 'warn'];
 const TRACING_LEVELS_DEV = ['error', 'warn', 'debug'];
 
-const isProduction = import.meta.env.MODE === 'production';
+const isProduction = config.appEnv === 'production';
 
 /**
  * Drops the query string and fragment from a URL. Send access links carry the
@@ -71,7 +71,7 @@ export const initSentry = (app: App) => {
 
   Sentry.init({
     app,
-    dsn: import.meta.env.VITE_SENTRY_DSN,
+    dsn: config.sentryDsn,
     integrations: [
       Sentry.browserTracingIntegration(),
       // Session Replay is intentionally NOT enabled: it records DOM contents
@@ -87,7 +87,7 @@ export const initSentry = (app: App) => {
     tracesSampleRate: 0.5,
     // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
     // tracePropagationTargets: ['localhost', /^https:\/\/yourserver\.io\/api/],
-    environment: import.meta.env.MODE,
+    environment: config.appEnv,
     // Privacy hardening: never attach default PII, scrub user identity /
     // request payloads from outgoing events, and strip access-link secrets and
     // tokens from auto-captured breadcrumb URLs.
@@ -96,7 +96,7 @@ export const initSentry = (app: App) => {
     beforeBreadcrumb: scrubBreadcrumb,
   });
 
-  Sentry.setTag('environmentName', getEnvironmentName(import.meta.env));
+  Sentry.setTag('environmentName', config.appEnv);
   initialized = true;
 };
 
