@@ -12,6 +12,13 @@
 #
 # Values come from APP_* env (ConfigMap / ExternalSecrets on EKS). Anything left
 # unset is written as an empty string, and src/config.ts treats empty as unset.
+#
+# NAMESPACE NOTE: every APP_* var this script reads is emitted into the
+# publicly-served config.js, with exactly two exceptions -- APP_CONFIG_PATH and
+# APP_API_UPSTREAM below configure the entrypoint/nginx themselves and never
+# reach the browser. Keep it that way: a new APP_* var must be either clearly
+# public SPA config (add it to the jq object AND src/config.ts AND
+# public/config.js) or renamed out of the pattern.
 set -eu
 
 CONFIG_PATH="${APP_CONFIG_PATH:-/usr/share/nginx/html/config.js}"
@@ -71,6 +78,13 @@ for required in APP_SEND_SERVER_URL APP_SEND_CLIENT_URL; do
     echo "send: WARNING $required is unset; the SPA will fail to boot" >&2
   fi
 done
+
+# Not fatal (the SPA still boots), but an undeclared environment silently
+# resolves to the non-production fallback in src/config.ts -- staging sibling
+# URLs, environment "staging" in Sentry. Name the cause in the container log.
+if [ -z "${APP_ENV:-}" ]; then
+  echo "send: WARNING APP_ENV is unset; the SPA will report a fallback environment (staging) and use the -stage sibling-service URLs" >&2
+fi
 
 # Point the nginx API/tRPC proxy at the backend. On EKS the backend is a SEPARATE
 # Service, so the baked default (send-backend:8080, for a compose/sidecar

@@ -6,7 +6,13 @@ type App = ReturnType<typeof import('vue').createApp>;
 const TRACING_LEVELS_PROD = ['error', 'warn'];
 const TRACING_LEVELS_DEV = ['error', 'warn', 'debug'];
 
-const isProduction = config.appEnv === 'production';
+// Gates the console-capture levels on the BUILD MODE, exactly as before this
+// refactor: every deployed bundle (stage included) is a production-mode build,
+// so only `vite dev` ships debug-level console capture. Keying this on
+// `config.appEnv` instead would silently flip staging to the DEV level set and
+// start forwarding every console.debug from stage to Sentry. The environment
+// IDENTITY (tags below) does come from config.appEnv.
+const isProductionMode = !import.meta.env.DEV;
 
 /**
  * Drops the query string and fragment from a URL. Send access links carry the
@@ -80,7 +86,7 @@ export const initSentry = (app: App) => {
       // statements, not auto-captured user data. Auto-captured breadcrumbs are
       // scrubbed via beforeBreadcrumb below.
       Sentry.captureConsoleIntegration({
-        levels: isProduction ? TRACING_LEVELS_PROD : TRACING_LEVELS_DEV,
+        levels: isProductionMode ? TRACING_LEVELS_PROD : TRACING_LEVELS_DEV,
       }),
     ],
     // Performance Monitoring

@@ -18,3 +18,8 @@
 **/.env
 **/.env.*
 !**/.env.sample
+# Everything in public/ is copied wholesale and served verbatim from the web
+# root, so keep the classic secret-material extensions out of local builds.
+**/*.pem
+**/*.key
+**/*.p12

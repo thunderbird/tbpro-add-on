@@ -7,47 +7,11 @@ else
     echo 'Starting development build 🐣'
 fi
 
-### Declare the environment the bundle is being built FOR (src/config.ts reads
-### VITE_APP_ENV; see the SIBLING_URL_DEFAULTS note there for what changes).
-###
-### The SPA no longer guesses its environment from a URL substring, so the
-### environment has to be stated. On the EKS/container path the pod states it
-### (APP_ENV -> /config.js) and nothing here applies. The S3/ECS and XPI builds
-### are driven by .github/workflows/merge.yml, which is frozen and passes the
-### environment only as $ENV ("stage"/"prod") and $BASE_URL -- so map it here,
-### once, at build time.
-###
-### $BASE_URL is the same signal scripts/config.ts getIsEnvProd() already uses to
-### pick the XPI id and display name, deliberately: the environment name and the
-### XPI id can then never disagree. This block is a compatibility shim for the
-### two frozen workflows -- delete it if they ever set VITE_APP_ENV themselves.
-###
-### Only derived when there is a real signal ($ENV or $BASE_URL). With neither,
-### VITE_APP_ENV is left ALONE rather than guessed -- an exported value would take
-### precedence over Vite's .env loading, so guessing here would silently override a
-### developer's own `VITE_APP_ENV=` in .env (which the shell cannot see).
-if [ -z "${VITE_APP_ENV:-}" ]; then
-    case "${ENV:-}" in
-        prod|production) VITE_APP_ENV=production ;;
-        stage|staging)   VITE_APP_ENV=staging ;;
-        dev|development) VITE_APP_ENV=development ;;
-        *)
-            case "${BASE_URL:-}" in
-                *https://send.tb.pro*) VITE_APP_ENV=production ;;
-                *send-stage.tb.pro*)   VITE_APP_ENV=staging ;;
-                *localhost*)           VITE_APP_ENV=development ;;
-            esac
-            ;;
-    esac
-fi
-if [ -n "${VITE_APP_ENV:-}" ]; then
-    ### Exported so Vite's loadEnv reads it from process.env, where VITE_* vars
-    ### take precedence over the .env file.
-    export VITE_APP_ENV
-    echo "  VITE_APP_ENV=$VITE_APP_ENV"
-else
-    echo "  VITE_APP_ENV not set and not derivable from \$ENV/\$BASE_URL; leaving it to .env"
-fi
+### Declare the environment the bundle is being built FOR. Shared with the
+### add-on build -- see the rationale in derive-app-env.sh. On the
+### EKS/container path the pod states the environment (APP_ENV -> /config.js)
+### and nothing here applies.
+. "$(dirname "$0")/derive-app-env.sh"
 
 # Get version from package.json and replace dots with hyphens
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')

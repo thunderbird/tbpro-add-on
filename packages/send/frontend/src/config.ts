@@ -86,8 +86,17 @@ const runtime = (): AppConfig =>
 const pick = (
   runtimeVal: string | undefined,
   envVal: string | undefined
-): string | undefined =>
-  runtimeVal !== undefined && runtimeVal !== '' ? runtimeVal : envVal;
+): string | undefined => {
+  // config.js is an operator-editable contract, so tolerate a hand-authored
+  // non-string (e.g. an unquoted `allowPublicLogin: true` out of a Helm
+  // template) by coercing it: `String(true)` keeps the `=== 'true'` checks
+  // working, where the raw boolean would silently fail them.
+  const runtimeStr =
+    runtimeVal === undefined || runtimeVal === null
+      ? undefined
+      : String(runtimeVal);
+  return runtimeStr !== undefined && runtimeStr !== '' ? runtimeStr : envVal;
+};
 
 // Each fallback is written as a literal `import.meta.env.VITE_*` member
 // expression on purpose: that exact text is what Vite statically replaces at
@@ -113,7 +122,9 @@ const buildEnv = {
   contactFormUrl: import.meta.env.VITE_CONTACT_FORM_URL,
   thundermailUrl: import.meta.env.VITE_THUNDERMAIL_URL,
   appointmentUrl: import.meta.env.VITE_APPOINTMENT_URL,
-} as Record<keyof AppConfig, string | undefined>;
+  // `satisfies` (not `as`): a field added to AppConfig without a matching
+  // VITE_* entry here must fail to compile, not silently lose its fallback.
+} satisfies Record<keyof AppConfig, string | undefined>;
 
 /**
  * Last-resort defaults for the sibling-service URLs, selected by `appEnv`.
@@ -159,19 +170,26 @@ type SiblingUrlKey = keyof (typeof SIBLING_URL_DEFAULTS)['production'];
 /**
  * The declared environment name.
  *
- * Never inferred from a URL. When nothing is declared, the Vite build mode is
- * the most an unconfigured bundle can honestly say about itself.
+ * Never inferred from a URL. Every build path that has an environment DOES
+ * declare one: the container reads `APP_ENV` (see
+ * `docker/docker-entrypoint.d/40-send-config.sh`), and for the S3/ECS and XPI
+ * builds `scripts/build.sh` derives and exports `VITE_APP_ENV` from the
+ * environment `merge.yml` selects.
  *
- * Every build path that has an environment DOES declare one: the container reads
- * `APP_ENV` (see `docker/docker-entrypoint.d/40-send-config.sh`), and for the
- * S3/ECS and XPI builds `scripts/build.sh` derives and exports `VITE_APP_ENV`
- * from the environment `merge.yml` selects. Left undeclared this returns
- * `production`, which is why every deployment must declare it -- see the
- * SIBLING_URL_DEFAULTS note above for what silently changes if it does not.
+ * The undeclared fallback MUST be non-production, because `production` is the
+ * one value consumers act dangerously on: `packages/addon/src/background.ts`
+ * derives THUNDERMAIL_HOST from it (a token is sent to that host) and
+ * `menu.ts`/SIBLING_URL_DEFAULTS pick the production accounts stack. The old
+ * URL-sniffing code failed the same way (unknown URL -> not production), so a
+ * stale checkout whose `.env` predates VITE_APP_ENV keeps its non-production
+ * behaviour instead of silently flipping to production endpoints. `staging`
+ * also matches what the old `getEnvironmentName` returned for an undeclared
+ * non-dev build. A production deploy that forgets to declare fails safe --
+ * visibly, with `-stage` sibling links -- rather than dangerously.
  */
 const resolveAppEnv = (): Environment =>
   pick(runtime().appEnv, buildEnv.appEnv) ||
-  (import.meta.env.DEV ? 'development' : 'production');
+  (import.meta.env.DEV ? 'development' : 'staging');
 
 const siblingUrl = (key: SiblingUrlKey): string =>
   pick(runtime()[key], buildEnv[key]) ||
@@ -283,6 +301,16 @@ export const assertConfigured = (): void => {
     console.error(
       `[config] window.__APP_CONFIG__ is missing/empty (no /config.js?). The SPA is unconfigured: ${detail}`
     );
+    // The throw below leaves a blank 200 page (nginx keeps serving GET / fine,
+    // so probes stay green). Put the failure where a human can see it, not
+    // only in devtools.
+    const mount =
+      typeof document !== 'undefined' ? document.getElementById('app') : null;
+    if (mount) {
+      mount.textContent =
+        'Thunderbird Send is not configured on this server. ' +
+        'An administrator needs to check the deployment (missing runtime config).';
+    }
     throw new Error(`Send SPA is unconfigured: ${detail}. Check /config.js.`);
   }
 };

@@ -42,7 +42,11 @@ RUN pnpm install --frozen-lockfile --filter send-frontend
 # drag in a developer's local node_modules (wrong platform, and it would clobber
 # the install above) and -- worse -- a local .env, which vite would bake into the
 # bundle and silently defeat the runtime config. Listing the inputs makes both
-# impossible.
+# impossible for the enumerated files. CAVEAT: `src` and `public` below are
+# still whole-directory copies, and everything in public/ is served verbatim
+# from the web root -- a stray local file in public/ WILL ship in a locally
+# built image (deploy.dockerfile.dockerignore catches the common cases; CI
+# builds from a clean checkout are unaffected).
 COPY packages/send/frontend/index.html ./packages/send/frontend/
 COPY packages/send/frontend/vite.config.js ./packages/send/frontend/
 COPY packages/send/frontend/sharedViteConfig.ts ./packages/send/frontend/
@@ -71,14 +75,24 @@ RUN pnpm exec vite build --config vite.config.js
 # to Sentry.
 RUN find dist-web -name '*.map' -delete \
     && find dist-web -type f -name '*.js' \
-       -exec sed -i '/^\/\/# sourceMappingURL=/d' {} +
+       -exec sed -i '/^\/\/# sourceMappingURL=/d' {} + \
+    && find dist-web -type f -name '*.css' \
+       -exec sed -i 's|/\*# sourceMappingURL=[^*]*\*/||' {} +
 
 
-FROM nginx:stable AS runtime
+# Pinned like the build stage's node:22.14.0, and for a sharper reason here:
+# `stable` jumps whole minor versions when upstream promotes one, this image
+# seds nginx.conf and relies on the base image's conf.d/docker-entrypoint.d
+# layout (which has already moved once -- see the pid-path note below), and the
+# two arches are built by independent jobs that each resolve the tag themselves,
+# so a floating tag can stitch a manifest list with two different nginx
+# versions. Bump deliberately; the sed assertions below catch layout drift.
+FROM nginx:1.28.3 AS runtime
 
 # jq: used by the runtime-config entrypoint to emit a JSON-escaped config.js.
+# curl: used by the HEALTHCHECK below.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends jq \
+    && apt-get install -y --no-install-recommends jq curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Replace the stock server block. Keeping the filename `default.conf` matters:
@@ -106,9 +120,19 @@ RUN cp /etc/nginx/conf.d/default.conf /tmp/default.conf \
 
 # Run unprivileged. `user nginx;` is dropped because it is meaningless (and warns)
 # when the master process is not root, and the pid file has to move out of
-# root-owned /run. The entrypoint needs to write config.js into the web root and
-# sed the proxy upstream in conf.d, and nginx needs its temp dirs, hence the
-# chowns.
+# root-owned /run. nginx needs its temp dirs, hence the /var/cache/nginx chown.
+#
+# The writable surface is kept MINIMAL: the web root stays root-owned and
+# read-only to the runtime user (a compromised worker must not be able to
+# rewrite the served bundle) -- only the two files the entrypoint actually
+# rewrites are handed to nginx: config.js (written with `>`, which needs write
+# on the FILE only; it exists because dist-web ships the committed all-empty
+# public/config.js) and conf.d (`sed -i` renames a temp file, so it needs write
+# on the DIRECTORY).
+#
+# NOTE: this image does NOT support `readOnlyRootFilesystem: true` -- the
+# entrypoint writes config.js and seds conf.d in place, and mounting conf.d as
+# an emptyDir is deliberately rejected by the entrypoint's placeholder guard.
 #
 # Both rewrites are ASSERTED. The pid path is matched on the directive rather
 # than a literal path because the base image has used both /var/run/nginx.pid and
@@ -118,9 +142,17 @@ RUN sed -i '/^user  *nginx;/d' /etc/nginx/nginx.conf \
     && sed -i -E 's|^(pid[[:space:]]+).*;|\1/tmp/nginx.pid;|' /etc/nginx/nginx.conf \
     && ! grep -qE '^user[[:space:]]' /etc/nginx/nginx.conf \
     && grep -qE '^pid[[:space:]]+/tmp/nginx\.pid;' /etc/nginx/nginx.conf \
-    && chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /etc/nginx/conf.d
+    && chown -R nginx:nginx /var/cache/nginx /etc/nginx/conf.d \
+    && chown nginx:nginx /usr/share/nginx/html/config.js
 USER nginx
 
 # 8080, not 80: an unprivileged process cannot bind below 1024. The Service /
 # target port must match (see `listen 8080` in docker/etc/nginx/conf.d/send.conf).
 EXPOSE 8080
+
+# Kubernetes ignores this (probes are configured on the Deployment -- put
+# readiness on an /api/ path, see the STARTUP ORDERING note in send.conf), but
+# the image is also published to GHCR for plain Docker/Compose consumers, who
+# otherwise get no health signal at all.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+    CMD curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1

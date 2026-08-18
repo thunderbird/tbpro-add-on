@@ -1,3 +1,4 @@
+import config from '@send-frontend/config';
 import { trpc } from './trpc';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -97,12 +98,17 @@ export class ApiConnection {
     if (process.env.NODE_ENV === 'test') {
       return true;
     }
-    // In production, bucket storage is always assumed true — skip the network call.
-    if (import.meta.env.MODE === 'production') {
+    // In production, bucket storage is always assumed true — skip the network
+    // call. Keyed on the declared ENVIRONMENT, not Vite's MODE: the container
+    // image is built once in production mode and configured per environment at
+    // runtime, so a MODE check would hard-code the assumption into every
+    // runtime-configured dev/stage deployment whose backend may use
+    // filesystem storage.
+    if (config.appEnv === 'production') {
       return true;
     } else {
-      // Only in development do we query the backend,
-      // which may be configured with filesystem storage instead.
+      // Outside production, query the backend, which may be configured with
+      // filesystem storage instead.
       const { isBucketStorage } = await trpc.getStorageType.query();
       return isBucketStorage;
     }

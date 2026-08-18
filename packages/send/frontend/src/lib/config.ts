@@ -18,7 +18,8 @@
  *   NOTE for the `loadEnv()` case: it returns ONLY `VITE_`-prefixed keys, so
  *   neither `NODE_ENV` nor `MODE` is in it and the mode fallback below would be
  *   unreachable. vite.config.js therefore merges `MODE` in at the call site.
- * @returns the declared environment name, or the build mode when none is declared
+ * @returns the declared environment name, or a mode-derived non-production
+ *   fallback (`development`/`staging`) when none is declared
  */
 export const getEnvironmentName = (
   envVarObject: Record<string, string | undefined>
@@ -32,12 +33,14 @@ export const getEnvironmentName = (
     return declared;
   }
 
-  // Nothing declared: the build mode is the most an un-configured bundle can
-  // honestly say about itself. Mirrors `resolveAppEnv()` in src/config.ts, so the
-  // Sentry release metadata and the runtime `environment` tag agree.
+  // Nothing declared: fall back to a NON-production name, mirroring
+  // `resolveAppEnv()` in src/config.ts (so the Sentry release metadata and the
+  // runtime `environment` tag agree) -- see the fail-safe rationale there.
+  // `staging` is also what this function returned for an undeclared non-dev
+  // build before the refactor.
   return (envVarObject.NODE_ENV || envVarObject.MODE) === 'development'
     ? 'development'
-    : 'production';
+    : 'staging';
 };
 
 export const TRPC_WS_PATH = `/trpc/ws`;

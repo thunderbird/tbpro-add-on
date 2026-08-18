@@ -199,9 +199,22 @@ jobs:
           count="$(find . -type f | wc -l)"
           [ "$count" -eq 2 ] || { echo "::error::expected 2 arch digests, found $count"; exit 1; }
           # Always publish the immutable :<sha>; add moving tags only from main.
+          #
+          # HEAD GUARD: concurrency groups are per-SHA, so two merges' runs
+          # race freely, and without this check a SLOWER run for an OLDER
+          # commit would re-point :latest / :v<version> backwards after the
+          # newer commit already tagged them. Moving tags are only applied
+          # while this run's SHA is still the head of the branch; the
+          # immutable :<sha> is published either way, so the matched-set
+          # invariant is unaffected.
           tags="-t ${IMAGE}:${SHA}"
           if [ "$MOVING_TAGS" = "true" ]; then
-            tags="$tags -t ${IMAGE}:v${VERSION} -t ${IMAGE}:latest"
+            head="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" "$GITHUB_REF" | cut -f1)"
+            if [ "$head" = "$SHA" ]; then
+              tags="$tags -t ${IMAGE}:v${VERSION} -t ${IMAGE}:latest"
+            else
+              echo "::notice::skipping moving tags: $GITHUB_REF is now at ${head:-<unknown>}, not ${SHA}"
+            fi
           fi
           # imagetools create references digests already in GHCR (no rebuild/re-push).
           # shellcheck disable=SC2046,SC2086

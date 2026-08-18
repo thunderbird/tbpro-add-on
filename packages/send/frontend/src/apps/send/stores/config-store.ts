@@ -61,7 +61,9 @@ export const useConfigStore = defineStore('config', () => {
 
     // Fallback for non-extension contexts (web app / tests) where there is no
     // runtime id available.
-    if (serverUrl.value.includes('send-backend.tb.pro')) {
+    // `?.`: sendServerUrl is `string | undefined`; an unset value must pick
+    // the stage id, not throw.
+    if (serverUrl.value?.includes('send-backend.tb.pro')) {
       return 'ext-tbpro-add-on@thunderbird.net';
     } else {
       return 'ext-tbpro-addon-stage@thunderbird.net';

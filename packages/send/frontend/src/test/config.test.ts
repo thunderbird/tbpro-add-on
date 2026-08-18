@@ -9,6 +9,43 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // an explicit record when looking a key up by name.
 const env = import.meta.env as unknown as Record<string, string | undefined>;
 
+// Guard the near-identical getters against copy-paste / rebase errors: each key
+// must prefer its runtime value AND fall back to its OWN VITE_* env var (every
+// one pinned to a distinct sentinel in vitest.config.js `define`, so a crossed
+// fallback produces a mismatched value instead of `undefined === undefined`).
+//
+// This list must stay in lockstep with `buildEnv` in src/config.ts, the key list
+// in the committed public/config.js, and the jq object in
+// docker/docker-entrypoint.d/40-send-config.sh.
+const PLAIN_KEYS: Array<[keyof typeof config, string]> = [
+  ['sendServerUrl', 'VITE_SEND_SERVER_URL'],
+  ['sendClientUrl', 'VITE_SEND_CLIENT_URL'],
+  ['oidcRootUrl', 'VITE_OIDC_ROOT_URL'],
+  ['oidcClientId', 'VITE_OIDC_CLIENT_ID'],
+  ['allowPublicLogin', 'VITE_ALLOW_PUBLIC_LOGIN'],
+  ['sentryDsn', 'VITE_SENTRY_DSN'],
+  ['posthogProjectKey', 'VITE_POSTHOG_PROJECT_KEY'],
+  ['posthogHost', 'VITE_POSTHOG_HOST'],
+  ['splitSizeInMb', 'VITE_SPLIT_SIZE_IN_MB'],
+  ['loggerLevel', 'VITE_LOGGER_LEVEL'],
+  ['uploadHttpRetryLimit', 'VITE_UPLOAD_HTTP_RETRY_LIMIT'],
+  ['uploadHttpRetryBaseDelayMs', 'VITE_UPLOAD_HTTP_RETRY_BASE_DELAY_MS'],
+];
+
+// One table for all four sibling-URL test sites, so a key added to one list
+// cannot silently lose coverage in another.
+const SIBLING_KEYS: Array<
+  [keyof typeof SIBLING_URL_DEFAULTS.production, string]
+> = [
+  ['accountsUrl', 'VITE_ACCOUNTS_URL'],
+  ['dashboardUrl', 'VITE_DASHBOARD_URL'],
+  ['contactFormUrl', 'VITE_CONTACT_FORM_URL'],
+  ['thundermailUrl', 'VITE_THUNDERMAIL_URL'],
+  ['appointmentUrl', 'VITE_APPOINTMENT_URL'],
+];
+
+const ALL_KEYS = [...PLAIN_KEYS, ...SIBLING_KEYS, ['appEnv', 'VITE_APP_ENV']];
+
 describe('runtime config accessor', () => {
   afterEach(() => {
     delete window.__APP_CONFIG__;
@@ -49,41 +86,6 @@ describe('runtime config accessor', () => {
     expect(config.sendServerUrl).toBe(import.meta.env.VITE_SEND_SERVER_URL);
   });
 
-  // Guard the near-identical getters against copy-paste / rebase errors: each key
-  // must prefer its runtime value AND fall back to its OWN VITE_* env var. A
-  // mistyped fallback would otherwise be invisible -- it would just silently
-  // resolve to the wrong value in every environment with the suite still green.
-  //
-  // This list must stay in lockstep with `buildEnv` in src/config.ts, the key list
-  // in the committed public/config.js, and the jq object in
-  // docker/docker-entrypoint.d/40-send-config.sh.
-  const PLAIN_KEYS: Array<[keyof typeof config, string]> = [
-    ['sendServerUrl', 'VITE_SEND_SERVER_URL'],
-    ['sendClientUrl', 'VITE_SEND_CLIENT_URL'],
-    ['oidcRootUrl', 'VITE_OIDC_ROOT_URL'],
-    ['oidcClientId', 'VITE_OIDC_CLIENT_ID'],
-    ['allowPublicLogin', 'VITE_ALLOW_PUBLIC_LOGIN'],
-    ['sentryDsn', 'VITE_SENTRY_DSN'],
-    ['posthogProjectKey', 'VITE_POSTHOG_PROJECT_KEY'],
-    ['posthogHost', 'VITE_POSTHOG_HOST'],
-    ['splitSizeInMb', 'VITE_SPLIT_SIZE_IN_MB'],
-    ['loggerLevel', 'VITE_LOGGER_LEVEL'],
-    ['uploadHttpRetryLimit', 'VITE_UPLOAD_HTTP_RETRY_LIMIT'],
-    ['uploadHttpRetryBaseDelayMs', 'VITE_UPLOAD_HTTP_RETRY_BASE_DELAY_MS'],
-  ];
-
-  const SIBLING_KEYS: Array<
-    [keyof typeof SIBLING_URL_DEFAULTS.production, string]
-  > = [
-    ['accountsUrl', 'VITE_ACCOUNTS_URL'],
-    ['dashboardUrl', 'VITE_DASHBOARD_URL'],
-    ['contactFormUrl', 'VITE_CONTACT_FORM_URL'],
-    ['thundermailUrl', 'VITE_THUNDERMAIL_URL'],
-    ['appointmentUrl', 'VITE_APPOINTMENT_URL'],
-  ];
-
-  const ALL_KEYS = [...PLAIN_KEYS, ...SIBLING_KEYS, ['appEnv', 'VITE_APP_ENV']];
-
   it.each(ALL_KEYS)('runtime value wins for %s', (key) => {
     window.__APP_CONFIG__ = { [key]: `rt-${key}` };
     expect(config[key as keyof typeof config]).toBe(`rt-${key}`);
@@ -106,6 +108,19 @@ describe('runtime config accessor', () => {
       expect(config[key]).toBe(env[envVar]);
     }
   );
+
+  // config.js is an operator-editable contract: a hand-authored (e.g.
+  // Helm-templated) file can plausibly carry an unquoted boolean or number.
+  // pick() coerces those to strings so `=== 'true'`-style consumers keep
+  // working instead of silently failing on a raw boolean.
+  it('coerces a non-string runtime value to a string', () => {
+    window.__APP_CONFIG__ = {
+      allowPublicLogin: true,
+      splitSizeInMb: 250,
+    } as never;
+    expect(config.allowPublicLogin).toBe('true');
+    expect(config.splitSizeInMb).toBe('250');
+  });
 });
 
 describe('sibling service URLs', () => {
@@ -115,21 +130,14 @@ describe('sibling service URLs', () => {
 
   // These have a last-resort default, so they never resolve to undefined -- that
   // is what keeps the add-on XPI (which bakes no sibling URLs) rendering working
-  // links. `|| DEFAULT` in each expectation covers a developer whose local .env
-  // bakes the value; CI has no .env, so it is the default branch that is asserted.
-  it.each([
-    ['accountsUrl', 'VITE_ACCOUNTS_URL'],
-    ['dashboardUrl', 'VITE_DASHBOARD_URL'],
-    ['contactFormUrl', 'VITE_CONTACT_FORM_URL'],
-    ['thundermailUrl', 'VITE_THUNDERMAIL_URL'],
-    ['appointmentUrl', 'VITE_APPOINTMENT_URL'],
-  ] as Array<[keyof typeof SIBLING_URL_DEFAULTS.production, string]>)(
+  // links. The sibling VITE_* vars are pinned EMPTY in vitest.config.js, so these
+  // assert the literal defaults -- the assertions cannot silently degrade on a
+  // machine whose local .env bakes a value.
+  it.each(SIBLING_KEYS)(
     '%s uses the production default when appEnv is production',
-    (key, envVar) => {
+    (key) => {
       window.__APP_CONFIG__ = { appEnv: 'production' };
-      expect(config[key]).toBe(
-        env[envVar] || SIBLING_URL_DEFAULTS.production[key]
-      );
+      expect(config[key]).toBe(SIBLING_URL_DEFAULTS.production[key]);
     }
   );
 
@@ -137,23 +145,13 @@ describe('sibling service URLs', () => {
   // the `-stage` sibling URLs via `BASE_URL.includes('send.tb.pro')`. Collapsing to
   // a single production default would silently point stage users -- and the stage
   // add-on -- at production accounts.
-  it.each([
-    ['accountsUrl', 'VITE_ACCOUNTS_URL'],
-    ['dashboardUrl', 'VITE_DASHBOARD_URL'],
-    ['contactFormUrl', 'VITE_CONTACT_FORM_URL'],
-    ['thundermailUrl', 'VITE_THUNDERMAIL_URL'],
-    ['appointmentUrl', 'VITE_APPOINTMENT_URL'],
-  ] as Array<[keyof typeof SIBLING_URL_DEFAULTS.production, string]>)(
+  it.each(SIBLING_KEYS)(
     '%s uses the non-production default for any other appEnv',
-    (key, envVar) => {
+    (key) => {
       window.__APP_CONFIG__ = { appEnv: 'staging' };
-      expect(config[key]).toBe(
-        env[envVar] || SIBLING_URL_DEFAULTS.nonProduction[key]
-      );
+      expect(config[key]).toBe(SIBLING_URL_DEFAULTS.nonProduction[key]);
       window.__APP_CONFIG__ = { appEnv: 'mzla-tb-dev' };
-      expect(config[key]).toBe(
-        env[envVar] || SIBLING_URL_DEFAULTS.nonProduction[key]
-      );
+      expect(config[key]).toBe(SIBLING_URL_DEFAULTS.nonProduction[key]);
     }
   );
 
@@ -182,6 +180,16 @@ describe('appEnv', () => {
     window.__APP_CONFIG__ = { appEnv: 'mzla-tb-dev' };
     expect(config.appEnv).toBe('mzla-tb-dev');
   });
+
+  // FAIL-SAFE INVARIANT: an undeclared environment must NEVER resolve to
+  // `production` -- background.ts derives THUNDERMAIL_HOST from it and the
+  // sibling defaults pick the production accounts stack. See resolveAppEnv().
+  it('never resolves to production when nothing is declared', () => {
+    delete window.__APP_CONFIG__;
+    expect(config.appEnv).not.toBe('production');
+    window.__APP_CONFIG__ = { appEnv: '' };
+    expect(config.appEnv).not.toBe('production');
+  });
 });
 
 describe('assertConfigured', () => {
@@ -196,9 +204,10 @@ describe('assertConfigured', () => {
     expect(() => assertConfigured()).not.toThrow();
   });
 
+  // The getter is replaced wholesale (runtime AND baked fallback), so these
+  // exercise only assertConfigured's own filter -- pick()'s resolution is
+  // covered by the accessor tests above.
   it('throws and names APP_SEND_SERVER_URL when the server URL is unset', () => {
-    window.__APP_CONFIG__ = { sendServerUrl: 'x' };
-    // Blank out the baked fallback for this key only.
     const spy = vi
       .spyOn(config, 'sendServerUrl', 'get')
       .mockReturnValue(undefined);
@@ -212,5 +221,19 @@ describe('assertConfigured', () => {
       .mockReturnValue(undefined);
     expect(() => assertConfigured()).toThrowError(/APP_SEND_CLIENT_URL/);
     spy.mockRestore();
+  });
+
+  it('names BOTH APP_ vars when both required values are missing', () => {
+    const serverSpy = vi
+      .spyOn(config, 'sendServerUrl', 'get')
+      .mockReturnValue(undefined);
+    const clientSpy = vi
+      .spyOn(config, 'sendClientUrl', 'get')
+      .mockReturnValue(undefined);
+    expect(() => assertConfigured()).toThrowError(
+      /APP_SEND_SERVER_URL.*APP_SEND_CLIENT_URL/
+    );
+    serverSpy.mockRestore();
+    clientSpy.mockRestore();
   });
 });
