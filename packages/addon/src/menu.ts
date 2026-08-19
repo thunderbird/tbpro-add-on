@@ -41,15 +41,26 @@ let loginTabId = null;
 let menuUsername: string | null = null;
 
 /**
- * The menu rebuild currently in flight, or null when none is running.
+ * Tail of the menu work queue.
  *
- * Sign-in arrives from several directions at once -- init() starts a login check
- * without waiting for it while background's main() awaits its own, and the
- * sign-in message handlers call menuLoggedIn() directly -- so two callers can
- * find the menu unbuilt at the same moment. They share one rebuild rather than
- * both adding the same items and colliding.
+ * Sign-in and sign-out both arrive from several directions at once: init() starts
+ * a login check without waiting for it while background's main() awaits its own,
+ * the sign-in message handlers call menuLoggedIn() directly, and the user can
+ * click Log out at any moment. Letting those overlap meant a sign-out could
+ * finish in the middle of a sign-in rebuild -- leaving a menu that showed the
+ * sign-in prompt above a fully populated signed-in submenu, with menuUsername
+ * claiming a user who was no longer signed in. Serializing every menu update
+ * through this queue keeps the menu and menuUsername in step.
  */
-let menuBuild: Promise<void> | null = null;
+let menuQueue: Promise<unknown> = Promise.resolve();
+
+function queueMenuWork<T>(work: () => Promise<T>): Promise<T> {
+  const run = menuQueue.then(work);
+  // The tail must never be a rejected promise, or one failed update would block
+  // every menu update after it. Callers still see their own rejection via `run`.
+  menuQueue = run.catch(() => {});
+  return run;
+}
 
 /**
  * Opens the login page in a new tab when user clicks the root menu item.
@@ -92,18 +103,15 @@ type Args = {
  * Shows username and adds menu items for managing dashboard, Send, and logout.
  */
 export async function menuLoggedIn({ username }: Args) {
-  // The menu already shows this user; there is nothing to rebuild.
-  if (menuUsername === username) {
-    return;
-  }
+  await queueMenuWork(async () => {
+    // Checked inside the queue, not before it: by the time our turn comes an
+    // earlier caller may have already rendered this user, or signed them out.
+    if (menuUsername === username) {
+      return;
+    }
 
-  if (!menuBuild) {
-    menuBuild = buildSignedInMenu(username).finally(() => {
-      menuBuild = null;
-    });
-  }
-
-  await menuBuild;
+    await buildSignedInMenu(username);
+  });
 }
 
 async function buildSignedInMenu(username: string) {
@@ -154,20 +162,21 @@ async function buildSignedInMenu(username: string) {
  * Also clears all localStorage and extension storage data.
  */
 export async function menuLogout() {
-  // Reset menu to display sign-in prompt
-  await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
-    title: browser.i18n.getMessage('menuSignInTo'),
-    secondaryTitle: browser.i18n.getMessage('thunderbirdPro'),
-    tooltip: '',
-  });
-
-  // Clear menu items
   console.log('🧹 Clearing menu items and storage');
-  await browser.TBProMenu.clear('root');
+  await queueMenuWork(async () => {
+    // Dropped before the teardown, the mirror of buildSignedInMenu() committing
+    // it after the build: if either call below fails the menu is in an unknown
+    // state, and the next sign-in has to rebuild it rather than trust it.
+    menuUsername = null;
 
-  // The menu is back to its signed-out state, so the next sign-in has to rebuild
-  // the submenu from scratch.
-  menuUsername = null;
+    // Reset menu to display sign-in prompt, then clear the submenu items.
+    await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
+      title: browser.i18n.getMessage('menuSignInTo'),
+      secondaryTitle: browser.i18n.getMessage('thunderbirdPro'),
+      tooltip: '',
+    });
+    await browser.TBProMenu.clear(MENU_ACTIONS.ROOT);
+  });
 
   // Full wipe of the add-on's storage to a clean, logged-out state.
   //

@@ -2,6 +2,8 @@ import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// Safe to import statically: MENU_ACTIONS is frozen string constants, so it
+// carries none of the module state that loadMenu() exists to reset.
 import { MENU_ACTIONS } from '../menu';
 
 /**
@@ -15,6 +17,30 @@ async function loadMenu() {
 }
 
 const mockOf = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
+
+/**
+ * Holds the menu's first update() call open, so a test can land a second caller
+ * squarely in the middle of a rebuild.
+ */
+function holdFirstMenuUpdate() {
+  let release: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  mockOf(browser.TBProMenu.update).mockImplementationOnce(() => held);
+  return () => release();
+}
+
+// Array.prototype.at is outside this package's TS lib target, hence the indexing.
+const lastCallProps = (fn: unknown) => {
+  const { calls } = mockOf(fn).mock;
+  return calls[calls.length - 1]?.[1];
+};
+
+const lastCallOrder = (fn: unknown) => {
+  const { invocationCallOrder } = mockOf(fn).mock;
+  return invocationCallOrder[invocationCallOrder.length - 1];
+};
 
 /**
  * Regression guard: getLoginState() is a read-only probe (called by the Send
@@ -326,6 +352,77 @@ describe('menu upkeep during repeated login checks', () => {
     // Signing out empties the submenu, so the next sign-in has to put it back.
     expect(browser.TBProMenu.create).toHaveBeenCalledTimes(
       SIGNED_IN_MENU_ITEMS
+    );
+  });
+});
+
+/**
+ * Sign-in and sign-out reach the menu from several directions at once -- the 60s
+ * timer, the Send route guard, background's sign-in message handlers, and the
+ * Logout menu item -- so they can interleave. Whatever order they arrive in, the
+ * menu and the "who is this rendered for?" bookkeeping have to agree afterwards,
+ * because a mismatch is not self-correcting: getLoginState() stops touching the
+ * menu once it believes the user is signed out.
+ */
+describe('overlapping sign-in and sign-out', () => {
+  it('ends up signed out when a sign-out lands mid-rebuild', async () => {
+    setupBrowserMock(authWith());
+    const { menuLoggedIn, menuLogout } = await loadMenu();
+    const release = holdFirstMenuUpdate();
+
+    const signIn = menuLoggedIn({ username: USERNAME });
+    const signOut = menuLogout();
+    release();
+    await Promise.all([signIn, signOut]);
+
+    // The sign-out came last, so the menu must be left showing the sign-in
+    // prompt -- not that prompt sitting above a populated signed-in submenu.
+    expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
+      secondaryTitle: 'thunderbirdPro',
+    });
+    expect(lastCallOrder(browser.TBProMenu.clear)).toBeGreaterThan(
+      lastCallOrder(browser.TBProMenu.create)
+    );
+  });
+
+  it('still rebuilds when the same user signs back in after that', async () => {
+    setupBrowserMock(authWith());
+    const { menuLoggedIn, menuLogout } = await loadMenu();
+    const release = holdFirstMenuUpdate();
+
+    const signIn = menuLoggedIn({ username: USERNAME });
+    const signOut = menuLogout();
+    release();
+    await Promise.all([signIn, signOut]);
+    mockOf(browser.TBProMenu.create).mockClear();
+
+    await menuLoggedIn({ username: USERNAME });
+
+    // The interleaved sign-out must not leave the menu convinced it is already
+    // rendered for this user; that would strand it in the signed-out state until
+    // Thunderbird restarted.
+    expect(browser.TBProMenu.create).toHaveBeenCalledTimes(
+      SIGNED_IN_MENU_ITEMS
+    );
+  });
+
+  it('shows the second account when two different sign-ins overlap', async () => {
+    setupBrowserMock(authWith());
+    const { menuLoggedIn } = await loadMenu();
+    const release = holdFirstMenuUpdate();
+
+    const alice = menuLoggedIn({ username: 'alice@example.com' });
+    const bob = menuLoggedIn({ username: 'bob@example.com' });
+    release();
+    await Promise.all([alice, bob]);
+
+    // Bob's caller must not piggyback on Alice's rebuild and report success
+    // while the menu still shows Alice.
+    expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
+      secondaryTitle: 'bob@example.com',
+    });
+    expect(browser.TBProMenu.create).toHaveBeenCalledTimes(
+      SIGNED_IN_MENU_ITEMS * 2
     );
   });
 });

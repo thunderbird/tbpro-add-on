@@ -60,17 +60,13 @@ describe('C2: add-on re-enable trusts stale STORAGE_KEY_AUTH without backend rev
     // the add-on's background page re-runs main() from scratch.
     await import('../../background');
 
-    // Let main()'s async IIFE (checkAndUninstallIfDeprecated -> initMenu ->
-    // getLoginState -> initCloudFile chain) fully settle. Yielding to a timer
-    // drains every pending microtask, so this does not have to be kept in step
-    // with how many awaits that chain happens to contain.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
     // THE BUG: getLoginState() trusted the stale refresh_token's mere
     // presence and returned isLoggedIn: true purely from local storage, so
     // shouldInitCloudFileOnStartup() green-lit initCloudFile(), which:
     //   1. re-registered the cloud file provider,
-    expect(ctx.browser.CloudFileAccounts.registerProvider).toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(ctx.browser.CloudFileAccounts.registerProvider).toHaveBeenCalled()
+    );
     //   2. created/reactivated a cloud file account,
     expect(ctx.browser.CloudFileAccounts.createAccount).toHaveBeenCalled();
 

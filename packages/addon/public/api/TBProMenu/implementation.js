@@ -129,11 +129,14 @@
       }
     });
 
-    // We hang the button off a node owned by Thunderbird's app menu. If that
-    // node ever moves or is renamed we have nowhere to put the button, so bail
-    // out instead of throwing from a window listener.
+    // We hang the button off a node owned by Thunderbird's app menu. Losing that
+    // node means we cannot render the Pro menu at all, so say so -- silence here
+    // would look identical to the add-on simply not being installed.
     const banner = window.document.getElementById('appMenu-addon-banners');
     if (!banner) {
+      console.warn(
+        'TBProMenu: no #appMenu-addon-banners to anchor to; the Thunderbird Pro menu will not appear in this window.'
+      );
       return null;
     }
     banner.parentNode.insertBefore(toolbarButton, banner.nextSibling);
@@ -424,10 +427,7 @@
       });
     }
 
-    const container = window.document.querySelector(`#${menuId} vbox`);
-    if (container) {
-      container.appendChild(button);
-    }
+    window.document.querySelector(`#${menuId} vbox`).appendChild(button);
   }
 
   /**
@@ -628,9 +628,9 @@
                 // turn back, so leave it alone.
                 const subview = menu.parentNode.closest('.tbpro-panel-subview');
                 const parentId = subview?.id.substring(22);
-                const parentButton = parentId
-                  ? document.getElementById('tbpro-menu-id-' + parentId)
-                  : null;
+                const parentButton = document.getElementById(
+                  'tbpro-menu-id-' + parentId
+                );
                 if (parentButton) {
                   parentButton.classList.remove('subviewbutton-nav');
                   parentButton.setAttribute('closemenu', '');
@@ -639,7 +639,7 @@
               }
 
               menu.remove();
-              document.querySelector('#appMenu-multiView')?.goBack?.();
+              document.querySelector('#appMenu-multiView').goBack?.();
             });
           },
 
@@ -654,8 +654,6 @@
             item.children = [];
 
             _applyForWindows((window, document) => {
-              // Reached on every sign-out, so it must not throw for a window
-              // that never rendered the item.
               const parent = document.getElementById('tbpro-menu-id-' + id);
               if (parent) {
                 parent.classList.remove('subviewbutton-nav');
