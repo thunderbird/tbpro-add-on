@@ -60,15 +60,20 @@ RUN pnpm run build
 # and is skipped (with a notice) when the secret is absent -- e.g. local builds
 # and the legacy ECR build in merge.yml, which pass none. This keeps a Sentry org
 # token out of both the image layers and the runtime pod.
-# To enable the upload in CI, pass the token as a BuildKit secret, e.g. add to
-# .github/workflows/build-multiarch-image.yml's `docker buildx build` step:
-#   --secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN
+#
+# The EKS/GHCR release path DOES upload: publish-images.yml forwards a
+# SENTRY_AUTH_TOKEN repo secret to build-multiarch-image.yml, which passes it here
+# as `--secret id=sentry_auth_token`. The legacy ECR build (merge.yml, off-limits)
+# passes none, so backend sourcemaps stop uploading there until its owner wires the
+# same secret -- called out in the PR. The inject/upload commands live in
+# package.json (sentry:sourcemaps:{inject,upload}) so the org/project names have a
+# single source of truth.
 RUN --mount=type=secret,id=sentry_auth_token,required=false \
-    pnpm exec sentry-cli sourcemaps inject --org thunderbird --project send-suite-backend ./dist && \
+    pnpm sentry:sourcemaps:inject && \
     if [ -s /run/secrets/sentry_auth_token ]; then \
       echo "Uploading sourcemaps to Sentry"; \
       SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)" \
-        pnpm exec sentry-cli sourcemaps upload --org thunderbird --project send-suite-backend ./dist; \
+        pnpm sentry:sourcemaps:upload; \
     else \
       echo "No sentry_auth_token build secret; skipping sourcemap upload (dist injected, not uploaded)"; \
     fi

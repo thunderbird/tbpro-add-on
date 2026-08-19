@@ -30,6 +30,17 @@ fi
 # entrypoint as its only migration path. `db:update` == `prisma migrate deploy`;
 # under `set -e` a failed migration here aborts start (fail closed).
 if [ "$RUN_MIGRATIONS_ON_BOOT" = "true" ]; then
+    # schema.prisma now declares `directUrl = env("DIRECT_DATABASE_URL")`, so
+    # `prisma migrate deploy` hard-requires DIRECT_DATABASE_URL and aborts with a
+    # bare P1012 if it is missing. Fail with a legible message instead, so an
+    # operator who enabled migrations but forgot the second var (e.g. a legacy ECS
+    # task definition) sees the cause rather than a schema-validation stack trace.
+    if [ -z "$DIRECT_DATABASE_URL" ]; then
+        echo 'ERROR: RUN_MIGRATIONS_ON_BOOT=true but DIRECT_DATABASE_URL is unset.' >&2
+        echo '       prisma migrate deploy needs the direct (non-pooler) URL; set' >&2
+        echo '       DIRECT_DATABASE_URL (== DATABASE_URL when there is no pooler).' >&2
+        exit 1
+    fi
     echo 'Applying prisma migrations (RUN_MIGRATIONS_ON_BOOT=true)...'
     pnpm db:update
 else

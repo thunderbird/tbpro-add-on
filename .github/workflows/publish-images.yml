@@ -112,6 +112,10 @@ jobs:
       version: ${{ needs.version.outputs.value }}
       artifact-prefix: backend
       moving-tags: ${{ github.ref == 'refs/heads/main' }}
+    # Only the backend Dockerfile uploads sourcemaps, so only this call forwards
+    # the token. Absent repo secret -> empty string -> Dockerfile skips upload.
+    secrets:
+      sentry_auth_token: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
   frontend:
     needs: version

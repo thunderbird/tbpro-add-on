@@ -36,6 +36,18 @@ pnpm run dev:send
 
 ### Setting up the environment
 
+> Upgrade note (existing checkouts): the backend now declares a Prisma
+> `directUrl`, so `packages/send/backend/.env` must define `DIRECT_DATABASE_URL`
+> in addition to `DATABASE_URL` or `prisma migrate deploy` fails with `P1012`.
+> Locally there is no connection pooler, so set it equal to `DATABASE_URL`.
+> `scripts/setup.sh` copies the updated `.env.sample`, but it overwrites your
+> `.env`, so add the line by hand if you are not re-running setup.
+>
+> The container entrypoint no longer runs `prisma generate` on boot (the client
+> is generated at image build). After editing `prisma/schema.prisma` locally,
+> run `pnpm db:migrate` (or `pnpm db:generate`) to regenerate the client; a
+> bare container restart will not.
+
 ### Loading the TB Extension
 
 Make sure you add your localhost certificate. We have an
