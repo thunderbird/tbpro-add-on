@@ -26,6 +26,7 @@ const {
   restoreFromBackup,
   shouldUnlock,
   shouldReset,
+  justReset,
   resetKeys,
   words,
   keysInLocalStorage,
@@ -52,9 +53,9 @@ watchEffect(() => {
       />
       <div v-else>
         <section class="recovery-main" data-testid="key-recovery">
-          <!-- FIRST TIME USERS -->
+          <!-- FIRST TIME USERS + post-reset (save your new recovery key, #1116) -->
           <BackupKeys
-            v-if="backupData === 'SHOULD_ENCRYPT_AND_BACKUP'"
+            v-if="backupData === 'SHOULD_ENCRYPT_AND_BACKUP' || justReset"
             :make-backup="makeBackup"
             :words="words"
             :regenerate-passphrase="regeneratePassphrase"
@@ -62,7 +63,11 @@ watchEffect(() => {
           />
           <!-- USERS RESTORING SESSION -->
           <AccessLocked
-            v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
+            v-if="
+              backupData === 'SHOULD_RESTORE_FROM_BACKUP' &&
+              !shouldUnlock &&
+              !justReset
+            "
             :on-recover="
               () => {
                 shouldUnlock = true;
