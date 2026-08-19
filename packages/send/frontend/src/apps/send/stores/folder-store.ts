@@ -116,7 +116,24 @@ const useFolderStore = defineStore('folderManager', () => {
       return null;
     }
     const total = folders.value.length;
-    return total === 0 ? null : folders.value[total - 1];
+    if (total === 0) {
+      return null;
+    }
+    // Reconcile orphaned root containers (issue #1116): provisioning can leave a
+    // root container that exists server-side but whose key never landed in the
+    // keychain. Routing to such an orphan makes every upload fail client-side
+    // ("You don't have the key to decrypt this container") before any network
+    // call, with no way to reach a working container. Prefer the most recent
+    // root container whose key the keychain can actually open; only fall back to
+    // the newest-overall folder when NONE are openable (e.g. keys not yet
+    // restored), preserving the previous behavior in that case.
+    const openable = folders.value.filter(
+      (folder) => folder?.id && !!keychain.keys[folder.id]
+    );
+    if (openable.length > 0) {
+      return openable[openable.length - 1];
+    }
+    return folders.value[total - 1];
   });
 
   const visibleFolders = computed(() => {

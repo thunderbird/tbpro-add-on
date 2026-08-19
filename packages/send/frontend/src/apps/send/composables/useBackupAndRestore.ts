@@ -10,7 +10,11 @@ import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-sto
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import { useAuth } from '@send-frontend/lib/auth';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
-import { backupKeys, restoreKeys } from '@send-frontend/lib/keychain';
+import {
+  backupKeys,
+  generateResetKeyBlob,
+  restoreKeys,
+} from '@send-frontend/lib/keychain';
 import { generatePassphrase } from '@send-frontend/lib/passphrase';
 import {
   downloadPassPhrase,
@@ -101,17 +105,36 @@ export const useBackupAndRestore = () => {
   });
 
   /**
-   * Mutation to reset all user keys.
+   * Mutation to reset all user keys (issue #1116).
    * This will:
-   * 1. Delete keys from the server
-   * 2. Clear local storage
-   * 3. Log out the user
-   * 4. Reload the page
+   * 1. Generate a brand-new encryption key + encrypted backup blob CLIENT-SIDE
+   *    first (write-new), using a freshly generated passphrase
+   * 2. Ask the server to atomically swap that blob in and burn the old,
+   *    unreachable containers (then-swap) — the server never nulls the recovery
+   *    material before the replacement exists, so an interruption can no longer
+   *    permanently lock the account out
+   * 3. Clear local storage
+   * 4. Log out the user
+   * 5. Reload the page
+   *
+   * The freshly generated passphrase is downloaded for the user so they retain a
+   * recovery path for the new key, matching first-time backup behavior.
    */
   const { mutate: resetKeys } = useMutation({
     mutationKey: ['resetKeys'],
     mutationFn: async () => {
-      return await trpc.resetKeys.mutate();
+      // Write-new: build the full replacement blob on a scratch keychain before
+      // touching anything (local or server).
+      const newPassphrase = generatePassphrase(PHRASE_SIZE).join(' ');
+      const replacement = await generateResetKeyBlob(newPassphrase);
+      // Then-swap: server installs the new blob atomically, then removes the old
+      // containers. Only after this resolves do we mutate any local state.
+      const result = await trpc.resetKeys.mutate(replacement);
+      // The swap is confirmed: adopt the new passphrase locally and hand the
+      // user their new recovery phrase before we clear/log out.
+      await keychain.storePassPhrase(newPassphrase);
+      await downloadPassPhrase(newPassphrase, email);
+      return result;
     },
     onSuccess: async () => {
       // We should clear local storage first and then handle logout

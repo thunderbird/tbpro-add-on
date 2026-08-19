@@ -1002,6 +1002,75 @@ export async function backupKeys(
   console.log('🔒 Backup complete');
 }
 
+/**
+ * The confirmed replacement key material the "Reset Access → Create new
+ * encryption key" flow hands to the server (issue #1116).
+ *
+ * Field names match the backend `resetKeys` input so the server can perform a
+ * single atomic write-new-then-swap. `backupContainerKeys` is the (empty)
+ * serialized container-key map for a brand-new key.
+ */
+export type ResetKeyBlob = {
+  publicKey: string;
+  backupKeypair: string;
+  backupKeystring: string;
+  backupSalt: string;
+  backupContainerKeys: string;
+};
+
+/**
+ * Generate a fresh encryption key and its encrypted backup blob for a safe
+ * "reset access" (issue #1116).
+ *
+ * The old reset asked the server to null the recovery material and relied on a
+ * subsequent login to re-provision — a window in which any interruption left the
+ * account permanently locked out. Instead we build the ENTIRE replacement blob
+ * client-side first; the caller then swaps it in on the server atomically before
+ * anything old is destroyed.
+ *
+ * A new key starts with no container keys, so the container-key map is empty.
+ *
+ * The blob is built on a throwaway scratch keychain so that a failure to persist
+ * it on the server never leaves the caller's live keychain half-scrubbed: we do
+ * not destroy any local key material until the swap is confirmed. Callers should
+ * adopt the returned passphrase locally only after the server swap succeeds.
+ */
+export async function generateResetKeyBlob(
+  passphrase: string
+): Promise<ResetKeyBlob> {
+  if (!passphrase) {
+    throw new Error('A passphrase is required to reset the encryption key');
+  }
+
+  // Scratch keychain: a brand-new key has no container keys, and nothing here
+  // touches the caller's live keychain until the server swap is confirmed.
+  const scratch = new Keychain();
+  await scratch.rsa.generateKeyPair();
+  const { publicKey, privateKey } = await scratch.exportKeypair();
+
+  const emptyContainerKeys: Record<string, string> = {};
+  const {
+    protectedContainerKeysStr,
+    protectedKeypairStr,
+    passwordWrappedKeyStr,
+    saltStr,
+  } = await encryptAll(
+    publicKey,
+    privateKey,
+    emptyContainerKeys,
+    passphrase,
+    scratch
+  );
+
+  return {
+    publicKey,
+    backupKeypair: protectedKeypairStr,
+    backupKeystring: passwordWrappedKeyStr,
+    backupSalt: saltStr,
+    backupContainerKeys: protectedContainerKeysStr,
+  };
+}
+
 export const getUUID = (): string => {
   if (typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
