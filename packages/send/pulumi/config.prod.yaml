@@ -137,8 +137,6 @@ resources:
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/database-url-a53Vqt
               - name: POSTHOG_API_KEY
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/posthog-api-key-lVtOJy
-              - name: SENTRY_AUTH_TOKEN
-                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/sentry-auth-token-ve7NNe
               - name: ACCESS_TOKEN_SECRET
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/jwt-access-token-secret-CKmhxv
               - name: REFRESH_TOKEN_SECRET

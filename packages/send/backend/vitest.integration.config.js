@@ -11,12 +11,19 @@ export default defineConfig({
   test: {
     // this is a temporary config to use vite on routes tests
     include: ['**/**/*.integration.{js,ts}'],
-    // '**/dist/**' matters: the Dockerfile now compiles TypeScript to dist/ at image
-    // BUILD time, so the compiled copy of every *.test/*.integration file ships in the
-    // image alongside its source. Vitest would glob both, and the CommonJS dist copy
-    // fails on `require()` of vitest. ('**/build/**' predates this and matches nothing --
-    // tsconfig outDir is ./dist. Cf. `lint:all`, which already ignores dist/*.)
-    exclude: ['**/dist/**', '**/build/**', '**/node_modules/**'],
+    // Defence in depth: the compiled artifact is not supposed to contain tests at
+    // all (`pnpm build` uses tsconfig.build.json, which excludes them), but the
+    // Dockerfile compiles dist/ into the image, so a stale or hand-run `tsc`
+    // would otherwise produce a CommonJS duplicate of every test file here --
+    // globbed by the `js` arm above and fatal ("Vitest cannot be imported in a
+    // CommonJS module using require()"). vitest's own defaultExclude covers
+    // neither dist/ nor the .docker-build/ build context rsync copy.
+    exclude: [
+      '**/dist/**',
+      '**/.docker-build/**',
+      '**/build/**',
+      '**/node_modules/**',
+    ],
     environment: 'node',
     setupFiles: ['dotenv/config'],
     env: {

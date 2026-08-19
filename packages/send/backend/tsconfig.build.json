@@ -1,0 +1,28 @@
+{
+  // Build-only project. `pnpm build` runs `tsc -p tsconfig.build.json`, so the
+  // runtime artifact (dist/) contains ONLY runtime code.
+  //
+  // WHY a second file instead of adding these excludes to tsconfig.json: that
+  // file is the editor/typecheck project, and `pnpm typecheck` (`tsc --noEmit`)
+  // must keep type-checking the tests. Excluding them there would silently drop
+  // 24 test files out of type coverage.
+  //
+  // WHY exclude tests from the build at all: dist/ is now compiled at image
+  // build time and shipped in the image. A compiled dist/test/**/*.js copy of
+  // each test would be globbed by vitest alongside its TypeScript source
+  // (`include: ['**/**/*.integration.{js,ts}']`) and fails immediately --
+  // "Vitest cannot be imported in a CommonJS module using require()" -- because
+  // tsc emits CommonJS. It would also ship test code and upload test sourcemaps
+  // to Sentry. Nothing outside src/test imports test code, so the runtime is
+  // unaffected: dist/index.js and every module it requires still emit here.
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    ".docker-build",
+    "src/test",
+    "**/*.test.ts",
+    "**/*.integration.ts"
+  ]
+}

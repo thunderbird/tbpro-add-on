@@ -58,6 +58,15 @@ on:
         required: false
         type: boolean
         default: false
+      expect-sourcemap-upload:
+        description: >-
+          Set true for images whose Dockerfile uploads sourcemaps (the Send
+          backend). Then a missing `sentry_auth_token` secret raises a workflow
+          warning instead of being indistinguishable from the frontend build,
+          which never uploads. Does not change the build.
+        required: false
+        type: boolean
+        default: false
     secrets:
       sentry_auth_token:
         description: >-
@@ -117,6 +126,16 @@ jobs:
           # arch digests, found 1" and read as an arm-runner availability problem.
           command -v rsync >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y -qq rsync; }
           sh "$PREPARE_SCRIPT"
+
+      - name: Warn when a sourcemap upload is expected but unconfigured
+        if: inputs.expect-sourcemap-upload
+        env:
+          # The `secrets` context is not available in `if:`, so test it here.
+          SENTRY_AUTH_TOKEN: ${{ secrets.sentry_auth_token }}
+        run: |
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            echo "::warning::No SENTRY_AUTH_TOKEN secret: backend sourcemaps are injected but NOT uploaded to Sentry. Add the repo/org secret to restore uploads."
+          fi
 
       - name: Build and push image by digest
         id: build

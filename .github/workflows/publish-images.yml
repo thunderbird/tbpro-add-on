@@ -112,6 +112,9 @@ jobs:
       version: ${{ needs.version.outputs.value }}
       artifact-prefix: backend
       moving-tags: ${{ github.ref == 'refs/heads/main' }}
+      # Backend only: makes a missing token a visible workflow warning rather
+      # than a line buried in the buildx log.
+      expect-sourcemap-upload: true
     # Only the backend Dockerfile uploads sourcemaps, so only this call forwards
     # the token. Absent repo secret -> empty string -> Dockerfile skips upload.
     secrets:

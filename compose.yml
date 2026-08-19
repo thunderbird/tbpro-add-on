@@ -32,6 +32,11 @@ services:
       # (not just in .env) because entry.sh reads it in the shell before node
       # loads dotenv. See scripts/entry.sh and tbpro-add-on#1069.
       - RUN_MIGRATIONS_ON_BOOT=true
+      # Same reason: prisma's preflight (scripts/require-direct-url.sh) reads the
+      # shell environment first. .env is only bind-mounted below, so give the
+      # shell the value too. No connection pooler locally, so it matches
+      # DATABASE_URL.
+      - DIRECT_DATABASE_URL=postgres://postgres:postgres@db:5432/send-suite
     volumes:
       - ./packages/send/backend:/app
       - backend-node-modules:/app/node_modules
