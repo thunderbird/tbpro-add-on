@@ -1030,23 +1030,32 @@ export type ResetKeyBlob = {
  *
  * A new key starts with no container keys, so the container-key map is empty.
  *
- * The blob is built on a throwaway scratch keychain so that a failure to persist
- * it on the server never leaves the caller's live keychain half-scrubbed: we do
- * not destroy any local key material until the swap is confirmed. Callers should
- * adopt the returned passphrase locally only after the server swap succeeds.
+ * By default the blob is built on a throwaway scratch keychain so that a failure
+ * to persist it on the server never leaves the caller's live keychain
+ * half-scrubbed.
+ *
+ * When a `targetKeychain` is supplied, the fresh keypair is generated INTO that
+ * live keychain instead. The reset flow needs this: the local keychain must end
+ * up holding the exact same keypair the server backup blob wraps, or the user
+ * would be unable to decrypt/restore with the new passphrase after reset
+ * (issue #1116 — a scratch-only keypair left the local keychain on the OLD keys
+ * while the server held a NEW blob, a silent mismatch). Callers should adopt the
+ * returned passphrase locally only after the server swap succeeds.
  */
 export async function generateResetKeyBlob(
-  passphrase: string
+  passphrase: string,
+  targetKeychain?: Keychain
 ): Promise<ResetKeyBlob> {
   if (!passphrase) {
     throw new Error('A passphrase is required to reset the encryption key');
   }
 
-  // Scratch keychain: a brand-new key has no container keys, and nothing here
-  // touches the caller's live keychain until the server swap is confirmed.
-  const scratch = new Keychain();
-  await scratch.rsa.generateKeyPair();
-  const { publicKey, privateKey } = await scratch.exportKeypair();
+  // Use the caller's live keychain when provided (so local keys match the new
+  // server blob), otherwise a throwaway scratch keychain. A brand-new key has
+  // no container keys.
+  const target = targetKeychain ?? new Keychain();
+  await target.rsa.generateKeyPair();
+  const { publicKey, privateKey } = await target.exportKeypair();
 
   const emptyContainerKeys: Record<string, string> = {};
   const {
@@ -1059,7 +1068,7 @@ export async function generateResetKeyBlob(
     privateKey,
     emptyContainerKeys,
     passphrase,
-    scratch
+    target
   );
 
   return {

@@ -81,12 +81,8 @@ export async function log_out_restore_keys() {
 
 export async function reset_keys({ page }: PlaywrightProps) {
   const {
-    emailField,
-    passwordField,
-    submitLogin,
     backupKeysButtonOverlay,
     passphraseInputOverlay,
-    securityButton,
     showReset,
     understandCheckbox,
     dangerButton,
@@ -104,25 +100,22 @@ export async function reset_keys({ page }: PlaywrightProps) {
 
   await page.goto("/send/security-and-privacy");
 
-  // Restore passphrase (account included)
+  page.on("dialog", (dialog) => dialog.accept());
+
+  // Reset access -> create a new encryption key.
   await showReset.click();
   await understandCheckbox.click();
   await dangerButton.click();
 
-  await page.waitForLoadState("networkidle");
-  await page.goto("/send/profile");
-
-  // Log back in
-  await emailField.fill(email);
-  await passwordField.fill(password);
-  await submitLogin.click();
-
-  page.on("dialog", (dialog) => dialog.accept());
-
-  // wait for network idle
+  // Issue #1116: the safe reset performs a write-new-then-swap on the server
+  // (it never nulls the recovery blob), then keeps the user in-session and
+  // presents the BackupKeys overlay so they can SAVE their freshly generated
+  // recovery key. We no longer log out / log back in first: doing so used to
+  // rely on the server having NO backup (the old destructive wipe), which is
+  // exactly the permanent-lockout hazard #1116 fixed.
   await page.waitForLoadState("networkidle");
 
-  // Back up keys
+  // Back up (save) the new recovery key from the overlay.
   const passPhrase = await passphraseInputOverlay.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");
   playwrightConfig.recoveredPassphrase = passPhrase!;
