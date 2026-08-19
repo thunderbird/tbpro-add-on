@@ -218,11 +218,15 @@ describe('useBackupAndRestore -> safe reset shows the backup overlay (#1116)', (
     expect(state.setWords).toHaveBeenLastCalledWith(['new', 'reset', 'phrase']);
   });
 
-  it('stays in-session and lands on /send (no logout / reload)', async () => {
+  it('stays in-session and lands on the profile dashboard (no logout / reload)', async () => {
     await composable.resetKeys();
-    expect(state.routerPush).toHaveBeenCalledWith('/send');
+    // Must target the dashboard host of the BackupKeys overlay (ProfileView),
+    // not the folder view at /send.
+    expect(state.routerPush).toHaveBeenCalledWith(
+      '/send/profile?showDashboard=true'
+    );
     // The safe reset must NOT bounce the user through a login round-trip.
     expect(state.routerPush).not.toHaveBeenCalledWith('/login');
-    expect(state.routerPush).not.toHaveBeenCalledWith('/send/profile');
+    expect(state.routerPush).not.toHaveBeenCalledWith('/send');
   });
 });

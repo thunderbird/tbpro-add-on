@@ -153,10 +153,12 @@ export const useBackupAndRestore = () => {
       backupStore.setWords(newPassphrase ? newPassphrase.split(' ') : []);
       backupStore.setJustReset(true);
       backupStore.setShouldReset(false);
-      // Re-evaluate backup state and land on the dashboard, which renders the
-      // BackupKeys overlay while `justReset` is set.
+      // Re-evaluate backup state and land on the profile dashboard
+      // (ProfileView -> UserDashboard), which renders the BackupKeys overlay
+      // while `justReset` is set. `/send` routes to the folder view, which does
+      // NOT host the overlay, so we must target the dashboard explicitly.
       await refetch();
-      router.push('/send');
+      router.push('/send/profile?showDashboard=true');
     },
   });
 
