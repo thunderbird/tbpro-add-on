@@ -6,6 +6,16 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+
+  // Direct (non-pooled) connection used ONLY by schema commands
+  // (`prisma migrate deploy`, `migrate dev`, `db push`, introspect). WHY:
+  // migrate takes a session-scoped Postgres advisory lock, which is unreliable
+  // through Neon's `-pooler` (PgBouncer transaction-pooling) endpoint that
+  // DATABASE_URL points at in prod. Point DIRECT_DATABASE_URL at the direct
+  // Neon endpoint. Locally/compose there is no pooler, so set it equal to
+  // DATABASE_URL. The runtime app (Prisma Client queries) still uses `url`, so
+  // the running pod does not need DIRECT_DATABASE_URL. See tbpro-add-on#1069.
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {

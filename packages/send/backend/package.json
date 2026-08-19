@@ -8,7 +8,7 @@
   "main": "index.js",
   "scripts": {
     "bootstrap": "pnpm i --filter send-backend && pnpm db:generate && pnpm build:image",
-    "build": "pnpm exec tsc && tsc-alias && pnpm sentry:sourcemaps",
+    "build": "pnpm exec tsc && tsc-alias",
     "build:image": "./scripts/build.sh",
     "ci:validate": "pnpm run lint:all; pnpm run test",
     "db:browse": "prisma studio",
@@ -24,7 +24,6 @@
     "release": "./scripts/release.sh",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org thunderbird --project send-suite-backend ./dist && sentry-cli sourcemaps upload --org thunderbird --project send-suite-backend ./dist",
     "sort-package-json": "sort-package-json",
-    "prestart": "NODE_ENV=production pnpm run build",
     "start": "NODE_ENV=production node dist/index.js",
     "test": "vitest run --silent",
     "test:watch": "vitest --watch",

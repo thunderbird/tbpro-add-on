@@ -25,6 +25,13 @@ services:
       - "8080:8080"
       - "5555:5555" # for browsing db with prisma studio
       - "9229:9229" # Debugger port
+    environment:
+      # Local dev has no separate migration Job, so the entrypoint is the only
+      # thing that applies migrations. entry.sh gates this behind
+      # RUN_MIGRATIONS_ON_BOOT (default OFF); opt in here. Must be a real env var
+      # (not just in .env) because entry.sh reads it in the shell before node
+      # loads dotenv. See scripts/entry.sh and tbpro-add-on#1069.
+      - RUN_MIGRATIONS_ON_BOOT=true
     volumes:
       - ./packages/send/backend:/app
       - backend-node-modules:/app/node_modules
