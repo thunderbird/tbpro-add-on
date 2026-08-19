@@ -74,14 +74,22 @@ export const useExtensionStore = defineStore('extension', () => {
 
     // accountId: ${id}
     // SERVER: ${SERVER}
-    // currentServerUrl.value: ${serverUrl.value}
+    // currentServerUrl: ${serverUrl}
 
     // `);
 
+    // `serverUrl` is a plain string, NOT a ref: destructuring a Pinia store
+    // unwraps its refs. It used to be read as `serverUrl.value`, which is
+    // `undefined` -- so the cloudFile account was configured with no server and
+    // `setServerUrl` below wiped the store's URL. This package's own typecheck
+    // never flagged it (send-frontend has no ImportMetaEnv augmentation, so
+    // `import.meta.env.VITE_SEND_SERVER_URL` was `any` here); packages/addon,
+    // which does augment it in src/env.d.ts, has been reporting both lines for
+    // some time.
     return browser.storage.local
       .set({
         [id]: {
-          [SERVER]: serverUrl.value,
+          [SERVER]: serverUrl,
         },
       })
       .catch((error) => {
@@ -89,7 +97,7 @@ export const useExtensionStore = defineStore('extension', () => {
       })
       .then(() => {
         setAccountConfigured(id);
-        setServerUrl(serverUrl.value);
+        setServerUrl(serverUrl);
         // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         DEBUG &&
           browser.storage.local.get(id).then((accountInfo) => {

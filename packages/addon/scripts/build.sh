@@ -36,6 +36,8 @@ if [ "$ADDON_ENV" = "local" ]; then
     ### Keep local builds out of the shared Sentry / PostHog projects.
     : "${VITE_SENTRY_DSN:=}"
     : "${VITE_POSTHOG_PROJECT_KEY:=}"
+    ### Local means development, whatever the derivation below would have said.
+    : "${VITE_APP_ENV:=development}"
     export VITE_SEND_SERVER_URL VITE_SEND_CLIENT_URL \
         VITE_OIDC_CLIENT_ID VITE_OIDC_ROOT_URL \
         VITE_SENTRY_DSN VITE_POSTHOG_PROJECT_KEY
@@ -50,6 +52,13 @@ if [ "$ADDON_ENV" = "local" ]; then
     ### otherwise) and include $VITE_SEND_CLIENT_URL, and Thunderbird must trust
     ### the self-signed https://localhost cert (used for fetch + wss uploads).
 fi
+
+### Declare the environment this XPI is being built FOR. Shared with the web
+### bundle build -- one copy so the add-on and the SPA can never map the same
+### CI signal to different environment names. See the rationale in
+### derive-app-env.sh (why it is load-bearing for menu.ts / background.ts /
+### THUNDERMAIL_HOST, and why an unset value is left to .env outside CI).
+. "$(dirname "$0")/../../send/frontend/scripts/derive-app-env.sh"
 
 # Get version from package.json and replace dots with hyphens
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')

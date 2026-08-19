@@ -1,3 +1,4 @@
+import config from '@send-frontend/config';
 import prettyBytes from 'pretty-bytes';
 
 export const CONTAINER_TYPE = {
@@ -28,7 +29,7 @@ export const MAX_FILE_SIZE_HUMAN_READABLE = prettyBytes(MAX_FILE_SIZE);
 
 export const MAX_ACCESS_LINK_RETRIES = 5;
 // We set the split size to 100 MB by default, but it can be overridden by an environment variable.
-const SPLIT_SIZE_IN_MB: number = import.meta.env.VITE_SPLIT_SIZE_IN_MB || 100; // Default to 100 MB if not set
+const SPLIT_SIZE_IN_MB: number = Number(config.splitSizeInMb) || 100; // Default to 100 MB if not set
 export const SPLIT_SIZE = SPLIT_SIZE_IN_MB * ONE_MB_IN_BYTES;
 
 // Maximum number of parts of a multipart upload that are uploaded concurrently.

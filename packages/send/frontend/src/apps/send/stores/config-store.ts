@@ -1,3 +1,4 @@
+import config from '@send-frontend/config';
 import { getEnvName } from '@send-frontend/lib/clientConfig';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -30,10 +31,8 @@ export const useConfigStore = defineStore('config', () => {
     return __APP_NAME__ === 'addon';
   });
 
-  const _serverUrl = ref(import.meta.env.VITE_SEND_SERVER_URL);
-  const _isPublicLogin = ref(
-    import.meta.env.VITE_ALLOW_PUBLIC_LOGIN === 'true'
-  );
+  const _serverUrl = ref(config.sendServerUrl);
+  const _isPublicLogin = ref(config.allowPublicLogin === 'true');
 
   const serverUrl = computed(() => _serverUrl.value);
   const isPublicLogin = computed(() => _isPublicLogin.value);
@@ -62,7 +61,9 @@ export const useConfigStore = defineStore('config', () => {
 
     // Fallback for non-extension contexts (web app / tests) where there is no
     // runtime id available.
-    if (serverUrl.value.includes('send-backend.tb.pro')) {
+    // `?.`: sendServerUrl is `string | undefined`; an unset value must pick
+    // the stage id, not throw.
+    if (serverUrl.value?.includes('send-backend.tb.pro')) {
       return 'ext-tbpro-add-on@thunderbird.net';
     } else {
       return 'ext-tbpro-addon-stage@thunderbird.net';

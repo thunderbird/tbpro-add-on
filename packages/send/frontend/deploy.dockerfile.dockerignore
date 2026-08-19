@@ -1,0 +1,25 @@
+# Ignore file for deploy.dockerfile ONLY.
+#
+# BuildKit prefers `<dockerfile-path>.dockerignore` over a root .dockerignore, so
+# this narrows the context for this one build without touching merge.yml,
+# release.yml or the backend image -- none of which reads this file.
+#
+# The build context is the repo ROOT (pnpm workspace), and there is no root
+# .dockerignore, so without this every build transfers and hashes the whole tree
+# (~1.6 GB locally once node_modules exists). deploy.dockerfile already COPYs its
+# inputs file-by-file, so nothing listed here can reach the image regardless --
+# this is about context size and reproducible local builds.
+**/node_modules
+.git
+**/dist
+**/dist-web
+**/send-suite
+**/*.xpi
+**/.env
+**/.env.*
+!**/.env.sample
+# Everything in public/ is copied wholesale and served verbatim from the web
+# root, so keep the classic secret-material extensions out of local builds.
+**/*.pem
+**/*.key
+**/*.p12

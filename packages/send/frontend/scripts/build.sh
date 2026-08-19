@@ -7,6 +7,12 @@ else
     echo 'Starting development build 🐣'
 fi
 
+### Declare the environment the bundle is being built FOR. Shared with the
+### add-on build -- see the rationale in derive-app-env.sh. On the
+### EKS/container path the pod states the environment (APP_ENV -> /config.js)
+### and nothing here applies.
+. "$(dirname "$0")/derive-app-env.sh"
+
 # Get version from package.json and replace dots with hyphens
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
 
@@ -24,6 +30,13 @@ mkdir -p dist/assets
 
 ### this should get copied automatically when compiling a page
 cp -R public/* dist/
+### config.js is the WEB APP's runtime-config hook, rewritten per-environment by
+### the nginx entrypoint. No extension entry point loads it (only index.html
+### carries the script tag), so shipping it inside the signed XPI would put a
+### file whose sole purpose is server-side rewriting in front of Thunderbird's
+### static packaged-script review for no benefit. The web app gets its own copy
+### from vite's publicDir into dist-web, which this does not touch.
+rm -f dist/config.js
 # Generate headers json
 echo 'Generating security headers 🔒'
 bun run scripts/headers.ts

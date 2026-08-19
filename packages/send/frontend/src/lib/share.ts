@@ -5,6 +5,7 @@ import {
 import { ApiConnection } from '@send-frontend/lib/api';
 import { CONTAINER_TYPE } from '@send-frontend/lib/const';
 import { Keychain, Util } from '@send-frontend/lib/keychain';
+import config from '@send-frontend/config';
 import { UserType } from '@send-frontend/types';
 
 export default class Sharer {
@@ -287,7 +288,7 @@ export default class Sharer {
     // const url = `${origin}/share/${accessLink}`;
     // TODO: need the server url from...elsewhere
     // Using `origin` works fine for web application, but not for extension
-    const url = `${import.meta.env.VITE_SEND_CLIENT_URL}/share/${accessLink}`;
+    const url = `${config.sendClientUrl}/share/${accessLink}`;
     return url;
   }
 }

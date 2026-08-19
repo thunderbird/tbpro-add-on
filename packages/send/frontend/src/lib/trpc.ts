@@ -11,6 +11,8 @@ import {
   wsLink,
 } from '@trpc/client';
 
+import config from '@send-frontend/config';
+
 import { AppRouter } from '@send-backend/router';
 import { TRPC_WS_PATH } from './config';
 
@@ -18,7 +20,7 @@ import { TRPC_WS_PATH } from './config';
 // can override this at build/extraction time. An empty or unset value means
 // "disabled — do not connect" (e.g. in CI/automation, where any non-local
 // connection aborts the whole process).
-const serverUrl = (import.meta.env.VITE_SEND_SERVER_URL ?? '').trim();
+const serverUrl = (config.sendServerUrl ?? '').trim();
 
 const refreshUrl = `${serverUrl}/api/auth/refresh`;
 const trpcUrl = `${serverUrl}/trpc`;

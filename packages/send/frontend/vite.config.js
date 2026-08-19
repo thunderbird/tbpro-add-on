@@ -3,7 +3,11 @@ import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import { getHeadersForEnvironment } from './csp.config.js';
-import { packageJson, sharedViteConfig, removeEmptySourcemapsPlugin } from './sharedViteConfig';
+import {
+  packageJson,
+  sharedViteConfig,
+  removeEmptySourcemapsPlugin,
+} from './sharedViteConfig';
 import { getEnvironmentName } from './src/lib/config';
 
 // https://vitejs.dev/config/
@@ -30,7 +34,10 @@ export default defineConfig(({ mode }) => {
         release: packageJson.version,
         moduleMetadata: {
           version: packageJson.version,
-          environment: getEnvironmentName(env),
+          // `loadEnv` returns VITE_-prefixed keys only, so MODE has to be merged
+          // in for getEnvironmentName's mode fallback to be reachable. Declared
+          // VITE_APP_ENV still wins.
+          environment: getEnvironmentName({ ...env, MODE: mode }),
         },
       }),
     ],

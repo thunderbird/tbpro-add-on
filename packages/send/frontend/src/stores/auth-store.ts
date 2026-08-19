@@ -1,5 +1,6 @@
 // stores/auth-store.js
 
+import config from '@send-frontend/config';
 import { useApiStore, useConfigStore } from '@send-frontend/stores';
 import { User, UserManager, UserManagerSettings } from 'oidc-client-ts';
 import { defineStore } from 'pinia';
@@ -17,11 +18,11 @@ import {
 import { ref, watch } from 'vue';
 
 const settings: UserManagerSettings = {
-  authority: import.meta.env?.VITE_OIDC_ROOT_URL,
-  client_id: import.meta.env?.VITE_OIDC_CLIENT_ID,
+  authority: config.oidcRootUrl,
+  client_id: config.oidcClientId,
   redirect_uri: `${window.location.origin}/post-login`,
   // We explicitly set the logout redirect to web to avoid errors with the uri since it doesn't support moz-extension:// protocols
-  post_logout_redirect_uri: `${import.meta.env?.VITE_SEND_CLIENT_URL}/logout`,
+  post_logout_redirect_uri: `${config.sendClientUrl}/logout`,
   response_type: 'code',
   scope: 'openid profile email offline_access',
   // Refresh on demand only (see refreshAccessToken). The library's background

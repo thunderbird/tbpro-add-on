@@ -1,3 +1,4 @@
+import { assertConfigured } from '@send-frontend/config';
 import { closeSentry, initSentry } from '@send-frontend/lib/sentry';
 import {
   isTelemetryAllowed,
@@ -8,6 +9,13 @@ import { createApp } from 'vue';
 import Send from './SendPage.vue';
 import router from './router';
 import { mountApp, setupApp } from './setup';
+
+// Web-app entry ONLY (index.html), which is the one entry point that loads
+// /config.js. Fail loud here rather than booting an SPA that renders and then
+// fails every request against `undefined/api/...`. Deliberately NOT called from
+// extension.js / management.js: those run inside the add-on XPI, which has no
+// /config.js and is configured by the baked VITE_* values instead.
+assertConfigured();
 
 const app = createApp(Send);
 

@@ -1,4 +1,6 @@
 // utils/console-wrapper.js
+import config from '@send-frontend/config';
+
 const version = __APP_VERSION__;
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -22,9 +24,10 @@ const originalLog = originalConsole.log;
 const originalWarn = originalConsole.warn;
 const originalError = originalConsole.error;
 
-// Get the configured log level from import.meta.VITE_LOGGER_LEVEL
+// Get the configured log level from runtime/build config (APP_LOGGER_LEVEL /
+// VITE_LOGGER_LEVEL). Read per call, not cached, so it reflects /config.js.
 const getConfiguredLevel = (): number => {
-  const level = import.meta.env.VITE_LOGGER_LEVEL as LogLevel | undefined;
+  const level = config.loggerLevel as LogLevel | undefined;
   return level && level in LOG_LEVELS ? LOG_LEVELS[level] : LOG_LEVELS.warn;
 };
 
