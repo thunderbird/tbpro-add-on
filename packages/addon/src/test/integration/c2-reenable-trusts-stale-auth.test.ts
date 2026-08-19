@@ -61,11 +61,10 @@ describe('C2: add-on re-enable trusts stale STORAGE_KEY_AUTH without backend rev
     await import('../../background');
 
     // Let main()'s async IIFE (checkAndUninstallIfDeprecated -> initMenu ->
-    // getLoginState -> initCloudFile chain) fully settle.
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    // getLoginState -> initCloudFile chain) fully settle. Yielding to a timer
+    // drains every pending microtask, so this does not have to be kept in step
+    // with how many awaits that chain happens to contain.
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // THE BUG: getLoginState() trusted the stale refresh_token's mere
     // presence and returned isLoggedIn: true purely from local storage, so
