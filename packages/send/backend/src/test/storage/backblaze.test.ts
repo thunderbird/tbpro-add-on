@@ -32,11 +32,11 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
     // and they fail intermittently for this reason, not because of app code.
     // Retry the read a few times so the assertion reflects B2's actual state
     // once it has settled.
-    const readWithRetry = async (fileName: string, attempts = 5) => {
+    const readWithRetry = async (fileName: string, attempts = 20) => {
       for (let i = 0; i < attempts; i++) {
         const result = await storage.get(fileName);
         if (result) return result;
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       return storage.get(fileName);
     };
@@ -51,7 +51,7 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       expect(result).toBeTruthy();
     });
 
-    it('should read a file from b2 bucket', async () => {
+    it('should read a file from b2 bucket', { timeout: 30000 }, async () => {
       const fileName = `${new Date().getTime()}-read.txt`;
 
       const writeResult = await storage.set(
@@ -64,7 +64,7 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       expect(readResult).toBeTruthy();
     });
 
-    it('should delete a file from b2 bucket', async () => {
+    it('should delete a file from b2 bucket', { timeout: 30000 }, async () => {
       const fileName = `${new Date().getTime()}-delete.txt`;
 
       const writeResult = await storage.set(
