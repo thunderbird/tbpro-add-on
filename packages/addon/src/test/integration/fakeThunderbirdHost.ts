@@ -299,12 +299,33 @@ export function createFakeThunderbirdHost(): FakeHost {
         unregisterProvider: vi.fn(async () => {}),
         createAccount: vi.fn(async () => ({ accountId: 'acct-1' })),
       },
-      TBProMenu: {
-        create: vi.fn(async () => {}),
-        update: vi.fn(async () => {}),
-        clear: vi.fn(async () => {}),
-        onClicked: { addListener: vi.fn() },
-      },
+      // The one piece of real behavior these spies need: the experiment API
+      // rejects a create() for an id that already exists, and that rejection is
+      // what #1120 was made of. Spies that always resolved could not reproduce
+      // it, so any caller that re-adds a menu item now fails here too.
+      TBProMenu: (() => {
+        const parents = new Map<string, string | undefined>();
+        return {
+          create: vi.fn(async (id: string, props?: { parentId?: string }) => {
+            if (parents.has(id)) {
+              throw new Error(`Menu item ${id} already exists`);
+            }
+            parents.set(id, props?.parentId);
+          }),
+          update: vi.fn(async () => {}),
+          // clear() drops an item's children and keeps the item itself. Unknown
+          // ids are tolerated: specs that drive menuLogout() directly never ran
+          // init(), so they have no root registered here.
+          clear: vi.fn(async (id: string) => {
+            for (const [child, parentId] of parents) {
+              if (parentId === id) {
+                parents.delete(child);
+              }
+            }
+          }),
+          onClicked: { addListener: vi.fn() },
+        };
+      })(),
       MailAccounts: {
         createAccount: vi.fn(async () => ({ success: true })),
         setToken: vi.fn(async () => ({ success: true })),
@@ -336,9 +357,7 @@ export function createFakeThunderbirdHost(): FakeHost {
       onWindowRemovedListeners,
       onStorageChangedListeners,
       deliverMessage: async (message: any, sender?: any) => {
-        return Promise.all(
-          onMessageListeners.map((fn) => fn(message, sender))
-        );
+        return Promise.all(onMessageListeners.map((fn) => fn(message, sender)));
       },
       triggerFileUpload: async (fileInfo) => {
         const results = onFileUploadListeners.map((fn) =>

@@ -129,7 +129,16 @@
       }
     });
 
+    // We hang the button off a node owned by Thunderbird's app menu. Losing that
+    // node means we cannot render the Pro menu at all, so say so -- silence here
+    // would look identical to the add-on simply not being installed.
     const banner = window.document.getElementById('appMenu-addon-banners');
+    if (!banner) {
+      console.warn(
+        'TBProMenu: no #appMenu-addon-banners to anchor to; the Thunderbird Pro menu will not appear in this window.'
+      );
+      return null;
+    }
     banner.parentNode.insertBefore(toolbarButton, banner.nextSibling);
 
     return toolbarButton;
@@ -175,6 +184,12 @@
       const parentToolbarItem = document.getElementById(
         'tbpro-menu-id-' + parentId
       );
+      // The caller validated the parent against gMenuItems, which is global,
+      // while this lookup is per window. A window that never got the parent
+      // rendered simply has nothing to attach to.
+      if (!parentToolbarItem) {
+        return;
+      }
 
       let submenu;
       if (!parentToolbarItem.classList.contains('subviewbutton-nav')) {
@@ -214,6 +229,9 @@
       }
     } else {
       const menuItem = _getRootButton(window, extension, id);
+      if (!menuItem) {
+        return;
+      }
       menuItem.querySelector('.tbpro-menu-item-text').textContent = title;
       menuItem.querySelector('.tbpro-menu-item-bold-text').textContent =
         secondaryTitle;
@@ -234,8 +252,12 @@
   function _updateMenuItem(window, id, { title, secondaryTitle, tooltip }) {
     const document = window.document;
     const menuItem = document.getElementById('tbpro-menu-id-' + id);
+    // Callers reach this once per open mail window, and the public update() has
+    // already rejected ids it does not know about. A window that has not
+    // rendered the item is skipped -- throwing here would abandon the windows
+    // further down the list half updated.
     if (!menuItem) {
-      throw new ExtensionError('Could not find item ' + id);
+      return;
     }
 
     if (menuItem.classList.contains('tbpro-header-button')) {
@@ -522,10 +544,6 @@
           }
         }
       }
-
-      // Flush all caches. Enable this only for debugging
-      // TODO disable
-      Services.obs.notifyObservers(null, 'startupcache-invalidate');
     }
 
     getAPI(context) {
@@ -605,14 +623,19 @@
                 menu.parentNode.querySelectorAll('.tbpro-menu-button').length <
                 2
               ) {
+                // Last item in the submenu: turn its parent back into a plain
+                // button. If we cannot identify that parent there is nothing to
+                // turn back, so leave it alone.
                 const subview = menu.parentNode.closest('.tbpro-panel-subview');
                 const parentId = subview?.id.substring(22);
                 const parentButton = document.getElementById(
                   'tbpro-menu-id-' + parentId
                 );
-                parentButton.classList.remove('subviewbutton-nav');
-                parentButton.setAttribute('closemenu', '');
-                parentButton.removeAttribute('oncommand');
+                if (parentButton) {
+                  parentButton.classList.remove('subviewbutton-nav');
+                  parentButton.setAttribute('closemenu', '');
+                  parentButton.removeAttribute('oncommand');
+                }
               }
 
               menu.remove();
@@ -632,8 +655,10 @@
 
             _applyForWindows((window, document) => {
               const parent = document.getElementById('tbpro-menu-id-' + id);
-              parent.classList.remove('subviewbutton-nav');
-              parent.removeAttribute('oncommand');
+              if (parent) {
+                parent.classList.remove('subviewbutton-nav');
+                parent.removeAttribute('oncommand');
+              }
               document.getElementById('appMenu-tbpro-submenu-' + id)?.remove();
             });
           },

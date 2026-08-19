@@ -27,6 +27,42 @@ export type MenuAction = (typeof MENU_ACTIONS)[keyof typeof MENU_ACTIONS];
 let loginTabId = null;
 
 /**
+ * The username the app menu is currently rendered for, or null when the menu is
+ * in its signed-out state.
+ *
+ * getLoginState() runs every 60 seconds (and on every Send route change), and it
+ * calls menuLoggedIn() to keep the menu in step with the stored session.
+ * TBProMenu.create() rejects an id that already exists, so rebuilding the
+ * submenu on every tick threw "Menu item manageDashboard already exists" once a
+ * minute -- which getLoginState() then mistook for a failed session read and
+ * reported as signed out (see #1120). Tracking what the menu already shows means
+ * we only touch it when the signed-in state actually changed.
+ */
+let menuUsername: string | null = null;
+
+/**
+ * Tail of the menu work queue.
+ *
+ * Sign-in and sign-out both arrive from several directions at once: init() starts
+ * a login check without waiting for it while background's main() awaits its own,
+ * the sign-in message handlers call menuLoggedIn() directly, and the user can
+ * click Log out at any moment. Letting those overlap meant a sign-out could
+ * finish in the middle of a sign-in rebuild -- leaving a menu that showed the
+ * sign-in prompt above a fully populated signed-in submenu, with menuUsername
+ * claiming a user who was no longer signed in. Serializing every menu update
+ * through this queue keeps the menu and menuUsername in step.
+ */
+let menuQueue: Promise<unknown> = Promise.resolve();
+
+function queueMenuWork<T>(work: () => Promise<T>): Promise<T> {
+  const run = menuQueue.then(work);
+  // The tail must never be a rejected promise, or one failed update would block
+  // every menu update after it. Callers still see their own rejection via `run`.
+  menuQueue = run.catch(() => {});
+  return run;
+}
+
+/**
  * Opens the login page in a new tab when user clicks the root menu item.
  * Includes extension flag to enable proper authentication flow.
  */
@@ -67,12 +103,30 @@ type Args = {
  * Shows username and adds menu items for managing dashboard, Send, and logout.
  */
 export async function menuLoggedIn({ username }: Args) {
+  await queueMenuWork(async () => {
+    // Checked inside the queue, not before it: by the time our turn comes an
+    // earlier caller may have already rendered this user, or signed them out.
+    if (menuUsername === username) {
+      return;
+    }
+
+    await buildSignedInMenu(username);
+  });
+}
+
+async function buildSignedInMenu(username: string) {
   // Update root menu to display username instead of sign-in prompt
   await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
     title: '',
     secondaryTitle: username,
     tooltip: browser.i18n.getMessage('menuSignedInTooltip'),
   });
+
+  // Start from an empty submenu. The items below belong to whoever is signed in,
+  // so anything left over -- from a different account, or from a rebuild that
+  // failed part way through -- has to go before we re-add them. clear() on a
+  // root with no children is a no-op, so this is safe on a first sign-in too.
+  await browser.TBProMenu.clear(MENU_ACTIONS.ROOT);
 
   // Add submenu item to access Thunderbird Pro account dashboard
   await browser.TBProMenu.create(MENU_ACTIONS.MANAGE_DASHBOARD, {
@@ -96,6 +150,10 @@ export async function menuLoggedIn({ username }: Args) {
     title: browser.i18n.getMessage('menuSignout'),
     parentId: MENU_ACTIONS.ROOT,
   });
+
+  // Only claim the menu is built once every item is in place, so a failure part
+  // way through is retried on the next check rather than left half-finished.
+  menuUsername = username;
 }
 
 /**
@@ -104,16 +162,21 @@ export async function menuLoggedIn({ username }: Args) {
  * Also clears all localStorage and extension storage data.
  */
 export async function menuLogout() {
-  // Reset menu to display sign-in prompt
-  await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
-    title: browser.i18n.getMessage('menuSignInTo'),
-    secondaryTitle: browser.i18n.getMessage('thunderbirdPro'),
-    tooltip: '',
-  });
-
-  // Clear menu items
   console.log('🧹 Clearing menu items and storage');
-  await browser.TBProMenu.clear('root');
+  await queueMenuWork(async () => {
+    // Dropped before the teardown, the mirror of buildSignedInMenu() committing
+    // it after the build: if either call below fails the menu is in an unknown
+    // state, and the next sign-in has to rebuild it rather than trust it.
+    menuUsername = null;
+
+    // Reset menu to display sign-in prompt, then clear the submenu items.
+    await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
+      title: browser.i18n.getMessage('menuSignInTo'),
+      secondaryTitle: browser.i18n.getMessage('thunderbirdPro'),
+      tooltip: '',
+    });
+    await browser.TBProMenu.clear(MENU_ACTIONS.ROOT);
+  });
 
   // Full wipe of the add-on's storage to a clean, logged-out state.
   //
@@ -185,28 +248,40 @@ async function closeAllAddOnTabs() {
   SIGN_OUT message path, which calls menuLogout().
  */
 export async function getLoginState() {
+  let auth;
   try {
     // Get the auth token from browser storage (this is a copy of the auth token stored in the web context, used to determine login state in the add-on context)
     const authStorageData = await browser.storage.local.get(STORAGE_KEY_AUTH);
-    const auth = authStorageData[STORAGE_KEY_AUTH];
-    if (!auth) {
-      return { isLoggedIn: false, username: null };
-    }
-
-    const username = auth?.profile?.preferred_username || auth?.profile?.email;
-
-    // A stored session with a refresh_token is logged in, even if the access
-    // token's expires_at has lapsed — the web app will silently refresh it.
-    if (auth.refresh_token && username) {
-      await menuLoggedIn({ username });
-      return { isLoggedIn: true, username };
-    }
-
-    return { isLoggedIn: false, username: null };
+    auth = authStorageData[STORAGE_KEY_AUTH];
   } catch (error) {
     console.error('Error retrieving auth state from storage:', error);
     return { isLoggedIn: false, username: null };
   }
+
+  if (!auth) {
+    return { isLoggedIn: false, username: null };
+  }
+
+  const username = auth?.profile?.preferred_username || auth?.profile?.email;
+
+  // A stored session with a refresh_token is logged in, even if the access
+  // token's expires_at has lapsed — the web app will silently refresh it.
+  if (!auth.refresh_token || !username) {
+    return { isLoggedIn: false, username: null };
+  }
+
+  // Keeping the app menu in step is a display concern, and it is deliberately
+  // outside the try/catch above: a menu that fails to update does not end the
+  // session, so callers (the Send route guard) must never be told we are signed
+  // out because of it. Reporting a live session as signed out was the visible
+  // half of #1120.
+  try {
+    await menuLoggedIn({ username });
+  } catch (error) {
+    console.error('Could not update the Thunderbird Pro menu:', error);
+  }
+
+  return { isLoggedIn: true, username };
 }
 
 export async function closeLoginTab() {
