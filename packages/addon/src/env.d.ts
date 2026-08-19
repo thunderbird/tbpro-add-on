@@ -60,6 +60,64 @@ declare namespace browser {
     };
   }
 
+  /**
+   * Experiment API for creating the user's Thundermail mail account in
+   * Thunderbird and storing its OAuth2 refresh token. Both functions report
+   * failure through `success: false` rather than throwing. The promise can
+   * still reject if the privileged parent module fails to load, so callers keep
+   * their own error handling.
+   */
+  namespace MailAccounts {
+    /** Result returned when creating a mail account. */
+    interface CreateAccountResult {
+      /** Whether the operation was successful. */
+      success: boolean;
+      /** True if the account already existed and was not recreated. */
+      alreadyExists?: boolean;
+      /** Additional information about the operation. */
+      message?: string;
+      /** Error message if the operation failed. */
+      error?: string;
+    }
+
+    /** Result returned when setting an account's refresh token. */
+    interface SetTokenResult {
+      /** Whether the token was set successfully. */
+      success: boolean;
+      /** Error message if the operation failed. */
+      error?: string;
+    }
+
+    /**
+     * Creates a mail account with OAuth2 authentication (IMAP and SMTP). If a
+     * matching account already exists it is not recreated.
+     *
+     * @param email - The user's email address.
+     * @param realname - The user's full name, shown in the From field of outgoing mail.
+     * @param hostname - The mail server hostname, e.g. 'mail.thundermail.com'.
+     * @param displayName - The account's display name in Thunderbird's folder pane.
+     */
+    function createAccount(
+      email: string,
+      realname: string,
+      hostname: string,
+      displayName: string
+    ): Promise<CreateAccountResult>;
+
+    /**
+     * Sets the OAuth2 refresh token for an existing mail account.
+     *
+     * @param refreshToken - The OAuth2 refresh token for the account.
+     * @param email - The email address of the account.
+     * @param hostname - The mail server hostname, e.g. 'mail.thundermail.com'.
+     */
+    function setToken(
+      refreshToken: string,
+      email: string,
+      hostname: string
+    ): Promise<SetTokenResult>;
+  }
+
   namespace TBProMenu {
     /**
      * Creates a new menu item in the TBPro menu.
@@ -100,8 +158,9 @@ declare namespace browser {
     ): Promise<void>;
 
     /**
-     * Removes a menu item and all its children from the TBPro menu.
-     * @param id - Unique identifier of the menu item to remove
+     * Removes a menu item's child items and its submenu panel, reverting it to
+     * a plain (non-navigating) item. The item itself is kept.
+     * @param id - Unique identifier of the menu item to clear
      * @returns Promise that resolves when the menu item is cleared
      */
     function clear(id: string): Promise<void>;
@@ -209,9 +268,7 @@ declare namespace browser {
 
     /** Fires when the effective telemetry state changes, with the new value. */
     const onChanged: {
-      addListener(
-        callback: (enabled: boolean) => Promise<void> | void
-      ): void;
+      addListener(callback: (enabled: boolean) => Promise<void> | void): void;
       removeListener(
         callback: (enabled: boolean) => Promise<void> | void
       ): void;

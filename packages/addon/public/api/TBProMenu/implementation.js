@@ -293,6 +293,8 @@
     const panel = createElement({
       type: 'panelview',
       id,
+      // tbpro-panel-subview is neither styled nor queried by the add-on;
+      // retained as a stable hook for DOM inspection and out-of-tree chrome CSS.
       classes: ['PanelUI-subView', 'tbpro-panel-subview'],
       xul: true,
     });
@@ -378,8 +380,7 @@
    *  empty string to close everything, use "none" or omit completely to not close anything.
    * @param {string} options.action - The action name to use when for the onCommnd event emitted
    *  when the item is clicked.
-   * @param {string} options.id - The id of the submenu item. Used to generate the html ID
-   *  and for being able to remove the item later.
+   * @param {string} options.id - The id of the submenu item. Used to generate the html ID.
    * @param {string} options.menuId - The id of the submenu to add the item to.
    * @param {string} options.nav - The string of a submenu which should
    *  be navigated to when the item is clicked
@@ -392,6 +393,8 @@
     extension,
     { text, close = 'none', tooltip, action, id, nav, menuId }
   ) {
+    // tbpro-menu-button is neither styled nor queried by the add-on; retained as
+    // a stable hook for DOM inspection and out-of-tree chrome CSS.
     const classes = [
       'subviewbutton',
       'subviewbutton-iconic',
@@ -589,57 +592,6 @@
 
             _applyForWindows((window) => {
               _updateMenuItem(window, id, updateProps);
-            });
-          },
-
-          remove(id) {
-            if (!(id in gMenuItems)) {
-              throw new ExtensionError('Could not find item ' + id);
-            }
-
-            const item = gMenuItems[id];
-            const parentItem = gMenuItems[item.parentId];
-            if (parentItem) {
-              parentItem.children = parentItem.children.filter(
-                (element) => element !== item
-              );
-            }
-            delete gMenuItems[id];
-
-            _applyForWindows((window, document) => {
-              const menu = document.getElementById('tbpro-menu-id-' + id);
-              if (!menu) {
-                return;
-              }
-
-              if (menu.classList.contains('subviewbutton-nav')) {
-                document
-                  .getElementById('appMenu-tbpro-submenu-' + id)
-                  ?.remove();
-                // TODO sub-sub-menus will not be cleaned up, fix this if needed
-              }
-
-              if (
-                menu.parentNode.querySelectorAll('.tbpro-menu-button').length <
-                2
-              ) {
-                // Last item in the submenu: turn its parent back into a plain
-                // button. If we cannot identify that parent there is nothing to
-                // turn back, so leave it alone.
-                const subview = menu.parentNode.closest('.tbpro-panel-subview');
-                const parentId = subview?.id.substring(22);
-                const parentButton = document.getElementById(
-                  'tbpro-menu-id-' + parentId
-                );
-                if (parentButton) {
-                  parentButton.classList.remove('subviewbutton-nav');
-                  parentButton.setAttribute('closemenu', '');
-                  parentButton.removeAttribute('oncommand');
-                }
-              }
-
-              menu.remove();
-              document.querySelector('#appMenu-multiView').goBack?.();
             });
           },
 
