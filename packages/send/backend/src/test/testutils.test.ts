@@ -18,9 +18,23 @@ describe('runOrSkip', () => {
     console.warn = originalConsoleWarn;
   });
 
-  it('should return true when IS_CI_AUTOMATION is set', () => {
+  it('should skip (return false) in CI when required config values are missing', () => {
+    // Even with IS_CI_AUTOMATION set, a suite must skip if its credentials are
+    // not present, otherwise it runs against a nonexistent bucket and fails.
     process.env.IS_CI_AUTOMATION = 'true';
     const result = shouldRunSuite({ someKey: '' }, 'test suite');
+    expect(result).toBe(false);
+    expect(mockConsoleWarn).toHaveBeenCalledWith(
+      'env variables are not correctly set to run test suite'
+    );
+  });
+
+  it('should return true in CI when all required config values are present', () => {
+    process.env.IS_CI_AUTOMATION = 'true';
+    const result = shouldRunSuite(
+      { key1: 'value1', key2: 'value2' },
+      'test suite'
+    );
     expect(result).toBe(true);
     expect(mockConsoleWarn).not.toHaveBeenCalled();
   });
