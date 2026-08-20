@@ -1,14 +1,10 @@
 import { afterAll, describe, expect, it } from 'vitest';
 
-import {
-  StorageAdapterConfig,
-  StorageType,
-} from '@tweedegolf/storage-abstraction';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { Readable } from 'stream';
-import { FileStore } from '../../storage';
+import { FileStore, StorageAdapterConfig, StorageType } from '../../storage';
 import { shouldRunSuite } from '../testutils';
 
 const config: StorageAdapterConfig = {
@@ -67,8 +63,6 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       return key;
     };
 
-    // The suite used to leak every object it wrote, which is half of how the
-    // bucket grew past the native read path's cap.
     afterAll(async () => {
       for (const key of createdKeys) {
         try {
@@ -79,10 +73,10 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       }
     }, NETWORK_TEST_TIMEOUT_MS);
 
-    // Without the S3 endpoint FileStore falls back to the native adapter and
-    // every other test here still passes, because this change keeps the bucket
-    // small enough for the native listing to work. Assert the mode outright.
-    it('runs against the keyed S3 path, not the native listing', () => {
+    // In CI `shouldRunSuite` runs this suite unconditionally, so a bucket
+    // credential that went missing would otherwise surface as a pile of
+    // confusing failures rather than one legible one.
+    it('has a usable S3 client for the configured bucket', () => {
       expect(storage.usesKeyedApi()).toBe(true);
     });
 
@@ -149,8 +143,8 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
         const deleteResult = await storage.del(fileName);
         expect(deleteResult).toBeTruthy();
 
-        // `del` reporting success is not evidence: the native adapter returns
-        // "ok" for a key it merely failed to find.
+        // `del` reporting success is not evidence that anything went: a
+        // versioned bucket answers a plain delete by hiding the object.
         const afterDelete = await storage.get(fileName);
         expect(afterDelete).toBeNull();
       },

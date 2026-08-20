@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  StorageAdapterConfig,
-  StorageType,
-} from '@tweedegolf/storage-abstraction';
 import fs from 'fs';
 import path from 'path';
-import { FileStore } from '../../storage';
+import { FileStore, StorageAdapterConfig, StorageType } from '../../storage';
 import { shouldRunSuite } from '../testutils';
 
 const config: StorageAdapterConfig = {

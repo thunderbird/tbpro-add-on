@@ -6,27 +6,23 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl as getSignedUrlCommand } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
 
 /**
- * Backblaze's S3-compatible API.
+ * The S3 data plane. Backblaze B2 and S3 share it: B2's S3-compatible API
+ * speaks the same commands, so one implementation serves both backends.
  *
- * Keyed reads and deletes live here because the native adapter cannot look a
- * file up by name: `getFileAsStream` and `removeFile` resolve name -> fileId by
- * calling `b2_list_file_names` once with `maxFileCount: 1000`, no prefix and no
- * `startFileName`, then scanning that single page (`getFiles` -> `getFile` in
- * @tweedegolf/sab-adapter-backblaze-b2; `nextFileName` appears nowhere in it).
- * B2 returns names lexicographically, so once 1000 names sort ahead of the key,
- * reads return "not found" and deletes report success having deleted nothing.
- * A keyed S3 request has no such cap.
+ * Every operation addresses an object by key. Nothing here lists a bucket to
+ * find a file, so cost and correctness do not degrade as the bucket fills.
  */
 
 /**
  * Connection details, from an explicit config (the test suites, handed
- * `TEST_B2_*`) or from the environment (production, `B2_*`).
+ * `TEST_B2_*`/`TEST_S3_*`) or from the environment.
  */
-export type B2DirectConfig = {
+export type S3Settings = {
   endpoint?: string;
   region?: string;
   accessKeyId?: string;
@@ -35,13 +31,13 @@ export type B2DirectConfig = {
 };
 
 /**
- * Merge caller values over the environment. Env is read at call time, not at
- * module load, so a FileStore built with an explicit config is not bound to
- * whatever `B2_BUCKET_NAME` held when this module was first imported.
+ * Merge caller values over the environment; the environment here is the B2
+ * deployment's `B2_*`, since an S3 one passes its own values in. Env is read at
+ * call time, not at module load, so a FileStore built with an explicit config
+ * is not bound to whatever `B2_BUCKET_NAME` held when this module was first
+ * imported.
  */
-export function resolveDirectConfig(
-  overrides: B2DirectConfig = {}
-): B2DirectConfig {
+export function resolveS3Settings(overrides: S3Settings = {}): S3Settings {
   return {
     endpoint: overrides.endpoint || process.env.B2_ENDPOINT,
     region: overrides.region || process.env.B2_REGION || 'auto',
@@ -53,7 +49,7 @@ export function resolveDirectConfig(
 }
 
 /** True when we have enough to reach the S3 endpoint. */
-export function isDirectConfigUsable(config: B2DirectConfig): boolean {
+export function isS3SettingsUsable(config: S3Settings): boolean {
   return Boolean(
     config.endpoint &&
     config.accessKeyId &&
@@ -62,10 +58,10 @@ export function isDirectConfigUsable(config: B2DirectConfig): boolean {
   );
 }
 
-export function createDirectClient(
-  overrides: B2DirectConfig = {}
+export function createS3Client(
+  overrides: S3Settings = {}
 ): S3Client | undefined {
-  const config = resolveDirectConfig(overrides);
+  const config = resolveS3Settings(overrides);
   try {
     return new S3Client({
       // Omit rather than pass undefined: a stringified undefined endpoint
@@ -80,7 +76,7 @@ export function createDirectClient(
       maxAttempts: 3,
     });
   } catch (error) {
-    console.error('Could not construct the S3 client for Backblaze:', error);
+    console.error('Could not construct the S3 client:', error);
     return undefined;
   }
 }
@@ -114,7 +110,7 @@ export async function getSignedUrl(
   s3Client: S3Client,
   Key: string,
   ContentType: string,
-  Bucket: string = process.env.B2_BUCKET_NAME
+  Bucket: string
 ) {
   // Set up the command parameters
   const command = new PutObjectCommand({
@@ -131,18 +127,56 @@ export async function getSignedUrl(
 }
 
 /**
- * Read an object's size via the S3 API (HeadObject).
+ * S3 caps a multipart upload at 10 000 fixed-size parts, and requires every
+ * part but the last to be at least 5 MiB. 5 MiB parts therefore cover 50 GB,
+ * comfortably past `config.max_file_size`; a larger declared size widens the
+ * parts rather than running out of them.
+ */
+const MIN_PART_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_PARTS = 10_000;
+
+export function partSizeFor(size?: number): number {
+  return size
+    ? Math.max(MIN_PART_SIZE_BYTES, Math.ceil(size / MAX_PARTS))
+    : MIN_PART_SIZE_BYTES;
+}
+
+/**
+ * Write an object from a stream.
  *
- * Objects are uploaded with a presigned S3 PUT, and S3 is read-after-write
- * consistent for an object it just wrote — unlike Backblaze's native API, whose
- * `sizeOf` lags behind the S3 write and caused create-entry to fail with
- * UPLOAD_SIZE_ERROR. Using the same S3 client that issued the PUT removes that
- * race.
+ * `Upload` buffers the body into parts and switches to a multipart upload once
+ * there is more than one, so a write is bounded by the multipart limit rather
+ * than the 5 GB a single request allows, and needs no length up front. One
+ * part in flight: the source is a socket, and each queued part is held whole in
+ * memory.
+ */
+export async function uploadObject(
+  s3Client: S3Client,
+  Key: string,
+  Body: Readable,
+  Bucket: string,
+  size?: number
+): Promise<void> {
+  await new Upload({
+    client: s3Client,
+    params: { Bucket, Key, Body },
+    partSize: partSizeFor(size),
+    queueSize: 1,
+    leavePartsOnError: false,
+  }).done();
+}
+
+/**
+ * Read an object's size (HeadObject).
+ *
+ * Reading the size back through the same API that wrote the object is what
+ * makes create-entry's size check reliable: S3 is read-after-write consistent
+ * for an object it just wrote.
  */
 export async function getObjectSize(
   s3Client: S3Client,
   Key: string,
-  Bucket: string = process.env.B2_BUCKET_NAME
+  Bucket: string
 ): Promise<number> {
   const command = new HeadObjectCommand({
     Bucket,
@@ -161,7 +195,7 @@ export async function getObjectSize(
 export async function getObjectAsStream(
   s3Client: S3Client,
   Key: string,
-  Bucket: string = process.env.B2_BUCKET_NAME
+  Bucket: string
 ): Promise<Readable | null> {
   try {
     const response = await s3Client.send(
@@ -225,17 +259,16 @@ async function listVersionIds(
  * Delete an object by key, erasing every version of it.
  *
  * B2 buckets are versioned, so a bare `DeleteObject` only writes a hide marker
- * and leaves the payload behind until a lifecycle rule reaps it. The native
- * `b2_delete_file_version` this replaces erased the bytes, and a user pressing
- * delete on a shared file should keep getting that, so the versions are
+ * and leaves the payload behind until a lifecycle rule reaps it. A user
+ * pressing delete on a shared file expects the bytes gone, so the versions are
  * enumerated and removed explicitly.
  *
- * Deleting an absent key succeeds, matching the adapter's documented behaviour.
+ * Deleting an absent key succeeds.
  */
 export async function deleteObject(
   s3Client: S3Client,
   Key: string,
-  Bucket: string = process.env.B2_BUCKET_NAME
+  Bucket: string
 ): Promise<void> {
   let versionIds: string[] = [];
 
@@ -272,7 +305,7 @@ export async function deleteObject(
 export async function getSignedUrlforDownload(
   s3Client: S3Client,
   Key: string,
-  Bucket: string = process.env.B2_BUCKET_NAME
+  Bucket: string
 ) {
   // Set up the command parameters
   const command = new GetObjectCommand({
