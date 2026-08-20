@@ -14,11 +14,16 @@
 # unset is written as an empty string, and src/config.ts treats empty as unset.
 #
 # NAMESPACE NOTE: every APP_* var this script reads is emitted into the
-# publicly-served config.js, with exactly two exceptions -- APP_CONFIG_PATH and
-# APP_API_UPSTREAM below configure the entrypoint/nginx themselves and never
-# reach the browser. Keep it that way: a new APP_* var must be either clearly
-# public SPA config (add it to the jq object AND src/config.ts AND
-# public/config.js) or renamed out of the pattern.
+# publicly-served config.js, with three exceptions -- APP_CONFIG_PATH,
+# APP_API_UPSTREAM and APP_CSP_REPORT_ONLY below configure the entrypoint/nginx
+# themselves and never reach the browser. Keep it that way: a new APP_* var must
+# be either clearly public SPA config (add it to the jq object AND src/config.ts
+# AND public/config.js) or renamed out of the pattern.
+#
+# Two of the public vars are read a SECOND time below, to build the nginx CSP:
+# APP_SEND_SERVER_URL and APP_OIDC_ROOT_URL must each be an https:// URL with a
+# plain host[:port] or they are dropped from the policy with a warning. Every
+# other APP_* var is unvalidated -- widening either of those two is not free.
 set -eu
 
 CONFIG_PATH="${APP_CONFIG_PATH:-/usr/share/nginx/html/config.js}"
@@ -86,6 +91,93 @@ if [ -z "${APP_ENV:-}" ]; then
   echo "send: WARNING APP_ENV is unset; the SPA will report a fallback environment (staging) and use the -stage sibling-service URLs" >&2
 fi
 
+# Substitute the two environment-specific origins into the Content-Security-Policy
+# in the nginx config. They are baked as `*.invalid` HOST placeholders inside the
+# $send_csp map -- see the note above that map in send.conf for why they are
+# templated, and why the OIDC entry must be an origin rather than
+# APP_OIDC_ROOT_URL verbatim.
+#
+# Only the HOST is substituted; the `https://` and `wss://` schemes stay baked in
+# the config, so no value can introduce a scheme of its own.
+#
+# NO SUPPLIED VALUE IS FATAL. Missing or unusable, it leaves the .invalid
+# placeholder, which keeps the policy complete and enforced; `'self'` still
+# covers the same-origin API and both WebSockets, so the visible symptom is a
+# CSP violation on OIDC login rather than a header that quietly went missing.
+# That matters because this image is also published to GHCR for plain
+# Docker/Compose consumers, whose `http://localhost` origins would otherwise
+# turn a security-header change into a boot crash-loop. The only fatal case is
+# a placeholder that is ALREADY gone, which means conf.d is not the image layer.
+
+# Reduce an https:// URL to its bare host[:port] in CSP_HOST. Returns non-zero
+# and sets nothing if the value cannot be used. The character class is the same
+# one APP_API_UPSTREAM uses below and for the same reasons: this value is
+# interpolated into an nginx config by sed.
+csp_host() {
+  csp_host_var="$1"
+  csp_host_url="$2"
+  case "$csp_host_url" in
+    https://*) ;;
+    *)
+      echo "send: WARNING $csp_host_var is not an https:// URL, so it is left out of the CSP: '$csp_host_url'" >&2
+      return 1
+      ;;
+  esac
+  CSP_HOST="${csp_host_url#https://}"
+  CSP_HOST="${CSP_HOST%%/*}"
+  CSP_HOST="${CSP_HOST%%\?*}"
+  CSP_HOST="${CSP_HOST%%#*}"
+  case "$CSP_HOST" in
+    '' | *[!A-Za-z0-9.:_-]*)
+      echo "send: WARNING $csp_host_var has no plain host[:port], so it is left out of the CSP: '$csp_host_url'" >&2
+      return 1
+      ;;
+  esac
+}
+
+# One-shot against a placeholder, with the same assertion the upstream rewrite
+# below uses and for the same reason: if it is already gone, /etc/nginx/conf.d is
+# not coming from the immutable image layer and this would otherwise silently
+# keep the previous start's value.
+csp_replace() {
+  if ! grep -q "$1" /etc/nginx/conf.d/default.conf; then
+    echo "send: FATAL CSP placeholder $1 already replaced; is /etc/nginx/conf.d on a persistent volume?" >&2
+    exit 1
+  fi
+  sed -i "s|$1|$2|g" /etc/nginx/conf.d/default.conf
+}
+
+# csp_host runs as an `if` condition, so its non-zero return is not a `set -e`
+# abort -- it falls through to the warning below.
+if [ -n "${APP_SEND_SERVER_URL:-}" ] && csp_host APP_SEND_SERVER_URL "${APP_SEND_SERVER_URL}"; then
+  csp_replace 'send-origin.invalid' "${CSP_HOST}"
+  echo "send: CSP connect-src send origin set to ${CSP_HOST}"
+else
+  echo "send: WARNING CSP keeps send-origin.invalid; same-origin API calls and B2 uploads still work, the WebSockets fall back to 'self'" >&2
+fi
+
+if [ -n "${APP_OIDC_ROOT_URL:-}" ] && csp_host APP_OIDC_ROOT_URL "${APP_OIDC_ROOT_URL}"; then
+  csp_replace 'oidc-origin.invalid' "${CSP_HOST}"
+  echo "send: CSP connect-src OIDC origin set to ${CSP_HOST}"
+else
+  echo "send: WARNING CSP keeps oidc-origin.invalid; OIDC login will be blocked" >&2
+fi
+
+# ESCAPE HATCH. The policy is ENFORCED by default, but a CSP violation is
+# invisible server-side -- no report-uri collector exists, and a blocked fetch
+# never reaches this origin -- so the posture is flippable without an image
+# rebuild while a suspected breakage is diagnosed. Set APP_CSP_REPORT_ONLY=1 and
+# restart the pod; unset means enforced.
+if [ "${APP_CSP_REPORT_ONLY:-}" = "1" ]; then
+  if ! grep -q 'add_header Content-Security-Policy ' /etc/nginx/conf.d/default.conf; then
+    echo "send: FATAL CSP header already renamed; is /etc/nginx/conf.d on a persistent volume?" >&2
+    exit 1
+  fi
+  sed -i 's|add_header Content-Security-Policy |add_header Content-Security-Policy-Report-Only |g' \
+    /etc/nginx/conf.d/default.conf
+  echo "send: WARNING APP_CSP_REPORT_ONLY=1 -- the CSP is report-only and nothing is enforced" >&2
+fi
+
 # Point the nginx API/tRPC proxy at the backend. On EKS the backend is a SEPARATE
 # Service, so the baked default (send-backend:8080, for a compose/sidecar
 # topology) must be overridden. Set APP_API_UPSTREAM to host:port with NO scheme,
@@ -99,7 +191,7 @@ fi
 if [ -n "${APP_API_UPSTREAM:-}" ]; then
   # Validate before substituting. This value is interpolated into an nginx config
   # by sed, so an unvalidated one is both a config-injection point and a
-  # silent-corruption point:
+  # silent-corruption point (same class as csp_host above):
   #   * `&` in the replacement expands to the whole matched text
   #     ("a&b:8080" -> "asend-backend:8080b:8080");
   #   * a `}` closes the location block and everything after it is parsed as
