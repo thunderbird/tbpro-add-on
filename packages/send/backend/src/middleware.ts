@@ -9,6 +9,7 @@ import {
   validateOIDCToken,
 } from './auth/oidc';
 import { VERSION, X_LOGOUT_HEADER } from './config';
+import { wrapAsyncHandler } from './errors/routes';
 import { getUsedStorage } from './models';
 import { fromPrismaV2 } from './models/prisma-helper';
 import { getAdminStatus, getUserByOIDCSubject } from './models/users';
@@ -67,6 +68,23 @@ export function reject(
   status = 403,
   message = `Not authorized`
 ) {
+  // Deny helpers get called on paths where something upstream may already have
+  // answered -- `getGroupMemberPermissions` runs `requireAuth` with a sentinel
+  // `next`, and `requireAuth` signals denial by responding rather than by
+  // throwing. Writing a second time makes `res.send` call `setHeader` on a sent
+  // response, which throws ERR_HTTP_HEADERS_SENT; inside an `async` middleware
+  // Express 4 drops that rejection and Node terminates the process.
+  //
+  // The first response is also the better one: it distinguishes an expired
+  // token (401, which the client auto-retries) from a missing one (403), where
+  // this helper only ever says 403.
+  if (res.headersSent) {
+    console.warn(
+      'reject() called after a response was already sent; keeping the first'
+    );
+    return;
+  }
+
   res.status(status).json({
     message,
   });
@@ -279,81 +297,84 @@ function getAuthenticatedUserData(
 }
 
 // Gets a user's permissions for a container and adds it to the request.
-export const getGroupMemberPermissions: RequestHandler = async (
-  req,
-  res,
-  next
-) => {
-  // Since we're calling a function intended to be used as middleware, we need to call next() if auth is valid
-  // We set a boolean to make sure next() is called. This means that the auth has been verified
-  let goodToGo = false;
-  const nextTrigger = () => {
-    goodToGo = true;
-  };
-  await requireAuth(req as AuthenticatedRequest, res, nextTrigger);
+export const getGroupMemberPermissions: RequestHandler = wrapAsyncHandler(
+  async (req, res, next) => {
+    // Since we're calling a function intended to be used as middleware, we need to call next() if auth is valid
+    // We set a boolean to make sure next() is called. This means that the auth has been verified
+    let goodToGo = false;
+    // Express calls `next(err)` to report failure, so a sentinel that ignores
+    // its argument would read an auth error as success. `requireAuth` does not
+    // do that today; this makes sure it cannot start to.
+    const nextTrigger = (err?: unknown) => {
+      goodToGo = !err;
+    };
+    await requireAuth(req as AuthenticatedRequest, res, nextTrigger);
 
-  if (!goodToGo) {
-    return reject(res);
-  }
+    if (!goodToGo) {
+      // `requireAuth` has already answered on every denial path. `reject` is a
+      // no-op once that has happened, and is here for the case where it has not.
+      return reject(res);
+    }
 
-  const userData = getAuthenticatedUserData(req as AuthenticatedRequest);
-  if (!userData) {
-    console.error('No authenticated user data found');
-    return reject(res);
-  }
+    const userData = getAuthenticatedUserData(req as AuthenticatedRequest);
+    if (!userData) {
+      console.error('No authenticated user data found');
+      return reject(res);
+    }
 
-  const userId = userData.id;
-  const containerId = extractContainerId(req);
+    const userId = userData.id;
+    const containerId = extractContainerId(req);
 
-  /* 
-  Users have full permissions to their own top-level (aka root folder)
-  Whenever a request doesn't contain a containerId, we assume it's a top-level folder
-  This happens client side when creating a new folder that doesn't have a parent
-  It also happens when a new account is created and we create a default folder
- */
-  if (userId && !containerId) {
-    req[PERMISSION_REQUEST_KEY] = allPermissions();
-    next();
-    return;
-  }
+    /* 
+    Users have full permissions to their own top-level (aka root folder)
+    Whenever a request doesn't contain a containerId, we assume it's a top-level folder
+    This happens client side when creating a new folder that doesn't have a parent
+    It also happens when a new account is created and we create a default folder
+   */
+    if (userId && !containerId) {
+      req[PERMISSION_REQUEST_KEY] = allPermissions();
+      next();
+      return;
+    }
 
-  if (!userId || !containerId) {
-    reject(res);
-    return;
-  }
+    if (!userId || !containerId) {
+      reject(res);
+      return;
+    }
 
-  try {
-    const findGroupQuery = {
-      where: {
-        container: {
-          id: containerId,
+    try {
+      const findGroupQuery = {
+        where: {
+          container: {
+            id: containerId,
+          },
         },
-      },
-    };
-    const group = await fromPrismaV2(
-      prisma.group.findFirstOrThrow,
-      findGroupQuery
-    );
+      };
+      const group = await fromPrismaV2(
+        prisma.group.findFirstOrThrow,
+        findGroupQuery
+      );
 
-    const findMembershipQuery = {
-      where: {
-        groupId_userId: { groupId: group.id, userId },
-      },
-    };
-    const membership = await fromPrismaV2(
-      prisma.membership.findUniqueOrThrow,
-      findMembershipQuery
-    );
+      const findMembershipQuery = {
+        where: {
+          groupId_userId: { groupId: group.id, userId },
+        },
+      };
+      const membership = await fromPrismaV2(
+        prisma.membership.findUniqueOrThrow,
+        findMembershipQuery
+      );
 
-    // Attach it to the request
-    req[PERMISSION_REQUEST_KEY] = membership.permission;
-    next();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (err) {
-    reject(res);
-    return;
+      // Attach it to the request
+      req[PERMISSION_REQUEST_KEY] = membership.permission;
+      next();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err) {
+      reject(res);
+      return;
+    }
   }
-};
+);
 
 export function requireReadPermission(req, res, next) {
   if (!hasRead(req[PERMISSION_REQUEST_KEY])) {
