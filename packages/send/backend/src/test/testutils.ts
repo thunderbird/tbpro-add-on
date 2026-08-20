@@ -8,8 +8,8 @@ export const NETWORK_TEST_TIMEOUT_MS = 30_000;
 /**
  * Is there an S3-compatible bucket service listening at `endpoint`?
  *
- * Used to skip the storage round-trip suite on a machine that has not started
- * one, without letting it skip silently in CI — see the caller.
+ * The storage round-trip suite requires one. This exists so a machine that has
+ * not started it gets a one-line answer instead of an SDK retry timeout.
  */
 export async function isMinioReachable(
   endpoint: string,
@@ -29,16 +29,4 @@ export async function isMinioReachable(
   } finally {
     clearTimeout(timer);
   }
-}
-
-export function shouldRunSuite(
-  config: Record<string, string>,
-  suiteName: string
-) {
-  if (process.env.IS_CI_AUTOMATION) return true;
-  const canRun = Object.values(config).every((value) => !!value);
-  if (!canRun) {
-    console.warn(`env variables are not correctly set to run ${suiteName}`);
-  }
-  return canRun;
 }

@@ -110,8 +110,19 @@ export class FileStore {
     // Signed uploads and downloads go over the S3 API for both bucket backends,
     // built from this store's own settings rather than from `B2_*` -- otherwise
     // an `s3` deployment signs urls for the Backblaze bucket.
+    //
+    // All three are required, not just the bucket: `.env.sample` ships
+    // `S3_ACCESS_KEY=`/`S3_SECRET_KEY=` empty, and a client built from those
+    // signs nothing and throws on every request, forever. Ambient credentials
+    // (IRSA, instance role) are deliberately not supported -- every deployment
+    // sets explicit keys, and guessing is how a backend ends up signing for the
+    // wrong bucket.
     const settings = s3SettingsFor(config);
-    if (settings?.bucketName) {
+    if (
+      settings?.bucketName &&
+      settings.accessKeyId &&
+      settings.secretAccessKey
+    ) {
       this.s3 = {
         client: createS3Client(settings),
         bucket: settings.bucketName,

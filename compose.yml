@@ -26,9 +26,14 @@ services:
     command: server /data --console-address ":9001"
     # No volume on purpose. It holds test objects the suite cleans up after
     # itself, so nothing here is worth surviving the container.
+    #
+    # Loopback, because `minioadmin:minioadmin` on every LAN interface is not a
+    # thing to publish. Overridable, because a second checkout holding 9000 is
+    # how you end up running the suite against another worktree's bucket --
+    # set SEND_MINIO_PORT and TEST_MINIO_ENDPOINT together. The console on 9001
+    # is reachable inside the container; nothing needs it from outside.
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:${SEND_MINIO_PORT:-9000}:9000"
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin

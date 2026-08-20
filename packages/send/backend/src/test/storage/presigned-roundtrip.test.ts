@@ -11,7 +11,7 @@ import {
   StorageType,
 } from '@tweedegolf/storage-abstraction';
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FileStore } from '../../storage';
 import { createS3Client } from '../../storage/s3b2';
 import { NETWORK_TEST_TIMEOUT_MS, isMinioReachable } from '../testutils';
@@ -31,20 +31,28 @@ import { NETWORK_TEST_TIMEOUT_MS, isMinioReachable } from '../testutils';
  * The service is MinIO, so the round trip runs on a laptop and in CI without
  * credentials for anyone's live bucket. B2's own behaviour is covered by
  * `end-to-end-bucket-tests`, which drives the whole stack against Backblaze.
+ *
+ * A bucket costs nothing to start, so this suite does not skip when one is
+ * missing -- it fails and says how to start it. A storage suite that quietly
+ * does not run is the problem this replaces.
  */
 const SUITE = 'Storage: production presigned round trip';
 
 /** Matches what the browser sends: `filesync.ts` sendBlob -> `helpers.ts` PUT. */
 const CONTENT_TYPE = 'application/octet-stream';
 
-const endpoint = process.env.TEST_MINIO_ENDPOINT;
+// Defaulted to the compose service's own settings rather than required from the
+// environment: they are fixed values in `compose.yml`, not credentials, and
+// `.env` is gitignored -- a checkout that predates the sample's new block would
+// otherwise fail on `undefined`. Override any of them to point somewhere else.
+const endpoint = process.env.TEST_MINIO_ENDPOINT || 'http://localhost:9000';
 
 const minioSettings = {
   endpoint,
-  region: process.env.TEST_MINIO_REGION,
-  accessKeyId: process.env.TEST_MINIO_ACCESS_KEY,
-  secretAccessKey: process.env.TEST_MINIO_SECRET_KEY,
-  bucketName: process.env.TEST_MINIO_BUCKET_NAME,
+  region: process.env.TEST_MINIO_REGION || 'us-east-1',
+  accessKeyId: process.env.TEST_MINIO_ACCESS_KEY || 'minioadmin',
+  secretAccessKey: process.env.TEST_MINIO_SECRET_KEY || 'minioadmin',
+  bucketName: process.env.TEST_MINIO_BUCKET_NAME || 'send-test',
   // MinIO is reached at a bare host:port, so the bucket cannot be a subdomain.
   // Backblaze is addressed virtual-hosted; the offline suite below covers that.
   forcePathStyle: true,
@@ -78,18 +86,26 @@ describe(SUITE, () => {
     return key;
   }
 
-  /** The browser's PUT: presigned url in, bytes out. */
-  async function putSigned(
-    key: string,
-    body: Buffer,
-    contentType = CONTENT_TYPE
-  ): Promise<Response> {
-    const url = await storage.getUploadBucketUrl(key, contentType);
-    return await fetch(url, {
+  /**
+   * The browser's PUT: presigned url in, bytes out.
+   *
+   * Asserted here rather than at the call sites, most of which discard the
+   * response. `fetch` only rejects on a network error, so a 403 would otherwise
+   * surface as a later 404 and read as reassembly corruption.
+   */
+  async function putSigned(key: string, body: Buffer): Promise<Response> {
+    const url = await storage.getUploadBucketUrl(key, CONTENT_TYPE);
+    const response = await fetch(url, {
       method: 'PUT',
       body: new Uint8Array(body),
-      headers: { 'Content-Type': contentType },
+      headers: { 'Content-Type': CONTENT_TYPE },
     });
+    if (!response.ok) {
+      throw new Error(
+        `PUT ${key} -> ${response.status} ${await response.text()}`
+      );
+    }
+    return response;
   }
 
   /** The browser's GET. */
@@ -98,24 +114,14 @@ describe(SUITE, () => {
     return await fetch(url);
   }
 
-  // Whether anything is actually listening. Decided in `beforeAll` rather than
-  // at import time because the probe is async and this package compiles to
-  // CommonJS, which has no top-level await.
-  let reachable = false;
-
   beforeAll(async () => {
-    reachable = await isMinioReachable(endpoint);
-    if (!reachable) {
-      // Skipping is the right answer on a machine with no bucket service
-      // running, and the wrong answer in CI, where a suite that quietly does
-      // not run is worse than no suite at all -- #1135 is this same failure in
-      // the other direction.
-      if (process.env.IS_CI_AUTOMATION) {
-        throw new Error(
-          `${SUITE} needs a bucket service, and none answered at ${endpoint}.`
-        );
-      }
-      return;
+    // Probed first so the failure names the fix. Without it the suite dies
+    // somewhere inside the AWS SDK's retry loop, thirty seconds later.
+    if (!(await isMinioReachable(endpoint))) {
+      throw new Error(
+        `${SUITE} needs a bucket service, and none answered at ${endpoint}. ` +
+          'Start one with `docker compose up -d minio`.'
+      );
     }
 
     try {
@@ -139,15 +145,7 @@ describe(SUITE, () => {
     );
   }, NETWORK_TEST_TIMEOUT_MS);
 
-  beforeEach((ctx) => {
-    ctx.skip(
-      !reachable,
-      `no bucket service at ${endpoint} -- start one with \`docker compose up -d minio\``
-    );
-  });
-
   afterAll(async () => {
-    if (!reachable) return;
     for (const key of createdKeys) {
       try {
         const { Versions = [], DeleteMarkers = [] } = await bucketDirect.send(
@@ -320,27 +318,35 @@ describe(SUITE, () => {
     }
   });
 
-  // Deleting is idempotent, which `burnFolder` quietly depends on: it deletes
-  // every upload in a container inside one unguarded `Promise.all`
-  // (`models/sharing.ts`), so any rejection there aborts the burn before a
-  // single row is removed and leaves the container undeletable.
+  it(
+    'erases every version, rather than hiding the object',
+    async () => {
+      const key = uploadKey();
+      await putSigned(key, randomBytes(4096));
 
-  // Skipped until the keyed, version-erasing `del()` proposed in #1139 lands.
-  it.skip('erases every version, rather than hiding the object', async () => {
-    const key = uploadKey();
-    await putSigned(key, randomBytes(4096));
+      await storage.del(key);
 
-    await storage.del(key);
+      const { Versions = [] } = await bucketDirect.send(
+        new ListObjectVersionsCommand({ Bucket: bucket, Prefix: key })
+      );
+      // A plain DeleteObject on a versioned bucket writes a hide marker and
+      // leaves the payload -- still stored, still billed. The S3 adapter
+      // already deletes per VersionId, so this pins behaviour rather than
+      // driving a fix. Production runs B2, whose native adapter removes only
+      // the most recent version; that path has no coverage here.
+      expect(Versions.filter(({ Key }) => Key === key)).toHaveLength(0);
+    },
+    NETWORK_TEST_TIMEOUT_MS
+  );
 
-    const { Versions = [] } = await bucketDirect.send(
-      new ListObjectVersionsCommand({ Bucket: bucket, Prefix: key })
-    );
-    // A plain DeleteObject on a versioned bucket writes a hide marker and
-    // leaves the payload -- still stored, still billed.
-    expect(Versions.filter(({ Key }) => Key === key)).toHaveLength(0);
-  });
-
-  it('treats deleting an absent object as done, not as a failure', async () => {
-    await expect(storage.del(`tests/${randomUUID()}`)).resolves.toBe(true);
-  });
+  it(
+    'treats deleting an absent object as done, not as a failure',
+    async () => {
+      // `burnFolder` deletes every upload in a container inside one unguarded
+      // `Promise.all` (`models/sharing.ts`). A rejection there leaves orphaned
+      // upload rows and a leaked object behind, so idempotence matters.
+      await expect(storage.del(`tests/${randomUUID()}`)).resolves.toBe(true);
+    },
+    NETWORK_TEST_TIMEOUT_MS
+  );
 });

@@ -45,6 +45,11 @@ jobs:
           filters: |
             backend-changed:
               - 'packages/send/backend/**'
+              # The backend suite needs the compose MinIO service and the steps
+              # below that start it. Without these, bumping the pin or moving
+              # the port silently skips the gate that would catch it.
+              - 'compose.yml'
+              - '.github/workflows/validate.yml'
             iac-changed:
               - 'packages/send/pulumi/**'
               - '.github/workflows/validate.yml'
@@ -73,20 +78,31 @@ jobs:
           pnpm install --filter send-backend
 
       # The storage suite round-trips a file through a real bucket. This job runs
-      # in a container with the host's docker socket mounted, so a published port
-      # lands on the host's network and not on this container's localhost --
-      # reach it through the bridge gateway, the way scripts/e2e.sh already does.
-      # Same compose service developers run, so the two cannot drift.
+      # in a container with the host's docker socket mounted, so compose's
+      # published port lands on the host -- and it is bound to the host's
+      # loopback, which is not this container's. Join the compose network and
+      # address the service by name instead. Same compose service developers
+      # run, so the two cannot drift.
       - name: Start MinIO
         id: start-minio
         run: |
           docker compose --profile test up -d --wait minio
-          MINIO_HOST=$(ip route show default | awk '{print $3; exit}')
-          if [ -z "$MINIO_HOST" ]; then
-            echo "::error::could not resolve the docker bridge gateway"
+          minio_id=$(docker compose --profile test ps -q minio)
+          if [ -z "$minio_id" ]; then
+            echo "::error::minio container did not start"
             exit 1
           fi
-          echo "MINIO_ENDPOINT=http://$MINIO_HOST:9000" >> "$GITHUB_ENV"
+          # `println` per network, then take the first: the container is on one
+          # network, but a bare range would concatenate names if that changed.
+          network=$(docker inspect \
+            -f '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' \
+            "$minio_id" | head -1)
+          if [ -z "$network" ]; then
+            echo "::error::could not resolve the minio compose network"
+            exit 1
+          fi
+          echo "MINIO_NETWORK=$network" >> "$GITHUB_ENV"
+          docker network connect "$network" "$(cat /etc/hostname)"
 
       - name: Backend tests
         id: backend-tests
@@ -94,15 +110,18 @@ jobs:
           cd packages/send/backend
           cp .env.sample .env
 
-          # .env.sample points at localhost, which is this container. See above.
-          sed -i "s|^TEST_MINIO_ENDPOINT=.*$|TEST_MINIO_ENDPOINT=$MINIO_ENDPOINT|" .env
+          # .env.sample points at localhost, which is this container, not the
+          # bucket. On the compose network the service answers to its own name.
+          sed -i "s|^TEST_MINIO_ENDPOINT=.*$|TEST_MINIO_ENDPOINT=http://minio:9000|" .env
 
           pnpm prisma generate
           pnpm ci:validate
 
       - name: Stop MinIO
         if: always() && steps.start-minio.outcome == 'success'
-        run: docker compose --profile test rm -sf minio
+        run: |
+          docker network disconnect "$MINIO_NETWORK" "$(cat /etc/hostname)" || true
+          docker compose --profile test rm -sf minio
 
   # When Pulumi code or configs change, run these steps
   iac-lint:

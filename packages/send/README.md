@@ -206,9 +206,13 @@ stubbing the S3 client. Start the bucket first:
 docker compose up -d minio
 ```
 
-It is MinIO, it holds nothing but test objects, and `.env.sample` already points
-at it. Without it running the suite skips; in CI it is required, and the suite
-fails rather than skipping if nothing answers.
+It is MinIO, it holds nothing but test objects, and it costs nothing to start —
+so the suite requires it rather than skipping when it is missing, and says so if
+nothing answers. The connection settings are the compose service's own and are
+built into the suite as defaults, so an existing checkout needs no `.env` change.
+If another worktree is already using port 9000, start MinIO with
+`SEND_MINIO_PORT=9010 docker compose up -d minio` and set
+`TEST_MINIO_ENDPOINT=http://localhost:9010` in `packages/send/backend/.env`.
 
 ### E2E testing
 

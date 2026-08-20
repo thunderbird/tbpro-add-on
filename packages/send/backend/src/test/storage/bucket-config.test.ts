@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   StorageAdapterConfig,
@@ -16,8 +16,6 @@ import { FileStore } from '../../storage';
  * ships a backend that signs with no credentials at all.
  */
 describe('Storage: bucket configuration', () => {
-  afterEach(() => vi.unstubAllEnvs());
-
   const B2: StorageAdapterConfig = {
     type: StorageType.B2,
     bucketName: 'b2-bucket',
@@ -67,10 +65,11 @@ describe('Storage: bucket configuration', () => {
   it('signs an S3 url with S3 credentials, never with the B2 ones', async () => {
     // The bug this replaces: the signing client read `B2_*` from the
     // environment, so an `s3` deployment signed urls for the Backblaze bucket
-    // while its reads and writes went somewhere else entirely.
-    vi.stubEnv('B2_BUCKET_NAME', 'b2-bucket');
-    vi.stubEnv('B2_APPLICATION_KEY_ID', 'b2-key-id');
-
+    // while its reads and writes went somewhere else entirely. The host
+    // assertion below is the guard -- it fails for any signing client built
+    // from `B2_*` rather than from this store's own config (#1143). Stubbing
+    // the environment would not help: the old code read it at module scope,
+    // before any stub could run.
     const url = new URL(await new FileStore(S3).getDownloadBucketUrl('key'));
 
     expect(url.host).toContain('s3-bucket');

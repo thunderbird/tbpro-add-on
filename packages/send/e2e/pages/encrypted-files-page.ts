@@ -1,6 +1,7 @@
 import { expect, type Download, type Locator, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { buffer } from 'node:stream/consumers';
 
 import {
   TB_ACCTS_EMAIL,
@@ -155,18 +156,20 @@ export class EncryptedFilesPage {
   }
 
   /**
-   * The bytes are the point. A file is encrypted in the browser, cut into windows
-   * over SPLIT_SIZE that each become their own stored object, and put back together
-   * in order on the way down. Checking only the file name passes on a download that
-   * came back short, reordered, or still encrypted.
+   * The bytes are the point. Checking only the file name passes on a download
+   * that came back short, reordered, or still encrypted.
+   *
+   * The fixture is 1.3 MB and the frontend's split size is 500 MB, so this is a
+   * single-part round trip. Multipart reassembly is not covered anywhere in the
+   * e2e suite -- see the follow-up on the bucket job's split-size override.
    */
   private async expectDownloadMatchesFixture(download: Download, uploadFixture: UploadFixture) {
     expect(download.suggestedFilename()).toBe(uploadFixture.fileName);
 
-    const downloadedPath = await download.path();
-    expect(downloadedPath).toBeTruthy();
-
-    const downloaded = readFileSync(downloadedPath);
+    // `path()` throws when the browser is remote, which every nightly run is
+    // ("Path is not available when connecting remotely"). `createReadStream()`
+    // streams the bytes back to the runner instead and works either way.
+    const downloaded = await buffer(await download.createReadStream());
     const expected = readFileSync(uploadFixture.filePath);
     // Length first, then digest: "expected 1331200 to be 1391309" says truncated,
     // where a bare buffer comparison only ever says "expected false to be true".
