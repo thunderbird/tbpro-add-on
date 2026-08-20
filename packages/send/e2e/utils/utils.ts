@@ -47,3 +47,36 @@ export const signInAndRestoreSendKey = async (page: Page) => {
   // restore the access key
   await securityPrivacyPage.restoreAccessKey();
 }
+
+/**
+ * Login-only variant of signInAndRestoreSendKey: navigate to TB Send, sign in via TB Pro
+ * OIDC (deployed) or local password (dev), and assert we land on the authenticated Send app
+ * shell -- WITHOUT restoring the encryption key. This is the Kargo freight-verification gate
+ * (@deployment-analysis): it proves OIDC sign-in works against the freshly-promoted deploy
+ * without needing TB_SEND_ENCRYPTION_KEY_CODE or a key-provisioned user. A signed-in user may
+ * land on the dashboard or, if they have never created a key, the first-time key-setup screen;
+ * either way the Send header logo renders, so that is the landing signal (same checkpoint
+ * signInAndRestoreSendKey asserts before it restores the key).
+ */
+export const signInOnly = async (page: Page) => {
+  console.log(`navigating to send ${TB_SEND_TARGET_ENV} (${TB_SEND_BASE_URL})`);
+  const tbAcctsSignInPage = new TBAcctsPage(page);
+
+  // ios has intermittent errors on this page.goto call so we must catch
+  await page.goto(`${TB_SEND_BASE_URL}`, { waitUntil: 'commit', timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(TIMEOUT_5_SECONDS);
+
+  // local dev can use local 'password' auth only or tb accts
+  if (TB_SEND_TARGET_ENV == 'dev') {
+    if (await tbAcctsSignInPage.localDevEmailInput.isVisible()) {
+      await tbAcctsSignInPage.localSendSignIn();
+    }
+  } else {
+    await tbAcctsSignInPage.signIn();
+  }
+
+  const dashboardPage = new DashboardPage(page);
+
+  // authenticated app shell rendered -> OIDC sign-in succeeded (no key restore)
+  await expect(dashboardPage.sendHdrLogoLink).toBeVisible({ timeout: TIMEOUT_30_SECONDS });
+}
