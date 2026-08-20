@@ -41,6 +41,11 @@ describe('wsHandler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // `clearAllMocks` clears calls but keeps implementations, so without an
+    // explicit default a test that sets 'valid' leaks it into the next one --
+    // which quietly turned the no-token cases below into no-ops. Unauthenticated
+    // is the safe default to leak.
+    mockValidateJWT.mockReturnValue(null);
     const server = { on: vi.fn() };
     wsHandler(server);
     upgrade = server.on.mock.calls.find(([event]) => event === 'upgrade')[1];
@@ -96,10 +101,33 @@ describe('wsHandler', () => {
     expect(s.end).not.toHaveBeenCalled();
   });
 
-  it(`upgrades ${TRPC_WS_PATH} without a token, as before`, () => {
+  // Do not "harden" this one to match the upload path. Logging in happens over
+  // it: `LoginPage.vue` subscribes to `onLoginFinished` before the user has a
+  // session, and that subscription needs the socket. The procedure is
+  // deliberately not behind `isAuthed` and returns early if a session already
+  // exists (`trpc/users.ts:156`). Requiring a token here would deadlock login --
+  // you would need to be logged in to find out that you had logged in.
+  // `onVerificationRequested`, `onVerificationFinished` and `onPassphraseShared`
+  // are the same shape.
+  it(`upgrades ${TRPC_WS_PATH} with no token, which login depends on`, () => {
     const s = socket();
 
     upgrade({ url: TRPC_WS_PATH, headers: {} }, s, Buffer.alloc(0));
+
+    expect(mockWss.handleUpgrade).toHaveBeenCalled();
+    expect(s.end).not.toHaveBeenCalled();
+  });
+
+  it(`upgrades ${TRPC_WS_PATH} even when the token present is invalid`, () => {
+    // A stale or malformed cookie must not stop someone from logging in again.
+    mockValidateJWT.mockReturnValue(null);
+    const s = socket();
+
+    upgrade(
+      { url: TRPC_WS_PATH, headers: { cookie: 'authorization=Bearer%20junk' } },
+      s,
+      Buffer.alloc(0)
+    );
 
     expect(mockWss.handleUpgrade).toHaveBeenCalled();
     expect(s.end).not.toHaveBeenCalled();

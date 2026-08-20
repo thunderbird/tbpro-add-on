@@ -82,6 +82,12 @@ export const wsHandler = (server) => {
       return;
     }
 
+    // Intentionally open, and it must stay that way: logging in happens over
+    // this socket. `LoginPage.vue` subscribes to `onLoginFinished` before the
+    // user has a session, so requiring a token here would deadlock login. The
+    // procedures behind it gate themselves -- the authenticated ones use
+    // `isAuthed`, and the login/verification subscriptions are public by design
+    // (`trpc/users.ts:156`).
     if (req.url === TRPC_WS_PATH) {
       logger.log(`✅ WebSocket Server listening on ${TRPC_WS_PATH}`);
       wss.handleUpgrade(req, socket, head, (ws) => {
