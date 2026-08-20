@@ -5,6 +5,13 @@ import tseslint from 'typescript-eslint';
 
 export default [
   {
+    // `.docker-build` is a generated, gitignored copy of the backend source
+    // created while preparing the Docker build context. It must never be
+    // linted, otherwise ESLint sees two copies of the source tree and fails
+    // with "multiple candidate TSConfigRootDirs are present".
+    ignores: ['.docker-build/**', 'dist/**'],
+  },
+  {
     languageOptions: {
       globals: {
         ...globals.browser, // Existing browser globals
