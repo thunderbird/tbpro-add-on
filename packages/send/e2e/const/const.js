@@ -2,6 +2,8 @@
 export const PLAYWRIGHT_TAG_DEV_DESKTOP = '@dev-desktop';
 export const PLAYWRIGHT_TAG_DESKTOP_NIGHTLY = '@desktop-nightly';
 export const PLAYWRIGHT_TAG_MOBILE_NIGHTLY = '@mobile-nightly';
+// Login-only smoke run as the Kargo freight-verification gate against a deployed env.
+export const PLAYWRIGHT_TAG_DEPLOYMENT_ANALYSIS = '@deployment-analysis';
 
 // test environment details
 export const TB_SEND_TARGET_ENV = String(process.env.TB_SEND_TARGET_ENV);

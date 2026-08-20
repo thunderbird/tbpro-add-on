@@ -85,6 +85,26 @@ export default defineConfig({
       dependencies: ['desktop-auth'],
     },
 
+    // Standalone login-only OIDC smoke for the Kargo freight-verification gate. NO
+    // `dependencies` (skips desktop-auth key-restore setup) and NO storageState -- it signs in
+    // fresh each run, so it needs no pre-provisioned encryption key. testMatch pins it to the
+    // one spec so `--project=deployment-analysis` never pulls in the nightly suite.
+    {
+      name: 'deployment-analysis',
+      testMatch: /.*deployment-analysis-signin\.spec\.ts/,
+      use: {
+        ...devices['Desktop Firefox'],
+        screenshot: 'only-on-failure',
+        launchOptions: {
+          firefoxUserPrefs: {
+            "dom.push.enabled": false,
+            "dom.webnotifications.enabled": false,
+            "privacy.trackingprotection.enabled": false,
+          },
+        },
+      },
+    },
+
     /* Test against mobile viewports. */
     {
       name: 'Google-Pixel-7-View',
