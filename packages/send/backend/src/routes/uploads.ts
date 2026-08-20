@@ -739,7 +739,7 @@ router.get(
 This route checks if the user can upload files
 It's a good way to run a quick check with our middlewares before we start any uploads
  */
-router.get('/can-upload', checkStorageLimit, requireJWT, (req, res) => {
+router.get('/can-upload', requireJWT, checkStorageLimit, (req, res) => {
   res.status(200).json({ message: 'Good to go' });
 });
 
