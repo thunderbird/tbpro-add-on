@@ -10,6 +10,7 @@ import { validateJWT } from '../auth/jwt';
 import {
   addVersionHeader,
   checkStorageLimit,
+  reject,
   getGroupMemberPermissions,
   renameBodyProperty,
   requireAdminPermission,
@@ -909,5 +910,43 @@ describe('addVersionHeader', () => {
       expect.any(String)
     );
     expect(nextFunction).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reject
+// ---------------------------------------------------------------------------
+
+describe('reject', () => {
+  it('sends a 403 by default', () => {
+    const mockResponse = {
+      headersSent: false,
+      json: vi.fn(),
+      status: vi.fn(() => mockResponse),
+    };
+
+    reject(mockResponse as unknown as Response);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(mockResponse.json).toHaveBeenCalledWith({
+      message: 'Not authorized',
+    });
+  });
+
+  // Writing to an already-sent response makes `res.send` call `setHeader`,
+  // which throws ERR_HTTP_HEADERS_SENT. From an async middleware that is an
+  // unhandled rejection, and Node ends the process -- so this guard is the
+  // difference between a stale deny and a dead replica.
+  it('does not write again once a response has been sent', () => {
+    const mockResponse = {
+      headersSent: true,
+      json: vi.fn(),
+      status: vi.fn(() => mockResponse),
+    };
+
+    reject(mockResponse as unknown as Response, 401, 'Token expired');
+
+    expect(mockResponse.status).not.toHaveBeenCalled();
+    expect(mockResponse.json).not.toHaveBeenCalled();
   });
 });
