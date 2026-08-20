@@ -331,11 +331,10 @@ export default class Uploader {
       }
 
       // Wait for storage to confirm the object is fully written before creating
-      // the DB entry. This is REQUIRED for bucket storage too: the object lands
-      // via the S3 presigned PUT, but the backend size-check (create-entry)
-      // reads via the native B2 API, which is not immediately read-after-write
-      // consistent. Skipping this races that lag and makes create-entry fail
-      // intermittently with UPLOAD_SIZE_ERROR (500). Poll up to 3 min.
+      // the DB entry. This is REQUIRED for bucket storage too: the presigned
+      // PUT resolves here before the object is necessarily durable, and
+      // create-entry's size check would then fail intermittently with
+      // UPLOAD_SIZE_ERROR (500). Poll up to 3 min.
       await retryUntilSuccessOrTimeout(
         async () => {
           const { size } = await this.api.call<{ size: null | number }>(

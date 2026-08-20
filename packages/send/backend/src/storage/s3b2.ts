@@ -14,14 +14,16 @@ import { Readable } from 'stream';
  * The S3 data plane. Backblaze B2 and S3 share it: B2's S3-compatible API
  * speaks the same commands, so one implementation serves both backends.
  *
- * Every operation addresses an object by key. Nothing here lists a bucket to
- * find a file, so cost and correctness do not degrade as the bucket fills.
+ * Every operation addresses an object by key. The path this replaces reached
+ * B2 objects by name, and resolved a name to a file id by listing the bucket:
+ * one 1000-entry page of `b2_list_file_names`, unpaginated, linearly scanned.
+ * Once a bucket held more than a page of keys, every read and delete of an
+ * object outside that page failed -- silently, in the delete's case. Nothing
+ * here lists a bucket to find a file, so cost and correctness no longer
+ * degrade as the bucket fills.
  */
 
-/**
- * Connection details, from an explicit config (the test suites, handed
- * `TEST_B2_*`/`TEST_S3_*`) or from the environment.
- */
+/** Connection details for one bucket. The caller resolves them; see ./index.ts. */
 export type S3Settings = {
   endpoint?: string;
   region?: string;
@@ -31,54 +33,38 @@ export type S3Settings = {
 };
 
 /**
- * Merge caller values over the environment; the environment here is the B2
- * deployment's `B2_*`, since an S3 one passes its own values in. Env is read at
- * call time, not at module load, so a FileStore built with an explicit config
- * is not bound to whatever `B2_BUCKET_NAME` held when this module was first
- * imported.
+ * True when we have enough to reach the bucket.
+ *
+ * @param needsEndpoint - B2 is only reachable at its own endpoint, so omitting
+ *   it would silently address AWS with B2 credentials. AWS S3 derives an
+ *   endpoint from the region, so there it stays optional.
  */
-export function resolveS3Settings(overrides: S3Settings = {}): S3Settings {
-  return {
-    endpoint: overrides.endpoint || process.env.B2_ENDPOINT,
-    region: overrides.region || process.env.B2_REGION || 'auto',
-    accessKeyId: overrides.accessKeyId || process.env.B2_APPLICATION_KEY_ID,
-    secretAccessKey:
-      overrides.secretAccessKey || process.env.B2_APPLICATION_KEY,
-    bucketName: overrides.bucketName || process.env.B2_BUCKET_NAME,
-  };
-}
-
-/** True when we have enough to reach the S3 endpoint. */
-export function isS3SettingsUsable(config: S3Settings): boolean {
+export function isS3SettingsUsable(
+  config: S3Settings,
+  { needsEndpoint = false } = {}
+): boolean {
   return Boolean(
-    config.endpoint &&
+    config.bucketName &&
     config.accessKeyId &&
     config.secretAccessKey &&
-    config.bucketName
+    (config.endpoint || (!needsEndpoint && config.region))
   );
 }
 
-export function createS3Client(
-  overrides: S3Settings = {}
-): S3Client | undefined {
-  const config = resolveS3Settings(overrides);
-  try {
-    return new S3Client({
-      // Omit rather than pass undefined: a stringified undefined endpoint
-      // fails confusingly at request time.
-      ...(config.endpoint ? { endpoint: config.endpoint } : {}),
-      region: config.region || 'auto',
-      credentials: {
-        accessKeyId: config.accessKeyId ?? '',
-        secretAccessKey: config.secretAccessKey ?? '',
-      },
-      requestHandler: { requestTimeout: 30000 },
-      maxAttempts: 3,
-    });
-  } catch (error) {
-    console.error('Could not construct the S3 client:', error);
-    return undefined;
-  }
+export function createS3Client(config: S3Settings): S3Client {
+  return new S3Client({
+    // Omit rather than pass undefined: a stringified undefined endpoint fails
+    // confusingly at request time.
+    ...(config.endpoint ? { endpoint: config.endpoint } : {}),
+    // Required by the SDK even when the endpoint decides where requests go.
+    region: config.region || 'auto',
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+    requestHandler: { requestTimeout: 30000 },
+    maxAttempts: 3,
+  });
 }
 
 /** Bucket-level failures. S3 answers some with 404, but they are not "absent". */
@@ -127,28 +113,37 @@ export async function getSignedUrl(
 }
 
 /**
- * S3 caps a multipart upload at 10 000 fixed-size parts, and requires every
- * part but the last to be at least 5 MiB. 5 MiB parts therefore cover 50 GB,
- * comfortably past `config.max_file_size`; a larger declared size widens the
- * parts rather than running out of them.
+ * S3 caps a multipart upload at 10 000 parts and requires every part but the
+ * last to be at least 5 MiB, so parts have to widen for a body larger than
+ * 50 GB. The ceiling bounds that: `size` is declared by the client, and each
+ * part is held whole in memory while it uploads. 32 MiB covers 320 GB.
  */
 const MIN_PART_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_PART_SIZE_BYTES = 32 * 1024 * 1024;
 const MAX_PARTS = 10_000;
 
 export function partSizeFor(size?: number): number {
-  return size
-    ? Math.max(MIN_PART_SIZE_BYTES, Math.ceil(size / MAX_PARTS))
-    : MIN_PART_SIZE_BYTES;
+  if (!Number.isFinite(size) || size <= 0) {
+    return MIN_PART_SIZE_BYTES;
+  }
+  return Math.min(
+    MAX_PART_SIZE_BYTES,
+    Math.max(MIN_PART_SIZE_BYTES, Math.ceil(size / MAX_PARTS))
+  );
 }
 
 /**
  * Write an object from a stream.
  *
- * `Upload` buffers the body into parts and switches to a multipart upload once
- * there is more than one, so a write is bounded by the multipart limit rather
- * than the 5 GB a single request allows, and needs no length up front. One
- * part in flight: the source is a socket, and each queued part is held whole in
- * memory.
+ * `Upload` splits the body into parts and switches to a multipart upload once
+ * there is more than one, so it needs no length up front -- callers hand us a
+ * socket. One part in flight, since each queued part is held whole in memory.
+ *
+ * `Readable.from` because `Upload` infers a content length by duck-typing
+ * `length`/`size`/`byteLength` off the body, and a Transform carrying any of
+ * them (a byte counter, say) yields a part count it then asserts against and
+ * fails. A wrapper presents no such property, and unlike `pipe` it forwards
+ * the source's errors, so an aborted upload still aborts the multipart.
  */
 export async function uploadObject(
   s3Client: S3Client,
@@ -159,7 +154,7 @@ export async function uploadObject(
 ): Promise<void> {
   await new Upload({
     client: s3Client,
-    params: { Bucket, Key, Body },
+    params: { Bucket, Key, Body: Readable.from(Body) },
     partSize: partSizeFor(size),
     queueSize: 1,
     leavePartsOnError: false,
@@ -259,9 +254,7 @@ async function listVersionIds(
  * Delete an object by key, erasing every version of it.
  *
  * B2 buckets are versioned, so a bare `DeleteObject` only writes a hide marker
- * and leaves the payload behind until a lifecycle rule reaps it. A user
- * pressing delete on a shared file expects the bytes gone, so the versions are
- * enumerated and removed explicitly.
+ * and leaves the payload behind until a lifecycle rule reaps it.
  *
  * Deleting an absent key succeeds.
  */

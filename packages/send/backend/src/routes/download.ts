@@ -49,8 +49,8 @@ router.get(
         }
       });
     } catch (e) {
-      // Storage now distinguishes "absent" (null, handled above) from
-      // auth/endpoint/bucket failures (thrown); don't discard the reason.
+      // "Absent" is null and handled above; a throw is an auth, endpoint or
+      // bucket failure. Don't discard the reason.
       console.error('Download failed for id:', id, e);
       return res.status(404).send(TRANSFER_ERROR);
     }
@@ -77,8 +77,8 @@ router.get(
       const bucketUrl = await storage.getDownloadBucketUrl(id);
 
       return res.json({ url: bucketUrl });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
+      console.error('Could not sign a download url for id:', id, e);
       return res.status(404).send(TRANSFER_ERROR);
     }
   })

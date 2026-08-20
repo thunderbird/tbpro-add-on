@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { Readable } from 'stream';
 import { FileStore, StorageAdapterConfig, StorageType } from '../../storage';
-import { shouldRunSuite } from '../testutils';
+import { NETWORK_TEST_TIMEOUT_MS, shouldRunSuite } from '../testutils';
 
 const config: StorageAdapterConfig = {
   type: StorageType.B2,
@@ -25,16 +25,6 @@ const config: StorageAdapterConfig = {
  * uploads sharing the bucket.
  */
 const TEST_KEY_PREFIX = 'tests/';
-
-/**
- * Vitest's 5s default is not enough for this suite. Every test here makes real
- * round trips to B2, and the delete test makes five of them (write, read, list
- * versions, delete, re-read). Observed suite durations in CI span 1.5-4.8s, so
- * the default sits inside the noise band and fails on a slow one. Raising it
- * weakens nothing: the assertions are unchanged, and a genuinely broken read or
- * delete still fails on the assertion rather than the clock.
- */
-const NETWORK_TEST_TIMEOUT_MS = 30_000;
 
 async function readAll(stream: Readable): Promise<string> {
   const chunks: Buffer[] = [];
@@ -110,6 +100,26 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
         // Read the body, not just the handle: a stream of the wrong object, or
         // an empty one, is still a regression.
         await expect(readAll(readResult)).resolves.toBe(mockFileContents);
+      },
+      NETWORK_TEST_TIMEOUT_MS
+    );
+
+    it(
+      'should write a file larger than one multipart part',
+      async () => {
+        const fileName = testKey('multipart');
+        // Past the 5 MiB minimum part size, so this is the only test that
+        // proves B2 accepts CreateMultipartUpload/UploadPart/Complete -- and
+        // the checksum headers the SDK sends with them.
+        const size = 6 * 1024 * 1024;
+
+        const result = await storage.set(
+          fileName,
+          Readable.from([Buffer.alloc(size)]) as fs.ReadStream,
+          size
+        );
+        expect(result).toBe(true);
+        await expect(storage.length(fileName)).resolves.toBe(size);
       },
       NETWORK_TEST_TIMEOUT_MS
     );

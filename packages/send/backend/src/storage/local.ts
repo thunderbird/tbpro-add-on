@@ -29,7 +29,7 @@ export class LocalStorage {
     }
     const root = path.resolve(this.directory, this.bucketName ?? '');
     const target = path.resolve(root, key);
-    if (target !== root && !target.startsWith(root + path.sep)) {
+    if (!target.startsWith(root + path.sep)) {
       throw new Error(
         `Refusing a key that resolves outside the bucket: ${key}`
       );
@@ -39,8 +39,7 @@ export class LocalStorage {
 
   async set(key: string, stream: Readable): Promise<void> {
     const target = this.pathFor(key);
-    // Keys may contain slashes; the S3 plane invents no directories, so nor
-    // does the caller expect to.
+    // Keys may contain slashes; create the parent directories.
     await fs.promises.mkdir(path.dirname(target), { recursive: true });
     await pipeline(stream, fs.createWriteStream(target));
   }
@@ -48,9 +47,17 @@ export class LocalStorage {
   async get(key: string): Promise<Readable | null> {
     const target = this.pathFor(key);
     try {
-      await fs.promises.access(target, fs.constants.R_OK);
-    } catch {
-      return null;
+      // Only "absent" is null. Anything else -- EACCES, EIO -- must reach the
+      // caller, matching `isNotFoundError` on the S3 plane.
+      const stats = await fs.promises.stat(target);
+      if (!stats.isFile()) {
+        return null;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return null;
+      }
+      throw error;
     }
     return fs.createReadStream(target);
   }

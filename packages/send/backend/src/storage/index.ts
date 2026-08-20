@@ -11,7 +11,6 @@ import {
   getSignedUrl,
   getSignedUrlforDownload,
   isS3SettingsUsable,
-  resolveS3Settings,
   uploadObject,
 } from './s3b2';
 
@@ -37,75 +36,71 @@ export type StorageAdapterConfig = {
   applicationKey?: string;
 };
 
-const B2_CONFIG: StorageAdapterConfig = {
-  type: StorageType.B2,
-  bucketName: process.env.B2_BUCKET_NAME,
-  applicationKeyId: process.env.B2_APPLICATION_KEY_ID,
-  applicationKey: process.env.B2_APPLICATION_KEY,
-  endpoint: process.env.B2_ENDPOINT,
-  region: process.env.B2_REGION,
-};
+/**
+ * Each backend reads only its own variables. Sharing a fallback between them
+ * would let a half-configured `s3` deployment resolve, field by field, onto the
+ * B2 bucket and credentials -- reporting healthy while writing user files
+ * somewhere nobody selected.
+ */
+function configFromEnv(): StorageAdapterConfig {
+  switch (process.env.STORAGE_BACKEND) {
+    case 'b2':
+      console.log(`Initializing Backblaze storage ☁️`);
+      return {
+        type: StorageType.B2,
+        bucketName: process.env.B2_BUCKET_NAME,
+        applicationKeyId: process.env.B2_APPLICATION_KEY_ID,
+        applicationKey: process.env.B2_APPLICATION_KEY,
+        endpoint: process.env.B2_ENDPOINT,
+        region: process.env.B2_REGION || 'auto',
+      };
+    case 's3':
+      console.log(`Initializing S3 storage ☁️`);
+      return {
+        type: StorageType.S3,
+        region: process.env.S3_REGION,
+        bucketName: process.env.S3_BUCKET_NAME,
+        endpoint: process.env.S3_ENDPOINT,
+        accessKeyId: process.env.S3_ACCESS_KEY,
+        secretAccessKey: process.env.S3_SECRET_KEY,
+      };
+    default:
+      console.log(`Initializing local filesystem storage 💾`);
+      return {
+        type: StorageType.LOCAL,
+        directory: process.env.FS_LOCAL_DIR,
+        bucketName: process.env.FS_LOCAL_BUCKET,
+      };
+  }
+}
 
 /**
  * Storage for uploaded files, over Backblaze B2, S3 or the local filesystem.
  *
- * B2 and S3 are one path: B2's S3-compatible API takes the same commands, so
- * both run on the client and helpers in ./s3b2.ts.
+ * B2 and S3 both run on ./s3b2.ts.
  */
 export class FileStore {
   private s3Client?: S3Client;
   private bucket?: string;
   private local?: LocalStorage;
-  private isS3Compatible = false;
 
   /**
    * @param config: StorageAdapterConfig - Optional configuration information. If omitted, we fall back to the filesystem.
    */
-  constructor(config?: StorageAdapterConfig) {
-    if (!config) {
-      switch (process.env.STORAGE_BACKEND) {
-        case 'b2':
-          config = B2_CONFIG;
-          console.log(`Initializing Backblaze storage ☁️`);
-          break;
-        case 's3':
-          config = {
-            type: StorageType.S3,
-            region: process.env.S3_REGION || 'auto',
-            bucketName: process.env.S3_BUCKET_NAME,
-            endpoint: process.env.S3_ENDPOINT,
-            accessKeyId: process.env.S3_ACCESS_KEY,
-            secretAccessKey: process.env.S3_SECRET_KEY,
-          };
-          console.log(`Initializing S3 storage ☁️`);
-          break;
-        case 'fs':
-        // intentional fall-through;
-        // fs is default
-        // eslint-disable-next-line no-fallthrough
-        default:
-          config = {
-            type: StorageType.LOCAL,
-            directory: process.env.FS_LOCAL_DIR,
-            bucketName: process.env.FS_LOCAL_BUCKET,
-          };
-          console.log(`Initializing local filesystem storage 💾`);
-          break;
-      }
+  constructor(config: StorageAdapterConfig = configFromEnv()) {
+    switch (config.type) {
+      case StorageType.B2:
+      case StorageType.S3:
+        break;
+      case StorageType.LOCAL:
+        this.local = new LocalStorage(config.directory, config.bucketName);
+        return;
+      default:
+        // An unrecognised backend must not quietly become the filesystem: on a
+        // bucket deployment that is user uploads written to ephemeral disk.
+        throw new Error(`Unknown storage backend: ${config.type}`);
     }
 
-    this.isS3Compatible =
-      config.type === StorageType.B2 || config.type === StorageType.S3;
-
-    if (!this.isS3Compatible) {
-      this.local = new LocalStorage(config.directory, config.bucketName);
-      return;
-    }
-
-    // From the config we were handed, falling back to env inside
-    // `resolveS3Settings`. The test suites are built with TEST_B2_*/TEST_S3_*
-    // and never set the production vars, so reading env alone would leave them
-    // unconfigured.
     const settings: S3Settings = {
       endpoint: config.endpoint,
       region: config.region,
@@ -113,29 +108,26 @@ export class FileStore {
       secretAccessKey: config.secretAccessKey || config.applicationKey,
       bucketName: config.bucketName,
     };
+    const needsEndpoint = config.type === StorageType.B2;
 
-    const resolved = resolveS3Settings(settings);
-    this.bucket = resolved.bucketName;
-    this.s3Client = isS3SettingsUsable(resolved)
-      ? createS3Client(resolved)
+    this.bucket = settings.bucketName;
+    this.s3Client = isS3SettingsUsable(settings, { needsEndpoint })
+      ? createS3Client(settings)
       : undefined;
 
     if (!this.s3Client) {
       console.error(
         `Bucket storage is configured as "${config.type}" but its S3 client is ` +
-          'not (needs an endpoint, an access key id, a secret and a bucket ' +
-          'name). Every read, write and delete will fail.'
+          'not (needs an access key id, a secret, a bucket name, and ' +
+          `${needsEndpoint ? 'an endpoint' : 'an endpoint or a region'}). ` +
+          'Every read, write and delete will fail.'
       );
     }
   }
 
-  /**
-   * True when the S3 client is ready. Public because the live bucket suites
-   * assert it: in CI they run unconditionally, so a credential that went
-   * missing should fail as one legible assertion rather than a pile of them.
-   */
+  /** True when the S3 client and bucket are both configured. */
   usesKeyedApi(): boolean {
-    return this.isS3Compatible && Boolean(this.s3Client && this.bucket);
+    return Boolean(this.s3Client && this.bucket);
   }
 
   private client(): S3Client {
@@ -202,8 +194,6 @@ export class FileStore {
     try {
       return await getObjectAsStream(this.client(), id, this.bucket);
     } catch (error) {
-      // Logged on the way past: the download route turns any throw into a
-      // bare 404, discarding the only description of what went wrong.
       console.error('Error reading object from storage:', id, error);
       throw error;
     }

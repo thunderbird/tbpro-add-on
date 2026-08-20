@@ -44,14 +44,15 @@ End-to-end path for a large file, with citations:
    `XHR PUT` of the whole encrypted blob to the presigned URL, with the
    HTTP-level retry from #912.
 5. **Backend signing.** `POST /api/uploads/signed`
-   (`backend/src/routes/uploads.ts:162`) → `getUploadBucketUrl`
-   (`backend/src/storage/index.ts:93`) → signs a **`PutObjectCommand` only**
-   (`backend/src/storage/s3b2.ts:32`). No multipart API is signed today.
+   (`backend/src/routes/uploads.ts:162`) → `getUploadBucketUrl` →
+   `getSignedUrl` (`backend/src/storage/s3b2.ts`) signs a
+   **`PutObjectCommand` only**. No multipart API is signed today.
 
-**"Multipart" in the current codebase is application-level** (one zip part =
-one S3 object). There is **no** S3 multipart upload, no `UploadPart`, no
-`ETag`/`partNumber` tracking, no `Range`/resume logic anywhere in
-`packages/send` (verified by grep).
+**"Multipart" on the browser upload path is application-level** (one zip part =
+one S3 object): no `UploadPart` is signed, and there is no `ETag`/`partNumber`
+tracking or `Range`/resume logic. The backend's own write path
+(`FileStore.set`, reached by the WebSocket handler and the storage suites, not
+by the browser) does use S3 multipart, via `@aws-sdk/lib-storage`.
 
 ## 3. The hard constraint: ECE encryption boundaries
 
@@ -130,15 +131,18 @@ size, except the last), retry individual parts, then complete.
   granularity. A part that fails re-sends only that ciphertext range (we must
   retain/re-derive those ciphertext bytes — easy if we buffer per-part before
   PUT).
-- **B2 compatibility:** Requires verifying B2's S3 multipart support against
-  `eu-central-003` (part size limits, max parts = 10,000, completion
-  semantics, whether B2 charges per-part transactions). **Open item — must
-  validate.**
+- **B2 compatibility:** `backend/src/test/storage/backblaze.test.ts` writes a
+  body past one part against the test bucket, so B2 accepting
+  `CreateMultipartUpload`/`UploadPart`/`CompleteMultipartUpload` (and the
+  checksum headers the SDK sends with them) is covered. Still to check for this
+  option: presigned `UploadPart` specifically, and whether B2 charges per-part
+  transactions.
 - **Backend work:** New signed operations — `CreateMultipartUpload`,
   per-part presigned `UploadPart` URLs, `CompleteMultipartUpload`,
   `AbortMultipartUpload`. New tracking of upload ID + per-part `ETag`s.
 - **Storage/cost:** Incomplete multipart uploads consume storage until aborted
-  → need a lifecycle/abort policy. More transactions per object.
+  → need a lifecycle/abort policy (see `backend/b2/README.md` § "Unfinished
+  large files"). More transactions per object.
 - **Effort:** High (frontend streaming/buffering + backend signing + new state
   machine + abort/cleanup).
 

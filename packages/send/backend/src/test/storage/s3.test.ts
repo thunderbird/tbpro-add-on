@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { FileStore, StorageAdapterConfig, StorageType } from '../../storage';
-import { shouldRunSuite } from '../testutils';
+import { NETWORK_TEST_TIMEOUT_MS, shouldRunSuite } from '../testutils';
 
 const config: StorageAdapterConfig = {
   type: StorageType.S3,
@@ -23,43 +24,78 @@ describe.runIf(shouldRunSuite(config, 'Storage: S3-compatible'))(
 
     const storage = new FileStore(config);
 
-    it('should write a file to s3 bucket', async () => {
-      const fileName = `write-${new Date().getTime()}.txt`;
+    const createdKeys: string[] = [];
+    const testKey = (label: string) => {
+      const key = `${label}-${randomUUID()}.txt`;
+      createdKeys.push(key);
+      return key;
+    };
 
-      const result = await storage.set(
-        fileName,
-        fs.createReadStream(mockFilePath)
-      );
-      expect(result).toBeTruthy();
+    afterAll(async () => {
+      for (const key of createdKeys) {
+        try {
+          await storage.del(key);
+        } catch (error) {
+          console.warn(`Could not clean up test object "${key}"`, error);
+        }
+      }
+    }, NETWORK_TEST_TIMEOUT_MS);
+
+    it('has a usable S3 client for the configured bucket', () => {
+      expect(storage.usesKeyedApi()).toBe(true);
     });
 
-    it('should read a file from s3 bucket', async () => {
-      const fileName = `read-${new Date().getTime()}.txt`;
+    it(
+      'should write a file to s3 bucket',
+      async () => {
+        const fileName = testKey('write');
 
-      const writeResult = await storage.set(
-        fileName,
-        fs.createReadStream(mockFilePath)
-      );
-      expect(writeResult).toBeTruthy();
+        const result = await storage.set(
+          fileName,
+          fs.createReadStream(mockFilePath)
+        );
+        expect(result).toBeTruthy();
+      },
+      NETWORK_TEST_TIMEOUT_MS
+    );
 
-      const readResult = await storage.get(fileName);
-      expect(readResult).toBeTruthy();
-    });
+    it(
+      'should read a file from s3 bucket',
+      async () => {
+        const fileName = testKey('read');
 
-    it('should delete a file from s3 bucket', async () => {
-      const fileName = `delete-${new Date().getTime()}.txt`;
+        const writeResult = await storage.set(
+          fileName,
+          fs.createReadStream(mockFilePath)
+        );
+        expect(writeResult).toBeTruthy();
 
-      const writeResult = await storage.set(
-        fileName,
-        fs.createReadStream(mockFilePath)
-      );
-      expect(writeResult).toBeTruthy();
+        const readResult = await storage.get(fileName);
+        expect(readResult).toBeTruthy();
+        readResult.destroy();
+      },
+      NETWORK_TEST_TIMEOUT_MS
+    );
 
-      const readResult = await storage.get(fileName);
-      expect(readResult).toBeTruthy();
+    it(
+      'should delete a file from s3 bucket',
+      async () => {
+        const fileName = testKey('delete');
 
-      const deleteResult = await storage.del(fileName);
-      expect(deleteResult).toBeTruthy();
-    });
+        const writeResult = await storage.set(
+          fileName,
+          fs.createReadStream(mockFilePath)
+        );
+        expect(writeResult).toBeTruthy();
+
+        const readResult = await storage.get(fileName);
+        expect(readResult).toBeTruthy();
+        readResult.destroy();
+
+        const deleteResult = await storage.del(fileName);
+        expect(deleteResult).toBeTruthy();
+      },
+      NETWORK_TEST_TIMEOUT_MS
+    );
   }
 );

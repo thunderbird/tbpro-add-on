@@ -13,8 +13,8 @@ automatically; they are here so the intended state is reviewable and greppable.
 
 `src/test/storage/backblaze.test.ts` writes real objects to the bucket named by
 the `TEST_B2_BUCKET_NAME` repository variable, and the `e2e-bucket-test`
-workflow points the whole application at that same bucket. The suite now cleans
-up after itself, but a crashed or cancelled run still leaves objects behind, and
+workflow points the whole application at that same bucket. The suite cleans up
+after itself, but a crashed or cancelled run still leaves objects behind, and
 nothing reaps them.
 
 The objects the suite creates are named with a `tests/` prefix so a lifecycle
@@ -43,14 +43,20 @@ enforces.
 B2 buckets are versioned, so a bare S3 `DeleteObject` only writes a hide marker
 and leaves the payload behind until a lifecycle rule reaps it. `FileStore.del`
 therefore lists the versions of the one key it was given and deletes each by
-version id. That erases the bytes, matching the native `b2_delete_file_version`
-it replaces, so no lifecycle rule is load-bearing for a user's delete.
+version id. That erases the bytes, so no lifecycle rule is load-bearing for a
+user's delete. See the `deleteObject` docstring in `src/storage/s3b2.ts`.
 
 The one exception is an application key without list permission: the version
 listing fails, the code logs that it is degrading, and falls back to the
 unversioned (hide-only) delete. If that appears in the logs, either grant the
 key `listFiles` or add a lifecycle rule for the affected prefix.
 
-The path this replaced also erased versions, but only for objects it could
-find -- the first 1000 file names in the bucket. For everything else it deleted
-nothing and reported success. See the header of `src/storage/s3b2.ts`.
+## Unfinished large files
+
+Writes go through an S3 multipart upload once the body exceeds one part. A
+failed upload aborts itself, but a process killed mid-write cannot, and the
+parts already uploaded are billed until something cancels them.
+`daysFromStartingToCancelingUnfinishedLargeFiles` in
+`test-bucket-retention.json` does that. A production bucket wants the same rule
+(without the `tests/` prefix and the hiding rules, which are test-only -- see
+above); apply it alongside whatever `retention.json` already carries.

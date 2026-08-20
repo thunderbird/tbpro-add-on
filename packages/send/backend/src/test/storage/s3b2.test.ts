@@ -1,13 +1,13 @@
 import { S3Client } from '@aws-sdk/client-s3';
-import { Readable } from 'stream';
+import { Readable, Transform } from 'stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FileStore, StorageType } from '../../storage';
 import {
   deleteObject,
   getObjectAsStream,
   isNotFoundError,
   isS3SettingsUsable,
   partSizeFor,
-  resolveS3Settings,
   uploadObject,
 } from '../../storage/s3b2';
 
@@ -214,55 +214,57 @@ describe('storage/s3b2: keyed deletes', () => {
 });
 
 describe('storage/s3b2: configuration', () => {
-  it('prefers explicit values over the environment', () => {
-    vi.stubEnv('B2_ENDPOINT', 'https://env.example');
-    vi.stubEnv('B2_BUCKET_NAME', 'env-bucket');
+  const complete = {
+    endpoint: 'https://explicit.example',
+    region: 'auto',
+    accessKeyId: 'key-id',
+    secretAccessKey: 'key',
+    bucketName: 'explicit-bucket',
+  };
 
-    const config = resolveS3Settings({
-      endpoint: 'https://explicit.example',
-      bucketName: 'explicit-bucket',
-      accessKeyId: 'key-id',
-      secretAccessKey: 'key',
-    });
-
-    expect(config.endpoint).toBe('https://explicit.example');
-    expect(config.bucketName).toBe('explicit-bucket');
-    expect(isS3SettingsUsable(config)).toBe(true);
+  it('needs a bucket and credentials', () => {
+    expect(isS3SettingsUsable(complete)).toBe(true);
+    expect(isS3SettingsUsable({ ...complete, bucketName: '' })).toBe(false);
+    expect(isS3SettingsUsable({ ...complete, accessKeyId: '' })).toBe(false);
+    expect(isS3SettingsUsable({ ...complete, secretAccessKey: '' })).toBe(
+      false
+    );
   });
 
-  it('falls back to the environment when nothing is passed', () => {
-    vi.stubEnv('B2_ENDPOINT', 'https://env.example');
-    vi.stubEnv('B2_BUCKET_NAME', 'env-bucket');
-    vi.stubEnv('B2_APPLICATION_KEY_ID', 'env-key-id');
-    vi.stubEnv('B2_APPLICATION_KEY', 'env-key');
-
-    const config = resolveS3Settings();
-
-    expect(config).toMatchObject({
-      endpoint: 'https://env.example',
-      bucketName: 'env-bucket',
-      accessKeyId: 'env-key-id',
-      secretAccessKey: 'env-key',
-      region: 'auto',
-    });
-    expect(isS3SettingsUsable(config)).toBe(true);
+  it('needs an endpoint for B2, but only an endpoint or region otherwise', () => {
+    const noEndpoint = { ...complete, endpoint: '', region: 'us-east-1' };
+    expect(isS3SettingsUsable(noEndpoint)).toBe(true);
+    expect(isS3SettingsUsable(noEndpoint, { needsEndpoint: true })).toBe(false);
+    expect(isS3SettingsUsable({ ...noEndpoint, region: '' })).toBe(false);
   });
 
-  it('is not usable when a required value is missing', () => {
-    vi.stubEnv('B2_ENDPOINT', '');
-    vi.stubEnv('B2_BUCKET_NAME', '');
-    vi.stubEnv('B2_APPLICATION_KEY_ID', '');
-    vi.stubEnv('B2_APPLICATION_KEY', '');
+  it('does not resolve an S3 backend onto the B2 bucket', () => {
+    vi.stubEnv('STORAGE_BACKEND', 's3');
+    vi.stubEnv('B2_ENDPOINT', 'https://b2.example');
+    vi.stubEnv('B2_APPLICATION_KEY_ID', 'b2-key-id');
+    vi.stubEnv('B2_APPLICATION_KEY', 'b2-key');
+    vi.stubEnv('B2_BUCKET_NAME', 'b2-bucket');
+    vi.stubEnv('S3_BUCKET_NAME', '');
+    vi.stubEnv('S3_ENDPOINT', '');
+    vi.stubEnv('S3_ACCESS_KEY', '');
+    vi.stubEnv('S3_SECRET_KEY', '');
+    vi.stubEnv('S3_REGION', '');
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
+    // Borrowing the other backend's values would report healthy while writing
+    // user files into a bucket nobody selected.
+    expect(new FileStore().usesKeyedApi()).toBe(false);
+
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('refuses an unrecognised backend rather than falling back to disk', () => {
     expect(
-      isS3SettingsUsable(
-        resolveS3Settings({
-          bucketName: 'bucket',
-          accessKeyId: 'key-id',
-          secretAccessKey: 'key',
-        })
-      )
-    ).toBe(false);
+      () => new FileStore({ type: 'gcs' as StorageType, bucketName: 'b' })
+    ).toThrow('Unknown storage backend');
   });
 });
 
@@ -270,7 +272,9 @@ describe('storage/s3b2: configuration', () => {
  * A real client so `Upload` finds the config it reads, with the wire stubbed
  * out.
  */
-function stubbedClient() {
+function stubbedClient(
+  overrides: Record<string, (command: Sent) => unknown> = {}
+) {
   const client = new S3Client({
     region: 'auto',
     endpoint: 'https://s3.example',
@@ -279,7 +283,11 @@ function stubbedClient() {
   const sent: Sent[] = [];
   vi.spyOn(client, 'send').mockImplementation((async (command: Sent) => {
     sent.push(command);
-    switch (command.constructor.name) {
+    const name = command.constructor.name;
+    if (overrides[name]) {
+      return overrides[name](command);
+    }
+    switch (name) {
       case 'CreateMultipartUploadCommand':
         return { UploadId: 'upload-id' };
       case 'UploadPartCommand':
@@ -292,6 +300,10 @@ function stubbedClient() {
 }
 
 describe('storage/s3b2: writes', () => {
+  const megabyte = Buffer.alloc(1024 * 1024);
+  const twelveMiB = () =>
+    Readable.from(Array.from({ length: 12 }, () => megabyte));
+
   it('sends a body that fits in one part as a single PutObject', async () => {
     const { client, names } = stubbedClient();
 
@@ -302,13 +314,10 @@ describe('storage/s3b2: writes', () => {
 
   it('splits a larger body into a multipart upload', async () => {
     const { client, sent, names } = stubbedClient();
-    const megabyte = Buffer.alloc(1024 * 1024);
-    const body = Readable.from(Array.from({ length: 12 }, () => megabyte));
 
-    await uploadObject(client, 'large', body, 'bucket');
+    await uploadObject(client, 'large', twelveMiB(), 'bucket');
 
-    // 12 MiB in 5 MiB parts. Without this the write is one request, and B2
-    // rejects a single request past 5 GB -- well under `config.max_file_size`.
+    // 12 MiB in 5 MiB parts.
     expect(names()).toEqual([
       'CreateMultipartUploadCommand',
       'UploadPartCommand',
@@ -320,12 +329,128 @@ describe('storage/s3b2: writes', () => {
     expect(complete.input).toMatchObject({ Bucket: 'bucket', Key: 'large' });
   });
 
-  it('widens parts rather than exceeding the 10 000-part limit', () => {
+  it('uploads a body that carries a numeric `length`', async () => {
+    const { client, names } = stubbedClient();
+    // The shape the sole production caller supplies: `Limiter` in
+    // src/wsUploadHandler.ts is a Transform with a byte counter on it. Read as
+    // a content length, it would fix the expected part count at zero.
+    const counter = new Transform({
+      transform(chunk, encoding, callback) {
+        (this as unknown as { length: number }).length += chunk.length;
+        callback(null, chunk);
+      },
+    });
+    (counter as unknown as { length: number }).length = 0;
+    twelveMiB().pipe(counter);
+
+    await uploadObject(client, 'counted', counter, 'bucket');
+
+    expect(names()[names().length - 1]).toBe('CompleteMultipartUploadCommand');
+  });
+
+  it('sizes parts from the declared size', async () => {
+    const { client, sent } = stubbedClient();
+
+    // Widens the parts to 7 MiB, so a 12 MiB body is two of them, not three.
+    await uploadObject(
+      client,
+      'sized',
+      twelveMiB(),
+      'bucket',
+      7 * 1024 * 1024 * 10_000
+    );
+
+    const parts = sent.filter(
+      (command) => command.constructor.name === 'UploadPartCommand'
+    );
+    expect(parts).toHaveLength(2);
+  });
+
+  it('aborts the multipart upload when a part fails', async () => {
+    const { client, names } = stubbedClient({
+      UploadPartCommand: () => {
+        throw new Error('part rejected');
+      },
+    });
+
+    // Otherwise the parts already written stay in the bucket, billed, until a
+    // lifecycle rule reaps them.
+    await expect(
+      uploadObject(client, 'doomed', twelveMiB(), 'bucket')
+    ).rejects.toThrow('part rejected');
+    expect(names()).toContain('AbortMultipartUploadCommand');
+  });
+
+  it('clamps the part size against a declared size it cannot trust', () => {
     const fiveMiB = 5 * 1024 * 1024;
+    const thirtyTwoMiB = 32 * 1024 * 1024;
     expect(partSizeFor()).toBe(fiveMiB);
     expect(partSizeFor(1024)).toBe(fiveMiB);
     // 20 GB, the configured maximum, still fits in default-sized parts.
     expect(partSizeFor(20e9)).toBe(fiveMiB);
     expect(partSizeFor(fiveMiB * 10_000 + 1)).toBeGreaterThan(fiveMiB);
+    // `size` arrives unvalidated from the client, and each part is held whole
+    // in memory.
+    expect(partSizeFor(1e15)).toBe(thirtyTwoMiB);
+    expect(partSizeFor(Number.MAX_SAFE_INTEGER)).toBe(thirtyTwoMiB);
+    expect(partSizeFor(-1)).toBe(fiveMiB);
+    expect(partSizeFor(Number.NaN)).toBe(fiveMiB);
+    expect(partSizeFor('abc' as unknown as number)).toBe(fiveMiB);
+  });
+});
+
+describe('storage/s3b2: presigned urls', () => {
+  const b2 = {
+    type: StorageType.B2,
+    bucketName: 'b2-bucket',
+    applicationKeyId: 'b2-key-id',
+    applicationKey: 'b2-key',
+    endpoint: 'https://s3.eu-central-003.example',
+    region: 'eu-central-003',
+  };
+
+  it('signs uploads and downloads against the configured bucket', async () => {
+    const storage = new FileStore(b2);
+
+    const upload = new URL(
+      await storage.getUploadBucketUrl('some-key', 'application/octet-stream')
+    );
+    const download = new URL(await storage.getDownloadBucketUrl('some-key'));
+
+    for (const url of [upload, download]) {
+      expect(url.host).toBe('b2-bucket.s3.eu-central-003.example');
+      expect(url.pathname).toBe('/some-key');
+      expect(url.searchParams.get('X-Amz-Expires')).toBe('3600');
+      expect(url.searchParams.get('X-Amz-Credential')).toContain('b2-key-id');
+    }
+  });
+
+  it('signs an S3 backend with its own settings', async () => {
+    vi.stubEnv('B2_BUCKET_NAME', 'b2-bucket');
+    vi.stubEnv('B2_ENDPOINT', 'https://s3.eu-central-003.example');
+
+    const storage = new FileStore({
+      type: StorageType.S3,
+      bucketName: 's3-bucket',
+      accessKeyId: 's3-key-id',
+      secretAccessKey: 's3-key',
+      region: 'us-east-1',
+    });
+
+    const url = new URL(await storage.getDownloadBucketUrl('some-key'));
+    expect(url.host).toBe('s3-bucket.s3.us-east-1.amazonaws.com');
+    expect(url.searchParams.get('X-Amz-Credential')).toContain('s3-key-id');
+  });
+
+  it('refuses to sign when the bucket is not configured', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const storage = new FileStore({ ...b2, endpoint: '' });
+
+    await expect(storage.getDownloadBucketUrl('some-key')).rejects.toThrow(
+      'Bucket storage is not configured'
+    );
+    consoleError.mockRestore();
   });
 });
