@@ -30,6 +30,16 @@ const config: StorageAdapterConfig = {
  */
 const TEST_KEY_PREFIX = 'tests/';
 
+/**
+ * Vitest's 5s default is not enough for this suite. Every test here makes real
+ * round trips to B2, and the delete test makes five of them (write, read, list
+ * versions, delete, re-read). Observed suite durations in CI span 1.5-4.8s, so
+ * the default sits inside the noise band and fails on a slow one. Raising it
+ * weakens nothing: the assertions are unchanged, and a genuinely broken read or
+ * delete still fails on the assertion rather than the clock.
+ */
+const NETWORK_TEST_TIMEOUT_MS = 30_000;
+
 async function readAll(stream: Readable): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
@@ -67,7 +77,7 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
           console.warn(`Could not clean up test object "${key}"`, error);
         }
       }
-    });
+    }, NETWORK_TEST_TIMEOUT_MS);
 
     // Without the S3 endpoint FileStore falls back to the native adapter and
     // every other test here still passes, because this change keeps the bucket
@@ -76,59 +86,75 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       expect(storage.usesKeyedApi()).toBe(true);
     });
 
-    it('should write a file to b2 bucket', async () => {
-      const fileName = testKey('write');
+    it(
+      'should write a file to b2 bucket',
+      async () => {
+        const fileName = testKey('write');
 
-      const result = await storage.set(
-        fileName,
-        fs.createReadStream(mockFilePath)
-      );
-      expect(result).toBeTruthy();
-    });
+        const result = await storage.set(
+          fileName,
+          fs.createReadStream(mockFilePath)
+        );
+        expect(result).toBeTruthy();
+      },
+      NETWORK_TEST_TIMEOUT_MS
+    );
 
-    it('should read a file from b2 bucket', async () => {
-      const fileName = testKey('read');
+    it(
+      'should read a file from b2 bucket',
+      async () => {
+        const fileName = testKey('read');
 
-      const writeResult = await storage.set(
-        fileName,
-        fs.createReadStream(mockFilePath)
-      );
-      expect(writeResult).toBeTruthy();
+        const writeResult = await storage.set(
+          fileName,
+          fs.createReadStream(mockFilePath)
+        );
+        expect(writeResult).toBeTruthy();
 
-      const readResult = await storage.get(fileName);
-      expect(readResult).toBeTruthy();
-      // Read the body, not just the handle: a stream of the wrong object, or
-      // an empty one, is still a regression.
-      await expect(readAll(readResult)).resolves.toBe(mockFileContents);
-    });
+        const readResult = await storage.get(fileName);
+        expect(readResult).toBeTruthy();
+        // Read the body, not just the handle: a stream of the wrong object, or
+        // an empty one, is still a regression.
+        await expect(readAll(readResult)).resolves.toBe(mockFileContents);
+      },
+      NETWORK_TEST_TIMEOUT_MS
+    );
 
-    it('should return null for a file that does not exist', async () => {
-      const fileName = `${TEST_KEY_PREFIX}${randomUUID()}-absent.txt`;
+    it(
+      'should return null for a file that does not exist',
+      async () => {
+        const fileName = `${TEST_KEY_PREFIX}${randomUUID()}-absent.txt`;
 
-      const readResult = await storage.get(fileName);
-      expect(readResult).toBeNull();
-    });
+        const readResult = await storage.get(fileName);
+        expect(readResult).toBeNull();
+      },
+      NETWORK_TEST_TIMEOUT_MS
+    );
 
-    it('should delete a file from b2 bucket', async () => {
-      const fileName = testKey('delete');
+    it(
+      'should delete a file from b2 bucket',
+      async () => {
+        const fileName = testKey('delete');
 
-      const writeResult = await storage.set(
-        fileName,
-        fs.createReadStream(mockFilePath)
-      );
-      expect(writeResult).toBeTruthy();
+        const writeResult = await storage.set(
+          fileName,
+          fs.createReadStream(mockFilePath)
+        );
+        expect(writeResult).toBeTruthy();
 
-      const readResult = await storage.get(fileName);
-      expect(readResult).toBeTruthy();
-      readResult.destroy();
+        const readResult = await storage.get(fileName);
+        expect(readResult).toBeTruthy();
+        readResult.destroy();
 
-      const deleteResult = await storage.del(fileName);
-      expect(deleteResult).toBeTruthy();
+        const deleteResult = await storage.del(fileName);
+        expect(deleteResult).toBeTruthy();
 
-      // `del` reporting success is not evidence: the native adapter returns
-      // "ok" for a key it merely failed to find.
-      const afterDelete = await storage.get(fileName);
-      expect(afterDelete).toBeNull();
-    });
+        // `del` reporting success is not evidence: the native adapter returns
+        // "ok" for a key it merely failed to find.
+        const afterDelete = await storage.get(fileName);
+        expect(afterDelete).toBeNull();
+      },
+      NETWORK_TEST_TIMEOUT_MS
+    );
   }
 );
