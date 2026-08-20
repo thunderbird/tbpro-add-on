@@ -192,6 +192,28 @@ You can use VSCode's debugger for the backend.
 
 ## Testing
 
+### Backend tests
+
+`pnpm test` from `packages/send/backend`.
+
+One suite needs a bucket to talk to. `src/test/storage/presigned-roundtrip.test.ts`
+covers the path production takes for a file — a presigned PUT, a size read back,
+a presigned GET, a delete — so it moves real bytes over HTTP rather than
+stubbing the S3 client. Start the bucket first:
+
+```sh
+# from the repository root
+docker compose up -d minio
+```
+
+It is MinIO, it holds nothing but test objects, and it costs nothing to start —
+so the suite requires it rather than skipping when it is missing, and says so if
+nothing answers. The connection settings are the compose service's own and are
+built into the suite as defaults, so an existing checkout needs no `.env` change.
+If another worktree is already using port 9000, start MinIO with
+`SEND_MINIO_PORT=9010 docker compose up -d minio` and set
+`TEST_MINIO_ENDPOINT=http://localhost:9010` in `packages/send/backend/.env`.
+
 ### E2E testing
 
 For details on how to run the E2E tests please see the [E2E Tests README](e2e/README.md).

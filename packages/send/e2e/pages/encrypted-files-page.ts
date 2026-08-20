@@ -1,4 +1,7 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Download, type Locator, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { buffer } from 'node:stream/consumers';
 
 import {
   TB_ACCTS_EMAIL,
@@ -135,8 +138,8 @@ export class EncryptedFilesPage {
     });
   }
 
-  async downloadFileAndExpectDownload(fileName: string) {
-    const fileRow = this.fileRow(fileName);
+  async downloadFileAndExpectDownload(uploadFixture: UploadFixture) {
+    const fileRow = this.fileRow(uploadFixture.fileName);
 
     await expect(fileRow).toBeVisible();
     await fileRow.scrollIntoViewIfNeeded();
@@ -148,12 +151,36 @@ export class EncryptedFilesPage {
 
     const downloadPromise = this.page.waitForEvent('download');
     await this.page.getByTestId('confirm-download').click();
-    const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toBe(fileName);
+    await this.expectDownloadMatchesFixture(await downloadPromise, uploadFixture);
   }
 
-  async downloadFileFromInfoPanelAndExpectDownload(fileName: string) {
+  /**
+   * The bytes are the point. Checking only the file name passes on a download
+   * that came back short, reordered, or still encrypted.
+   *
+   * The fixture is 1.3 MB and the frontend's split size is 500 MB, so this is a
+   * single-part round trip. Multipart reassembly is not covered anywhere in the
+   * e2e suite -- see the follow-up on the bucket job's split-size override.
+   */
+  private async expectDownloadMatchesFixture(download: Download, uploadFixture: UploadFixture) {
+    expect(download.suggestedFilename()).toBe(uploadFixture.fileName);
+
+    // `path()` throws when the browser is remote, which every nightly run is
+    // ("Path is not available when connecting remotely"). `createReadStream()`
+    // streams the bytes back to the runner instead and works either way.
+    const downloaded = await buffer(await download.createReadStream());
+    const expected = readFileSync(uploadFixture.filePath);
+    // Length first, then digest: "expected 1331200 to be 1391309" says truncated,
+    // where a bare buffer comparison only ever says "expected false to be true".
+    expect(downloaded.byteLength).toBe(expected.byteLength);
+    expect(createHash('sha256').update(downloaded).digest('hex')).toBe(
+      createHash('sha256').update(expected).digest('hex')
+    );
+  }
+
+  async downloadFileFromInfoPanelAndExpectDownload(uploadFixture: UploadFixture) {
+    const { fileName } = uploadFixture;
     const fileRow = this.fileRow(fileName);
 
     await expect(fileRow).toBeVisible();
@@ -167,9 +194,8 @@ export class EncryptedFilesPage {
 
     const downloadPromise = this.page.waitForEvent('download');
     await fileInfoPanel.locator('footer button svg').last().click({ force: true });
-    const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toBe(fileName);
+    await this.expectDownloadMatchesFixture(await downloadPromise, uploadFixture);
   }
 
   async deleteUploadedFiles(fileNames: string[]) {

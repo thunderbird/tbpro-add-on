@@ -15,6 +15,34 @@ services:
       timeout: 5s
       retries: 5
 
+  # The bucket the backend storage round-trip suite runs against. Not part of the
+  # dev stack -- `docker compose up` leaves it alone; start it explicitly with
+  # `docker compose up -d minio` before `pnpm test` in packages/send/backend.
+  minio:
+    profiles: [ "test" ]
+    # Pinned: an unpinned tag makes CI unreproducible, and a release that
+    # changes `mc ready` would break the healthcheck below with no diff to blame.
+    image: "minio/minio:RELEASE.2025-09-07T16-13-09Z"
+    command: server /data --console-address ":9001"
+    # No volume on purpose. It holds test objects the suite cleans up after
+    # itself, so nothing here is worth surviving the container.
+    #
+    # Loopback, because `minioadmin:minioadmin` on every LAN interface is not a
+    # thing to publish. Overridable, because a second checkout holding 9000 is
+    # how you end up running the suite against another worktree's bucket --
+    # set SEND_MINIO_PORT and TEST_MINIO_ENDPOINT together. The console on 9001
+    # is reachable inside the container; nothing needs it from outside.
+    ports:
+      - "127.0.0.1:${SEND_MINIO_PORT:-9000}:9000"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    healthcheck:
+      test: [ "CMD", "mc", "ready", "local" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ./packages/send/backend/.docker-build

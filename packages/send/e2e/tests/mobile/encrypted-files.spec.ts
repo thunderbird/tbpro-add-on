@@ -42,7 +42,7 @@ test.describe('encrypted files on mobile', () => {
       await encryptedFilesPage.uploadFileWithFilePicker(filePickerFixture);
       await encryptedFilesPage.uploadFileWithDragAndDrop(dragDropFixture);
       // Download one of the files
-      await encryptedFilesPage.downloadFileFromInfoPanelAndExpectDownload(filePickerFixture.fileName);
+      await encryptedFilesPage.downloadFileFromInfoPanelAndExpectDownload(filePickerFixture);
     } finally {
       // Keep the shared test account tidy even if a later upload assertion fails.
       await encryptedFilesPage.deleteUploadedFiles(uploadedFileNames);

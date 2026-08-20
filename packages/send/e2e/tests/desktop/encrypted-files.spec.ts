@@ -33,7 +33,7 @@ test.describe('encrypted files on desktop', () => {
       // Cover both upload entry points: native file chooser and drag/drop.
       await encryptedFilesPage.uploadFileWithFilePicker(filePickerFixture);
       await encryptedFilesPage.uploadFileWithDragAndDrop(dragDropFixture);
-      await encryptedFilesPage.downloadFileAndExpectDownload(filePickerFixture.fileName);
+      await encryptedFilesPage.downloadFileAndExpectDownload(filePickerFixture);
     } finally {
       // Keep the shared test account tidy even if a later upload assertion fails.
       await encryptedFilesPage.deleteUploadedFiles(uploadedFileNames);
