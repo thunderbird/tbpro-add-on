@@ -77,6 +77,14 @@ jobs:
           cd packages/send
           pnpm install --filter send-backend
 
+      # Must precede Start MinIO: compose.yml gives `minio-init` an `env_file`
+      # pointing at this path, so the project cannot be fully resolved until it
+      # exists. Compose is lazy enough today that starting `minio` on its own
+      # works without it, but a `docker compose config` in the next step would
+      # not, and the error would name neither MinIO nor this file.
+      - name: Write backend .env
+        run: cp packages/send/backend/.env.sample packages/send/backend/.env
+
       # The storage suite round-trips a file through a real bucket. This job runs
       # in a container with the host's docker socket mounted, so compose's
       # published port lands on the host -- and it is bound to the host's
@@ -86,8 +94,8 @@ jobs:
       - name: Start MinIO
         id: start-minio
         run: |
-          docker compose --profile test up -d --wait minio
-          minio_id=$(docker compose --profile test ps -q minio)
+          docker compose up -d --wait minio
+          minio_id=$(docker compose ps -q minio)
           if [ -z "$minio_id" ]; then
             echo "::error::minio container did not start"
             exit 1
@@ -108,7 +116,6 @@ jobs:
         id: backend-tests
         run: |
           cd packages/send/backend
-          cp .env.sample .env
 
           # .env.sample points at localhost, which is this container, not the
           # bucket. On the compose network the service answers to its own name.
@@ -121,7 +128,7 @@ jobs:
         if: always() && steps.start-minio.outcome == 'success'
         run: |
           docker network disconnect "$MINIO_NETWORK" "$(cat /etc/hostname)" || true
-          docker compose --profile test rm -sf minio
+          docker compose rm -sf minio
 
   # When Pulumi code or configs change, run these steps
   iac-lint:

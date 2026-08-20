@@ -3,8 +3,6 @@ import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
 import { decryptStream } from '@send-frontend/lib/ece';
 import {
   _download,
-  _upload,
-  calculateEncryptedSize,
   encrypt,
   uploadWithTracker,
 } from '@send-frontend/lib/helpers';
@@ -13,8 +11,6 @@ import { streamToArrayBuffer } from '@send-frontend/lib/utils';
 import { ApiConnection } from './api';
 
 export type NamedBlob = Blob & { name: string };
-
-export type Canceler = Record<string, () => void>;
 
 interface SaveFileData {
   plaintext: ArrayBuffer;
@@ -59,7 +55,6 @@ export async function getBlob(
   id: string,
   size: number,
   key: CryptoKey,
-  isBucketStorage = true,
   filename = 'dummy.file',
   type = 'text/plain',
   api: ApiConnection,
@@ -73,24 +68,6 @@ export async function getBlob(
 
   if (isSuspicious) {
     throw new Error('File has been reported as suspicious');
-  }
-
-  if (!isBucketStorage) {
-    const downloadedBlob = await _download({ id, progressTracker });
-
-    let plaintext: ArrayBufferLike | string;
-    if (key) {
-      const plainStream = decryptStream(blobStream(downloadedBlob), key);
-      plaintext = await streamToArrayBuffer(plainStream, size);
-    } else {
-      plaintext = await downloadedBlob.arrayBuffer();
-    }
-
-    return await _saveFile({
-      plaintext: plaintext as ArrayBuffer,
-      name: decodeURIComponent(filename),
-      type, // mime type of the upload
-    });
   }
 
   try {
@@ -143,22 +120,10 @@ export async function sendBlob(
   aesKey: CryptoKey,
   api: ApiConnection,
   progressTracker: ProgressTracker,
-  isBucketStorage = true,
   options: SendBlobOptions = {}
 ): Promise<string> {
   const { signal, onUploadId } = options;
   const stream = blobStream(blob);
-  if (!isBucketStorage) {
-    const encryptedSize = calculateEncryptedSize(blob.size);
-    const result = await _upload(stream, aesKey, encryptedSize, {
-      progressTracker,
-    });
-
-    // Using a type guard since a JsonResponse can be a single object or an array
-    const id = Array.isArray(result) ? result[0].id : result.id;
-    onUploadId?.(id);
-    return id;
-  }
 
   try {
     // Get the bucket url

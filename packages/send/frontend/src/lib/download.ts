@@ -58,8 +58,6 @@ export default class Downloader {
         wrappingKey
       );
 
-    const isBucketStorage = this.api.isBucketStorage;
-
     try {
       // Set the filename for progress tracking before starting download
       progressTracker.setFileName(filename);
@@ -69,7 +67,6 @@ export default class Downloader {
         id,
         size,
         contentKey,
-        isBucketStorage,
         filename,
         type,
         this.api,
