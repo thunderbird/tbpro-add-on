@@ -68,8 +68,7 @@ describe('storage/s3b2: keyed reads', () => {
       throw awsError('AccessDenied', 403);
     });
 
-    // A credential, endpoint or bucket-policy regression must not be flattened
-    // into a null that reads as "the file simply is not there".
+    // Not flattened into a null that reads as "the file is not there".
     await expect(
       getObjectAsStream(client, 'forbidden', 'some-bucket')
     ).rejects.toThrow('AccessDenied');
@@ -80,8 +79,6 @@ describe('storage/s3b2: keyed reads', () => {
       throw awsError('NoSuchBucket', 404);
     });
 
-    // S3 answers this with a 404 too. Reading it as "absent" would turn a
-    // misconfigured bucket name into a silent, total download outage.
     await expect(
       getObjectAsStream(client, 'some-key', 'wrong-bucket')
     ).rejects.toThrow('NoSuchBucket');
@@ -93,7 +90,7 @@ describe('storage/s3b2: keyed reads', () => {
     expect(isNotFoundError(awsError('SomethingElse', 404))).toBe(true);
     expect(isNotFoundError(awsError('AccessDenied', 403))).toBe(false);
     expect(isNotFoundError(new Error('socket hang up'))).toBe(false);
-    // Bucket-level failures are not "object absent", whatever their status.
+    // Bucket-level, whatever the status.
     expect(isNotFoundError(awsError('NoSuchBucket', 404))).toBe(false);
     expect(isNotFoundError(awsError('InvalidBucketName', 404))).toBe(false);
     expect(isNotFoundError(awsError('PermanentRedirect', 404))).toBe(false);
@@ -129,8 +126,6 @@ describe('storage/s3b2: keyed deletes', () => {
     const deletes = send.mock.calls
       .slice(1)
       .map((call) => (call[0] as Sent).input);
-    // B2 buckets are versioned: a bare DeleteObject only hides the object.
-    // Each version is removed by id so the bytes actually go.
     expect(deletes).toEqual([
       { Bucket: 'some-bucket', Key: 'some-key', VersionId: 'v1' },
       { Bucket: 'some-bucket', Key: 'some-key', VersionId: 'marker' },
@@ -175,8 +170,7 @@ describe('storage/s3b2: keyed deletes', () => {
       return {};
     });
 
-    // Unversioned bucket, or an object that is already gone. DeleteObject is
-    // idempotent, so this must still succeed rather than throw.
+    // Unversioned bucket, or already gone: still succeeds, does not throw.
     await deleteObject(client, 'some-key', 'some-bucket');
 
     const command = send.mock.calls[1][0] as Sent;
@@ -200,8 +194,7 @@ describe('storage/s3b2: keyed deletes', () => {
 
     await deleteObject(client, 'some-key', 'some-bucket');
 
-    // Degrades to hiding rather than failing outright -- but says so: the
-    // object is then retained until a lifecycle rule reaps it.
+    // Degrades to the hide-only delete, and says so.
     const command = send.mock.calls[1][0] as Sent;
     expect(command.constructor.name).toBe('DeleteObjectCommand');
     expect(command.input).toEqual({
@@ -253,8 +246,6 @@ describe('storage/s3b2: configuration', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
 
-    // Borrowing the other backend's values would report healthy while writing
-    // user files into a bucket nobody selected.
     expect(new FileStore().usesKeyedApi()).toBe(false);
 
     expect(consoleError).toHaveBeenCalled();
@@ -331,9 +322,8 @@ describe('storage/s3b2: writes', () => {
 
   it('uploads a body that carries a numeric `length`', async () => {
     const { client, names } = stubbedClient();
-    // The shape the sole production caller supplies: `Limiter` in
-    // src/wsUploadHandler.ts is a Transform with a byte counter on it. Read as
-    // a content length, it would fix the expected part count at zero.
+    // The shape `Limiter` in src/wsUploadHandler.ts hands us; see
+    // `uploadObject` for why a `length` on the body is a hazard.
     const counter = new Transform({
       transform(chunk, encoding, callback) {
         (this as unknown as { length: number }).length += chunk.length;
@@ -373,8 +363,7 @@ describe('storage/s3b2: writes', () => {
       },
     });
 
-    // Otherwise the parts already written stay in the bucket, billed, until a
-    // lifecycle rule reaps them.
+    // Otherwise the parts already written are billed until a rule reaps them.
     await expect(
       uploadObject(client, 'doomed', twelveMiB(), 'bucket')
     ).rejects.toThrow('part rejected');
@@ -389,8 +378,6 @@ describe('storage/s3b2: writes', () => {
     // 20 GB, the configured maximum, still fits in default-sized parts.
     expect(partSizeFor(20e9)).toBe(fiveMiB);
     expect(partSizeFor(fiveMiB * 10_000 + 1)).toBeGreaterThan(fiveMiB);
-    // `size` arrives unvalidated from the client, and each part is held whole
-    // in memory.
     expect(partSizeFor(1e15)).toBe(thirtyTwoMiB);
     expect(partSizeFor(Number.MAX_SAFE_INTEGER)).toBe(thirtyTwoMiB);
     expect(partSizeFor(-1)).toBe(fiveMiB);

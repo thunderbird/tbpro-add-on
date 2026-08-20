@@ -14,13 +14,8 @@ import { Readable } from 'stream';
  * The S3 data plane. Backblaze B2 and S3 share it: B2's S3-compatible API
  * speaks the same commands, so one implementation serves both backends.
  *
- * Every operation addresses an object by key. The path this replaces reached
- * B2 objects by name, and resolved a name to a file id by listing the bucket:
- * one 1000-entry page of `b2_list_file_names`, unpaginated, linearly scanned.
- * Once a bucket held more than a page of keys, every read and delete of an
- * object outside that page failed -- silently, in the delete's case. Nothing
- * here lists a bucket to find a file, so cost and correctness no longer
- * degrade as the bucket fills.
+ * Every operation addresses an object by key. Nothing here lists a bucket to
+ * find a file, so neither cost nor correctness degrades as the bucket fills.
  */
 
 /** Connection details for one bucket. The caller resolves them; see ./index.ts. */
@@ -67,7 +62,11 @@ export function createS3Client(config: S3Settings): S3Client {
   });
 }
 
-/** Bucket-level failures. S3 answers some with 404, but they are not "absent". */
+/**
+ * Bucket-level failures. Some answer with a 404, but they are not "absent": a
+ * wrong bucket name must fail loudly, not 404 every download with nothing
+ * logged.
+ */
 const BUCKET_LEVEL_ERROR_NAMES = new Set([
   'NoSuchBucket',
   'InvalidBucketName',
@@ -79,8 +78,6 @@ export function isNotFoundError(error: unknown): boolean {
     name?: string;
     $metadata?: { httpStatusCode?: number };
   };
-  // Subtracted first: otherwise a typo'd bucket name reads as "object absent"
-  // and every download 404s with nothing logged.
   if (err?.name && BUCKET_LEVEL_ERROR_NAMES.has(err.name)) {
     return false;
   }

@@ -19,10 +19,8 @@ const config: StorageAdapterConfig = {
 };
 
 /**
- * Every object this suite creates is named under this prefix, so the bucket's
- * lifecycle rule can reap what a crashed run leaves behind (see
- * b2/test-bucket-retention.json) and test objects stay separable from real
- * uploads sharing the bucket.
+ * The bucket is shared with real uploads; the lifecycle rule keyed to this
+ * prefix reaps what a crashed run leaves behind. See b2/README.md.
  */
 const TEST_KEY_PREFIX = 'tests/';
 
@@ -63,9 +61,8 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       }
     }, NETWORK_TEST_TIMEOUT_MS);
 
-    // In CI `shouldRunSuite` runs this suite unconditionally, so a bucket
-    // credential that went missing would otherwise surface as a pile of
-    // confusing failures rather than one legible one.
+    // This suite is unconditional in CI, so a credential that went missing
+    // should fail once and legibly, not everywhere.
     it('has a usable S3 client for the configured bucket', () => {
       expect(storage.usesKeyedApi()).toBe(true);
     });
@@ -108,9 +105,8 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       'should write a file larger than one multipart part',
       async () => {
         const fileName = testKey('multipart');
-        // Past the 5 MiB minimum part size, so this is the only test that
-        // proves B2 accepts CreateMultipartUpload/UploadPart/Complete -- and
-        // the checksum headers the SDK sends with them.
+        // Past the minimum part size: the only check that B2 itself accepts
+        // the multipart commands, and the checksums the SDK sends with them.
         const size = 6 * 1024 * 1024;
 
         const result = await storage.set(
@@ -153,8 +149,7 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
         const deleteResult = await storage.del(fileName);
         expect(deleteResult).toBeTruthy();
 
-        // `del` reporting success is not evidence that anything went: a
-        // versioned bucket answers a plain delete by hiding the object.
+        // `del` returning true is not evidence the bytes went.
         const afterDelete = await storage.get(fileName);
         expect(afterDelete).toBeNull();
       },
