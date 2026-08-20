@@ -602,6 +602,25 @@ describe('requireAdminPermisions', () => {
     expect(mockResponse.status).toHaveBeenCalledWith(403);
     expect(nextFunction).not.toHaveBeenCalled();
   });
+
+  // Same guard as `checkStorageLimit` -- see the note there. Both routes using
+  // this middleware gate on `requireJWT` first, so this is the cost of getting
+  // that order wrong, not a path anything reaches today.
+  it('rejects with 403 instead of throwing when there is no token', async () => {
+    vi.mocked(getDataFromAuthenticatedRequest).mockImplementation(() => {
+      throw new Error(
+        'No token found in request: This should not happen if the user is authenticated'
+      );
+    });
+
+    await expect(
+      requireAdminPermisions(mockRequest as Request, mockResponse, nextFunction)
+    ).resolves.not.toThrow();
+
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(nextFunction).not.toHaveBeenCalled();
+    expect(getAdminStatus).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -671,6 +690,43 @@ describe('checkStorageLimit', () => {
     await checkStorageLimit(mockRequest as Request, mockResponse, nextFunction);
 
     expect(nextFunction).toHaveBeenCalled();
+  });
+
+  // An unauthenticated caller must never reach this middleware -- `requireJWT`
+  // runs first on every route that uses it. These pin what happens when that
+  // ordering is wrong anyway, which is how private#43 took down a replica:
+  // `getDataFromAuthenticatedRequest` throws, and inside an `async` middleware
+  // Express 4 drops the rejection on the floor and Node kills the process.
+  it('rejects with 403 instead of throwing when there is no token', async () => {
+    vi.mocked(getDataFromAuthenticatedRequest).mockImplementation(() => {
+      throw new Error(
+        'No token found in request: This should not happen if the user is authenticated'
+      );
+    });
+
+    await expect(
+      checkStorageLimit(mockRequest as Request, mockResponse, nextFunction)
+    ).resolves.not.toThrow();
+
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(nextFunction).not.toHaveBeenCalled();
+    // The storage read is the expensive part and it needs a user id. Reaching
+    // it at all would mean the guard above did not hold.
+    expect(getUsedStorage).not.toHaveBeenCalled();
+  });
+
+  it('does not crash the process when the storage read rejects', async () => {
+    mockRequest.body = { size: 100 };
+    vi.mocked(getStorageLimitForTier).mockReturnValue(1000);
+    vi.mocked(getUsedStorage).mockRejectedValue(new Error('database is down'));
+
+    // `wrapAsyncHandler` hands it to `next`; unwrapped, this rejection would be
+    // an unhandled rejection and the process would exit.
+    await expect(
+      checkStorageLimit(mockRequest as Request, mockResponse, nextFunction)
+    ).resolves.not.toThrow();
+
+    expect(nextFunction).toHaveBeenCalledWith(expect.any(Error));
   });
 });
 

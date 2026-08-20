@@ -430,38 +430,72 @@ export function addVersionHeader(
   next();
 }
 
-export async function checkStorageLimit(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  // Check if the body has the size property
-  const size = req?.body?.size || 0;
-
-  const { tier, id } = getDataFromAuthenticatedRequest(req);
-  const limit = getStorageLimitForTier(tier);
-
-  const { active } = await getUsedStorage(id);
-
-  if (active + size >= limit) {
-    return res.status(403).json({
-      message: `Storage limit exceeded. Please remove files to continue uploading.`,
-    });
+/**
+ * Read the caller's identity, or respond 403 and return null.
+ *
+ * `getDataFromAuthenticatedRequest` throws when there is no `authorization`
+ * cookie. Inside an `async` middleware that throw becomes a rejected promise,
+ * and Express 4 discards it -- `Layer.handle_request` only try/catches
+ * synchronous throws -- so Node terminates the process. One anonymous request
+ * would take out a replica.
+ *
+ * Every caller below is also gated by `requireJWT`, so this should be
+ * unreachable. That is exactly why it is here: the gate is a matter of argument
+ * order at each call site, and the cost of getting that order wrong should be a
+ * 403, not an outage.
+ */
+function getCallerOrReject(req: Request, res: Response) {
+  try {
+    return getDataFromAuthenticatedRequest(req);
+  } catch {
+    reject(res);
+    return null;
   }
-
-  return next();
 }
 
-export async function requireAdminPermisions(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  const { id } = getDataFromAuthenticatedRequest(req);
+// Wrapped rather than exported bare: `getUsedStorage` and `getAdminStatus` reach
+// the database, and a rejection there is the same unhandled-rejection process
+// kill as above. `wrapAsyncHandler` routes it to `next` instead.
+export const checkStorageLimit: RequestHandler = wrapAsyncHandler(
+  async function checkStorageLimit(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    // Check if the body has the size property
+    const size = req?.body?.size || 0;
 
-  const adminStatus = await getAdminStatus(id);
-  if (!adminStatus) {
-    return reject(res);
+    const caller = getCallerOrReject(req, res);
+    if (!caller) return;
+
+    const { tier, id } = caller;
+    const limit = getStorageLimitForTier(tier);
+
+    const { active } = await getUsedStorage(id);
+
+    if (active + size >= limit) {
+      return res.status(403).json({
+        message: `Storage limit exceeded. Please remove files to continue uploading.`,
+      });
+    }
+
+    return next();
   }
-  next();
-}
+);
+
+export const requireAdminPermisions: RequestHandler = wrapAsyncHandler(
+  async function requireAdminPermisions(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    const caller = getCallerOrReject(req, res);
+    if (!caller) return;
+
+    const adminStatus = await getAdminStatus(caller.id);
+    if (!adminStatus) {
+      return reject(res);
+    }
+    next();
+  }
+);
