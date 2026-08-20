@@ -64,6 +64,20 @@ describe('Storage: local filesystem', () => {
     await expect(storage.del(`${randomUUID()}-absent.txt`)).resolves.toBe(true);
   });
 
+  it('resolves an unset directory against the working directory', async () => {
+    // `.env.sample` ships FS_LOCAL_DIR and TEST_FS_LOCAL_DIR empty, so this is
+    // the configuration dev and CI actually run.
+    const cwdStorage = new FileStore({ type: StorageType.LOCAL });
+    const key = `${randomUUID()}.txt`;
+
+    expect(await cwdStorage.set(key, body('cwd') as fs.ReadStream)).toBe(true);
+    try {
+      expect(fs.existsSync(path.resolve(key))).toBe(true);
+    } finally {
+      fs.rmSync(path.resolve(key), { force: true });
+    }
+  });
+
   it('refuses a key that escapes the bucket', async () => {
     // Ids reach storage straight from request params.
     expect(

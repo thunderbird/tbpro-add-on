@@ -12,24 +12,21 @@ import { pipeline } from 'stream/promises';
  * succeeds.
  */
 export class LocalStorage {
-  constructor(
-    private directory?: string,
-    private bucketName?: string
-  ) {}
+  private readonly root: string;
+
+  constructor(directory?: string, bucketName?: string) {
+    // An unset directory resolves against the process's working directory:
+    // FS_LOCAL_DIR is empty in .env.sample, and dev and CI both rely on that.
+    this.root = path.resolve(directory || '', bucketName ?? '');
+  }
 
   /**
    * Keys reach us from clients, and `path.resolve` happily walks out of the
    * bucket given `../`.
    */
   private pathFor(key: string): string {
-    if (!this.directory) {
-      throw new Error(
-        'Local storage needs a directory (FS_LOCAL_DIR, or `directory` in the config)'
-      );
-    }
-    const root = path.resolve(this.directory, this.bucketName ?? '');
-    const target = path.resolve(root, key);
-    if (!target.startsWith(root + path.sep)) {
+    const target = path.resolve(this.root, key);
+    if (!target.startsWith(this.root + path.sep)) {
       throw new Error(
         `Refusing a key that resolves outside the bucket: ${key}`
       );
