@@ -6,30 +6,54 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl as getSignedUrlCommand } from '@aws-sdk/s3-request-presigner';
 
-const Bucket = process.env.B2_BUCKET_NAME;
+/**
+ * The S3 data plane, used for presigned URLs and keyed size reads.
+ *
+ * Backblaze B2 and Amazon S3 both speak it, so the connection details are a
+ * parameter rather than a module-level read of `B2_*`: an `s3` deployment must
+ * not sign URLs for the B2 bucket while its reads and writes go elsewhere.
+ */
+export type S3Settings = {
+  endpoint?: string;
+  region?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  bucketName?: string;
+  /**
+   * Address the bucket as `<endpoint>/<bucket>/<key>` instead of
+   * `<bucket>.<endpoint>/<key>`. Needed for an S3 implementation reached at a
+   * bare host:port, such as MinIO. Production buckets leave this unset and keep
+   * the SDK's virtual-hosted default.
+   */
+  forcePathStyle?: boolean;
+};
 
-export async function getClientFromAWSSDK() {
-  // Configure the S3 client
-  const s3Client = new S3Client({
-    endpoint: `${process.env.B2_ENDPOINT}`,
-    region: process.env.B2_REGION || 'auto',
+export function createS3Client(settings: S3Settings): S3Client {
+  return new S3Client({
+    // Undefined is the SDK's "resolve an endpoint from the region" signal, which
+    // is what Amazon S3 wants; Backblaze and MinIO are only reachable at one
+    // they are told.
+    endpoint: settings.endpoint,
+    forcePathStyle: settings.forcePathStyle,
+    // Required by the SDK even when the endpoint decides where requests go.
+    region: settings.region || 'auto',
     credentials: {
-      accessKeyId: process.env.B2_APPLICATION_KEY_ID,
-      secretAccessKey: process.env.B2_APPLICATION_KEY,
+      accessKeyId: settings.accessKeyId,
+      secretAccessKey: settings.secretAccessKey,
     },
     requestHandler: { requestTimeout: 30000 },
     maxAttempts: 3,
   });
-
-  return s3Client;
 }
 
 export async function getSignedUrl(
   s3Client: S3Client,
-  Key: string,
-  ContentType: string
+  {
+    Bucket,
+    Key,
+    ContentType,
+  }: { Bucket: string; Key: string; ContentType: string }
 ) {
-  // Set up the command parameters
   const command = new PutObjectCommand({
     Bucket,
     Key,
@@ -54,7 +78,7 @@ export async function getSignedUrl(
  */
 export async function getObjectSize(
   s3Client: S3Client,
-  Key: string
+  { Bucket, Key }: { Bucket: string; Key: string }
 ): Promise<number> {
   const command = new HeadObjectCommand({
     Bucket,
@@ -64,8 +88,10 @@ export async function getObjectSize(
   return response.ContentLength ?? 0;
 }
 
-export async function getSignedUrlforDownload(s3Client: S3Client, Key: string) {
-  // Set up the command parameters
+export async function getSignedUrlforDownload(
+  s3Client: S3Client,
+  { Bucket, Key }: { Bucket: string; Key: string }
+) {
   const command = new GetObjectCommand({
     Bucket,
     Key,

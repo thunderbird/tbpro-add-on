@@ -1,4 +1,6 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Download, type Locator, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 import {
   TB_ACCTS_EMAIL,
@@ -135,8 +137,8 @@ export class EncryptedFilesPage {
     });
   }
 
-  async downloadFileAndExpectDownload(fileName: string) {
-    const fileRow = this.fileRow(fileName);
+  async downloadFileAndExpectDownload(uploadFixture: UploadFixture) {
+    const fileRow = this.fileRow(uploadFixture.fileName);
 
     await expect(fileRow).toBeVisible();
     await fileRow.scrollIntoViewIfNeeded();
@@ -148,12 +150,34 @@ export class EncryptedFilesPage {
 
     const downloadPromise = this.page.waitForEvent('download');
     await this.page.getByTestId('confirm-download').click();
-    const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toBe(fileName);
+    await this.expectDownloadMatchesFixture(await downloadPromise, uploadFixture);
   }
 
-  async downloadFileFromInfoPanelAndExpectDownload(fileName: string) {
+  /**
+   * The bytes are the point. A file is encrypted in the browser, cut into windows
+   * over SPLIT_SIZE that each become their own stored object, and put back together
+   * in order on the way down. Checking only the file name passes on a download that
+   * came back short, reordered, or still encrypted.
+   */
+  private async expectDownloadMatchesFixture(download: Download, uploadFixture: UploadFixture) {
+    expect(download.suggestedFilename()).toBe(uploadFixture.fileName);
+
+    const downloadedPath = await download.path();
+    expect(downloadedPath).toBeTruthy();
+
+    const downloaded = readFileSync(downloadedPath);
+    const expected = readFileSync(uploadFixture.filePath);
+    // Length first, then digest: "expected 1331200 to be 1391309" says truncated,
+    // where a bare buffer comparison only ever says "expected false to be true".
+    expect(downloaded.byteLength).toBe(expected.byteLength);
+    expect(createHash('sha256').update(downloaded).digest('hex')).toBe(
+      createHash('sha256').update(expected).digest('hex')
+    );
+  }
+
+  async downloadFileFromInfoPanelAndExpectDownload(uploadFixture: UploadFixture) {
+    const { fileName } = uploadFixture;
     const fileRow = this.fileRow(fileName);
 
     await expect(fileRow).toBeVisible();
@@ -167,9 +191,8 @@ export class EncryptedFilesPage {
 
     const downloadPromise = this.page.waitForEvent('download');
     await fileInfoPanel.locator('footer button svg').last().click({ force: true });
-    const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toBe(fileName);
+    await this.expectDownloadMatchesFixture(await downloadPromise, uploadFixture);
   }
 
   async deleteUploadedFiles(fileNames: string[]) {

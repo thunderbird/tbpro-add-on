@@ -8,24 +8,49 @@ import { FileStreamParams } from '@tweedegolf/storage-abstraction/dist/types/add
 import { ReadStream } from 'fs';
 import { Readable } from 'stream';
 import {
-  getClientFromAWSSDK,
+  S3Settings,
+  createS3Client,
   getObjectSize,
   getSignedUrl,
   getSignedUrlforDownload,
 } from './s3b2';
-
-const TWELVE_HOURS = 12 * 60 * 60 * 1000;
-
-type Direct = {
-  directClient?: S3Client;
-};
 
 const B2_CONFIG = {
   type: StorageType.B2,
   bucketName: process.env.B2_BUCKET_NAME,
   applicationKeyId: process.env.B2_APPLICATION_KEY_ID,
   applicationKey: process.env.B2_APPLICATION_KEY,
+  endpoint: process.env.B2_ENDPOINT,
+  region: process.env.B2_REGION,
 };
+
+/**
+ * The Backblaze token lasts 24 hours and the native adapter authorizes exactly
+ * once -- `authorize()` returns early forever after the first success and
+ * nothing resets it on a 401. Rebuilding the adapter is the only way to get a
+ * fresh token, so a long-lived process needs this or its deletes stop working
+ * silently. Half the token's life, to leave room for a failure.
+ */
+const B2_ADAPTER_REFRESH_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * How to reach the bucket over the S3 API, or undefined for a backend that has
+ * no bucket. B2 names its S3 credentials `applicationKey*`; both spellings are
+ * read so either backend's configuration works unchanged.
+ */
+function s3SettingsFor(config: StorageAdapterConfig): S3Settings | undefined {
+  if (config.type !== StorageType.B2 && config.type !== StorageType.S3) {
+    return undefined;
+  }
+  return {
+    endpoint: config.endpoint,
+    region: config.region,
+    accessKeyId: config.accessKeyId ?? config.applicationKeyId,
+    secretAccessKey: config.secretAccessKey ?? config.applicationKey,
+    bucketName: config.bucketName,
+    forcePathStyle: config.forcePathStyle,
+  };
+}
 
 /**
  * Storage adapter for various storage backends including filesystem and Backblaze.
@@ -34,7 +59,13 @@ export class FileStore {
   /**
    * A storage client instance.
    */
-  private client: Storage & Direct;
+  private client: Storage;
+
+  /**
+   * The S3 data plane for this store: presigned upload/download URLs and the
+   * size read. Undefined for filesystem storage.
+   */
+  private s3?: { client: S3Client; bucket: string };
 
   /**
    * Initialize the adapter.
@@ -76,27 +107,51 @@ export class FileStore {
       }
     }
 
-    /* Backblaze's token only lasts 24 hours, so we renew it before that */
-    if (process.env.STORAGE_BACKEND === 'b2') {
-      setInterval(() => {
-        console.log('Renewing client');
-        this.client = new Storage(B2_CONFIG);
-        getClientFromAWSSDK().then(
-          (client) => (this.client.directClient = client)
-        );
-      }, TWELVE_HOURS);
+    // Signed uploads and downloads go over the S3 API for both bucket backends,
+    // built from this store's own settings rather than from `B2_*` -- otherwise
+    // an `s3` deployment signs urls for the Backblaze bucket.
+    const settings = s3SettingsFor(config);
+    if (settings?.bucketName) {
+      this.s3 = {
+        client: createS3Client(settings),
+        bucket: settings.bucketName,
+      };
     }
-    // We have to instantiate an s3 client using backblaze for signed uploads/downloads
-    getClientFromAWSSDK().then((client) => (this.client.directClient = client));
-    this.client = new Storage(config);
+
+    // The S3-only keys go to the adapter too: both adapters read the keys they
+    // know and ignore the rest.
+    const adapterConfig = config;
+    this.client = new Storage(adapterConfig);
+
+    if (adapterConfig.type === StorageType.B2) {
+      // See B2_ADAPTER_REFRESH_MS. unref'd so the timer never keeps a process
+      // -- or a test run -- alive on its own.
+      setInterval(() => {
+        this.client = new Storage(adapterConfig);
+      }, B2_ADAPTER_REFRESH_MS).unref();
+    }
+  }
+
+  /** The S3 client and bucket, or a throw if this store has no bucket. */
+  private bucketApi(): { client: S3Client; bucket: string } {
+    if (!this.s3) {
+      throw new Error('Bucket storage is not configured');
+    }
+    return this.s3;
   }
 
   async getUploadBucketUrl(key: string, contentType: string) {
-    return await getSignedUrl(this.client.directClient, key, contentType);
+    const { client, bucket } = this.bucketApi();
+    return await getSignedUrl(client, {
+      Bucket: bucket,
+      Key: key,
+      ContentType: contentType,
+    });
   }
 
   async getDownloadBucketUrl(id: string) {
-    return await getSignedUrlforDownload(this.client.directClient, id);
+    const { client, bucket } = this.bucketApi();
+    return await getSignedUrlforDownload(client, { Bucket: bucket, Key: id });
   }
 
   /**
@@ -131,20 +186,22 @@ export class FileStore {
    *
    * Note that an encrypted file's size is greater than or equal to the unencrypted file's size.
    *
-   * For Backblaze bucket storage, the size is read back through the same S3 API
-   * used to upload the object (HeadObject via `directClient`). S3 is
-   * read-after-write consistent for an object it just wrote, whereas B2's native
-   * `sizeOf` lags behind the S3 PUT — that lag was the root cause of create-entry
-   * failing with UPLOAD_SIZE_ERROR on large/multipart uploads. Falls back to the
-   * native API if the S3 read fails or no direct client is available.
+   * For bucket storage, the size is read back through the same S3 API used to
+   * upload the object (HeadObject). S3 is read-after-write consistent for an
+   * object it just wrote, whereas B2's native `sizeOf` lags behind the S3 PUT —
+   * that lag was the root cause of create-entry failing with UPLOAD_SIZE_ERROR
+   * on large/multipart uploads. Falls back to the adapter if the S3 read fails.
    */
   async length(id: string): Promise<number> {
-    if (process.env.STORAGE_BACKEND === 'b2' && this.client.directClient) {
+    if (this.s3) {
       try {
-        return await getObjectSize(this.client.directClient, id);
+        return await getObjectSize(this.s3.client, {
+          Bucket: this.s3.bucket,
+          Key: id,
+        });
       } catch (error) {
         console.error(
-          'S3 HeadObject size read failed; falling back to native B2 API:',
+          'S3 HeadObject size read failed; falling back to the adapter:',
           error
         );
       }

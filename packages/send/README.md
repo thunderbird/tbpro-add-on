@@ -192,6 +192,24 @@ You can use VSCode's debugger for the backend.
 
 ## Testing
 
+### Backend tests
+
+`pnpm test` from `packages/send/backend`.
+
+One suite needs a bucket to talk to. `src/test/storage/presigned-roundtrip.test.ts`
+covers the path production takes for a file — a presigned PUT, a size read back,
+a presigned GET, a delete — so it moves real bytes over HTTP rather than
+stubbing the S3 client. Start the bucket first:
+
+```sh
+# from the repository root
+docker compose up -d minio
+```
+
+It is MinIO, it holds nothing but test objects, and `.env.sample` already points
+at it. Without it running the suite skips; in CI it is required, and the suite
+fails rather than skipping if nothing answers.
+
 ### E2E testing
 
 For details on how to run the E2E tests please see the [E2E Tests README](e2e/README.md).

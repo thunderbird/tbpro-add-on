@@ -126,6 +126,14 @@ jobs:
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
         shell: bash
+        # Through `env:` rather than inline `${{ }}`: a secret containing a
+        # quote would otherwise break -- or escape -- the shell command.
+        env:
+          B2_REGION: ${{ vars.TEST_B2_REGION }}
+          B2_ENDPOINT: ${{ vars.TEST_B2_ENDPOINT }}
+          B2_BUCKET_NAME: ${{ vars.TEST_B2_BUCKET_NAME }}
+          B2_APPLICATION_KEY: ${{ secrets.TEST_B2_APPLICATION_KEY }}
+          B2_APPLICATION_KEY_ID: ${{ secrets.TEST_B2_APPLICATION_KEY_ID }}
         run: |
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           pnpm i --filter "send-*"
@@ -134,13 +142,20 @@ jobs:
           # Setup local environment (use public login)
           echo Y | pnpm setup:local
           cd backend
-          # Add bucket vars
-          sed -i "s/^B2_REGION=$/B2_REGION=${{ vars.TEST_B2_REGION }}/" .env
-          sed -i "s/^B2_ENDPOINT=$/B2_ENDPOINT=$B2_ENDPOINT/" .env
-          sed -i "s/^B2_APPLICATION_KEY=$/B2_APPLICATION_KEY=$APP_KEY/" .env
-          sed -i "s/^B2_BUCKET_NAME=$/B2_BUCKET_NAME=${{ vars.TEST_B2_BUCKET_NAME }}/" .env
-          sed -i "s/^B2_APPLICATION_KEY_ID=$/B2_APPLICATION_KEY_ID=${{ secrets.TEST_B2_APPLICATION_KEY_ID }}/" .env
-          sed -i "s/^STORAGE_BACKEND=$/STORAGE_BACKEND=b2/" .env
+          # Add bucket vars. `|` as the delimiter, because an endpoint contains
+          # "/", and `.*` on the left, because .env.sample ships a value for some
+          # of these -- `^KEY=$` silently matched nothing and left them empty.
+          sed -i "s|^STORAGE_BACKEND=.*$|STORAGE_BACKEND=b2|" .env
+          for key in B2_REGION B2_ENDPOINT B2_BUCKET_NAME B2_APPLICATION_KEY B2_APPLICATION_KEY_ID; do
+            sed -i "s|^$key=.*$|$key=${!key}|" .env
+          done
+
+          # This job exists to exercise Backblaze. Quietly falling back to
+          # filesystem storage would make it a second copy of end-to-end-tests.
+          grep -qx "STORAGE_BACKEND=b2" .env || { echo "::error::STORAGE_BACKEND is not b2"; exit 1; }
+          for key in B2_ENDPOINT B2_APPLICATION_KEY B2_APPLICATION_KEY_ID B2_BUCKET_NAME; do
+            grep -q "^$key=." .env || { echo "::error::$key is empty in .env"; exit 1; }
+          done
           cd ../frontend
           # We set the split size to 1MB to make sure the uploads are split
           sed -i "s/^VITE_SPLIT_SIZE_IN_MB=100$/VITE_SPLIT_SIZE_IN_MB=1/" .env
