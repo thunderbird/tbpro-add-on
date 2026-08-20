@@ -16,18 +16,17 @@ const config: StorageAdapterConfig = {
   bucketName: process.env.TEST_B2_BUCKET_NAME,
   applicationKeyId: process.env.TEST_B2_APPLICATION_KEY_ID,
   applicationKey: process.env.TEST_B2_APPLICATION_KEY,
-  // Reads and deletes go through Backblaze's S3-compatible API (see
-  // src/storage/s3b2.ts), so the endpoint is as much a requirement for this
-  // suite as the keys are. `region` defaults, so it is not part of the gate.
+  // Reads and deletes need the S3 endpoint, so it gates the suite like the
+  // keys do. `region` defaults, so it does not.
   endpoint: process.env.TEST_B2_ENDPOINT,
   region: process.env.TEST_B2_REGION || 'auto',
 };
 
 /**
- * Every object this suite creates is named under this prefix so that (a) the
- * bucket's lifecycle rule can reap anything a crashed run leaves behind -- see
- * b2/test-bucket-retention.json -- and (b) test objects are greppable and
- * separable from real uploads sharing the bucket.
+ * Every object this suite creates is named under this prefix, so the bucket's
+ * lifecycle rule can reap what a crashed run leaves behind (see
+ * b2/test-bucket-retention.json) and test objects stay separable from real
+ * uploads sharing the bucket.
  */
 const TEST_KEY_PREFIX = 'tests/';
 
@@ -49,8 +48,8 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
 
     const storage = new FileStore(config);
 
-    // Keys are unique per object rather than per millisecond: this bucket is
-    // shared with the e2e workflow and with every concurrent CI job.
+    // Unique per object, not per millisecond: this bucket is shared with the
+    // e2e workflow and every concurrent CI job.
     const createdKeys: string[] = [];
     const testKey = (label: string) => {
       const key = `${TEST_KEY_PREFIX}${Date.now()}-${randomUUID()}-${label}.txt`;
@@ -58,9 +57,8 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       return key;
     };
 
-    // The suite used to leak every object it wrote. Combined with a delete path
-    // that silently no-opped, that is what filled the bucket past the point
-    // where the native read path could find anything.
+    // The suite used to leak every object it wrote, which is half of how the
+    // bucket grew past the native read path's cap.
     afterAll(async () => {
       for (const key of createdKeys) {
         try {
@@ -71,11 +69,9 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       }
     });
 
-    // If the S3 endpoint is missing, `FileStore` falls back to the native
-    // adapter and every other test here still passes -- absent keys read null
-    // and deleted keys read null on both paths, and the bucket is now kept
-    // small enough for the native listing to find things. So assert the mode
-    // outright: this suite exists to cover the keyed S3 path.
+    // Without the S3 endpoint FileStore falls back to the native adapter and
+    // every other test here still passes, because this change keeps the bucket
+    // small enough for the native listing to work. Assert the mode outright.
     it('runs against the keyed S3 path, not the native listing', () => {
       expect(storage.usesKeyedApi()).toBe(true);
     });
@@ -101,8 +97,8 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
 
       const readResult = await storage.get(fileName);
       expect(readResult).toBeTruthy();
-      // Read the body back, not just the handle: a read path that returns a
-      // stream of the wrong object, or an empty one, is still a regression.
+      // Read the body, not just the handle: a stream of the wrong object, or
+      // an empty one, is still a regression.
       await expect(readAll(readResult)).resolves.toBe(mockFileContents);
     });
 
@@ -129,9 +125,8 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       const deleteResult = await storage.del(fileName);
       expect(deleteResult).toBeTruthy();
 
-      // `del` reporting success is not evidence that anything was deleted --
-      // the native adapter returns "ok" for a key it merely failed to find.
-      // Prove the object is actually gone.
+      // `del` reporting success is not evidence: the native adapter returns
+      // "ok" for a key it merely failed to find.
       const afterDelete = await storage.get(fileName);
       expect(afterDelete).toBeNull();
     });

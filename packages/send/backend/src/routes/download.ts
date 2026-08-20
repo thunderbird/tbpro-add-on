@@ -49,9 +49,8 @@ router.get(
         }
       });
     } catch (e) {
-      // Log before answering: storage now distinguishes "object absent"
-      // (null, handled above) from auth/endpoint/bucket failures (thrown),
-      // and that distinction is worthless if the reason is discarded here.
+      // Storage now distinguishes "absent" (null, handled above) from
+      // auth/endpoint/bucket failures (thrown); don't discard the reason.
       console.error('Download failed for id:', id, e);
       return res.status(404).send(TRANSFER_ERROR);
     }

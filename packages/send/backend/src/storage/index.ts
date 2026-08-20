@@ -38,9 +38,8 @@ export class FileStore {
   private client: Storage;
 
   /**
-   * Backblaze's S3-compatible client. Used for presigned upload/download URLs
-   * and, for every keyed operation we can express in S3 terms, for the
-   * operation itself -- see the comments on `get`, `del` and `length`.
+   * Backblaze's S3-compatible client: presigned URLs, plus every operation we
+   * can express as a keyed request. See ./s3b2.ts for why.
    */
   private directClient?: S3Client;
   private directBucket?: string;
@@ -51,11 +50,10 @@ export class FileStore {
    * Initialize the adapter.
    * @param config: StorageAdapterConfig - Optional configuration information. If omitted, we fall back to the filesystem.
    *
-   * When configured for Backblaze, object *writes* go through the native API
-   * (as of 2024-06-01 there were errors when writing via its S3 API), but keyed
-   * *reads* and *deletes* go through the S3-compatible API, because the native
-   * adapter has to resolve a file name to a file id by listing the bucket. See
-   * `getObjectAsStream` in ./s3b2.ts for why that listing is not viable.
+   * When configured for Backblaze, *writes* go through the native API (as of
+   * 2024-06-01 there were errors writing via its S3 API); keyed *reads* and
+   * *deletes* go through the S3-compatible API instead, for the reason
+   * documented at the top of ./s3b2.ts.
    */
   constructor(config?: StorageAdapterConfig) {
     if (!config) {
@@ -94,10 +92,9 @@ export class FileStore {
     this.isB2 = storageConfig.type === StorageType.B2;
     this.client = new Storage(storageConfig);
 
-    // Credentials come from the config we were actually handed, falling back to
-    // the environment. The storage test suites are constructed with TEST_B2_*
-    // values and never set the production B2_* vars, so reading env alone would
-    // leave them on the native path this class exists to avoid.
+    // From the config we were handed, falling back to env. The test suites are
+    // built with TEST_B2_* and never set the production B2_* vars, so reading
+    // env alone would leave them on the native path.
     const directOverrides: B2DirectConfig = this.isB2
       ? {
           endpoint: storageConfig.endpoint,
@@ -112,11 +109,10 @@ export class FileStore {
 
     if (this.isB2 && !this.directIsUsable) {
       console.error(
-        'Backblaze is configured but its S3-compatible client is not ' +
-          '(needs an endpoint, an application key id, an application key and a ' +
-          'bucket name). Reads and deletes will fall back to the native B2 API, ' +
-          'which resolves names through a single 1000-entry b2_list_file_names ' +
-          'page and silently misses anything sorting past it.'
+        'Backblaze is configured but its S3-compatible client is not (needs ' +
+          'an endpoint, an application key id, an application key and a bucket ' +
+          'name). Reads and deletes fall back to the native B2 API, which ' +
+          'silently misses anything past the first 1000 names in the bucket.'
       );
     }
 
@@ -134,21 +130,16 @@ export class FileStore {
     const directConfig = resolveDirectConfig(overrides);
     this.directBucket = directConfig.bucketName;
     this.directIsUsable = isDirectConfigUsable(directConfig);
-    // Built synchronously: an async assignment leaves a window right after
-    // construction (and right after each renewal) in which `directClient` is
-    // undefined and every call quietly takes the fallback path instead.
+    // Synchronous: an async assignment leaves a window after construction, and
+    // after each renewal, where every call quietly takes the fallback path.
     this.directClient = createDirectClient(overrides);
   }
 
   /**
-   * True when keyed S3 operations against the Backblaze bucket are available.
-   *
-   * Public because the live B2 suite asserts it. Without that assertion a
-   * missing endpoint would silently drop reads and deletes back onto the
-   * native listing path, and the suite would still pass -- the tests cannot
-   * tell the two paths apart by behaviour alone on a small bucket, and this
-   * change (cleanup plus a lifecycle rule) is precisely what keeps the test
-   * bucket small. So the mode is asserted directly rather than inferred.
+   * True when keyed S3 operations are available. Public because the live B2
+   * suite asserts it: on a small bucket the two paths behave identically, so a
+   * missing endpoint would drop reads onto the native path and every test would
+   * still pass.
    */
   usesKeyedApi(): boolean {
     return this.isB2 && this.directIsUsable && Boolean(this.directClient);
@@ -207,10 +198,8 @@ export class FileStore {
    * used to upload the object (HeadObject via the direct client). S3 is
    * read-after-write consistent for an object it just wrote, whereas B2's native
    * `sizeOf` lags behind the S3 PUT — that lag was the root cause of create-entry
-   * failing with UPLOAD_SIZE_ERROR on large/multipart uploads. The native
-   * `sizeOf` additionally goes through the capped listing described in
-   * ./s3b2.ts. Falls back to the native API if the S3 read fails or no direct
-   * client is available.
+   * failing with UPLOAD_SIZE_ERROR on large/multipart uploads. Falls back to
+   * the native API if the S3 read fails or no direct client is available.
    */
   async length(id: string): Promise<number> {
     if (this.usesKeyedApi()) {
@@ -232,12 +221,10 @@ export class FileStore {
    * @param id: string - The unique identifier for the file.
    * @returns A readable stream for the file, or null if it does not exist.
    *
-   * On Backblaze this is a keyed S3 GetObject rather than the native
-   * `getFileAsStream`, which can only find a file by listing the first 1000
-   * names in the bucket. There is deliberately no fallback to the native path
-   * here: falling back would turn a genuine S3 failure into a lookup that
-   * appears to work for small buckets and cannot work for real ones. Errors
-   * other than "not found" propagate with their own message.
+   * On Backblaze this is a keyed S3 GetObject. There is deliberately no
+   * fallback to the native path: falling back would turn a genuine S3 failure
+   * into a lookup that works only for small buckets. Errors other than "not
+   * found" propagate.
    */
   async get(id: string): Promise<Readable> {
     if (this.usesKeyedApi()) {
@@ -248,9 +235,8 @@ export class FileStore {
           this.directBucket
         );
       } catch (error) {
-        // Rethrown, not swallowed -- but logged on the way past, because the
-        // download route turns any throw into a bare 404 and would otherwise
-        // discard the only description of what actually went wrong.
+        // Logged on the way past: the download route turns any throw into a
+        // bare 404, discarding the only description of what went wrong.
         console.error('Error reading object from storage:', id, error);
         throw error;
       }
@@ -258,9 +244,8 @@ export class FileStore {
 
     const result = await this.client.getFileAsStream(id);
     if (result.error) {
-      // The adapter knows exactly why this failed; without this line the caller
-      // only ever sees `null`, which is what made this class of bug so hard to
-      // diagnose from CI logs.
+      // Without this the caller only ever sees `null`, which is what made this
+      // bug so hard to diagnose from CI logs.
       console.error('Error reading object from storage:', id, result.error);
     }
     return result.value;
@@ -274,10 +259,8 @@ export class FileStore {
    * No error is thrown if the file is not found.
    *
    * On Backblaze this is a keyed S3 delete that removes every version of the
-   * object (see `deleteObject` in ./s3b2.ts). The native `removeFile` resolves
-   * the name through the same capped listing as the read path and reports
-   * success when it cannot find the name, so past that cap it deletes nothing
-   * and says nothing.
+   * object (see `deleteObject` in ./s3b2.ts). The native `removeFile` reports
+   * success for a name it merely failed to find.
    */
   async del(id: string): Promise<boolean> {
     if (this.usesKeyedApi()) {

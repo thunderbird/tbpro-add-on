@@ -10,12 +10,21 @@ import { getSignedUrl as getSignedUrlCommand } from '@aws-sdk/s3-request-presign
 import { Readable } from 'stream';
 
 /**
- * Connection details for Backblaze's S3-compatible API.
+ * Backblaze's S3-compatible API.
  *
- * Everything here can come either from the process environment (production,
- * where the FileStore is built from `B2_*` vars) or from an explicit
- * StorageAdapterConfig (the storage test suites, which are handed `TEST_B2_*`
- * values and must not depend on the production vars being set).
+ * Keyed reads and deletes live here because the native adapter cannot look a
+ * file up by name: `getFileAsStream` and `removeFile` resolve name -> fileId by
+ * calling `b2_list_file_names` once with `maxFileCount: 1000`, no prefix and no
+ * `startFileName`, then scanning that single page (`getFiles` -> `getFile` in
+ * @tweedegolf/sab-adapter-backblaze-b2; `nextFileName` appears nowhere in it).
+ * B2 returns names lexicographically, so once 1000 names sort ahead of the key,
+ * reads return "not found" and deletes report success having deleted nothing.
+ * A keyed S3 request has no such cap.
+ */
+
+/**
+ * Connection details, from an explicit config (the test suites, handed
+ * `TEST_B2_*`) or from the environment (production, `B2_*`).
  */
 export type B2DirectConfig = {
   endpoint?: string;
@@ -26,10 +35,9 @@ export type B2DirectConfig = {
 };
 
 /**
- * Merge caller-supplied values over the environment. Env is read here, at call
- * time, rather than at module load, so that a FileStore constructed with an
- * explicit config is not silently bound to whatever `B2_BUCKET_NAME` happened
- * to be set to when this module was first imported.
+ * Merge caller values over the environment. Env is read at call time, not at
+ * module load, so a FileStore built with an explicit config is not bound to
+ * whatever `B2_BUCKET_NAME` held when this module was first imported.
  */
 export function resolveDirectConfig(
   overrides: B2DirectConfig = {}
@@ -44,11 +52,7 @@ export function resolveDirectConfig(
   };
 }
 
-/**
- * True when we have enough to actually talk to the S3 endpoint. Used to decide
- * whether the direct (keyed) read path is available; when it is not, callers
- * fall back to the native B2 API and should say so loudly.
- */
+/** True when we have enough to reach the S3 endpoint. */
 export function isDirectConfigUsable(config: B2DirectConfig): boolean {
   return Boolean(
     config.endpoint &&
@@ -64,8 +68,8 @@ export function createDirectClient(
   const config = resolveDirectConfig(overrides);
   try {
     return new S3Client({
-      // Only set the endpoint when we have one; passing `undefined` stringified
-      // produces a client that fails in a confusing way at request time.
+      // Omit rather than pass undefined: a stringified undefined endpoint
+      // fails confusingly at request time.
       ...(config.endpoint ? { endpoint: config.endpoint } : {}),
       region: config.region || 'auto',
       credentials: {
@@ -81,14 +85,7 @@ export function createDirectClient(
   }
 }
 
-/**
- * A 404-shaped failure: the object genuinely is not there.
- *
- * Distinguishing this from every other error is what keeps the read path
- * honest -- a missing object resolves to `null` (caller renders a 404, the
- * storage test fails), while an auth, network, or bucket misconfiguration
- * throws with its own message instead of being flattened into "not found".
- */
+/** Bucket-level failures. S3 answers some with 404, but they are not "absent". */
 const BUCKET_LEVEL_ERROR_NAMES = new Set([
   'NoSuchBucket',
   'InvalidBucketName',
@@ -100,18 +97,15 @@ export function isNotFoundError(error: unknown): boolean {
     name?: string;
     $metadata?: { httpStatusCode?: number };
   };
-  // Bucket-level failures are subtracted first. S3 answers several of them
-  // with HTTP 404, so without this a typo'd bucket name would be flattened
-  // into "object absent" and every download would 404 with nothing logged --
-  // exactly the undiagnosable shape this module exists to remove.
+  // Subtracted first: otherwise a typo'd bucket name reads as "object absent"
+  // and every download 404s with nothing logged.
   if (err?.name && BUCKET_LEVEL_ERROR_NAMES.has(err.name)) {
     return false;
   }
   return (
     err?.name === 'NoSuchKey' ||
     err?.name === 'NotFound' ||
-    // Kept as a fallback because S3-compatible implementations are not
-    // consistent about the error *name* they attach to a missing key.
+    // S3-compatible implementations differ on the error *name* for a missing key.
     err?.$metadata?.httpStatusCode === 404
   );
 }
@@ -159,21 +153,10 @@ export async function getObjectSize(
 }
 
 /**
- * Read an object's body via the S3 API (GetObject).
+ * Read an object's body by key (GetObject). One request, no listing.
  *
- * This is a keyed lookup: one request, by name, no listing. The native B2
- * adapter cannot do that -- `getFileAsStream` has to turn a file *name* into a
- * file *id* first, and it does so by calling `b2_list_file_names` once with
- * `maxFileCount: 1000`, no prefix and no `startFileName`, then scanning the
- * page in memory (see node_modules/@tweedegolf/sab-adapter-backblaze-b2,
- * `getFiles` -> `getFile`; `nextFileName` does not appear in that file). B2
- * returns names in lexicographic order, so a name sorting past that single
- * page is simply not found. Whether the dominant effect is the 1000-name cap
- * or the listing's own lag behind a just-completed write, a keyed GetObject
- * removes both: it never lists.
- *
- * @returns the object body, or `null` if the object does not exist. Any other
- *          failure (auth, network, wrong bucket) throws.
+ * @returns the body, or `null` if the object does not exist. Any other failure
+ *          (auth, network, wrong bucket) throws.
  */
 export async function getObjectAsStream(
   s3Client: S3Client,
@@ -197,13 +180,9 @@ export async function getObjectAsStream(
 }
 
 /**
- * Every version id stored under exactly this key, including delete markers.
- *
- * `Prefix` narrows the request to the key and its neighbours, and the exact
- * `Key` match below discards the neighbours; this is not the adapter's
- * scan-the-whole-bucket listing. Pagination is followed to the end on purpose
- * -- an unpaginated listing is the bug this module was written to remove, and
- * reintroducing a cap here would silently leave versions behind.
+ * Every version id under exactly this key, including delete markers. `Prefix`
+ * narrows the request; the exact `Key` match below discards neighbours sharing
+ * it. Paginated to the end -- a cap here would strand versions.
  */
 async function listVersionIds(
   s3Client: S3Client,
@@ -243,26 +222,15 @@ async function listVersionIds(
 }
 
 /**
- * Delete an object via the S3 API, erasing every version of it.
+ * Delete an object by key, erasing every version of it.
  *
- * Two things have to be true at once here. Keyed, for the same reason as the
- * read path: the native adapter's `removeFile` resolves the name through that
- * identical capped listing and, when it cannot find the name, returns
- * `{ value: "ok" }` -- a silent no-op reported as success. Past the cap,
- * deletes stop happening and nothing says so, which is how the test bucket
- * grew unboundedly in the first place.
+ * B2 buckets are versioned, so a bare `DeleteObject` only writes a hide marker
+ * and leaves the payload behind until a lifecycle rule reaps it. The native
+ * `b2_delete_file_version` this replaces erased the bytes, and a user pressing
+ * delete on a shared file should keep getting that, so the versions are
+ * enumerated and removed explicitly.
  *
- * And *erasing*, not hiding. B2 buckets are versioned, so a bare S3
- * `DeleteObject` only writes a hide marker and leaves the payload behind
- * indefinitely, whereas the native `b2_delete_file_version` this replaces
- * removed the bytes. For a product whose users press delete on a shared file
- * and expect it gone, quietly downgrading that to "hidden, pending a lifecycle
- * rule someone remembers to configure" is not an acceptable trade, so the
- * versions are enumerated and removed explicitly.
- *
- * Deleting an absent key still succeeds (no versions to remove, and the
- * unversioned fallback below is itself idempotent); that matches the adapter's
- * documented "no error if the file is not found".
+ * Deleting an absent key succeeds, matching the adapter's documented behaviour.
  */
 export async function deleteObject(
   s3Client: S3Client,
@@ -274,9 +242,8 @@ export async function deleteObject(
   try {
     versionIds = await listVersionIds(s3Client, Key, Bucket);
   } catch (error) {
-    // Listing versions needs a key with list permission. If we do not have it,
-    // fall through to the unversioned delete rather than failing the delete
-    // outright -- but say so, because that path only hides the object.
+    // Needs list permission. Without it, degrade to the unversioned delete
+    // rather than failing outright -- but say so: that path only hides.
     console.error(
       'Could not list versions before deleting; falling back to an ' +
         'unversioned delete, which hides rather than erases. Key:',
@@ -286,8 +253,7 @@ export async function deleteObject(
   }
 
   if (versionIds.length === 0) {
-    // Either the bucket is not versioned, the object is already gone, or the
-    // listing above failed. DeleteObject is idempotent in all three cases.
+    // Unversioned bucket, already gone, or the listing failed -- idempotent.
     await s3Client.send(new DeleteObjectCommand({ Bucket, Key }));
     return;
   }

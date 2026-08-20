@@ -10,11 +10,9 @@ import {
 } from '../../storage/s3b2';
 
 /**
- * These tests need no Backblaze credentials: they pin the *semantics* of the
- * keyed read/delete path -- which errors mean "absent" and which must surface
- * -- so that the live B2 suite (which does need credentials, and is skipped
- * without them) is not the only thing standing between us and a silent
- * regression here.
+ * No credentials needed: these pin which errors mean "absent" and which must
+ * surface, so the live B2 suite -- skipped without credentials -- is not the
+ * only thing guarding this path.
  */
 
 type Sent = { constructor: { name: string }; input: Record<string, unknown> };
@@ -80,10 +78,8 @@ describe('storage/s3b2: keyed reads', () => {
       throw awsError('NoSuchBucket', 404);
     });
 
-    // S3 answers this with a 404 too. Reading it as "the object is absent"
-    // would turn a misconfigured bucket name into a silent, total download
-    // outage: every file 404s, nothing is logged, and the live B2 suite fails
-    // with the same "expected null to be truthy" this change set out to fix.
+    // S3 answers this with a 404 too. Reading it as "absent" would turn a
+    // misconfigured bucket name into a silent, total download outage.
     await expect(
       getObjectAsStream(client, 'some-key', 'wrong-bucket')
     ).rejects.toThrow('NoSuchBucket');
@@ -131,9 +127,8 @@ describe('storage/s3b2: keyed deletes', () => {
     const deletes = send.mock.calls
       .slice(1)
       .map((call) => (call[0] as Sent).input);
-    // B2 buckets are versioned: a bare DeleteObject only hides the object and
-    // leaves the bytes. Users pressing "delete" on a shared file expect them
-    // gone, so each version is removed by id.
+    // B2 buckets are versioned: a bare DeleteObject only hides the object.
+    // Each version is removed by id so the bytes actually go.
     expect(deletes).toEqual([
       { Bucket: 'some-bucket', Key: 'some-key', VersionId: 'v1' },
       { Bucket: 'some-bucket', Key: 'some-key', VersionId: 'marker' },
@@ -160,8 +155,8 @@ describe('storage/s3b2: keyed deletes', () => {
 
     await deleteObject(client, 'some-key', 'some-bucket');
 
-    // An unpaginated listing is the whole bug this module removes; leaving a
-    // cap here would quietly strand versions instead of objects.
+    // A cap here would strand versions the same way the adapter strands
+    // objects.
     expect(page).toBe(2);
     const versionIds = send.mock.calls
       .filter(
@@ -204,8 +199,8 @@ describe('storage/s3b2: keyed deletes', () => {
 
     await deleteObject(client, 'some-key', 'some-bucket');
 
-    // Degrades to hiding rather than failing the delete outright -- but says
-    // so, because the object is then retained until a lifecycle rule reaps it.
+    // Degrades to hiding rather than failing outright -- but says so: the
+    // object is then retained until a lifecycle rule reaps it.
     const command = send.mock.calls[1][0] as Sent;
     expect(command.constructor.name).toBe('DeleteObjectCommand');
     expect(command.input).toEqual({

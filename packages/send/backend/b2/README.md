@@ -17,9 +17,8 @@ workflow points the whole application at that same bucket. The suite now cleans
 up after itself, but a crashed or cancelled run still leaves objects behind, and
 nothing reaps them.
 
-That mattered more than it sounds: the objects the suite creates are named with
-a `tests/` prefix precisely so a lifecycle rule can remove them, because an
-ever-growing bucket is what made the storage suite fail. Apply it with:
+The objects the suite creates are named with a `tests/` prefix so a lifecycle
+rule can remove them. Apply it with:
 
 ```sh
 b2 bucket update --lifecycle-rules "$(cat b2/test-bucket-retention.json)" <test-bucket-name>
@@ -44,15 +43,14 @@ enforces.
 B2 buckets are versioned, so a bare S3 `DeleteObject` only writes a hide marker
 and leaves the payload behind until a lifecycle rule reaps it. `FileStore.del`
 therefore lists the versions of the one key it was given and deletes each by
-version id, which erases the bytes -- matching what the native
-`b2_delete_file_version` used to do, and meaning no lifecycle rule is required
-for a user's delete to actually delete.
+version id. That erases the bytes, matching the native `b2_delete_file_version`
+it replaces, so no lifecycle rule is load-bearing for a user's delete.
 
 The one exception is an application key without list permission: the version
 listing fails, the code logs that it is degrading, and falls back to the
 unversioned (hide-only) delete. If that appears in the logs, either grant the
 key `listFiles` or add a lifecycle rule for the affected prefix.
 
-The path this replaced deleted versions immediately -- but only for objects it
-could find, and it could only find objects in the first 1000 file names in the
-bucket. For everything else it deleted nothing and reported success.
+The path this replaced also erased versions, but only for objects it could
+find -- the first 1000 file names in the bucket. For everything else it deleted
+nothing and reported success. See the header of `src/storage/s3b2.ts`.
