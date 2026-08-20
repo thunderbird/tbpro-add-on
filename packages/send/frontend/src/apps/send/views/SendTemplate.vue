@@ -18,7 +18,14 @@ const isPrintMode = route.query.print !== undefined;
       <slot></slot>
     </div>
 
-    <FooterBar />
+    <!--
+      id used by the mobile upload sidebar (HomeView) to detect when the footer
+      scrolls into view so the bottom-docked bar can park above it instead of
+      overlapping it (see #977).
+    -->
+    <div id="send-footer">
+      <FooterBar />
+    </div>
   </template>
 </template>
 

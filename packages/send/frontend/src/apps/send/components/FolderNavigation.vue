@@ -20,21 +20,21 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
 
 <template>
   <aside
-    class="flex flex-col gap-6 h-full"
+    class="folder-navigation"
     role="complementary"
     aria-label="File management sidebar"
   >
     <!-- actions -->
-    <header class="flex items-center justify-between pt-2 px-2.5">
+    <header class="actions-header">
       <h2 class="sr-only">File Management Actions</h2>
     </header>
     <!-- upload zone -->
     <RenderOnEnvironment :environment-type="['WEB APP OUTSIDE THUNDERBIRD']">
-      <section class="flex-1 px-2.5" aria-labelledby="upload-heading">
+      <section class="upload-section" aria-labelledby="upload-heading">
         <h3 id="upload-heading" class="sr-only">Upload Files</h3>
         <DragAndDropUpload v-if="showUploadZone">
           <div
-            class="min-h-[24rem] flex justify-center items-center text-center font-bold text-lg text-gray-500 border-4 border-dashed border-gray-300 rounded-lg"
+            class="upload-zone"
             role="button"
             tabindex="0"
             aria-label="Drag and drop files here to upload, or click to select files"
@@ -48,3 +48,78 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
     </RenderOnEnvironment>
   </aside>
 </template>
+
+<style scoped>
+.folder-navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.actions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block-start: 0.5rem;
+  padding-inline: 0.625rem;
+}
+
+.upload-section {
+  flex: 1;
+  padding-inline: 0.625rem;
+}
+
+.upload-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24rem;
+  text-align: center;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 700;
+  color: rgb(107, 114, 128);
+  border: 4px dashed rgb(209, 213, 219);
+  border-radius: 0.5rem;
+}
+
+/*
+  Below md the parent aside (HomeView) turns this into a bottom-docked bar, so
+  the column gap just adds dead space — drop it and pad the bar instead.
+  Scoped CSS can't read a TS constant, so this bound is a hand-kept copy of
+  MOBILE_MEDIA_QUERY in composables/useIsMobile.ts (and of Tailwind's
+  `max-md:`); change all three together.
+*/
+@media (max-width: 767.98px) {
+  .folder-navigation {
+    gap: 0;
+    padding: 1rem;
+  }
+
+  /*
+    The bar is docked to the bottom of the viewport, so the tall drop zone the
+    desktop column grows into would swallow most of the screen. Keep it at the
+    compact height the docked bar was designed around.
+  */
+  .upload-section {
+    flex: none;
+  }
+
+  .upload-zone {
+    min-height: 9rem;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+</style>

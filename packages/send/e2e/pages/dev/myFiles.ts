@@ -140,6 +140,43 @@ export async function share_links({ page, context }: PlaywrightProps) {
   await linksResponse;
 }
 
+// Pixel-class viewport, below Tailwind's `md` breakpoint — the width the #986
+// review used to find the bug this guards.
+const MOBILE_VIEWPORT = { width: 412, height: 915 };
+
+// Below `md` the info panel is a full-screen overlay (#977). vue-final-modal
+// teleports its modals to <body> with an inline z-index of its own, which used
+// to land *under* that overlay: the panel's delete button opened a confirmation
+// painted behind the opaque panel, so on a phone it looked completely inert
+// while working fine on desktop. Note that asserting visibility is not enough —
+// `toBeVisible()` passes for a modal that is painted behind something else — so
+// this drives the confirmation by actually clicking it. Cancelling rather than
+// confirming keeps the uploaded file around for the delete step that follows.
+export async function mobile_info_panel_modal({ page }: PlaywrightProps) {
+  const { folderRowTestID } = fileLocators(page);
+
+  // Enter the folder while still at desktop width: below `md` a single click
+  // opens the info panel over the table, so the row's dblclick-to-open doesn't
+  // survive the reflow.
+  await page.getByTestId(folderRowTestID).dblclick();
+  await page.waitForLoadState("networkidle");
+
+  await page.setViewportSize(MOBILE_VIEWPORT);
+
+  await page.getByTestId("file-0").click();
+  const panelDelete = page.getByTestId("delete-file-info");
+  await expect(panelDelete).toBeVisible();
+  await panelDelete.click();
+
+  // If the confirmation regresses behind the panel, this click times out
+  // because the panel intercepts pointer events at that position.
+  const modal = page.getByTestId("delete-modal");
+  await modal.getByText("Cancel").click();
+
+  await expect(modal).toHaveCount(0);
+  await expect(page.getByTestId("file-0")).toBeVisible();
+}
+
 export async function download_workflow({ page, context }: PlaywrightProps) {
   const { submitButtonID, passwordInputID } = fileLocators(page);
 

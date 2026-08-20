@@ -20,6 +20,7 @@ import {
 import {
   delete_file,
   download_workflow,
+  mobile_info_panel_modal,
   share_links,
   upload_workflow,
 } from "../../../pages/dev/myFiles"
@@ -117,6 +118,7 @@ test.describe("File workflows", {
     { title: "Share links", action: share_links },
     { title: "Upload workflow", action: upload_workflow },
     { title: "Download workflow", action: download_workflow },
+    { title: "Mobile info panel modal", action: mobile_info_panel_modal },
     { title: "Delete files", action: delete_file },
   ];
 

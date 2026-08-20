@@ -19,6 +19,7 @@ import {
   computeMultipartFile,
   handleMultipartDownload,
 } from '@send-frontend/lib/folderView';
+import { useIsMobile } from '@send-frontend/composables/useIsMobile';
 import { useApiStore, useKeychainStore } from '@send-frontend/stores';
 import { IconDotsVertical, IconDownload, IconTrash } from '@tabler/icons-vue';
 import { ExpiryBadge, ExpiryUnitTypes } from '@thunderbirdops/services-ui';
@@ -195,6 +196,11 @@ function handleFileClick(id: number) {
 
 const isDev = import.meta.env.DEV;
 
+// On mobile we drop the per-row action column (download/delete/⋮) entirely so the
+// file list fits the viewport without horizontal scrolling; the actions remain
+// reachable from the file/folder info panel (see #977).
+const isMobile = useIsMobile();
+
 const isEmpty = computed(() => {
   return (
     !folderStore.visibleFolders?.length &&
@@ -261,7 +267,7 @@ function handleFolderClick(uuid: string) {
           <tr>
             <th class="border-r border-b border-gray-300"></th>
             <th class="border-r border-b border-gray-300">Name</th>
-            <th class="border-b border-gray-300"></th>
+            <th v-if="!isMobile" class="border-b border-gray-300"></th>
           </tr>
         </thead>
         <tbody>
@@ -287,7 +293,10 @@ function handleFolderClick(uuid: string) {
             <FolderTableRowCell
               :selected="folder.id === folderStore.selectedFolder?.id"
             >
-              <router-link :to="`/send/folder/${folder.id}`">
+              <router-link
+                :to="`/send/folder/${folder.id}`"
+                class="max-md:break-all"
+              >
                 {{ folder.name }}</router-link
               >
               <div class="text-sm">
@@ -295,6 +304,7 @@ function handleFolderClick(uuid: string) {
               </div>
             </FolderTableRowCell>
             <FolderTableRowCell
+              v-if="!isMobile"
               :selected="folder.id === folderStore.selectedFolder?.id"
             >
               <div class="flex justify-between">
@@ -343,7 +353,7 @@ function handleFolderClick(uuid: string) {
                 </div>
               </FolderTableRowCell>
               <FolderTableRowCell>
-                <div>{{ item.name }}</div>
+                <div class="max-md:break-all">{{ item.name }}</div>
                 <div class="text-sm">
                   Last modified {{ dayjs().to(dayjs(item.updatedAt)) }}
                 </div>
@@ -355,7 +365,7 @@ function handleFolderClick(uuid: string) {
                   class="my-2"
                 />
               </FolderTableRowCell>
-              <FolderTableRowCell>
+              <FolderTableRowCell v-if="!isMobile">
                 <div class="flex justify-between">
                   <div
                     class="flex gap-2 opacity-0 group-hover:!opacity-100 transition-opacity"
