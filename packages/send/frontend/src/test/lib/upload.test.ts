@@ -62,9 +62,7 @@ describe('Uploader', () => {
 
     mockApi = {
       call: vi.fn(),
-      isBucketStorage: true,
       serverUrl: 'http://localhost',
-      getStorageType: vi.fn().mockReturnValue('bucket'),
       removeAuthToken: vi.fn(),
     } as unknown as ApiConnection;
 
@@ -433,7 +431,7 @@ describe('Uploader', () => {
       );
 
       expect(sendBlob).toHaveBeenCalledTimes(2);
-      const options = vi.mocked(sendBlob).mock.calls[0][5];
+      const options = vi.mocked(sendBlob).mock.calls[0][4];
       expect(options?.signal).toBeInstanceOf(AbortSignal);
       expect(typeof options?.onUploadId).toBe('function');
     });
@@ -452,7 +450,7 @@ describe('Uploader', () => {
       });
 
       vi.mocked(sendBlob).mockImplementation(
-        async (blob, _key, _api, _tracker, _isBucket, options) => {
+        async (blob, _key, _api, _tracker, options) => {
           const index = indexFromName(blob);
           startedIndexes.push(index);
           const id = `upload-${index}`;
@@ -491,7 +489,7 @@ describe('Uploader', () => {
 
       let capturedSignal: AbortSignal | undefined;
       vi.mocked(sendBlob).mockImplementation(
-        async (blob, _key, _api, _tracker, _isBucket, options) => {
+        async (blob, _key, _api, _tracker, options) => {
           const index = indexFromName(blob);
           const id = `upload-${index}`;
           // Record the id before the (possible) failure, exactly as the real

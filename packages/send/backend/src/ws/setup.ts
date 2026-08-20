@@ -4,12 +4,7 @@ import '../sentry';
 
 import { logger } from '@send-backend/utils/logger';
 import 'dotenv/config';
-import { validateJWT } from '../auth/jwt';
-import { wsUploadServer, wss } from '../index';
-import { getCookie } from '../utils';
-import wsUploadHandler from '../wsUploadHandler';
-
-const WS_UPLOAD_PATH = `/api/ws`;
+import { wss } from '../index';
 
 /**
  * Refuse an upgrade with a real HTTP response.
@@ -37,21 +32,6 @@ function refuse(socket, status: number, reason: string) {
   );
 }
 
-/**
- * Is this upgrade request carrying a usable session?
- *
- * Cookies ride along on the upgrade request, so the same JWT the REST routes
- * check is available here. `'valid'` only -- `'shouldRefresh'` means the access
- * token has expired, and there is no way to hand a refreshed one back over a
- * handshake that is being answered right now.
- */
-function isAuthenticated(req): boolean {
-  const jwtToken = getCookie(req?.headers?.cookie, 'authorization');
-  const jwtRefreshToken = getCookie(req?.headers?.cookie, 'refresh_token');
-
-  return validateJWT({ jwtToken, jwtRefreshToken }) === 'valid';
-}
-
 export const wsHandler = (server) => {
   // Registered once, not per upgrade. Inside the upgrade callback this added a
   // fresh listener for every connection, which only went unnoticed because
@@ -64,24 +44,6 @@ export const wsHandler = (server) => {
   });
 
   server.on('upgrade', (req, socket, head) => {
-    if (req.url === WS_UPLOAD_PATH) {
-      // This handler streams straight into storage on the server's own
-      // credentials (`wsUploadHandler` -> `FileStore.set`). It used to accept
-      // any peer that could reach the host (private-issue-tracking#44).
-      if (!isAuthenticated(req)) {
-        logger.log(
-          `⛔ Refused an unauthenticated upgrade to ${WS_UPLOAD_PATH}`
-        );
-        return refuse(socket, 401, 'Unauthorized');
-      }
-
-      wsUploadServer.handleUpgrade(req, socket, head, (ws) => {
-        wsUploadServer.emit('connection', ws, req);
-        wsUploadHandler(ws);
-      });
-      return;
-    }
-
     // Intentionally open, and it must stay that way: logging in happens over
     // this socket. `LoginPage.vue` subscribes to `onLoginFinished` before the
     // user has a session, so requiring a token here would deadlock login. The
@@ -96,10 +58,13 @@ export const wsHandler = (server) => {
       return;
     }
 
-    // Everything else, including the `/api/messagebus` path removed here, is
-    // answered and closed. Returning without closing leaves the connection open
-    // and holds a file descriptor for as long as the peer wants it, which is
-    // what an unmatched url used to do.
+    // Everything else is answered and closed. That now includes `/api/ws`,
+    // which was gated on a session in #1153 and is removed outright here: the
+    // handler behind it wrote to the bucket through `FileStore.set`, and no
+    // client has reached it since bucket storage became the only backend.
+    // `/api/messagebus` went the same way. Returning without closing leaves the
+    // connection open and holds a file descriptor for as long as the peer wants
+    // it, which is what an unmatched url used to do.
     refuse(socket, 404, 'Not Found');
   });
 };

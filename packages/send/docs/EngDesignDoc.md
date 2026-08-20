@@ -74,7 +74,7 @@ The `Client` is one of two frontend User Interfaces:
 
 Mozilla Accounts (formerly Firefox Accounts) serves as the authentication mechanism.
 
-The Backend is a Express/Node.js application offering a RESTful HTTP API with WebSockets for uploads. It ensures that Users have the required permissions when attempting to access `Containers`, `Items`, and `Contents`.
+The Backend is a Express/Node.js application offering a RESTful HTTP API. File bytes do not pass through it: the browser asks for a presigned URL and moves them to object storage itself. It ensures that Users have the required permissions when attempting to access `Containers`, `Items`, and `Contents`.
 
 In addition, the Backend stores data in a SQL database and cloud-based Object Storage.
 
@@ -146,12 +146,10 @@ Client ->> Backend: POST /api/container
 Backend -->> Client: Return new Container ID
 Client ->> Client: Store the KEK for Container ID
 Client ->> Client: Generate CEK
-Client ->> Backend: Open WebSocket
-Backend ->> Backend: Generate new Content ID
+Client ->> Backend: POST /api/uploads/signed
+Backend -->> Client: Return Content ID + presigned PUT URL
 Client ->> Client: Encrypt Content with CEK
-Client ->> Backend: Upload via WebSocket
-Backend ->> Backend: Store encrypted Content
-Backend -->> Client: Send Content ID
+Client ->> Storage: PUT encrypted Content
 Client ->> Client: Wrap CEK with KEK
 Client ->> Backend: POST /api/item, with Content ID & Wrapped Key
 ```
@@ -161,11 +159,8 @@ Client ->> Backend: POST /api/item, with Content ID & Wrapped Key
 - Backend sends new Container ID to client
 - Client stores the KEK locally, associating it with the Container ID
 - Client generates Content Encryption Key (CEK)
-- Client opens WebSocket connection to Backend
-- Backend generates a random (24 bit) identifier for the Content
-- Client uses CEK to encrypt content as it is uploaded via WebSocket
-- Backend stores encrypted content (to filesystem or object store)
-- Upon completion, the server sends Content ID back to client
+- Client sends POST to `/api/uploads/signed`, and the Backend returns a Content ID with a presigned PUT URL for it
+- Client uses CEK to encrypt the content, then PUTs the ciphertext straight to object storage
 - Client creates a "wrapped key" by encrypting the CEK with the KEK
 - Client sends POST to backend API to create a new Item, providing the Content ID and the wrapped key
 
@@ -177,23 +172,18 @@ Provided the User has permission to access the Container and the KEK has been tr
 sequenceDiagram
 Client ->> Client: Retrieve KEK by Container ID
 Client ->> Client: Generate CEK
-Client ->> Backend: Open WebSocket
-Backend ->> Backend: Generate new Content ID
+Client ->> Backend: POST /api/uploads/signed
+Backend -->> Client: Return Content ID + presigned PUT URL
 Client ->> Client: Encrypt Content with CEK
-Client ->> Backend: Upload via WebSocket
-Backend ->> Backend: Store encrypted Content
-Backend -->> Client: Send Content ID
+Client ->> Storage: PUT encrypted Content
 Client ->> Client: Wrap CEK with KEK
 Client ->> Backend: POST /api/item, with Content ID & Wrapped Key
 ```
 
 - Client retrieves KEK for existing Container from client storage
 - Client generates Content Encryption Key (CEK)
-- Client opens WebSocket connection to Backend
-- Backend generates a random (24 bit) identifier for the Content
-- Client uses CEK to encrypt content as it is uploaded via WebSocket
-- Backend stores encrypted content (to filesystem or object store)
-- Upon completion, the server sends Content ID back to client
+- Client sends POST to `/api/uploads/signed`, and the Backend returns a Content ID with a presigned PUT URL for it
+- Client uses CEK to encrypt the content, then PUTs the ciphertext straight to object storage
 - Client creates a "wrapped key" by encrypting the CEK with the KEK
 - Client sends POST to backend API to create a new Item, providing the Content ID and the wrapped key
 

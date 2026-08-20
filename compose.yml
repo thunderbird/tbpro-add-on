@@ -15,33 +15,58 @@ services:
       timeout: 5s
       retries: 5
 
-  # The bucket the backend storage round-trip suite runs against. Not part of the
-  # dev stack -- `docker compose up` leaves it alone; start it explicitly with
-  # `docker compose up -d minio` before `pnpm test` in packages/send/backend.
+  # The bucket. Every upload is a presigned PUT from the browser straight to
+  # object storage, so the dev stack needs one to store a single file -- there is
+  # no filesystem fallback. It is also what the backend storage round-trip suite
+  # runs against.
   minio:
-    profiles: [ "test" ]
     # Pinned: an unpinned tag makes CI unreproducible, and a release that
     # changes `mc ready` would break the healthcheck below with no diff to blame.
+    # compose.ci.minio.yml pins the same tag for the e2e lane; bump both together.
     image: "minio/minio:RELEASE.2025-09-07T16-13-09Z"
     command: server /data --console-address ":9001"
-    # No volume on purpose. It holds test objects the suite cleans up after
-    # itself, so nothing here is worth surviving the container.
+    # No volume on purpose. Dev uploads and the test objects the suite cleans up
+    # after itself; nothing here is worth surviving the container.
     #
     # Loopback, because `minioadmin:minioadmin` on every LAN interface is not a
     # thing to publish. Overridable, because a second checkout holding 9000 is
     # how you end up running the suite against another worktree's bucket --
-    # set SEND_MINIO_PORT and TEST_MINIO_ENDPOINT together. The console on 9001
-    # is reachable inside the container; nothing needs it from outside.
+    # set SEND_MINIO_PORT, S3_PUBLIC_ENDPOINT and TEST_MINIO_ENDPOINT together.
+    # The console on 9001 is reachable inside the container; nothing needs it
+    # from outside.
     ports:
       - "127.0.0.1:${SEND_MINIO_PORT:-9000}:9000"
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
+      # The browser PUTs and GETs the bytes itself, from the frontend's origin.
+      # Without this MinIO answers the preflight with no allow-origin and every
+      # upload fails in the browser while curl against the same URL succeeds.
+      - MINIO_API_CORS_ALLOW_ORIGIN=*
     healthcheck:
       test: [ "CMD", "mc", "ready", "local" ]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Creates the dev bucket and exits. `mc mb --ignore-existing` is idempotent, so
+  # this is a no-op on every boot after the first. `env_file` is the same one the
+  # backend reads, so the bucket it creates cannot drift from the one the backend
+  # signs URLs for.
+  minio-init:
+    image: "minio/mc:RELEASE.2025-08-13T08-35-41Z"
+    env_file:
+      - ./packages/send/backend/.env
+    depends_on:
+      minio:
+        condition: service_healthy
+    # `$$` escapes compose interpolation, so the container's shell expands it
+    # from env_file rather than compose expanding it from the host shell.
+    entrypoint: >-
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/$${S3_BUCKET_NAME:?is empty; set it in packages/send/backend/.env}
+      "
 
   backend:
     build:
@@ -72,6 +97,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      # The bucket has to exist before the first presigned PUT, and this
+      # transitively waits on minio being healthy. A failed minio-init also
+      # stops the stack here instead of surfacing as a NoSuchBucket later.
+      minio-init:
+        condition: service_completed_successfully
 
   reverse-proxy:
     build:

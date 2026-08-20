@@ -10,8 +10,6 @@ export enum UserTier {
 
 export type JwkKeyPair = Record<'publicKey' | 'privateKey', string>;
 
-export type Canceler = Record<string, () => void>;
-
 export interface StorageAdapter {
   get: (k: string) => any;
   set: (k: string, v: any) => void;

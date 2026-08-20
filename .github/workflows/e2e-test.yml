@@ -1,5 +1,10 @@
 ---
-# Run the E2E tests on a local stack that is using the local file system for backend file storage
+# Run the E2E tests on a local stack whose bucket is the MinIO service in the
+# compose.ci.minio.yml overlay -- credential-free, and the same presigned-PUT
+# path production takes. scripts/e2e.sh layers that overlay on only when the
+# backend .env says STORAGE_BACKEND=s3, which is what keeps the sibling
+# e2e-bucket-test workflow (same specs, against Backblaze) clear of it.
+# There is no filesystem storage backend.
 name: e2e-tests
 
 concurrency:
@@ -62,10 +67,10 @@ jobs:
       packages: write
       contents: read
     env:
-      # -fs suffix distinguishes tags from the bucket-test workflow which uses -b2
-      BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-fs
-      FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-fs
-      PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-fs
+      # -minio suffix distinguishes tags from the bucket-test workflow which uses -b2
+      BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-minio
+      FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-minio
+      PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-minio
       # A fork PR only ever gets a read-only GITHUB_TOKEN, so pushing to GHCR would
       # fail with a 403. Build the images anyway — that they still build is the part
       # of this workflow a fork PR can prove — and skip the push.
@@ -100,8 +105,8 @@ jobs:
           build-args: BUILD_ENV=production
           push: ${{ env.PUSH_IMAGES }}
           tags: ${{ env.BACKEND_IMAGE }}
-          cache-from: type=gha,scope=e2e-backend-fs
-          cache-to: type=gha,mode=max,scope=e2e-backend-fs
+          cache-from: type=gha,scope=e2e-backend-minio
+          cache-to: type=gha,mode=max,scope=e2e-backend-minio
 
       - name: Build reverse-proxy image
         uses: docker/build-push-action@v6
@@ -109,8 +114,8 @@ jobs:
           context: ./packages/send/backend/tls-dev-proxy
           push: ${{ env.PUSH_IMAGES }}
           tags: ${{ env.PROXY_IMAGE }}
-          cache-from: type=gha,scope=e2e-reverse-proxy-fs
-          cache-to: type=gha,mode=max,scope=e2e-reverse-proxy-fs
+          cache-from: type=gha,scope=e2e-reverse-proxy-minio
+          cache-to: type=gha,mode=max,scope=e2e-reverse-proxy-minio
 
       - name: Build frontend image
         uses: docker/build-push-action@v6
@@ -120,8 +125,8 @@ jobs:
           build-args: BUILD_ENV=production
           push: ${{ env.PUSH_IMAGES }}
           tags: ${{ env.FRONTEND_IMAGE }}
-          cache-from: type=gha,scope=e2e-frontend-fs
-          cache-to: type=gha,mode=max,scope=e2e-frontend-fs
+          cache-from: type=gha,scope=e2e-frontend-minio
+          cache-to: type=gha,mode=max,scope=e2e-frontend-minio
 
   end-to-end-tests:
     needs: [detect-changes, build-e2e-images]
@@ -140,9 +145,9 @@ jobs:
       options: --shm-size=2gb --security-opt seccomp=unconfined
     env:
       IS_CI_AUTOMATION: "yes"
-      BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-fs
-      FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-fs
-      PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-fs
+      BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-minio
+      FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-minio
+      PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-minio
       PLAYWRIGHT_BROWSERS_PATH: /github/home/.cache/ms-playwright
     steps:
       - uses: actions/checkout@v4
