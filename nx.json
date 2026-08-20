@@ -90,12 +90,6 @@
     "release": {
       "dependsOn": []
     },
-    "sentry:sourcemaps": {
-      "dependsOn": []
-    },
-    "prestart": {
-      "dependsOn": []
-    },
     "start": {
       "dependsOn": []
     },

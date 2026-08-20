@@ -36,6 +36,20 @@ pnpm run dev:send
 
 ### Setting up the environment
 
+> Upgrade note (existing checkouts): the backend now declares a Prisma
+> `directUrl`, so schema commands need `DIRECT_DATABASE_URL` as well as
+> `DATABASE_URL`, or they fail with `P1012`. `compose.yml` supplies it to the
+> backend container, but add it to `packages/send/backend/.env` too (copy the
+> line from `.env.sample`) if you run prisma from the host. Locally there is no
+> connection pooler, so it equals `DATABASE_URL`.
+>
+> Production images no longer run `prisma generate` on boot -- the client is
+> generated at image build. The dev entrypoint still regenerates, because
+> compose mounts a named volume over `/app/node_modules` that shadows the
+> image's client, so a host-side `pnpm db:generate` cannot reach the container.
+> After editing `prisma/schema.prisma`, restart the backend service, or run
+> `docker compose exec backend pnpm db:migrate`.
+
 ### Loading the TB Extension
 
 Make sure you add your localhost certificate. We have an

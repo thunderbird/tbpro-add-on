@@ -121,10 +121,13 @@ resources:
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/b2-application-key-id-2XaCVn
               - name: DATABASE_URL
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/database-url-Bjb0pI
+              # Same value as DATABASE_URL, deliberately: schema.prisma declares
+              # `directUrl = env("DIRECT_DATABASE_URL")`, which prisma migrate
+              # hard-requires. This is the URL migrations have always used here.
+              - name: DIRECT_DATABASE_URL
+                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/database-url-Bjb0pI
               - name: POSTHOG_API_KEY
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/posthog-api-key-QSay4K
-              - name: SENTRY_AUTH_TOKEN
-                valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/sentry-auth-token-H2d0hi
               - name: ACCESS_TOKEN_SECRET
                 valueFrom: arn:aws:secretsmanager:us-east-1:768512802988:secret:send-suite/ci/jwt-access-token-secret-8S81TY
               - name: REFRESH_TOKEN_SECRET
@@ -152,6 +155,11 @@ resources:
                 value: dev
               - name: POSTHOG_HOST
                 value: https://us.i.posthog.com
+              # ECS has no separate migration Job, so the entrypoint stays its
+              # migration path; scripts/entry.sh defaults this OFF for EKS, where
+              # an ArgoCD Sync-phase Job migrates instead. Needs DIRECT_DATABASE_URL.
+              - name: RUN_MIGRATIONS_ON_BOOT
+                value: "true"
               - name: SEND_BACKEND_CORS_ORIGINS
                 VALUE: https://send-ci.thunderbird.dev
               - name: SENTRY_DSN

@@ -58,6 +58,23 @@ on:
         required: false
         type: boolean
         default: false
+      expect-sourcemap-upload:
+        description: >-
+          Set true for images whose Dockerfile uploads sourcemaps (the Send
+          backend). Then a missing `sentry_auth_token` secret raises a workflow
+          warning instead of being indistinguishable from the frontend build,
+          which never uploads. Does not change the build.
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      sentry_auth_token:
+        description: >-
+          Sentry auth token for the build-time sourcemap UPLOAD. Optional: when
+          absent the Dockerfile still injects debug IDs but skips the upload (the
+          `inject`/`upload` split lives in packages/send/backend/Dockerfile). Only
+          the backend image consumes it; the frontend build passes none.
+        required: false
     outputs:
       image:
         description: The :<sha>-tagged multi-arch image reference that was pushed.
@@ -110,6 +127,16 @@ jobs:
           command -v rsync >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y -qq rsync; }
           sh "$PREPARE_SCRIPT"
 
+      - name: Warn when a sourcemap upload is expected but unconfigured
+        if: inputs.expect-sourcemap-upload
+        env:
+          # The `secrets` context is not available in `if:`, so test it here.
+          SENTRY_AUTH_TOKEN: ${{ secrets.sentry_auth_token }}
+        run: |
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            echo "::warning::No SENTRY_AUTH_TOKEN secret: backend sourcemaps are injected but NOT uploaded to Sentry. Add the repo/org secret to restore uploads."
+          fi
+
       - name: Build and push image by digest
         id: build
         env:
@@ -117,6 +144,9 @@ jobs:
           DOCKERFILE: ${{ inputs.dockerfile }}
           CONTEXT: ${{ inputs.context }}
           PLATFORM: ${{ matrix.platform }}
+          # Empty string when the caller passes no sentry_auth_token secret
+          # (e.g. the frontend build), which the step below treats as "skip".
+          SENTRY_AUTH_TOKEN: ${{ secrets.sentry_auth_token }}
         run: |
           set -euo pipefail
           # Build this single platform and push to GHCR by digest only (no tag).
@@ -131,7 +161,18 @@ jobs:
           # and exports nothing instead of failing. Do not add the flags back
           # without also exporting those vars (or moving to
           # docker/build-push-action), or the workflow only looks like it caches.
+          # Feed SENTRY_AUTH_TOKEN to the backend Dockerfile as a BuildKit secret
+          # so its build-time sourcemap UPLOAD runs on real EKS releases. The
+          # secret never lands in an image layer or the runtime pod. Passed only
+          # when non-empty: the frontend build (and any run without the repo
+          # secret) gets no --secret, and the Dockerfile then injects but skips
+          # the upload. bash 5 on the runners handles an empty array under set -u.
+          secret_args=()
+          if [ -n "${SENTRY_AUTH_TOKEN:-}" ]; then
+            secret_args+=("--secret" "id=sentry_auth_token,env=SENTRY_AUTH_TOKEN")
+          fi
           docker buildx build \
+            "${secret_args[@]}" \
             -f "$DOCKERFILE" \
             --platform "$PLATFORM" \
             --provenance=false \
