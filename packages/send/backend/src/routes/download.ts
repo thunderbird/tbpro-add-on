@@ -48,8 +48,11 @@ router.get(
           return;
         }
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
+      // Log before answering: storage now distinguishes "object absent"
+      // (null, handled above) from auth/endpoint/bucket failures (thrown),
+      // and that distinction is worthless if the reason is discarded here.
+      console.error(`Download of "${id}" failed:`, e);
       return res.status(404).send(TRANSFER_ERROR);
     }
   })

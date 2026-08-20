@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectVersionsCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -88,14 +89,29 @@ export function createDirectClient(
  * storage test fails), while an auth, network, or bucket misconfiguration
  * throws with its own message instead of being flattened into "not found".
  */
+const BUCKET_LEVEL_ERROR_NAMES = new Set([
+  'NoSuchBucket',
+  'InvalidBucketName',
+  'PermanentRedirect',
+]);
+
 export function isNotFoundError(error: unknown): boolean {
   const err = error as {
     name?: string;
     $metadata?: { httpStatusCode?: number };
   };
+  // Bucket-level failures are subtracted first. S3 answers several of them
+  // with HTTP 404, so without this a typo'd bucket name would be flattened
+  // into "object absent" and every download would 404 with nothing logged --
+  // exactly the undiagnosable shape this module exists to remove.
+  if (err?.name && BUCKET_LEVEL_ERROR_NAMES.has(err.name)) {
+    return false;
+  }
   return (
     err?.name === 'NoSuchKey' ||
     err?.name === 'NotFound' ||
+    // Kept as a fallback because S3-compatible implementations are not
+    // consistent about the error *name* they attach to a missing key.
     err?.$metadata?.httpStatusCode === 404
   );
 }
@@ -150,10 +166,11 @@ export async function getObjectSize(
  * file *id* first, and it does so by calling `b2_list_file_names` once with
  * `maxFileCount: 1000`, no prefix and no `startFileName`, then scanning the
  * page in memory (see node_modules/@tweedegolf/sab-adapter-backblaze-b2,
- * `getFiles` -> `getFile`). B2 returns names in lexicographic order, so as soon
- * as a bucket holds 1000 names sorting before the one you want, the native read
- * returns "Could not find file" forever. That is a cliff, not a race: waiting
- * or retrying never recovers it.
+ * `getFiles` -> `getFile`; `nextFileName` does not appear in that file). B2
+ * returns names in lexicographic order, so a name sorting past that single
+ * page is simply not found. Whether the dominant effect is the 1000-name cap
+ * or the listing's own lag behind a just-completed write, a keyed GetObject
+ * removes both: it never lists.
  *
  * @returns the object body, or `null` if the object does not exist. Any other
  *          failure (auth, network, wrong bucket) throws.
@@ -180,37 +197,109 @@ export async function getObjectAsStream(
 }
 
 /**
- * Delete an object via the S3 API (DeleteObject).
+ * Every version id stored under exactly this key, including delete markers.
  *
- * Same reasoning as the read path. The native adapter's `removeFile` resolves
- * the name through that identical capped listing and, when it cannot find the
- * name, returns `{ value: "ok" }` -- a silent no-op reported as success. Past
- * the 1000-name cliff, deletes stop happening and nothing says so, which is how
- * the test bucket grew unboundedly in the first place.
+ * `Prefix` narrows the request to the key and its neighbours, and the exact
+ * `Key` match below discards the neighbours; this is not the adapter's
+ * scan-the-whole-bucket listing. Pagination is followed to the end on purpose
+ * -- an unpaginated listing is the bug this module was written to remove, and
+ * reintroducing a cap here would silently leave versions behind.
+ */
+async function listVersionIds(
+  s3Client: S3Client,
+  Key: string,
+  Bucket: string
+): Promise<string[]> {
+  const versionIds: string[] = [];
+  let KeyMarker: string | undefined;
+  let VersionIdMarker: string | undefined;
+
+  do {
+    const response = await s3Client.send(
+      new ListObjectVersionsCommand({
+        Bucket,
+        Prefix: Key,
+        KeyMarker,
+        VersionIdMarker,
+      })
+    );
+
+    for (const entry of [
+      ...(response.Versions ?? []),
+      ...(response.DeleteMarkers ?? []),
+    ]) {
+      if (entry.Key === Key && entry.VersionId) {
+        versionIds.push(entry.VersionId);
+      }
+    }
+
+    KeyMarker = response.IsTruncated ? response.NextKeyMarker : undefined;
+    VersionIdMarker = response.IsTruncated
+      ? response.NextVersionIdMarker
+      : undefined;
+  } while (KeyMarker || VersionIdMarker);
+
+  return versionIds;
+}
+
+/**
+ * Delete an object via the S3 API, erasing every version of it.
  *
- * DeleteObject is idempotent, so deleting an absent key still succeeds; that
- * matches the adapter's documented "no error if the file is not found".
+ * Two things have to be true at once here. Keyed, for the same reason as the
+ * read path: the native adapter's `removeFile` resolves the name through that
+ * identical capped listing and, when it cannot find the name, returns
+ * `{ value: "ok" }` -- a silent no-op reported as success. Past the cap,
+ * deletes stop happening and nothing says so, which is how the test bucket
+ * grew unboundedly in the first place.
  *
- * Note the versioning difference this introduces, deliberately: B2 buckets are
- * versioned, so an S3 DeleteObject hides the object (the object is gone as far
- * as every read path is concerned) and leaves the prior version for the
- * bucket's lifecycle rule to reap, whereas the native `b2_delete_file_version`
- * removed it immediately. Confirm the bucket has a lifecycle rule covering the
- * prefixes it actually stores -- see b2/README.md. This is still strictly more
- * deletion than the native path performed, which past the listing cap deleted
- * nothing at all and reported success.
+ * And *erasing*, not hiding. B2 buckets are versioned, so a bare S3
+ * `DeleteObject` only writes a hide marker and leaves the payload behind
+ * indefinitely, whereas the native `b2_delete_file_version` this replaces
+ * removed the bytes. For a product whose users press delete on a shared file
+ * and expect it gone, quietly downgrading that to "hidden, pending a lifecycle
+ * rule someone remembers to configure" is not an acceptable trade, so the
+ * versions are enumerated and removed explicitly.
+ *
+ * Deleting an absent key still succeeds (no versions to remove, and the
+ * unversioned fallback below is itself idempotent); that matches the adapter's
+ * documented "no error if the file is not found".
  */
 export async function deleteObject(
   s3Client: S3Client,
   Key: string,
   Bucket: string = process.env.B2_BUCKET_NAME
 ): Promise<void> {
-  await s3Client.send(
-    new DeleteObjectCommand({
-      Bucket,
-      Key,
-    })
-  );
+  let versionIds: string[] = [];
+
+  try {
+    versionIds = await listVersionIds(s3Client, Key, Bucket);
+  } catch (error) {
+    // Listing versions needs a key with list permission. If we do not have it,
+    // fall through to the unversioned delete rather than failing the delete
+    // outright -- but say so, because that path only hides the object.
+    console.error(
+      `Could not list versions of "${Key}" before deleting it; falling back ` +
+        'to an unversioned delete, which hides rather than erases:',
+      error
+    );
+  }
+
+  if (versionIds.length === 0) {
+    // Either the bucket is not versioned, the object is already gone, or the
+    // listing above failed. DeleteObject is idempotent in all three cases.
+    await s3Client.send(new DeleteObjectCommand({ Bucket, Key }));
+    return;
+  }
+
+  for (const VersionId of versionIds) {
+    await s3Client.send(
+      new DeleteObjectCommand({
+        Bucket,
+        Key,
+        VersionId,
+      })
+    );
+  }
 }
 
 export async function getSignedUrlforDownload(

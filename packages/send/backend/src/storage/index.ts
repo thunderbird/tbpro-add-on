@@ -142,8 +142,15 @@ export class FileStore {
 
   /**
    * True when keyed S3 operations against the Backblaze bucket are available.
+   *
+   * Public because the live B2 suite asserts it. Without that assertion a
+   * missing endpoint would silently drop reads and deletes back onto the
+   * native listing path, and the suite would still pass -- the tests cannot
+   * tell the two paths apart by behaviour alone on a small bucket, and this
+   * change (cleanup plus a lifecycle rule) is precisely what keeps the test
+   * bucket small. So the mode is asserted directly rather than inferred.
    */
-  private canUseDirectClient(): boolean {
+  usesKeyedApi(): boolean {
     return this.isB2 && this.directIsUsable && Boolean(this.directClient);
   }
 
@@ -206,7 +213,7 @@ export class FileStore {
    * client is available.
    */
   async length(id: string): Promise<number> {
-    if (this.canUseDirectClient()) {
+    if (this.usesKeyedApi()) {
       try {
         return await getObjectSize(this.directClient, id, this.directBucket);
       } catch (error) {
@@ -233,8 +240,20 @@ export class FileStore {
    * other than "not found" propagate with their own message.
    */
   async get(id: string): Promise<Readable> {
-    if (this.canUseDirectClient()) {
-      return await getObjectAsStream(this.directClient, id, this.directBucket);
+    if (this.usesKeyedApi()) {
+      try {
+        return await getObjectAsStream(
+          this.directClient,
+          id,
+          this.directBucket
+        );
+      } catch (error) {
+        // Rethrown, not swallowed -- but logged on the way past, because the
+        // download route turns any throw into a bare 404 and would otherwise
+        // discard the only description of what actually went wrong.
+        console.error(`Error reading "${id}" from storage:`, error);
+        throw error;
+      }
     }
 
     const result = await this.client.getFileAsStream(id);
@@ -254,13 +273,14 @@ export class FileStore {
    *
    * No error is thrown if the file is not found.
    *
-   * On Backblaze this is a keyed S3 DeleteObject. The native `removeFile`
-   * resolves the name through the same capped listing as the read path and
-   * reports success when it cannot find the name, so past that cap it deletes
-   * nothing and says nothing.
+   * On Backblaze this is a keyed S3 delete that removes every version of the
+   * object (see `deleteObject` in ./s3b2.ts). The native `removeFile` resolves
+   * the name through the same capped listing as the read path and reports
+   * success when it cannot find the name, so past that cap it deletes nothing
+   * and says nothing.
    */
   async del(id: string): Promise<boolean> {
-    if (this.canUseDirectClient()) {
+    if (this.usesKeyedApi()) {
       await deleteObject(this.directClient, id, this.directBucket);
       return true;
     }

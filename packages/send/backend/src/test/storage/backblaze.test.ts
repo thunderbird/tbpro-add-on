@@ -71,6 +71,15 @@ describe.runIf(shouldRunSuite(config, `Storage: Backblaze B2`))(
       }
     });
 
+    // If the S3 endpoint is missing, `FileStore` falls back to the native
+    // adapter and every other test here still passes -- absent keys read null
+    // and deleted keys read null on both paths, and the bucket is now kept
+    // small enough for the native listing to find things. So assert the mode
+    // outright: this suite exists to cover the keyed S3 path.
+    it('runs against the keyed S3 path, not the native listing', () => {
+      expect(storage.usesKeyedApi()).toBe(true);
+    });
+
     it('should write a file to b2 bucket', async () => {
       const fileName = testKey('write');
 
