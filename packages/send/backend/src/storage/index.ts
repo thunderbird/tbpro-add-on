@@ -251,7 +251,7 @@ export class FileStore {
         // Rethrown, not swallowed -- but logged on the way past, because the
         // download route turns any throw into a bare 404 and would otherwise
         // discard the only description of what actually went wrong.
-        console.error(`Error reading "${id}" from storage:`, error);
+        console.error('Error reading object from storage:', id, error);
         throw error;
       }
     }
@@ -261,7 +261,7 @@ export class FileStore {
       // The adapter knows exactly why this failed; without this line the caller
       // only ever sees `null`, which is what made this class of bug so hard to
       // diagnose from CI logs.
-      console.error(`Error reading "${id}" from storage: ${result.error}`);
+      console.error('Error reading object from storage:', id, result.error);
     }
     return result.value;
   }

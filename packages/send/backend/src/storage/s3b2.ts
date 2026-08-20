@@ -278,8 +278,9 @@ export async function deleteObject(
     // fall through to the unversioned delete rather than failing the delete
     // outright -- but say so, because that path only hides the object.
     console.error(
-      `Could not list versions of "${Key}" before deleting it; falling back ` +
-        'to an unversioned delete, which hides rather than erases:',
+      'Could not list versions before deleting; falling back to an ' +
+        'unversioned delete, which hides rather than erases. Key:',
+      Key,
       error
     );
   }
