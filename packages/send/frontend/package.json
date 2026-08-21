@@ -51,6 +51,7 @@
     "ua-parser-js": "^1.0.41",
     "vue": "^3.5.33",
     "vue-final-modal": "^4.5.5",
+    "vue-i18n": "^11.3.2",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
