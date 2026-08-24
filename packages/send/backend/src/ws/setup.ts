@@ -1,5 +1,5 @@
 // Configure sentry
-import { TRPC_WS_PATH } from '@send-backend/config';
+import { IS_USING_BUCKET_STORAGE, TRPC_WS_PATH } from '@send-backend/config';
 import '../sentry';
 
 import { logger } from '@send-backend/utils/logger';
@@ -65,6 +65,27 @@ export const wsHandler = (server) => {
 
   server.on('upgrade', (req, socket, head) => {
     if (req.url === WS_UPLOAD_PATH) {
+      // Unreachable by the product wherever there is a bucket: the client only
+      // takes this path when the backend has none, and every deployment sets
+      // STORAGE_BACKEND=b2 (`pulumi/config.{prod,stage,ci}.yaml`). Requiring a
+      // session was the first half of the fix; this is the rest of it. The
+      // handler behind it streams into storage on the server's credentials
+      // under a key it invents, and unlike `POST /api/uploads` it runs no
+      // `checkStorageLimit` and writes no database row -- so an authenticated
+      // caller could park unbounded, unaccounted objects in the bucket
+      // (private-issue-tracking#44).
+      //
+      // Only a filesystem dev stack still uploads here, and the removal of both
+      // is tracked separately. 404 rather than 403, because that is the answer
+      // the path gives once it is gone, and the pin below should not have to
+      // change when it is.
+      if (IS_USING_BUCKET_STORAGE) {
+        logger.log(
+          `⛔ Refused an upgrade to ${WS_UPLOAD_PATH}: storage is a bucket`
+        );
+        return refuse(socket, 404, 'Not Found');
+      }
+
       // This handler streams straight into storage on the server's own
       // credentials (`wsUploadHandler` -> `FileStore.set`). It used to accept
       // any peer that could reach the host (private-issue-tracking#44).
