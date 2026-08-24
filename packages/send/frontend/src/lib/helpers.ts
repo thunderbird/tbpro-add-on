@@ -6,17 +6,10 @@ import { INIT_ERRORS } from '@send-frontend/apps/send/const';
 import init from '@send-frontend/lib/init';
 import { UserStoreType } from '@send-frontend/stores/user-store';
 import config from '@send-frontend/config';
-import { Canceler, JsonResponse } from '@send-frontend/types';
 
 import { RouteLocationNormalized } from 'vue-router';
-import {
-  ECE_RECORD_SIZE,
-  encryptStream,
-  HEADER_SIZE,
-  OVERHEAD_SIZE,
-} from './ece';
+import { encryptStream } from './ece';
 import { Keychain } from './keychain';
-import { asyncInitWebSocket, delay, listenForResponse } from './utils';
 
 type DownloadOptions = {
   url?: string;
@@ -53,91 +46,6 @@ export async function _download({
     xhr.responseType = 'blob';
     xhr.send();
   });
-}
-
-type Options = {
-  canceler?: Canceler;
-  progressTracker: ProgressTracker;
-};
-
-export async function _upload(
-  stream: ReadableStream,
-  key: CryptoKey,
-  encryptedSize: number = -1,
-  { canceler = {} as Canceler, progressTracker }: Options
-): Promise<JsonResponse> {
-  let host = config.sendServerUrl;
-  if (host) {
-    host = host.split('//')[1];
-  } else {
-    throw new Error('no server url is set');
-  }
-  const endpoint = `wss://${host}/api/ws`;
-  const ws = await asyncInitWebSocket(endpoint);
-
-  try {
-    // Send a preamble
-    const fileMeta = {
-      name: 'filename',
-      size: encryptedSize,
-    };
-
-    // Set up handler for the response to the preamble.
-    // However, we do not need to do anything with that response.
-    // Therefore, we omit the `await`
-    listenForResponse(ws, canceler);
-    ws.send(JSON.stringify(fileMeta));
-
-    let size = 0;
-    // Intentionally omitting `await` so that the encrypt & upload
-    // finishes before we read the response from the server.
-    const completedResponse = listenForResponse(ws, canceler);
-
-    if (key) {
-      stream = encryptStream(stream, key);
-    }
-
-    const reader = stream.getReader();
-    let state = await reader.read();
-
-    while (!state.done) {
-      if (canceler.cancelled) {
-        ws.close();
-      }
-      if (ws.readyState !== WebSocket.OPEN) {
-        break;
-      }
-      const buf = state.value;
-      ws.send(buf);
-
-      size += buf.length;
-      console.info('Uploaded', size, 'bytes', '- timestamp:', Date.now());
-      progressTracker.setProgress(size);
-      state = await reader.read();
-      while (
-        ws.bufferedAmount > ECE_RECORD_SIZE * 2 &&
-        ws.readyState === WebSocket.OPEN &&
-        !canceler.cancelled
-      ) {
-        await delay();
-      }
-    }
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(new Uint8Array([0])); //EOF
-    }
-
-    return await completedResponse;
-  } catch (e) {
-    console.error(e);
-    throw e;
-  } finally {
-    if (
-      ws.readyState !== WebSocket.CLOSED &&
-      ws.readyState !== WebSocket.CLOSING
-    ) {
-      ws.close();
-    }
-  }
 }
 
 export async function encrypt(
@@ -188,28 +96,6 @@ function concatenateUint8Arrays(arrays: Uint8Array[]): Uint8Array {
   return result;
 }
 
-/**
- * Calculates the size of a file after encrypting.
- *
- * @param originalSize: number - the original file size.
- * @param recordSize: number - the size of each chunk of data that gets encrypted.
- * @returns number - the total size of the file after encryption.
- */
-export function calculateEncryptedSize(
-  originalSize: number,
-  recordSize = ECE_RECORD_SIZE
-) {
-  // To get the original chunk size, subtract the overhead (which is tag size + padding)
-  const chunkSize = recordSize - OVERHEAD_SIZE;
-
-  // Calculate the number of chunks produced while slicing up the original file.
-  const numChunks = Math.ceil(originalSize / chunkSize);
-
-  // Add the overhead per chunk; add the header.
-  const totalSize = originalSize + numChunks * OVERHEAD_SIZE + HEADER_SIZE;
-
-  return totalSize;
-}
 
 // After mozilla account login, confirm that
 // - we have a db user

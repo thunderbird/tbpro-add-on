@@ -56,16 +56,13 @@ Entry point: `Uploader.doUpload()` in `frontend/src/lib/upload.ts`, called from
 For every part (concurrency-limited, see §3):
 
 1. **Encrypt + PUT the bytes, exactly once** — `sendBlob(blob, key, api,
-   partTracker, isBucketStorage, { signal, onUploadId })` in `filesync.ts`:
-   - **Bucket storage (B2/S3):** `POST /api/uploads/signed` returns
-     `{ id, url }` — a **presigned S3 PUT URL**. `onUploadId(id)` records the
-     storage id immediately (bytes may land even if the PUT later fails, so the
-     caller can clean it up). The chunk is encrypted, then `uploadWithTracker()`
-     does an `XMLHttpRequest` PUT straight to the object store (browser →
-     storage, bypassing the backend), honoring `XHR_TIMEOUT_MS` and the abort
-     `signal`.
-   - **Filesystem storage:** the ciphertext is streamed through the backend
-     (`_upload`).
+   partTracker, { signal, onUploadId })` in `filesync.ts`:
+   - `POST /api/uploads/signed` returns `{ id, url }` — a **presigned S3 PUT
+     URL**. `onUploadId(id)` records the storage id immediately (bytes may land
+     even if the PUT later fails, so the caller can clean it up). The chunk is
+     encrypted, then `uploadWithTracker()` does an `XMLHttpRequest` PUT straight
+     to the object store (browser → storage, bypassing the backend), honoring
+     `XHR_TIMEOUT_MS` and the abort `signal`.
    - The PUT owns its own retry/backoff; `sendBlob` throws only once those are
      exhausted, so a transient network blip never re-encrypts the chunk.
 2. **Confirm the object is in storage** — poll `GET /api/uploads/:id/stat`

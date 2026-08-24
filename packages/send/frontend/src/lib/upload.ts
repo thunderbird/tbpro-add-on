@@ -310,7 +310,6 @@ export default class Uploader {
       index: number
     ): Promise<Item | null> => {
       const filename = blob.name;
-      const isBucketStorage = api.isBucketStorage;
 
       const partTracker = multipartTracker.getPartTracker(index);
 
@@ -321,7 +320,7 @@ export default class Uploader {
       // retry/backoff (uploadWithTracker) and honors the abort signal, so we
       // never re-encrypt or re-request a signed URL on a transient network
       // failure. sendBlob throws once the PUT retries are exhausted.
-      const id = await sendBlob(blob, key, api, partTracker, isBucketStorage, {
+      const id = await sendBlob(blob, key, api, partTracker, {
         signal: abortController.signal,
         onUploadId: (uploadId) => writtenUploadIds.add(uploadId),
       });

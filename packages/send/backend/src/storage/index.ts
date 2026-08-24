@@ -4,8 +4,6 @@ import {
   StorageAdapterConfig,
   StorageType,
 } from '@tweedegolf/storage-abstraction';
-import { FileStreamParams } from '@tweedegolf/storage-abstraction/dist/types/add_file_params';
-import { ReadStream } from 'fs';
 import { Readable } from 'stream';
 import {
   S3Settings,
@@ -185,31 +183,6 @@ export class FileStore {
       Bucket: bucket,
       Key: id,
     });
-  }
-
-  /**
-   * Add a new file to storage.
-   * @param id: string - The unique identifier for the file.
-   * @param stream: ReadStream - A readable stream of the file's contents.
-   * @returns True if the file was added without error; otherwise false.
-   */
-  async set(id: string, stream: ReadStream, size?: number): Promise<boolean> {
-    const params: FileStreamParams = {
-      stream,
-      targetPath: id,
-    };
-
-    if (size) {
-      params.options = {
-        ContentLength: size,
-      };
-    }
-
-    const result = await this.client.addFileFromStream(params);
-    if (result.error) {
-      console.error(`Error writing to storage: ${result.error}`);
-    }
-    return !result.error;
   }
 
   /**

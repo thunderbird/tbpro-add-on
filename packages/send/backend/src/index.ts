@@ -40,10 +40,8 @@ import { wsHandler } from './ws/setup';
 
 const PORT = 8080;
 const HOST = '0.0.0.0';
-export const wsUploadServer = new WebSocket.Server({ noServer: true });
-
-// We use this websocket for general purposes. Not related to uploads/chat.
-// We want to keep them separate in case we need to deprecate any of them
+// The only WebSocket server. `noServer` because `wsHandler` owns the single
+// `upgrade` listener and decides what gets upgraded.
 export const wss = new WebSocket.Server({ path: TRPC_WS_PATH, noServer: true });
 
 events.EventEmitter.defaultMaxListeners = 0;

@@ -268,13 +268,7 @@ describe(`Filesync`, () => {
       const blob = new Blob([new Uint8Array(2)]);
 
       await expect(
-        sendBlob(
-          blob,
-          key,
-          mockedApi as any,
-          mockProgressTracker,
-          isBucketStorage
-        )
+        sendBlob(blob, key, mockedApi as any, mockProgressTracker)
       ).rejects.toThrow();
     });
   });

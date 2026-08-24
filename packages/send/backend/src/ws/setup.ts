@@ -1,15 +1,10 @@
 // Configure sentry
-import { IS_USING_BUCKET_STORAGE, TRPC_WS_PATH } from '@send-backend/config';
+import { TRPC_WS_PATH } from '@send-backend/config';
 import '../sentry';
 
 import { logger } from '@send-backend/utils/logger';
 import 'dotenv/config';
-import { validateJWT } from '../auth/jwt';
-import { wsUploadServer, wss } from '../index';
-import { getCookie } from '../utils';
-import wsUploadHandler from '../wsUploadHandler';
-
-const WS_UPLOAD_PATH = `/api/ws`;
+import { wss } from '../index';
 
 /**
  * Refuse an upgrade with a real HTTP response.
@@ -37,21 +32,6 @@ function refuse(socket, status: number, reason: string) {
   );
 }
 
-/**
- * Is this upgrade request carrying a usable session?
- *
- * Cookies ride along on the upgrade request, so the same JWT the REST routes
- * check is available here. `'valid'` only -- `'shouldRefresh'` means the access
- * token has expired, and there is no way to hand a refreshed one back over a
- * handshake that is being answered right now.
- */
-function isAuthenticated(req): boolean {
-  const jwtToken = getCookie(req?.headers?.cookie, 'authorization');
-  const jwtRefreshToken = getCookie(req?.headers?.cookie, 'refresh_token');
-
-  return validateJWT({ jwtToken, jwtRefreshToken }) === 'valid';
-}
-
 export const wsHandler = (server) => {
   // Registered once, not per upgrade. Inside the upgrade callback this added a
   // fresh listener for every connection, which only went unnoticed because
@@ -64,45 +44,6 @@ export const wsHandler = (server) => {
   });
 
   server.on('upgrade', (req, socket, head) => {
-    if (req.url === WS_UPLOAD_PATH) {
-      // Unreachable by the product wherever there is a bucket: the client only
-      // takes this path when the backend has none, and every deployment sets
-      // STORAGE_BACKEND=b2 (`pulumi/config.{prod,stage,ci}.yaml`). Requiring a
-      // session was the first half of the fix; this is the rest of it. The
-      // handler behind it streams into storage on the server's credentials
-      // under a key it invents, and unlike `POST /api/uploads` it runs no
-      // `checkStorageLimit` and writes no database row -- so an authenticated
-      // caller could park unbounded, unaccounted objects in the bucket
-      // (private-issue-tracking#44).
-      //
-      // Only a filesystem dev stack still uploads here, and the removal of both
-      // is tracked separately. 404 rather than 403, because that is the answer
-      // the path gives once it is gone, and the pin below should not have to
-      // change when it is.
-      if (IS_USING_BUCKET_STORAGE) {
-        logger.log(
-          `⛔ Refused an upgrade to ${WS_UPLOAD_PATH}: storage is a bucket`
-        );
-        return refuse(socket, 404, 'Not Found');
-      }
-
-      // This handler streams straight into storage on the server's own
-      // credentials (`wsUploadHandler` -> `FileStore.set`). It used to accept
-      // any peer that could reach the host (private-issue-tracking#44).
-      if (!isAuthenticated(req)) {
-        logger.log(
-          `⛔ Refused an unauthenticated upgrade to ${WS_UPLOAD_PATH}`
-        );
-        return refuse(socket, 401, 'Unauthorized');
-      }
-
-      wsUploadServer.handleUpgrade(req, socket, head, (ws) => {
-        wsUploadServer.emit('connection', ws, req);
-        wsUploadHandler(ws);
-      });
-      return;
-    }
-
     // Intentionally open, and it must stay that way: logging in happens over
     // this socket. `LoginPage.vue` subscribes to `onLoginFinished` before the
     // user has a session, so requiring a token here would deadlock login. The
@@ -117,10 +58,14 @@ export const wsHandler = (server) => {
       return;
     }
 
-    // Everything else, including the `/api/messagebus` path removed here, is
-    // answered and closed. Returning without closing leaves the connection open
-    // and holds a file descriptor for as long as the peer wants it, which is
-    // what an unmatched url used to do.
+    // Everything else is answered and closed. That now includes `/api/ws`:
+    // gated on a session in #1153, refused wherever storage was a bucket in the
+    // change before this one, and removed outright here. The handler behind it
+    // wrote through `FileStore.set` on the server's own credentials, and the
+    // browser no longer has any code that reaches it -- every upload is a
+    // presigned PUT. `/api/messagebus` went the same way. Returning without closing leaves the
+    // connection open and holds a file descriptor for as long as the peer wants
+    // it, which is what an unmatched url used to do.
     refuse(socket, 404, 'Not Found');
   });
 };

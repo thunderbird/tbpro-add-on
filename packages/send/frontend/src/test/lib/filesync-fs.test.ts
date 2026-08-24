@@ -7,17 +7,14 @@ import {
   arrayBufferToReadableStream,
   readableStreamToArrayBuffer,
 } from '@send-frontend/lib/streams';
-import * as utils from '@send-frontend/lib/utils';
 
-import { WebSocket } from 'mock-socket';
-import WS from 'vitest-websocket-mock';
 
 import { encryptStream } from '@send-frontend/lib/ece';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { mockProgressTracker } from './helpers';
 
-const { getBlob, sendBlob } = filesync;
+const { getBlob } = filesync;
 
 const API_URL = `${import.meta.env.VITE_SEND_SERVER_URL}/api`;
 const UPLOAD_ID = `abcdefg1234567`;
@@ -114,81 +111,4 @@ describe(`Filesync`, () => {
     });
   });
 
-  describe(`sendBlob`, () => {
-    const SUCCESSFUL_UPLOAD_RESPONSE = {
-      id: 'abcd1234',
-    };
-    const MOCK_WS_SERVER_URL = `ws://localhost:8765`;
-
-    let server: WS;
-    let client: WebSocket;
-
-    beforeEach(async () => {
-      server = new WS(MOCK_WS_SERVER_URL);
-      client = new WebSocket(MOCK_WS_SERVER_URL);
-      await server.connected; // only run tests after connecting
-    });
-
-    afterEach(() => {
-      server.close();
-    });
-
-    it(`should get a sucessful response after uploading`, async () => {
-      const mockListenForResponse = vi.spyOn(utils, 'listenForResponse');
-
-      // When uploading, we expect two responses from the WebSocket server.
-      mockListenForResponse
-        .mockResolvedValueOnce(SUCCESSFUL_UPLOAD_RESPONSE)
-        .mockResolvedValueOnce({ ...SUCCESSFUL_UPLOAD_RESPONSE, ok: true });
-
-      const mockAsyncInitWebSocket = vi.spyOn(utils, 'asyncInitWebSocket');
-      // Resolve to the already-connected client.
-      mockAsyncInitWebSocket.mockResolvedValue(client);
-
-      const keychain = new Keychain();
-      const key = await keychain.content.generateKey();
-      const blob = new Blob(['abc123']);
-      // const progressTracker = vi.fn();
-
-      const result = await sendBlob(
-        blob,
-        key,
-        vi.fn() as any,
-        mockProgressTracker,
-        false
-      );
-      expect(result).toEqual(SUCCESSFUL_UPLOAD_RESPONSE.id);
-    });
-
-    it(`should get a sucessful response after uploading when response is array`, async () => {
-      const mockListenForResponse = vi.spyOn(utils, 'listenForResponse');
-      const SUCCESSFUL_UPLOAD_RESPONSE = [
-        {
-          id: 'abcd1234',
-        },
-      ];
-
-      // When uploading, we expect two responses from the WebSocket server.
-      mockListenForResponse
-        .mockResolvedValueOnce([SUCCESSFUL_UPLOAD_RESPONSE])
-        .mockResolvedValueOnce(SUCCESSFUL_UPLOAD_RESPONSE);
-
-      const mockAsyncInitWebSocket = vi.spyOn(utils, 'asyncInitWebSocket');
-      // Resolve to the already-connected client.
-      mockAsyncInitWebSocket.mockResolvedValue(client);
-
-      const keychain = new Keychain();
-      const key = await keychain.content.generateKey();
-      const blob = new Blob(['abc123']);
-
-      const result = await sendBlob(
-        blob,
-        key,
-        vi.fn() as any,
-        mockProgressTracker,
-        false
-      );
-      expect(result).toEqual(SUCCESSFUL_UPLOAD_RESPONSE.at(0).id);
-    });
-  });
 });
