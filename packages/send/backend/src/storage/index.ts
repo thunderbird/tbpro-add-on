@@ -4,7 +4,6 @@ import {
   StorageAdapterConfig,
   StorageType,
 } from '@tweedegolf/storage-abstraction';
-import { Readable } from 'stream';
 import {
   S3Settings,
   createS3Client,
@@ -213,16 +212,6 @@ export class FileStore {
       }
     }
     const result = await this.client.sizeOf(id);
-    return result.value;
-  }
-
-  /**
-   * Returns a readable stream for a file in storage.
-   * @param id: string - The unique identifier for the file.
-   * @returns A readable stream for the file.
-   */
-  async get(id: string): Promise<Readable> {
-    const result = await this.client.getFileAsStream(id);
     return result.value;
   }
 
