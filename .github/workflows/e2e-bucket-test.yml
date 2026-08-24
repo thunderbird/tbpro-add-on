@@ -150,8 +150,10 @@ jobs:
             sed -i "s|^$key=.*$|$key=${!key}|" .env
           done
 
-          # This job exists to exercise Backblaze. Quietly falling back to
-          # filesystem storage would make it a second copy of end-to-end-tests.
+          # This job exists to exercise Backblaze. There is no longer a
+          # filesystem backend to fall back to -- a wrong value throws at boot --
+          # but a value of `s3` would still leave this a second copy of
+          # end-to-end-tests, running against MinIO.
           grep -qx "STORAGE_BACKEND=b2" .env || { echo "::error::STORAGE_BACKEND is not b2"; exit 1; }
           for key in B2_ENDPOINT B2_APPLICATION_KEY B2_APPLICATION_KEY_ID B2_BUCKET_NAME; do
             grep -q "^$key=." .env || { echo "::error::$key is empty in .env"; exit 1; }
