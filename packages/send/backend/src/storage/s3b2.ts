@@ -58,17 +58,39 @@ export async function getSignedUrl(
     Bucket,
     Key,
     ContentType,
-  }: { Bucket: string; Key: string; ContentType: string }
+    ContentLength,
+  }: {
+    Bucket: string;
+    Key: string;
+    ContentType: string;
+    // The exact ciphertext size the client is allowed to PUT. Signing it binds
+    // the upload to the size the quota check approved (private #36).
+    ContentLength?: number;
+  }
 ) {
   const command = new PutObjectCommand({
     Bucket,
     Key,
     ContentType,
+    ...(ContentLength !== undefined ? { ContentLength } : {}),
   });
+
+  // Pin content-type and content-length into the signature so a client cannot
+  // request a URL for a small object and then PUT gigabytes. `content-length`
+  // is only signable when we actually set `ContentLength` on the command.
+  // Caveat (private #36): provider-side enforcement of a signed content-length
+  // on a presigned PUT is not officially documented for B2/R2; create-entry's
+  // provider-ground-truth check (`createUpload`) is the backstop enforcement
+  // point if the provider does not reject an over-size PUT itself.
+  const signableHeaders = new Set(['content-type']);
+  if (ContentLength !== undefined) {
+    signableHeaders.add('content-length');
+  }
 
   // Generate the presigned URL (expires in 3600 seconds / 1 hour by default)
   const signedUrl = await getSignedUrlCommand(s3Client, command, {
     expiresIn: 3600,
+    signableHeaders,
   });
   return signedUrl;
 }

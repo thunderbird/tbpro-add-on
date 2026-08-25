@@ -9,6 +9,10 @@ import {
   UPLOAD_NOT_FOUND,
   UPLOAD_SIZE_ERROR,
 } from '../errors/models';
+import {
+  ECE_RECORD_SIZE,
+  calculateEncryptedSize,
+} from '../utils/encryptedSize';
 
 export async function createUpload(
   id: string,
@@ -18,9 +22,19 @@ export async function createUpload(
   part?: number,
   fileHash?: string
 ) {
-  // Confirm that file `id` exists and what's on disk
-  // is at least as large as the stated size.
-  // (Encrypted files are larger than the decrypted contents)
+  // Verify against provider ground truth, not the client's stated number
+  // (private #36). `size` is the PLAINTEXT size; storage holds ECE ciphertext,
+  // which is deterministically larger. Compare the object actually on disk
+  // against the encrypted size the plaintext claim implies, with a small
+  // tolerance band:
+  //   - lower bound: `calculateEncryptedSize(size)` — an object smaller than the
+  //     ciphertext this plaintext size must produce means the claim was
+  //     understated (the old `sizeOnDisk < size` check let this through, since a
+  //     plaintext number is always below its own ciphertext size).
+  //   - upper bound: one extra record. ECE padding can push the last record to
+  //     a full record boundary, so the true ciphertext is `expected` or up to
+  //     one `ECE_RECORD_SIZE` above it; anything beyond that is a client PUTting
+  //     more than it declared.
 
   let sizeOnDisk = 0;
 
@@ -30,7 +44,11 @@ export async function createUpload(
     console.error('ERROR reading storage length:', error);
   }
 
-  if (sizeOnDisk < size) {
+  const expectedEncrypted = calculateEncryptedSize(size);
+  if (
+    sizeOnDisk < expectedEncrypted ||
+    sizeOnDisk > expectedEncrypted + ECE_RECORD_SIZE
+  ) {
     throw new BaseError(UPLOAD_SIZE_ERROR);
   }
 

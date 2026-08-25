@@ -166,6 +166,10 @@ export const UPLOAD_ERRORS = {
     statusCode: 404,
     message: 'Could not report upload.',
   },
+  INVALID_SIZE: {
+    statusCode: 400,
+    message: 'A valid file size is required.',
+  },
 };
 
 export const USER_ERRORS = {
