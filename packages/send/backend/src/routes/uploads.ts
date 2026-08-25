@@ -639,12 +639,20 @@ router.post('/items', async (req, res) => {
  *               example:
  *                 message: "Failed to process report"
  */
-router.post('/report', async (req, res) => {
-  const { uploadId } = req.body;
-  const id = await reportSuspiciousFile(uploadId);
-  await reportUpload(uploadId);
-  res.status(200).json({ message: 'Report received', id });
-});
+router.post(
+  '/report',
+  addErrorHandling(UPLOAD_ERRORS.REPORT_FAILED),
+  wrapAsyncHandler(async (req, res) => {
+    const { uploadId } = req.body;
+    // `reportSuspiciousFile` -> `getUploadParts` throws `UPLOAD_NOT_FOUND` for an
+    // unknown id. Without an async boundary that rejection was unhandled and
+    // terminated the process (private #49); `wrapAsyncHandler` routes it to the
+    // error handler, which answers 404 from `REPORT_FAILED` instead.
+    const id = await reportSuspiciousFile(uploadId);
+    await reportUpload(uploadId);
+    res.status(200).json({ message: 'Report received', id });
+  })
+);
 
 /**
  * @openapi

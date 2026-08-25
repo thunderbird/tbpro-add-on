@@ -169,6 +169,10 @@ export const UPLOAD_ERRORS = {
     statusCode: 500,
     message: 'Could not get url for bucket.',
   },
+  REPORT_FAILED: {
+    statusCode: 404,
+    message: 'Could not report upload.',
+  },
 };
 
 export const USER_ERRORS = {
