@@ -96,7 +96,6 @@ function concatenateUint8Arrays(arrays: Uint8Array[]): Uint8Array {
   return result;
 }
 
-
 // After mozilla account login, confirm that
 // - we have a db user
 // - the user has a public key

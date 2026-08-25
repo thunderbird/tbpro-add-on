@@ -59,13 +59,13 @@ export const wsHandler = (server) => {
     }
 
     // Everything else is answered and closed. That now includes `/api/ws`:
-    // gated on a session in #1153, refused wherever storage was a bucket in the
-    // change before this one, and removed outright here. The handler behind it
-    // wrote through `FileStore.set` on the server's own credentials, and the
-    // browser no longer has any code that reaches it -- every upload is a
-    // presigned PUT. `/api/messagebus` went the same way. Returning without closing leaves the
-    // connection open and holds a file descriptor for as long as the peer wants
-    // it, which is what an unmatched url used to do.
+    // gated on a session in #1153, refused wherever storage was a bucket in
+    // #1158, and removed outright here. The handler behind it wrote through
+    // `FileStore.set` on the server's own credentials, and the browser no
+    // longer has any code that reaches it: every upload is a presigned PUT.
+    // `/api/messagebus` went the same way. Returning without closing leaves
+    // the connection open and holds a file descriptor for as long as the
+    // peer wants it, which is what an unmatched url used to do.
     refuse(socket, 404, 'Not Found');
   });
 };
