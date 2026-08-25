@@ -75,22 +75,26 @@ export async function getSignedUrl(
     ...(ContentLength !== undefined ? { ContentLength } : {}),
   });
 
-  // Pin content-type and content-length into the signature so a client cannot
-  // request a URL for a small object and then PUT gigabytes. `content-length`
-  // is only signable when we actually set `ContentLength` on the command.
+  // Pin content-length into the signature so a client cannot request a URL for
+  // a small object and then PUT gigabytes (private #36). Only signable when we
+  // actually set `ContentLength` on the command.
+  //
+  // Content-type is deliberately NOT signed: the browser decides the stored
+  // type, and signing it would start rejecting uploads that succeed today (see
+  // `presigned-roundtrip.test.ts` "leaves the content type to the browser").
+  // #36 is a size-enforcement fix, not a content-type one.
+  //
   // Caveat (private #36): provider-side enforcement of a signed content-length
   // on a presigned PUT is not officially documented for B2/R2; create-entry's
   // provider-ground-truth check (`createUpload`) is the backstop enforcement
   // point if the provider does not reject an over-size PUT itself.
-  const signableHeaders = new Set(['content-type']);
-  if (ContentLength !== undefined) {
-    signableHeaders.add('content-length');
-  }
+  const signableHeaders =
+    ContentLength !== undefined ? new Set(['content-length']) : undefined;
 
   // Generate the presigned URL (expires in 3600 seconds / 1 hour by default)
   const signedUrl = await getSignedUrlCommand(s3Client, command, {
     expiresIn: 3600,
-    signableHeaders,
+    ...(signableHeaders ? { signableHeaders } : {}),
   });
   return signedUrl;
 }
