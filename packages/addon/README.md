@@ -58,11 +58,10 @@ pnpm --filter addon build:dev:system:local
 ```
 
 These set `ADDON_ENV=local`, which makes `scripts/build.sh` build in Vite's **development** mode
-(so `import.meta.env.MODE === 'development'` — the frontend then probes the local backend for its
-storage type instead of assuming bucket storage, and prod Sentry stays off) and force the localhost
+(so `import.meta.env.MODE === 'development'` and prod Sentry stays off) and force the localhost
 URLs into the bundle:
 
-- `VITE_SEND_SERVER_URL=https://localhost:8088` (also used for `wss://…/api/ws` uploads)
+- `VITE_SEND_SERVER_URL=https://localhost:8088`
 - `VITE_SEND_CLIENT_URL=http://localhost:5173`
 - `VITE_OIDC_ROOT_URL=https://auth-stage.tb.pro/realms/tbpro/` (no local Keycloak needed)
 
@@ -102,16 +101,13 @@ one of these:
   Downside: a `--temp-profile` run discards it, which fights the stale-cache advice below — use a
   named profile (`./mach run -P <profile>`) instead.
 
-- **Skip TLS entirely (fastest; breaks `wss` uploads).** Point the add-on at the plain-HTTP backend
-  on `:8080`. `http://localhost` is a trustworthy secure context in Gecko, so there's no cert and no
+- **Skip TLS entirely (fastest).** Point the add-on at the plain-HTTP backend on `:8080`.
+  `http://localhost` is a trustworthy secure context in Gecko, so there's no cert and no
   mixed-content block, and it works with `--temp-profile`:
 
   ```sh
   VITE_SEND_SERVER_URL=http://localhost:8080 pnpm --filter addon build:dev:system:local
   ```
-
-  Caveat: the file-upload WebSocket is hardcoded to `wss://` (`send/frontend/src/lib/helpers.ts`), so
-  uploads fail over plain http; trpc / auth / storage-type / dashboard all work.
 
 Then, in the comm tree, repackage and run:
 

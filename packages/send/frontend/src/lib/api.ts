@@ -1,6 +1,3 @@
-import config from '@send-frontend/config';
-import { trpc } from './trpc';
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type JsonResponse<T = { [key: string]: any }> = T | T[];
 
@@ -79,7 +76,6 @@ export function buildApiUrl(serverUrl: string, path: string): string {
 
 export class ApiConnection {
   serverUrl: string;
-  isBucketStorage: boolean;
 
   constructor(serverUrl: string) {
     if (!serverUrl) {
@@ -88,30 +84,6 @@ export class ApiConnection {
     // using new URL() trims off excess whitespace and trailing '/'
     const u = new URL(serverUrl);
     this.serverUrl = u.origin;
-
-    this.getStorageType().then((isBucketStorage) => {
-      this.isBucketStorage = isBucketStorage;
-    });
-  }
-
-  async getStorageType(): Promise<boolean> {
-    if (process.env.NODE_ENV === 'test') {
-      return true;
-    }
-    // In production, bucket storage is always assumed true — skip the network
-    // call. Keyed on the declared ENVIRONMENT, not Vite's MODE: the container
-    // image is built once in production mode and configured per environment at
-    // runtime, so a MODE check would hard-code the assumption into every
-    // runtime-configured dev/stage deployment whose backend may use
-    // filesystem storage.
-    if (config.appEnv === 'production') {
-      return true;
-    } else {
-      // Outside production, query the backend, which may be configured with
-      // filesystem storage instead.
-      const { isBucketStorage } = await trpc.getStorageType.query();
-      return isBucketStorage;
-    }
   }
 
   toString(): string {

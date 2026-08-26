@@ -55,7 +55,6 @@ export async function getBlob(
   id: string,
   size: number,
   key: CryptoKey,
-  isBucketStorage = true,
   filename = 'dummy.file',
   type = 'text/plain',
   api: ApiConnection,
@@ -69,24 +68,6 @@ export async function getBlob(
 
   if (isSuspicious) {
     throw new Error('File has been reported as suspicious');
-  }
-
-  if (!isBucketStorage) {
-    const downloadedBlob = await _download({ id, progressTracker });
-
-    let plaintext: ArrayBufferLike | string;
-    if (key) {
-      const plainStream = decryptStream(blobStream(downloadedBlob), key);
-      plaintext = await streamToArrayBuffer(plainStream, size);
-    } else {
-      plaintext = await downloadedBlob.arrayBuffer();
-    }
-
-    return await _saveFile({
-      plaintext: plaintext as ArrayBuffer,
-      name: decodeURIComponent(filename),
-      type, // mime type of the upload
-    });
   }
 
   try {

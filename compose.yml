@@ -15,11 +15,10 @@ services:
       timeout: 5s
       retries: 5
 
-  # The bucket. On a bucket backend every upload is a presigned PUT from the
-  # browser straight to object storage, and .env.sample now defaults to one, so
-  # the dev stack brings its own rather than leaving `docker compose up` with
-  # nowhere to put a file. It is also what the backend storage round-trip suite
-  # runs against, which is what it was here for before.
+  # The bucket. Every upload is a presigned PUT from the browser straight to
+  # object storage, so the dev stack needs one to store a single file -- there is
+  # no filesystem fallback. It is also what the backend storage round-trip suite
+  # runs against.
   minio:
     # Pinned: an unpinned tag makes CI unreproducible, and a release that
     # changes `mc ready` would break the healthcheck below with no diff to blame.

@@ -51,7 +51,6 @@
     "@trpc/server": "^11.17.0",
     "@tweedegolf/sab-adapter-amazon-s3": "^1.0.20",
     "@tweedegolf/sab-adapter-backblaze-b2": "^1.0.7",
-    "@tweedegolf/sab-adapter-local": "^1.0.9",
     "@tweedegolf/storage-abstraction": "^2.2.1",
     "axios": "^1.18.0",
     "bcryptjs": "^3.0.3",

@@ -19,8 +19,9 @@ import { NETWORK_TEST_TIMEOUT_MS, isMinioReachable } from '../testutils';
 /**
  * The upload and download path that production actually takes.
  *
- * On a bucket deployment the browser never reaches `FileStore.get()`. It asks
- * the backend for a presigned URL (`POST /api/uploads/signed`
+ * The browser never moves bytes through the backend at all. `FileStore.set()`
+ * and `.get()` were reachable only through the filesystem backend and are both
+ * gone. It asks for a presigned URL (`POST /api/uploads/signed`
  * -> `getUploadBucketUrl`, `GET /api/download/:id/signed` ->
  * `getDownloadBucketUrl`) and moves the bytes itself, straight to the bucket.
  * The backend only reads the object's size back, to gate the database row

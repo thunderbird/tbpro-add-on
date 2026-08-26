@@ -12,17 +12,14 @@ import { encryptStream } from './ece';
 import { Keychain } from './keychain';
 
 type DownloadOptions = {
-  url?: string;
-  id?: string;
+  url: string;
   progressTracker: ProgressTracker;
 };
 
 export async function _download({
   url,
   progressTracker,
-  id,
 }: DownloadOptions): Promise<Blob> {
-  const endpoint = `${config.sendServerUrl}/api/download`;
   const xhr = new XMLHttpRequest();
   const { setProgress } = progressTracker;
   xhr.onprogress = (event) => {
@@ -40,9 +37,9 @@ export async function _download({
       const blob = new Blob([xhr.response]);
       resolve(blob);
     });
-    // The id is used when the backend is using fs
-    // Url is used when the backend is using s3
-    xhr.open('get', id ? `${endpoint}/${id}` : url);
+    // A presigned GET straight to the bucket -- the bytes never pass through
+    // the backend.
+    xhr.open('get', url);
     xhr.responseType = 'blob';
     xhr.send();
   });

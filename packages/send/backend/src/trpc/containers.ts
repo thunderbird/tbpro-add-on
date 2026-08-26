@@ -1,4 +1,3 @@
-import { IS_USING_BUCKET_STORAGE } from '@send-backend/config';
 import { getUsedStorage } from '@send-backend/models';
 import {
   getAccessLinksForContainer as getAccessLinks,
@@ -95,33 +94,6 @@ export const containersRouter = router({
       const accessLinks = await getAccessLinks(input.containerId);
       return accessLinks;
     }),
-
-  /**
-   * @openapi
-   * /trpc/getStorageType:
-   *   get:
-   *     tags:
-   *       - Storage
-   *     summary: Get storage type configuration
-   *     description: Returns whether the system is using bucket storage or not
-   *     responses:
-   *       200:
-   *         description: Storage type configuration
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 isBucketStorage:
-   *                   type: boolean
-   *                   description: Whether the system is using bucket storage
-   */
-  getStorageType: t.query(async () => {
-    if (typeof IS_USING_BUCKET_STORAGE === 'boolean') {
-      return { isBucketStorage: IS_USING_BUCKET_STORAGE };
-    }
-    return { isBucketStorage: false };
-  }),
 
   /**
    * @openapi
