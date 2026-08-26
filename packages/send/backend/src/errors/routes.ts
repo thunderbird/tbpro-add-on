@@ -95,13 +95,6 @@ export const CONTAINER_ERRORS = {
   },
 };
 
-export const DOWNLOAD_ERRORS = {
-  DOWNLOAD_FAILED: {
-    statusCode: 500,
-    message: 'Could not download file.',
-  },
-};
-
 export const SHARING_ERRORS = {
   ACCESS_LINK_NOT_ACCEPTED: {
     statusCode: 500,

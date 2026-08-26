@@ -17,7 +17,6 @@ import { mockProgressTracker } from './helpers';
 
 const API_URL = `${import.meta.env.VITE_SEND_SERVER_URL}/api`;
 const UPLOAD_ID = `abcdefg1234567`;
-const isBucketStorage = true;
 
 // ===================================================
 // Setup steps needed at the top-level for `vi.mock()`
@@ -106,7 +105,6 @@ describe(`Filesync`, () => {
         UPLOAD_ID,
         metadata.size,
         key,
-        isBucketStorage,
         fileName,
         metadata.type,
         api,
@@ -130,7 +128,6 @@ describe(`Filesync`, () => {
         UPLOAD_ID,
         metadata.size,
         undefined,
-        isBucketStorage,
         fileName,
         metadata.type,
         api,
@@ -160,7 +157,6 @@ describe(`Filesync`, () => {
           UPLOAD_ID,
           metadata.size,
           key,
-          isBucketStorage,
           fileName,
           metadata.type,
           api,
@@ -183,7 +179,6 @@ describe(`Filesync`, () => {
           UPLOAD_ID,
           metadata.size,
           key,
-          isBucketStorage,
           fileName,
           metadata.type,
           api,
@@ -213,7 +208,6 @@ describe(`Filesync`, () => {
           UPLOAD_ID,
           metadata.size,
           key,
-          isBucketStorage,
           fileName,
           metadata.type,
           api,
@@ -268,13 +262,7 @@ describe(`Filesync`, () => {
       const blob = new Blob([new Uint8Array(2)]);
 
       await expect(
-        sendBlob(
-          blob,
-          key,
-          mockedApi as any,
-          mockProgressTracker,
-          isBucketStorage
-        )
+        sendBlob(blob, key, mockedApi as any, mockProgressTracker)
       ).rejects.toThrow();
     });
   });

@@ -51,7 +51,7 @@ app.use('/api/uploads', router);
 // middleware and skip it for errors (in prod, Sentry's 4-arg handler runs
 // first). Wrap it in the 4-arg error-middleware shape so the route's async
 // boundary is exercised end to end here.
-app.use((err, req, res, next) => errorHandler(err, req, res, next));
+app.use((err, req, res, _next) => errorHandler(err, req, res));
 
 describe('POST /api/uploads/report', () => {
   beforeEach(() => {

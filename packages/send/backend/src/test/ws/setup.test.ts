@@ -1,55 +1,29 @@
 import { TRPC_WS_PATH } from '@send-backend/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  mockValidateJWT,
-  mockUploadHandler,
-  mockUploadServer,
-  mockWss,
-  storage,
-} = vi.hoisted(() => ({
-    mockValidateJWT: vi.fn(),
-    mockUploadHandler: vi.fn(),
-    mockUploadServer: { handleUpgrade: vi.fn(), emit: vi.fn() },
-    mockWss: {
-      handleUpgrade: vi.fn(),
-      emit: vi.fn(),
-      on: vi.fn(),
-      clients: new Set(),
-    },
-    // `IS_USING_BUCKET_STORAGE` is a module-level const, so it cannot be
-    // stubbed through the environment after `config` has been imported. A
-    // getter over this holder gives the suite a value it can move per test.
-    storage: { isBucket: true },
-  }));
-
-vi.mock('@send-backend/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@send-backend/config')>()),
-  get IS_USING_BUCKET_STORAGE() {
-    return storage.isBucket;
+const { mockWss } = vi.hoisted(() => ({
+  mockWss: {
+    handleUpgrade: vi.fn(),
+    emit: vi.fn(),
+    on: vi.fn(),
+    clients: new Set(),
   },
 }));
 
-vi.mock('../../auth/jwt', () => ({ validateJWT: mockValidateJWT }));
-vi.mock('../../wsUploadHandler', () => ({ default: mockUploadHandler }));
-vi.mock('../../index', () => ({
-  wss: mockWss,
-  wsUploadServer: mockUploadServer,
-}));
+vi.mock('../../index', () => ({ wss: mockWss }));
 vi.mock('../../sentry', () => ({}));
 
 import { wsHandler } from '../../ws/setup';
 
-const UPLOAD_PATH = '/api/ws';
+// Named for what it was. Nothing routes here now; these are resurrection pins.
+const REMOVED_UPLOAD_PATH = '/api/ws';
 
 /**
- * `/api/ws` hands the socket to an upload handler that streams into storage on
- * the server's own credentials. The upgrade used to be performed with no token
- * check at all, so anyone who could reach the host could write to the bucket
- * (private-issue-tracking#44). A session is required now, and where storage is
- * a bucket -- which is every deployment -- the path is refused outright: the
- * handler runs no `checkStorageLimit` and writes no database row, so a session
- * alone still buys unaccounted writes.
+ * `/api/ws` handed the socket to an upload handler that streamed into storage on
+ * the server's own credentials, and the upgrade was performed with no token
+ * check at all (private-issue-tracking#44). #1153 required a session and the
+ * change before this one refused the path wherever storage was a bucket; this
+ * removes it, so there is nothing left to gate.
  */
 describe('wsHandler', () => {
   let upgrade: (req, socket, head) => void;
@@ -60,95 +34,23 @@ describe('wsHandler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // `clearAllMocks` clears calls but keeps implementations, so without an
-    // explicit default a test that sets 'valid' leaks it into the next one --
-    // which quietly turned the no-token cases below into no-ops. Unauthenticated
-    // is the safe default to leak.
-    mockValidateJWT.mockReturnValue(null);
-    // What every deployment runs. The filesystem cases below opt out.
-    storage.isBucket = true;
     const server = { on: vi.fn() };
     wsHandler(server);
     upgrade = server.on.mock.calls.find(([event]) => event === 'upgrade')[1];
   });
 
-  // Where a bucket exists the client never takes this path, so these hold only
-  // for a filesystem dev stack -- the one configuration that still uploads over
-  // the socket. They are the gate from the first half of the fix; the bucket
-  // cases below are what covers every deployment.
-  describe('on a filesystem stack, where the path is still live', () => {
-    beforeEach(() => {
-      storage.isBucket = false;
-    });
-
-    it('refuses an unauthenticated upgrade to the upload path with 401', () => {
-      mockValidateJWT.mockReturnValue(null);
-      const s = socket();
-
-      upgrade({ url: UPLOAD_PATH, headers: {} }, s, Buffer.alloc(0));
-
-      expect(mockUploadServer.handleUpgrade).not.toHaveBeenCalled();
-      expect(mockUploadHandler).not.toHaveBeenCalled();
-      expect(s.end).toHaveBeenCalledWith(
-        expect.stringContaining('401 Unauthorized'),
-        expect.any(Function)
-      );
-    });
-
-    // An expired access token cannot be refreshed over a handshake that is being
-    // answered right now, so only 'valid' gets through.
-    it.each(['shouldRefresh', 'shouldLogin'])(
-      'refuses the upload path when the token is %s',
-      (result) => {
-        mockValidateJWT.mockReturnValue(result);
-        const s = socket();
-
-        upgrade(
-          { url: UPLOAD_PATH, headers: { cookie: authedCookie } },
-          s,
-          Buffer.alloc(0)
-        );
-
-        expect(mockUploadServer.handleUpgrade).not.toHaveBeenCalled();
-        expect(s.end).toHaveBeenCalledWith(
-          expect.stringContaining('401'),
-          expect.any(Function)
-        );
-      }
-    );
-
-    it('upgrades the upload path for a valid session', () => {
-      mockValidateJWT.mockReturnValue('valid');
-      const s = socket();
-
-      upgrade(
-        { url: UPLOAD_PATH, headers: { cookie: authedCookie } },
-        s,
-        Buffer.alloc(0)
-      );
-
-      expect(mockUploadServer.handleUpgrade).toHaveBeenCalled();
-      expect(s.end).not.toHaveBeenCalled();
-    });
-  });
-
-  // The pin that matters in production, and the one that survives the path's
-  // removal unchanged: a valid session is not enough.
-  it('refuses the upload path with 404 when storage is a bucket', () => {
-    mockValidateJWT.mockReturnValue('valid');
+  // The pin that outlives the gate: a *valid* session is refused too, because
+  // there is no upload socket to hand out any more. If someone reinstates the
+  // handler, this fails rather than silently restoring a bucket-write path.
+  it.each([
+    ['no cookie', {}],
+    ['a session cookie', { cookie: authedCookie }],
+  ])('refuses the upload path with %s', (_label, headers) => {
     const s = socket();
 
-    upgrade(
-      { url: UPLOAD_PATH, headers: { cookie: authedCookie } },
-      s,
-      Buffer.alloc(0)
-    );
+    upgrade({ url: REMOVED_UPLOAD_PATH, headers }, s, Buffer.alloc(0));
 
-    // Asserting on the handler as well as the status, because the status alone
-    // does not pin this: a future refactor could 404 after having already
-    // streamed the body. Nothing may reach `FileStore.set`.
-    expect(mockUploadServer.handleUpgrade).not.toHaveBeenCalled();
-    expect(mockUploadHandler).not.toHaveBeenCalled();
+    expect(mockWss.handleUpgrade).not.toHaveBeenCalled();
     expect(s.end).toHaveBeenCalledWith(
       expect.stringContaining('404 Not Found'),
       expect.any(Function)
@@ -163,25 +65,17 @@ describe('wsHandler', () => {
   // you would need to be logged in to find out that you had logged in.
   // `onVerificationRequested`, `onVerificationFinished` and `onPassphraseShared`
   // are the same shape.
-  it(`upgrades ${TRPC_WS_PATH} with no token, which login depends on`, () => {
+  it.each([
+    ['no token, which login depends on', {}],
+    // A stale or malformed cookie must not stop someone logging in again.
+    [
+      'a cookie that does not validate',
+      { cookie: 'authorization=Bearer%20junk' },
+    ],
+  ])(`upgrades ${TRPC_WS_PATH} with %s`, (_label, headers) => {
     const s = socket();
 
-    upgrade({ url: TRPC_WS_PATH, headers: {} }, s, Buffer.alloc(0));
-
-    expect(mockWss.handleUpgrade).toHaveBeenCalled();
-    expect(s.end).not.toHaveBeenCalled();
-  });
-
-  it(`upgrades ${TRPC_WS_PATH} even when the token present is invalid`, () => {
-    // A stale or malformed cookie must not stop someone from logging in again.
-    mockValidateJWT.mockReturnValue(null);
-    const s = socket();
-
-    upgrade(
-      { url: TRPC_WS_PATH, headers: { cookie: 'authorization=Bearer%20junk' } },
-      s,
-      Buffer.alloc(0)
-    );
+    upgrade({ url: TRPC_WS_PATH, headers }, s, Buffer.alloc(0));
 
     expect(mockWss.handleUpgrade).toHaveBeenCalled();
     expect(s.end).not.toHaveBeenCalled();

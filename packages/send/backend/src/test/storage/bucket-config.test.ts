@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   StorageAdapterConfig,
@@ -16,6 +16,11 @@ import { FileStore } from '../../storage';
  * ships a backend that signs with no credentials at all.
  */
 describe('Storage: bucket configuration', () => {
+  // Only the STORAGE_BACKEND cases below stub the environment; every other test
+  // builds its FileStore from an explicit config. Restore anyway, so a stub
+  // cannot leak into a suite that reads the real value.
+  afterEach(() => vi.unstubAllEnvs());
+
   const B2: StorageAdapterConfig = {
     type: StorageType.B2,
     bucketName: 'b2-bucket',
@@ -93,10 +98,44 @@ describe('Storage: bucket configuration', () => {
   });
 
   it('refuses to sign for a backend that has no bucket', async () => {
-    const local = new FileStore({ type: StorageType.LOCAL, directory: '/tmp' });
+    const bucketless = new FileStore({ ...S3, bucketName: undefined });
 
-    await expect(local.getDownloadBucketUrl('key')).rejects.toThrow(
+    await expect(bucketless.getDownloadBucketUrl('key')).rejects.toThrow(
       'Bucket storage is not configured'
     );
+  });
+
+  // There used to be a filesystem backend, and it was the `default:` case, so a
+  // typo'd or unset STORAGE_BACKEND silently produced a store that could not
+  // serve an upload. Booting is the last moment that is cheap to notice.
+  it.each([
+    // `undefined` deletes the variable: "the operator never set it" is the
+    // realistic failure, and it is a different branch from the empty string.
+    ['unset', undefined, ''],
+    ['empty', '', ''],
+    ['the removed filesystem backend', 'fs', 'fs'],
+    ['a typo', 'typo', 'typo'],
+  ])('refuses to start with STORAGE_BACKEND %s', (_label, value, reported) => {
+    vi.stubEnv('STORAGE_BACKEND', value);
+
+    expect(() => new FileStore()).toThrow(
+      `STORAGE_BACKEND must be 'b2' or 's3', got '${reported}'`
+    );
+  });
+
+  it('signs with the public endpoint when the browser reaches another host', async () => {
+    // The compose case: the backend talks to `minio:9000` over the container
+    // network, which the browser cannot resolve.
+    const url = new URL(
+      await new FileStore({
+        ...S3,
+        endpoint: 'http://minio:9000',
+        publicEndpoint: 'http://localhost:9000',
+        forcePathStyle: true,
+      }).getDownloadBucketUrl('key')
+    );
+
+    expect(url.host).toBe('localhost:9000');
+    expect(url.pathname).toBe('/s3-bucket/key');
   });
 });

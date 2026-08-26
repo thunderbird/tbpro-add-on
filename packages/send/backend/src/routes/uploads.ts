@@ -72,9 +72,9 @@ const createUploadSchema = z.object({
  *         description: Failed to create upload
  */
 /**
- * This is actually the second step when uploading an encrypted file.
- * The first part is the actual upload via WebSockets.
- * This step creates the database entity for that uploaded file.
+ * The last step of an upload. The browser has already asked for a presigned URL
+ * (`POST /signed`) and PUT the ciphertext straight to the bucket; this creates
+ * the database row for the object now sitting there.
  */
 router.post(
   '/',

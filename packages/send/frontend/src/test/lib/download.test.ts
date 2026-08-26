@@ -38,9 +38,7 @@ describe('Downloader', () => {
 
     mockApi = {
       call: vi.fn(),
-      isBucketStorage: true,
       serverUrl: 'http://localhost',
-      getStorageType: vi.fn().mockReturnValue('bucket'),
       removeAuthToken: vi.fn(),
     } as unknown as ApiConnection;
 
@@ -307,37 +305,6 @@ describe('Downloader', () => {
         testParams.id,
         1024,
         mockContentKey,
-        true, // isBucketStorage
-        testParams.filename,
-        'text/plain',
-        mockApi,
-        mockProgressTracker
-      );
-    });
-
-    it('should work with non-bucket storage', async () => {
-      const { getBlob } = await import('@send-frontend/lib/filesync');
-      mockApi.isBucketStorage = false;
-
-      mockApi.call = vi
-        .fn()
-        .mockResolvedValueOnce({ isSuspicious: false })
-        .mockResolvedValueOnce({ size: 1024, type: 'text/plain' });
-
-      await downloader.doDownload(
-        testParams.id,
-        testParams.folderId,
-        testParams.wrappedKeyStr,
-        testParams.filename,
-        mockMetrics,
-        mockProgressTracker
-      );
-
-      expect(getBlob).toHaveBeenCalledWith(
-        testParams.id,
-        1024,
-        expect.any(Object), // contentKey
-        false, // isBucketStorage
         testParams.filename,
         'text/plain',
         mockApi,

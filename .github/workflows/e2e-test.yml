@@ -4,9 +4,7 @@
 # path production takes. scripts/e2e.sh layers that overlay on only when the
 # backend .env says STORAGE_BACKEND=s3, which is what keeps the sibling
 # e2e-bucket-test workflow (same specs, against Backblaze) clear of it.
-#
-# This lane ran on the filesystem backend until now. That backend still exists;
-# it is simply no longer what CI or a fresh checkout defaults to.
+# There is no filesystem storage backend.
 name: e2e-tests
 
 concurrency:
