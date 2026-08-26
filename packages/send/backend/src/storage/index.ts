@@ -61,15 +61,14 @@ export class FileStore {
 
   /**
    * The S3 data plane for this store: presigned upload/download URLs and the
-   * size read. Undefined for filesystem storage. `presigner` differs from
-   * `client` only where the browser reaches the bucket at a different host than
-   * the backend does -- see the constructor.
+   * size read. `presigner` differs from `client` only where the browser reaches
+   * the bucket at a different host than the backend does -- see the constructor.
    */
   private s3?: { client: S3Client; presigner: S3Client; bucket: string };
 
   /**
    * Initialize the adapter.
-   * @param config: StorageAdapterConfig - Optional configuration information. If omitted, we fall back to the filesystem.
+   * @param config: StorageAdapterConfig - Optional configuration information. If omitted, it is read from STORAGE_BACKEND.
    *
    * When configured for Backblaze, uses the native API instead of the S3-compatible API
    * (As of 2024-06-01, there were errors when accessing Backblaze via its S3 API.)
@@ -94,18 +93,13 @@ export class FileStore {
           };
           console.log(`Initializing S3 storage ☁️`);
           break;
-        case 'fs':
-        // intentional fall-through;
-        // fs is default
-        // eslint-disable-next-line no-fallthrough
         default:
-          config = {
-            type: StorageType.LOCAL,
-            directory: process.env.FS_LOCAL_DIR,
-            bucketName: process.env.FS_LOCAL_BUCKET,
-          };
-          console.log(`Initializing local filesystem storage 💾`);
-          break;
+          // No filesystem fallback. Every upload is a presigned PUT from the
+          // browser to a bucket, so a store without one cannot serve a single
+          // upload -- failing at boot beats discovering that on the first file.
+          throw new Error(
+            `STORAGE_BACKEND must be 'b2' or 's3', got '${process.env.STORAGE_BACKEND ?? ''}'`
+          );
       }
     }
 

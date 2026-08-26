@@ -199,20 +199,16 @@ You can use VSCode's debugger for the backend.
 One suite needs a bucket to talk to. `src/test/storage/presigned-roundtrip.test.ts`
 covers the path production takes for a file — a presigned PUT, a size read back,
 a presigned GET, a delete — so it moves real bytes over HTTP rather than
-stubbing the S3 client. Start the bucket first:
+stubbing the S3 client. `docker compose up` already starts that bucket — it is the
+MinIO service the dev stack itself uploads to, so there is no separate step.
 
-```sh
-# from the repository root
-docker compose up -d minio
-```
-
-It is MinIO, it holds nothing but test objects, and it costs nothing to start —
-so the suite requires it rather than skipping when it is missing, and says so if
-nothing answers. The connection settings are the compose service's own and are
-built into the suite as defaults, so an existing checkout needs no `.env` change.
-If another worktree is already using port 9000, start MinIO with
-`SEND_MINIO_PORT=9010 docker compose up -d minio` and set
-`TEST_MINIO_ENDPOINT=http://localhost:9010` in `packages/send/backend/.env`.
+It holds nothing but test objects and costs nothing to start, so the suite
+requires it rather than skipping when it is missing, and says so if nothing
+answers. The connection settings are the compose service's own and are built into
+the suite as defaults, so an existing checkout needs no `.env` change. If another
+worktree is already using port 9000, start the stack with `SEND_MINIO_PORT=9010`
+and set `TEST_MINIO_ENDPOINT=http://localhost:9010` and
+`S3_PUBLIC_ENDPOINT=http://localhost:9010` in `packages/send/backend/.env`.
 
 ### E2E testing
 
@@ -224,7 +220,18 @@ In order to keep track of our releases, we need to set our versions on either th
 
 ## Storage
 
-We're using Backblaze for our storage buckets.
+Every upload is a presigned PUT from the browser straight to a bucket, so the
+backend needs one — there is no filesystem backend to fall back on.
+`STORAGE_BACKEND` is `b2` or `s3`, and anything else throws at boot. Locally
+`.env.sample` sets `s3` and points it at the MinIO service in `compose.yml`,
+which needs no account and no credentials.
+
+Because the browser reaches MinIO at a different address than the backend does
+(`localhost:9000` published, `minio:9000` on the compose network) and a presigned
+URL is only valid for the host it was signed for, `S3_PUBLIC_ENDPOINT` says which
+address to sign with. Production leaves it empty: one host serves both.
+
+In deployed environments we're using Backblaze for our storage buckets.
 
 We're uploading/downloading directly to the bucket using signed urls. In order for us to avoid CORS issues, we have to configure the buckets correctly.
 

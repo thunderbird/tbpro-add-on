@@ -149,8 +149,6 @@ resources:
                 value: postgres
               - name: DATABASE_USER
                 value: sendapp
-              - name: FS_LOCAL_BUCKET
-                value: send-fs-local
               - name: NODE_ENV
                 value: dev
               - name: POSTHOG_HOST
