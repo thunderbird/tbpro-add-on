@@ -53,7 +53,7 @@ import { errorHandler } from '../../errors/routes';
 const app = express();
 app.use(express.json());
 app.use('/api/uploads', router);
-app.use((err, req, res, next) => errorHandler(err, req, res, next));
+app.use((err, req, res, _next) => errorHandler(err, req, res));
 
 describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
   beforeEach(() => {
