@@ -126,11 +126,15 @@ export async function sendBlob(
   const stream = blobStream(blob);
 
   try {
-    // Get the bucket url
+    // Get the bucket url. Send the plaintext size so the backend can gate the
+    // request against the real quota and sign the exact ciphertext
+    // content-length into the presigned PUT (private #36). The backend rejects
+    // a missing/invalid size with 400.
     const { id, url } = await api.call<{ url: string; id: string }>(
       'uploads/signed',
       {
         type: 'application/octet-stream',
+        size: blob.size,
       },
       'POST'
     );
