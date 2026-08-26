@@ -81,6 +81,22 @@ describe('Storage: bucket configuration', () => {
     expect(url.searchParams.get('X-Amz-Credential')).toContain('s3-key-id');
   });
 
+  it('signs with the public endpoint when the browser reaches another host', async () => {
+    // The compose case: the backend talks to `minio:9000` over the container
+    // network, which the browser cannot resolve.
+    const url = new URL(
+      await new FileStore({
+        ...S3,
+        endpoint: 'http://minio:9000',
+        publicEndpoint: 'http://localhost:9000',
+        forcePathStyle: true,
+      }).getDownloadBucketUrl('key')
+    );
+
+    expect(url.host).toBe('localhost:9000');
+    expect(url.pathname).toBe('/s3-bucket/key');
+  });
+
   it('refuses to sign for a backend that has no bucket', async () => {
     const bucketless = new FileStore({ ...S3, bucketName: undefined });
 
