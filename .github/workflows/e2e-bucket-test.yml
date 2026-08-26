@@ -50,7 +50,7 @@ jobs:
       packages: write
       contents: read
     env:
-      # -b2 suffix distinguishes tags from the filesystem e2e workflow which uses -fs
+      # -b2 suffix distinguishes tags from the sibling e2e workflow, which uses -minio
       BACKEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-backend:${{ github.sha }}-b2
       FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/e2e-frontend:${{ github.sha }}-b2
       PROXY_IMAGE: ghcr.io/${{ github.repository }}/e2e-reverse-proxy:${{ github.sha }}-b2

@@ -44,6 +44,7 @@ function s3SettingsFor(config: StorageAdapterConfig): S3Settings | undefined {
   }
   return {
     endpoint: config.endpoint,
+    publicEndpoint: config.publicEndpoint,
     region: config.region,
     accessKeyId: config.accessKeyId ?? config.applicationKeyId,
     secretAccessKey: config.secretAccessKey ?? config.applicationKey,
@@ -63,9 +64,11 @@ export class FileStore {
 
   /**
    * The S3 data plane for this store: presigned upload/download URLs and the
-   * size read. Undefined for filesystem storage.
+   * size read. Undefined for filesystem storage. `presigner` differs from
+   * `client` only where the browser reaches the bucket at a different host than
+   * the backend does -- see the constructor.
    */
-  private s3?: { client: S3Client; bucket: string };
+  private s3?: { client: S3Client; presigner: S3Client; bucket: string };
 
   /**
    * Initialize the adapter.
@@ -87,8 +90,10 @@ export class FileStore {
             region: process.env.S3_REGION || 'auto',
             bucketName: process.env.S3_BUCKET_NAME,
             endpoint: process.env.S3_ENDPOINT,
+            publicEndpoint: process.env.S3_PUBLIC_ENDPOINT,
             accessKeyId: process.env.S3_ACCESS_KEY,
             secretAccessKey: process.env.S3_SECRET_KEY,
+            forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
           };
           console.log(`Initializing S3 storage ☁️`);
           break;
@@ -123,8 +128,18 @@ export class FileStore {
       settings.accessKeyId &&
       settings.secretAccessKey
     ) {
+      const client = createS3Client(settings);
       this.s3 = {
-        client: createS3Client(settings),
+        client,
+        // A presigned URL is only valid for the host it was signed for, and the
+        // browser is the one that has to reach that host. In compose the
+        // backend talks to MinIO at `minio:9000`, which means nothing outside
+        // the container network, so the dev stack signs with a published
+        // address instead. Production leaves `publicEndpoint` unset: one host
+        // serves both.
+        presigner: settings.publicEndpoint
+          ? createS3Client({ ...settings, endpoint: settings.publicEndpoint })
+          : client,
         bucket: settings.bucketName,
       };
     }
@@ -143,8 +158,12 @@ export class FileStore {
     }
   }
 
-  /** The S3 client and bucket, or a throw if this store has no bucket. */
-  private bucketApi(): { client: S3Client; bucket: string } {
+  /** The S3 clients and bucket, or a throw if this store has no bucket. */
+  private bucketApi(): {
+    client: S3Client;
+    presigner: S3Client;
+    bucket: string;
+  } {
     if (!this.s3) {
       throw new Error('Bucket storage is not configured');
     }
@@ -152,8 +171,8 @@ export class FileStore {
   }
 
   async getUploadBucketUrl(key: string, contentType: string) {
-    const { client, bucket } = this.bucketApi();
-    return await getSignedUrl(client, {
+    const { presigner, bucket } = this.bucketApi();
+    return await getSignedUrl(presigner, {
       Bucket: bucket,
       Key: key,
       ContentType: contentType,
@@ -161,8 +180,11 @@ export class FileStore {
   }
 
   async getDownloadBucketUrl(id: string) {
-    const { client, bucket } = this.bucketApi();
-    return await getSignedUrlforDownload(client, { Bucket: bucket, Key: id });
+    const { presigner, bucket } = this.bucketApi();
+    return await getSignedUrlforDownload(presigner, {
+      Bucket: bucket,
+      Key: id,
+    });
   }
 
   /**

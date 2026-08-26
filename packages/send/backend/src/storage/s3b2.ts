@@ -15,6 +15,12 @@ import { getSignedUrl as getSignedUrlCommand } from '@aws-sdk/s3-request-presign
  */
 export type S3Settings = {
   endpoint?: string;
+  /**
+   * The endpoint to sign browser-facing URLs with, when the browser reaches the
+   * bucket at a different address than the backend does -- MinIO in compose,
+   * for instance. Falls back to `endpoint`, which is what production wants.
+   */
+  publicEndpoint?: string;
   region?: string;
   accessKeyId?: string;
   secretAccessKey?: string;

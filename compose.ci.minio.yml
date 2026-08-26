@@ -1,0 +1,63 @@
+# The bucket for the e2e lane that runs on S3-compatible storage, layered onto
+# compose.ci.yml. It is an overlay rather than part of the base file so the
+# Backblaze lane -- which brings the same base file up and has no use for MinIO
+# -- neither pulls these images nor fails when a MinIO healthcheck flakes.
+# scripts/e2e.sh adds it based on STORAGE_BACKEND in the backend .env.
+#
+# A compose profile cannot do this job: compose auto-enables the profile of any
+# service named in a `depends_on`.
+services:
+  # The bucket the stack uploads to. Every upload is a presigned PUT from the
+  # browser straight to object storage, so the e2e run needs one; MinIO needs no
+  # account and no credentials, which keeps this lane runnable on a fork.
+  #
+  # Deliberately a second definition rather than `extends: compose.yml`: compose
+  # MERGES the `ports` list under `extends` instead of replacing it, so this
+  # would inherit the dev file's loopback bind *and* add the one below -- two
+  # bindings for host port 9000. Keep the image tag in step with compose.yml
+  # (`grep -rn minio/minio compose*.yml`), or CI and dev test different MinIO.
+  #
+  # Published on all interfaces, unlike the loopback bind in compose.yml: in a
+  # GitHub Actions `container:` job the daemon is the host's, so the port has to
+  # be reachable from the runner's bridge, not just its loopback.
+  # No console: nothing looks at a web UI in a headless run.
+  minio:
+    image: "minio/minio:RELEASE.2025-09-07T16-13-09Z"
+    command: server /data
+    ports:
+      - "9000:9000"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      # The browser PUTs and GETs the bytes itself, from the frontend's origin.
+      - MINIO_API_CORS_ALLOW_ORIGIN=*
+    healthcheck:
+      test: [ "CMD", "mc", "ready", "local" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Creates the bucket and exits. Reads the same env_file as the backend so the
+  # two cannot name different buckets.
+  minio-init:
+    image: "minio/mc:RELEASE.2025-08-13T08-35-41Z"
+    env_file:
+      - ./packages/send/backend/.env
+    depends_on:
+      minio:
+        condition: service_healthy
+    # `$$` escapes compose interpolation, so the container's shell expands it
+    # from env_file rather than compose expanding it from the host shell.
+    entrypoint: >-
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/$${S3_BUCKET_NAME:?is empty; set it in packages/send/backend/.env}
+      "
+
+  backend:
+    depends_on:
+      # The bucket has to exist before the first presigned PUT, and this
+      # transitively waits on minio being healthy. A failed minio-init also
+      # stops the stack here instead of surfacing as a NoSuchBucket later.
+      minio-init:
+        condition: service_completed_successfully
