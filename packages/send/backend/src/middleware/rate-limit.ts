@@ -72,43 +72,45 @@ function keyForRequest(req: Request): string {
 export function createRateLimiter(tier: RateLimitTier): RequestHandler {
   const { windowMs, max } = RATE_LIMITS[tier];
 
-  // Built on first use, not at import time. The RedisStore constructor eagerly
-  // loads a Lua script into Redis, so building it here would open a connection
-  // (and throw on a missing REDIS_URL) the moment a route file is imported --
-  // including in tests and any environment where Redis is not configured. The
-  // fail-closed guard below already turns a real outage into a clean 503, so
-  // deferring construction costs nothing.
-  let limiter: RequestHandler | null = null;
-  const getLimiter = (): RequestHandler => {
-    if (limiter) {
-      return limiter;
-    }
-    limiter = rateLimit({
-      windowMs,
-      max,
-      // Key each named limiter's counters separately in Redis and namespace
-      // them under `rl:` so this data is safe to share a Redis with other
-      // services.
-      store: new RedisStore({
-        prefix: `rl:${tier}:`,
-        sendCommand: (command: string, ...args: string[]) =>
-          getRedisClient().call(command, ...args) as Promise<never>,
-      }),
-      keyGenerator: keyForRequest,
-      // Emit the standard RateLimit-* headers so clients can back off proactively.
-      standardHeaders: true,
-      legacyHeaders: false,
-      // Answer over-limit requests with 429 and a Retry-After hint. express-rate-
-      // limit sets Retry-After automatically; we only shape the JSON body.
-      handler: (_req: Request, res: Response) => {
-        res.status(429).json({
-          message: 'Too many requests. Please slow down and try again shortly.',
-          error: 'too_many_requests',
-        });
+  // Built once here, at route-registration time (not per request). Building it
+  // per request is what express-rate-limit warns about (ERR_ERL_CREATED_IN_
+  // REQUEST_HANDLER), and it would also discard the counters between requests.
+  //
+  // The RedisStore constructor kicks off a Lua-script load via sendCommand. We
+  // must not let that reach Redis at construction time, because route files are
+  // imported in tests and in environments with no Redis configured. So
+  // sendCommand below is a no-op until Redis is both configured and reachable;
+  // the per-request guard is what actually enforces (or 503s) once it is.
+  const limiter = rateLimit({
+    windowMs,
+    max,
+    // Key each named limiter's counters separately in Redis and namespace them
+    // under `rl:` so this data is safe to share a Redis with other services.
+    store: new RedisStore({
+      prefix: `rl:${tier}:`,
+      sendCommand: (command: string, ...args: string[]) => {
+        // Only talk to Redis when it is configured and up. Otherwise resolve to
+        // null so the store's script-load and any stray call are harmless; the
+        // request-level guard has already decided pass-through or 503 by then.
+        if (!isRateLimitingEnabled() || !isRedisHealthy()) {
+          return Promise.resolve(null) as Promise<never>;
+        }
+        return getRedisClient().call(command, ...args) as Promise<never>;
       },
-    } as Partial<Options>);
-    return limiter;
-  };
+    }),
+    keyGenerator: keyForRequest,
+    // Emit the standard RateLimit-* headers so clients can back off proactively.
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Answer over-limit requests with 429 and a Retry-After hint. express-rate-
+    // limit sets Retry-After automatically; we only shape the JSON body.
+    handler: (_req: Request, res: Response) => {
+      res.status(429).json({
+        message: 'Too many requests. Please slow down and try again shortly.',
+        error: 'too_many_requests',
+      });
+    },
+  } as Partial<Options>);
 
   return (req, res, next) => {
     // Rate limiting is opt-in via REDIS_URL. Where Redis is not configured
@@ -131,6 +133,6 @@ export function createRateLimiter(tier: RateLimitTier): RequestHandler {
       return;
     }
 
-    getLimiter()(req, res, next);
+    limiter(req, res, next);
   };
 }
