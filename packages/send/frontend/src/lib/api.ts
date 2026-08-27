@@ -74,6 +74,44 @@ export function buildApiUrl(serverUrl: string, path: string): string {
   return url.toString();
 }
 
+// Upper bound on how long we will wait for a Retry-After before giving up on the
+// automatic retry. A server should never ask a browser to sit idle for minutes;
+// beyond this we surface the rate-limit to the caller instead of blocking.
+export const MAX_RETRY_AFTER_MS = 10_000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Parse an HTTP `Retry-After` header into milliseconds.
+ *
+ * Supports both forms the spec allows: a number of seconds (`"3"`) and an
+ * HTTP-date (`"Wed, 21 Oct 2026 07:28:00 GMT"`). Returns null when the header is
+ * absent or unparseable, and clamps negatives to 0 (a past date means "now").
+ */
+export function parseRetryAfterMs(
+  header: string | null | undefined
+): number | null {
+  if (!header) {
+    return null;
+  }
+  const trimmed = header.trim();
+
+  // delta-seconds form.
+  if (/^\d+$/.test(trimmed)) {
+    return Number(trimmed) * 1000;
+  }
+
+  // HTTP-date form.
+  const dateMs = Date.parse(trimmed);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+
+  return null;
+}
+
 export class ApiConnection {
   serverUrl: string;
 
@@ -246,6 +284,38 @@ export class ApiConnection {
       }
     }
 
+    // Rate limiting (429): the backend is asking us to slow down, not failing.
+    // Wait the server-suggested amount (Retry-After) and retry once, rather than
+    // hammering it or surfacing a hard error. This pairs with the backend limits
+    // added under the #1072 milestone.
+    if (resp.status === 429) {
+      const waitMs = parseRetryAfterMs(resp.headers?.get?.('retry-after'));
+      // Only back off for a sane, bounded wait. A missing/garbage or absurdly
+      // long Retry-After should not hang the request behind a multi-minute
+      // timer; in that case we skip the retry and report it to the caller.
+      if (waitMs !== null && waitMs <= MAX_RETRY_AFTER_MS) {
+        await delay(waitMs);
+        try {
+          resp = await fetch(url, opts);
+        } catch (error) {
+          options?.onFailure?.({ kind: 'network', status: null, error });
+          return null;
+        }
+      }
+
+      // Still limited after the single retry (or we chose not to wait): tell the
+      // caller explicitly so it can show a friendly "please wait" message rather
+      // than a generic failure.
+      if (resp.status === 429) {
+        options?.onFailure?.({
+          kind: 'rate_limited',
+          status: 429,
+          retryAfterMs: waitMs,
+        });
+        return null;
+      }
+    }
+
     if (!resp.ok) {
       // Surface the status/body for the caller's diagnostics before discarding
       // the response. Reading the body is safe here because we return null
@@ -281,7 +351,11 @@ export class ApiConnection {
  */
 export type ApiCallFailure =
   | { kind: 'network'; status: null; error: unknown }
-  | { kind: 'http'; status: number; statusText: string; body?: string };
+  | { kind: 'http'; status: number; statusText: string; body?: string }
+  // The request was rate-limited (HTTP 429). `retryAfterMs` is the wait the
+  // server suggested, if it sent a usable Retry-After (null otherwise). Callers
+  // can use it to show a "too many requests, please wait" message.
+  | { kind: 'rate_limited'; status: 429; retryAfterMs: number | null };
 
 type Options = {
   fullResponse?: boolean;
