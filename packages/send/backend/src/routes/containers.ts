@@ -26,6 +26,7 @@ import {
   requireSharePermission,
   requireWritePermission,
 } from '../middleware';
+import { createRateLimiter } from '../middleware/rate-limit';
 
 import {
   addErrorHandling,
@@ -94,6 +95,8 @@ router.get(
   requireJWT,
   getGroupMemberPermissions,
   requireReadPermission,
+  // Authenticated read: loosest tier, keyed per user.
+  createRateLimiter('read'),
   addErrorHandling(CONTAINER_ERRORS.CONTAINER_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -146,6 +149,8 @@ router.get(
   requireJWT,
   getGroupMemberPermissions,
   requireReadPermission,
+  // Authenticated read: loosest tier, keyed per user.
+  createRateLimiter('read'),
   addErrorHandling(CONTAINER_ERRORS.ACCESS_LINKS_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -191,6 +196,8 @@ router.post(
   renameBodyProperty('parentId', 'containerId'),
   getGroupMemberPermissions,
   requireWritePermission,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.CONTAINER_NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     const {
@@ -261,6 +268,8 @@ router.post(
   requireJWT,
   getGroupMemberPermissions,
   requireWritePermission,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.CONTAINER_NOT_RENAMED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -296,6 +305,8 @@ router.delete(
   requireJWT,
   getGroupMemberPermissions,
   requireAdminPermission,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.CONTAINER_NOT_DELETED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -355,6 +366,8 @@ router.delete(
 router.post(
   '/:containerId/item',
   getGroupMemberPermissions,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -407,6 +420,8 @@ router.post(
 router.delete(
   '/:containerId/item/:itemId',
   getGroupMemberPermissions,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_DELETED),
   wrapAsyncHandler(async (req, res) => {
     const { itemId } = req.params;
@@ -458,6 +473,8 @@ router.delete(
 router.post(
   '/:containerId/item/:itemId/rename',
   getGroupMemberPermissions,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_RENAMED),
   wrapAsyncHandler(async (req, res) => {
     const { itemId } = req.params;
@@ -540,6 +557,8 @@ router.post(
 router.post(
   '/:containerId/member/invite',
   getGroupMemberPermissions,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.INVITATION_NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -630,6 +649,8 @@ router.delete(
 router.post(
   '/:containerId/member',
   getGroupMemberPermissions,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.MEMBER_NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -668,6 +689,8 @@ router.post(
 router.delete(
   '/:containerId/member/:userId',
   getGroupMemberPermissions,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.MEMBER_NOT_DELETED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId, userId } = req.params;
@@ -700,6 +723,8 @@ router.delete(
 router.get(
   '/:containerId/members',
   getGroupMemberPermissions,
+  // Authenticated read: loosest tier, keyed per user.
+  createRateLimiter('read'),
   addErrorHandling(CONTAINER_ERRORS.MEMBERS_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     // getContainerWithMembers
@@ -733,6 +758,8 @@ router.get(
 router.get(
   '/:containerId/info',
   getGroupMemberPermissions,
+  // Authenticated read: loosest tier, keyed per user.
+  createRateLimiter('read'),
   addErrorHandling(CONTAINER_ERRORS.INFO_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -765,6 +792,8 @@ router.get(
 router.get(
   '/:containerId/shares',
   getGroupMemberPermissions,
+  // Authenticated read: loosest tier, keyed per user.
+  createRateLimiter('read'),
   addErrorHandling(CONTAINER_ERRORS.SHARES_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -812,6 +841,8 @@ router.get(
 router.post(
   '/:containerId/shares/invitation/update',
   getGroupMemberPermissions,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.PERMISSIONS_NOT_UPDATED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
@@ -866,6 +897,8 @@ router.post(
 router.post(
   '/:containerId/shares/accessLink/update',
   getGroupMemberPermissions,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.PERMISSIONS_NOT_UPDATED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;

@@ -29,6 +29,7 @@ import {
   addExpiryToContainer,
   formatAccessLinkWithPasswordHash,
 } from '@send-backend/utils';
+import { createRateLimiter } from '../middleware/rate-limit';
 import {
   getGroupMemberPermissions,
   requireAdminPermission,
@@ -72,6 +73,8 @@ router.post(
   requireJWT,
   getGroupMemberPermissions,
   requireSharePermission,
+  // State-changing share action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     const { uniqueHash } = getDataFromAuthenticatedRequest(req);
@@ -147,6 +150,8 @@ router.get(
   requireJWT,
   getGroupMemberPermissions,
   requireSharePermission,
+  // Authenticated read: loosest tier, keyed per user.
+  createRateLimiter('read'),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
     const canCreateLink = await checkIfAccessLinkCanBeCreated(containerId);
@@ -335,6 +340,8 @@ router.get(
   requireJWT,
   getGroupMemberPermissions,
   requireAdminPermission,
+  // Authenticated read: loosest tier, keyed per user.
+  createRateLimiter('read'),
   addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { uploadId } = req.params;
