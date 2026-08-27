@@ -8,6 +8,7 @@ import {
  } from "../../const/const"
 
 import {
+  ensureReady,
   log_out_restore_keys,
   register_and_login,
   reset_keys,
@@ -88,6 +89,8 @@ test.describe("File workflows", {
 
   workflows.forEach(({ title, action }) => {
     test(title, async ({ sendHome }) => {
+      // A restored session may land logged-out or keychain-locked (see ensureReady).
+      await ensureReady(sendHome.page);
       await action(sendHome);
     });
   });
@@ -97,6 +100,8 @@ test.describe("Key restore", {
   tag: [PLAYWRIGHT_TAG_DEV_DESKTOP],
 }, () => {
   test("Reset keys", async ({ sendHome }) => {
+    // A restored session may land logged-out or keychain-locked (see ensureReady).
+    await ensureReady(sendHome.page);
     await reset_keys(sendHome);
   });
 });
