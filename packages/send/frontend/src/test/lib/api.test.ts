@@ -8,6 +8,7 @@ import {
   ApiCallFailure,
   ApiConnection,
   buildApiUrl,
+  parseRetryAfterMs,
 } from '@send-frontend/lib/api';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -273,6 +274,128 @@ describe('ApiConnection.call — onFailure diagnostics', () => {
 
     expect(failure?.kind).toBe('http');
     expect((failure as { body: string }).body).toHaveLength(500);
+  });
+});
+
+describe('parseRetryAfterMs', () => {
+  it('parses delta-seconds into milliseconds', () => {
+    expect(parseRetryAfterMs('3')).toBe(3000);
+    expect(parseRetryAfterMs('0')).toBe(0);
+  });
+
+  it('parses an HTTP-date into a wait relative to now', () => {
+    const twoSecondsOut = new Date(Date.now() + 2000).toUTCString();
+    const ms = parseRetryAfterMs(twoSecondsOut);
+    // Allow a little slack for clock/rounding; UTCString drops sub-second parts.
+    expect(ms).toBeGreaterThanOrEqual(0);
+    expect(ms).toBeLessThanOrEqual(2000);
+  });
+
+  it('clamps a past date to 0', () => {
+    const past = new Date(Date.now() - 60_000).toUTCString();
+    expect(parseRetryAfterMs(past)).toBe(0);
+  });
+
+  it('returns null for missing or unparseable values', () => {
+    expect(parseRetryAfterMs(null)).toBeNull();
+    expect(parseRetryAfterMs(undefined)).toBeNull();
+    expect(parseRetryAfterMs('')).toBeNull();
+    expect(parseRetryAfterMs('soon')).toBeNull();
+  });
+});
+
+describe('ApiConnection.call — 429 rate limiting (#1105)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('waits the Retry-After then retries once and returns the retry body', async () => {
+    let call = 0;
+    const fetchFn = mockFetch(() => {
+      call += 1;
+      if (call === 1) {
+        return {
+          ok: false,
+          status: 429,
+          headers: { get: (k: string) => (k === 'retry-after' ? '0' : null) },
+          json: async () => ({ limited: true }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => ({ ok: true }),
+      } as unknown as Response;
+    });
+
+    const api = new ApiConnection(SERVER);
+    const result = await api.call('uploads', {}, 'POST');
+
+    expect(fetchFn).toHaveBeenCalledTimes(2); // retried once after backoff
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('reports kind=rate_limited when still limited after the retry', async () => {
+    const fetchFn = mockFetch(
+      () =>
+        ({
+          ok: false,
+          status: 429,
+          headers: { get: (k: string) => (k === 'retry-after' ? '0' : null) },
+          json: async () => ({ limited: true }),
+        }) as unknown as Response
+    );
+
+    const api = new ApiConnection(SERVER);
+    let failure: ApiCallFailure | undefined;
+    const result = await api.call(
+      'uploads',
+      {},
+      'POST',
+      {},
+      { onFailure: (f) => (failure = f) }
+    );
+
+    expect(fetchFn).toHaveBeenCalledTimes(2); // original + one retry
+    expect(result).toBeNull();
+    expect(failure).toEqual({
+      kind: 'rate_limited',
+      status: 429,
+      retryAfterMs: 0,
+    });
+  });
+
+  it('does not retry when Retry-After is missing, and reports rate_limited', async () => {
+    const fetchFn = mockFetch(
+      () =>
+        ({
+          ok: false,
+          status: 429,
+          headers: { get: () => null },
+          json: async () => ({ limited: true }),
+        }) as unknown as Response
+    );
+
+    const api = new ApiConnection(SERVER);
+    let failure: ApiCallFailure | undefined;
+    const result = await api.call(
+      'uploads',
+      {},
+      'POST',
+      {},
+      { onFailure: (f) => (failure = f) }
+    );
+
+    // No usable Retry-After -> no automatic retry, just surface it.
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(result).toBeNull();
+    expect(failure).toEqual({
+      kind: 'rate_limited',
+      status: 429,
+      retryAfterMs: null,
+    });
   });
 });
 
