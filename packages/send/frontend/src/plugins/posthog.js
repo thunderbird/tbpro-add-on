@@ -9,6 +9,16 @@ function initPosthog() {
   if (initialized) {
     return;
   }
+  // Skip init when no project key is configured (e.g. local dev, where
+  // `.env.sample` ships VITE_POSTHOG_PROJECT_KEY blank). Calling
+  // `posthog.init('')` makes posthog-js log `console.warn('[PostHog.js]
+  // PostHog was initialized without a token …')`, and Sentry's
+  // captureConsoleIntegration (lib/sentry.ts) forwards that warn as an event --
+  // the source of tens of thousands of noise events from localhost. No key
+  // means nothing to capture to anyway, so there is nothing to initialize.
+  if (!config.posthogProjectKey) {
+    return;
+  }
   posthog.init(config.posthogProjectKey, {
     api_host: config.posthogHost,
     persistence: 'memory',
