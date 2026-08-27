@@ -67,4 +67,50 @@ export function getEnvironmentName(): EnvironmentName {
 
 export { ENVIRONMENT };
 
+// --- Rate limiting -----------------------------------------------------------
+//
+// One named tier per kind of endpoint, so every route picks a limit by name
+// rather than repeating numbers. Limits are per user, per window, counted in
+// Redis so they hold across all backend instances.
+//
+// The defaults below sit well above what a normal user session does and are
+// meant to stop scripted abuse, not throttle real use. Each value can be tuned
+// from real traffic after rollout via the RL_* env vars, without a code change.
+//
+//   auth      tightest  — pre-auth / credential paths (e.g. token refresh)
+//   read      loosest   — high-frequency GETs
+//   sensitive middle    — state-changing actions (create / delete / share)
+export type RateLimitTier = 'auth' | 'read' | 'sensitive';
+
+const RATE_LIMIT_WINDOW_MS = ONE_MINUTE;
+
+function rateLimitFromEnv(
+  tier: RateLimitTier,
+  defaultMax: number
+): { windowMs: number; max: number } {
+  const maxOverride = Number(process.env[`RL_${tier.toUpperCase()}_MAX`]);
+  const windowOverride = Number(
+    process.env[`RL_${tier.toUpperCase()}_WINDOW_MS`]
+  );
+  return {
+    max:
+      Number.isFinite(maxOverride) && maxOverride > 0
+        ? maxOverride
+        : defaultMax,
+    windowMs:
+      Number.isFinite(windowOverride) && windowOverride > 0
+        ? windowOverride
+        : RATE_LIMIT_WINDOW_MS,
+  };
+}
+
+export const RATE_LIMITS: Record<
+  RateLimitTier,
+  { windowMs: number; max: number }
+> = {
+  auth: rateLimitFromEnv('auth', 10),
+  read: rateLimitFromEnv('read', 100),
+  sensitive: rateLimitFromEnv('sensitive', 30),
+};
+
 export default appConfig;

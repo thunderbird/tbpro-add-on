@@ -32,6 +32,32 @@ vi.mock('@send-backend/models/users', () => ({
   getUserById: mockedGetUserById,
 }));
 
+// /auth/refresh is now rate-limited. Report Redis as healthy and give the store
+// an in-memory backer so the limiter passes requests through to the handler
+// (rather than the fail-closed 503 it returns when Redis is unreachable). The
+// limiter's own behaviour is covered in test/middleware/rate-limit.test.ts.
+vi.mock('@send-backend/redis', () => ({
+  isRedisHealthy: () => true,
+  getRedisClient: () => ({ call: () => Promise.resolve(null) }),
+}));
+vi.mock('rate-limit-redis', () => {
+  const counts = new Map<string, number>();
+  class FakeRedisStore {
+    windowMs = 60000;
+    init(options: { windowMs: number }) {
+      this.windowMs = options.windowMs;
+    }
+    async increment(key: string) {
+      const totalHits = (counts.get(key) ?? 0) + 1;
+      counts.set(key, totalHits);
+      return { totalHits, resetTime: new Date(Date.now() + this.windowMs) };
+    }
+    async decrement() {}
+    async resetKey() {}
+  }
+  return { RedisStore: FakeRedisStore };
+});
+
 describe('Auth Routes', () => {
   let app: express.Application;
 
