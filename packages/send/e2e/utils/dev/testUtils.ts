@@ -5,10 +5,10 @@ import {
   Locator,
   Page,
 } from "@playwright/test";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 
 import { fileLocators } from "../../pages/dev/locators";
-import { storageStatePath } from "./paths";
+import { credentialsPath, storageStatePath } from "./paths";
 import path from "path";
 
 const sharelinks = {
@@ -32,6 +32,43 @@ export const playwrightConfig = {
  * `readNewShareLink` knows the copy for the click it just made has landed.
  */
 const seenShareLinks = new Set<string>();
+
+/**
+ * Persist the registered account's identity so it survives worker restarts.
+ * Playwright replaces the worker process after any test failure; the fresh
+ * worker re-evaluates this module and would otherwise mint a NEW Date.now()
+ * email — orphaning the account register_and_login created and cascading
+ * "Incorrect email or password" failures through every remaining test.
+ * Called by register_and_login; consumed by the hydration below. The file is
+ * deleted by global setup at the start of every run (see global-setup.ts).
+ */
+export function saveCredentials() {
+  writeFileSync(
+    credentialsPath,
+    JSON.stringify(
+      {
+        email: playwrightConfig.email,
+        password: playwrightConfig.password,
+        passphrase: playwrightConfig.passphrase,
+      },
+      null,
+      2
+    )
+  );
+}
+
+// Rehydrate identity in a replacement worker (no-op in the first worker: the
+// file only exists once register_and_login has run in this test run).
+try {
+  if (existsSync(credentialsPath)) {
+    const saved = JSON.parse(readFileSync(credentialsPath, "utf8"));
+    if (saved?.email) playwrightConfig.email = saved.email;
+    if (saved?.password) playwrightConfig.password = saved.password;
+    if (saved?.passphrase) playwrightConfig.passphrase = saved.passphrase;
+  }
+} catch {
+  // Corrupt/partial file: fall back to a fresh identity.
+}
 
 /**
  * Reset the module-level `shareLinks` singleton back to its empty baseline.
