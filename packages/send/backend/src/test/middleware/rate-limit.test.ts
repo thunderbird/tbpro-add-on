@@ -31,11 +31,14 @@ vi.mock('rate-limit-redis', () => {
   return { RedisStore: FakeRedisStore };
 });
 
-// Redis health is toggled per test to exercise the fail-closed path. getRedisClient
-// is stubbed so constructing the (mocked) store never touches a real connection.
+// Redis health and configured-state are toggled per test to exercise the
+// fail-closed and not-configured paths. getRedisClient is stubbed so
+// constructing the (mocked) store never touches a real connection.
 vi.mock('@send-backend/redis', () => ({
   isRedisHealthy: () =>
     (globalThis as { __rlHealthy?: boolean }).__rlHealthy ?? true,
+  isRateLimitingEnabled: () =>
+    (globalThis as { __rlEnabled?: boolean }).__rlEnabled ?? true,
   getRedisClient: () => ({ call: () => Promise.resolve(null) }),
 }));
 
@@ -73,6 +76,7 @@ describe('rate-limit middleware', () => {
   beforeEach(() => {
     counts.clear();
     (globalThis as { __rlHealthy?: boolean }).__rlHealthy = true;
+    (globalThis as { __rlEnabled?: boolean }).__rlEnabled = true;
   });
 
   it('allows requests under the limit and 429s once the limit is exceeded', async () => {
@@ -106,7 +110,7 @@ describe('rate-limit middleware', () => {
     await request(userB).get('/test').expect(200);
   });
 
-  it('fails closed with 503 when Redis is unavailable', async () => {
+  it('fails closed with 503 when Redis is configured but unavailable', async () => {
     const createRateLimiter = await loadLimiterFactory();
     const app = appWithLimiter(createRateLimiter('auth'));
     (globalThis as { __rlHealthy?: boolean }).__rlHealthy = false;
@@ -114,5 +118,17 @@ describe('rate-limit middleware', () => {
     const res = await request(app).get('/test');
     expect(res.status).toBe(503);
     expect(res.body.error).toBe('rate_limiter_unavailable');
+  });
+
+  it('passes requests through when rate limiting is not configured (no REDIS_URL)', async () => {
+    const createRateLimiter = await loadLimiterFactory();
+    const app = appWithLimiter(createRateLimiter('auth'));
+    // Not configured: rate limiting is off entirely (local dev, E2E/CI).
+    (globalThis as { __rlEnabled?: boolean }).__rlEnabled = false;
+
+    // Well past the limit of 3 -- every request still succeeds.
+    for (let i = 0; i < 6; i++) {
+      await request(app).get('/test').expect(200);
+    }
   });
 });

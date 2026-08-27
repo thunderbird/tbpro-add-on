@@ -3,7 +3,11 @@ import type { Request, RequestHandler, Response } from 'express';
 import rateLimit, { ipKeyGenerator, type Options } from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { RATE_LIMITS, type RateLimitTier } from '../config';
-import { getRedisClient, isRedisHealthy } from '../redis';
+import {
+  getRedisClient,
+  isRateLimitingEnabled,
+  isRedisHealthy,
+} from '../redis';
 
 /**
  * Rate limiting for sensitive Send backend endpoints.
@@ -19,9 +23,11 @@ import { getRedisClient, isRedisHealthy } from '../redis';
  *    affects anyone else. Pre-auth routes (like token refresh) have no user yet,
  *    so those fall back to IP plus a hash of the refresh-token cookie.
  *
- *  - If Redis is unreachable we reject with 503 (fail closed) instead of letting
- *    the request through. A limiter that quietly stops counting during an outage
- *    is exactly the condition an attacker would try to create.
+ *  - If Redis is configured but unreachable we reject with 503 (fail closed)
+ *    instead of letting the request through. A limiter that quietly stops
+ *    counting during an outage is exactly the condition an attacker would try
+ *    to create. When Redis is not configured at all (local dev, E2E/CI) rate
+ *    limiting is simply off and requests pass through -- see isRateLimitingEnabled.
  */
 
 // Identify the caller for per-user limiting. Order matters: prefer the OIDC
@@ -104,10 +110,19 @@ export function createRateLimiter(tier: RateLimitTier): RequestHandler {
     return limiter;
   };
 
-  // Wrap the limiter so a Redis outage fails closed. express-rate-limit would
-  // otherwise surface the store error to the error handler; we want an explicit,
-  // predictable 503 for these endpoints instead.
   return (req, res, next) => {
+    // Rate limiting is opt-in via REDIS_URL. Where Redis is not configured
+    // (local dev, E2E/CI) the limiter is a no-op so those environments keep
+    // working without a Redis to talk to.
+    if (!isRateLimitingEnabled()) {
+      next();
+      return;
+    }
+
+    // Redis is configured but not currently reachable: fail closed with an
+    // explicit, predictable 503 rather than letting the request through
+    // unlimited. (express-rate-limit would otherwise surface the store error to
+    // the generic error handler.)
     if (!isRedisHealthy()) {
       res.status(503).json({
         message: 'Service temporarily unavailable. Please try again shortly.',
@@ -115,6 +130,7 @@ export function createRateLimiter(tier: RateLimitTier): RequestHandler {
       });
       return;
     }
+
     getLimiter()(req, res, next);
   };
 }

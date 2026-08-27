@@ -38,6 +38,7 @@ vi.mock('@send-backend/models/users', () => ({
 // limiter's own behaviour is covered in test/middleware/rate-limit.test.ts.
 vi.mock('@send-backend/redis', () => ({
   isRedisHealthy: () => true,
+  isRateLimitingEnabled: () => true,
   getRedisClient: () => ({ call: () => Promise.resolve(null) }),
 }));
 vi.mock('rate-limit-redis', () => {

@@ -70,11 +70,29 @@ export function getRedisClient(): Redis {
 /**
  * Whether Redis is currently usable.
  *
- * The rate limiter checks this before each limited request. When Redis is down
- * we fail closed (503) rather than fail open, because a rate limiter that
- * quietly stops counting during an outage is exactly what an attacker would try
- * to cause.
+ * The rate limiter checks this before each limited request. When Redis is
+ * configured but down we fail closed (503) rather than fail open, because a
+ * rate limiter that quietly stops counting during an outage is exactly what an
+ * attacker would try to cause.
  */
 export function isRedisHealthy(): boolean {
   return healthy;
+}
+
+/**
+ * Whether rate limiting is turned on at all.
+ *
+ * Rate limiting requires Redis, so it is enabled only when REDIS_URL is set.
+ * This is the difference between two very different situations:
+ *
+ *  - REDIS_URL set but Redis unreachable  -> fail closed (503). Redis is meant
+ *    to be there; an outage must not silently disable the limits.
+ *  - REDIS_URL not set at all             -> rate limiting is off, requests
+ *    pass through. This is for environments that do not run Redis (local dev,
+ *    E2E/CI) where enforcing limits is neither wanted nor possible.
+ *
+ * Production sets REDIS_URL, so limits are always enforced there.
+ */
+export function isRateLimitingEnabled(): boolean {
+  return Boolean(process.env.REDIS_URL);
 }
