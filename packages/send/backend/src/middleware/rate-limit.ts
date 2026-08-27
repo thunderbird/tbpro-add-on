@@ -72,43 +72,49 @@ function keyForRequest(req: Request): string {
 export function createRateLimiter(tier: RateLimitTier): RequestHandler {
   const { windowMs, max } = RATE_LIMITS[tier];
 
-  // Built on first use, not at import time. The RedisStore constructor eagerly
-  // loads a Lua script into Redis, so building it here would open a connection
-  // (and throw on a missing REDIS_URL) the moment a route file is imported --
-  // including in tests and any environment where Redis is not configured. The
-  // fail-closed guard below already turns a real outage into a clean 503, so
-  // deferring construction costs nothing.
-  let limiter: RequestHandler | null = null;
-  const getLimiter = (): RequestHandler => {
-    if (limiter) {
-      return limiter;
-    }
-    limiter = rateLimit({
-      windowMs,
-      max,
-      // Key each named limiter's counters separately in Redis and namespace
-      // them under `rl:` so this data is safe to share a Redis with other
-      // services.
-      store: new RedisStore({
-        prefix: `rl:${tier}:`,
-        sendCommand: (command: string, ...args: string[]) =>
-          getRedisClient().call(command, ...args) as Promise<never>,
-      }),
-      keyGenerator: keyForRequest,
-      // Emit the standard RateLimit-* headers so clients can back off proactively.
-      standardHeaders: true,
-      legacyHeaders: false,
-      // Answer over-limit requests with 429 and a Retry-After hint. express-rate-
-      // limit sets Retry-After automatically; we only shape the JSON body.
-      handler: (_req: Request, res: Response) => {
-        res.status(429).json({
-          message: 'Too many requests. Please slow down and try again shortly.',
-          error: 'too_many_requests',
-        });
+  // Built once here at route-registration time (not per request). Building it
+  // per request triggers express-rate-limit's ERR_ERL_CREATED_IN_REQUEST_HANDLER
+  // warning and discards counters between requests.
+  //
+  // The catch: RedisStore's constructor eagerly loads a Lua script via
+  // sendCommand and requires a *string* reply (`SCRIPT LOAD` returns a SHA),
+  // throwing "unexpected reply from redis client" otherwise. Route files are
+  // imported in environments with no Redis (tests, dev, E2E), so we must answer
+  // that construction-time load without touching Redis. When rate limiting is
+  // off or Redis is down, sendCommand returns a harmless empty string for the
+  // script load and null for anything else; the per-request guard below has
+  // already decided pass-through/503 by the time any real command would run.
+  const limiter = rateLimit({
+    windowMs,
+    max,
+    // Key each named limiter's counters separately in Redis and namespace them
+    // under `rl:` so this data is safe to share a Redis with other services.
+    store: new RedisStore({
+      prefix: `rl:${tier}:`,
+      sendCommand: (command: string, ...args: string[]) => {
+        if (!isRateLimitingEnabled() || !isRedisHealthy()) {
+          // Keep the store constructible with no reachable Redis. SCRIPT LOAD
+          // wants a string SHA back; hand it one so construction never rejects.
+          const isScriptLoad =
+            command === 'SCRIPT' && args[0]?.toUpperCase?.() === 'LOAD';
+          return Promise.resolve(isScriptLoad ? '' : null) as Promise<never>;
+        }
+        return getRedisClient().call(command, ...args) as Promise<never>;
       },
-    } as Partial<Options>);
-    return limiter;
-  };
+    }),
+    keyGenerator: keyForRequest,
+    // Emit the standard RateLimit-* headers so clients can back off proactively.
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Answer over-limit requests with 429 and a Retry-After hint. express-rate-
+    // limit sets Retry-After automatically; we only shape the JSON body.
+    handler: (_req: Request, res: Response) => {
+      res.status(429).json({
+        message: 'Too many requests. Please slow down and try again shortly.',
+        error: 'too_many_requests',
+      });
+    },
+  } as Partial<Options>);
 
   return (req, res, next) => {
     // Rate limiting is opt-in via REDIS_URL. Where Redis is not configured
@@ -131,6 +137,6 @@ export function createRateLimiter(tier: RateLimitTier): RequestHandler {
       return;
     }
 
-    getLimiter()(req, res, next);
+    limiter(req, res, next);
   };
 }

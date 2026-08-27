@@ -6,6 +6,7 @@ import {
   wrapAsyncHandler,
 } from '../errors/routes';
 import { getGroupMemberPermissions, requireJWT } from '../middleware';
+import { createRateLimiter } from '../middleware/rate-limit';
 import {
   createTagForContainer,
   createTagForItem,
@@ -64,6 +65,8 @@ router.get(
   '/:tagName',
   requireJWT,
   getGroupMemberPermissions,
+  // Authenticated read: loosest tier, keyed per user.
+  createRateLimiter('read'),
   addErrorHandling(TAG_ERRORS.NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { id } = getDataFromAuthenticatedRequest(req);

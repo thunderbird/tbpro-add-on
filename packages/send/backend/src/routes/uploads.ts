@@ -24,6 +24,7 @@ import {
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { deleteUploadsByIds, reportUpload } from '@send-backend/models';
 import storage from '@send-backend/storage';
+import { createRateLimiter } from '../middleware/rate-limit';
 import { useMetrics } from '../metrics';
 import {
   checkStorageLimit,
@@ -82,6 +83,8 @@ router.post(
   getGroupMemberPermissions,
   requireWritePermission,
   checkStorageLimit,
+  // State-changing upload creation: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(UPLOAD_ERRORS.NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     try {

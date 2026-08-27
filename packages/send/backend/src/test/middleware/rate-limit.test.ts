@@ -131,4 +131,41 @@ describe('rate-limit middleware', () => {
       await request(app).get('/test').expect(200);
     }
   });
+
+  it('resets the budget after the window passes, letting requests through again', async () => {
+    const createRateLimiter = await loadLimiterFactory();
+    const app = appWithLimiter(createRateLimiter('auth'));
+
+    // Use up the budget.
+    await request(app).get('/test').expect(200);
+    await request(app).get('/test').expect(200);
+    await request(app).get('/test').expect(200);
+    await request(app).get('/test').expect(429);
+
+    // Real Redis expires the counter key when the window elapses. Simulate that
+    // by clearing the shared store the way the TTL would, then confirm the same
+    // caller is allowed again.
+    counts.clear();
+
+    await request(app).get('/test').expect(200);
+  });
+
+  it('shares one budget across instances (counts in the shared store, not per instance)', async () => {
+    const createRateLimiter = await loadLimiterFactory();
+    // Two separate limiter instances stand in for two backend replicas. They
+    // must draw from the same Redis-backed counter, so the per-user limit is
+    // one shared budget rather than one budget per replica.
+    const replicaA = appWithLimiter(createRateLimiter('read'), 'same-user');
+    const replicaB = appWithLimiter(createRateLimiter('read'), 'same-user');
+
+    // Spend the whole budget of 3 spread across both replicas.
+    await request(replicaA).get('/test').expect(200);
+    await request(replicaB).get('/test').expect(200);
+    await request(replicaA).get('/test').expect(200);
+
+    // The 4th request is blocked no matter which replica answers it -- proving
+    // the limit was not counted separately per instance.
+    await request(replicaB).get('/test').expect(429);
+    await request(replicaA).get('/test').expect(429);
+  });
 });
