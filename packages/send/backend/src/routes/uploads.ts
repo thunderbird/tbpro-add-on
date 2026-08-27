@@ -32,6 +32,7 @@ import {
   requireJWT,
   requireWritePermission,
 } from '../middleware';
+import { calculateEncryptedSize } from '../utils/encryptedSize';
 
 const router: Router = Router();
 
@@ -162,16 +163,50 @@ router.post(
  *       500:
  *         description: Failed to generate pre-signed URL
  */
+// The client must state the (plaintext) size up front so the quota check runs
+// against a real number, not the `|| 0` default that let any request pass
+// (private #36). `checkStorageLimit` reads `req.body.size`, so validation has
+// to run before it.
+const signedSchema = z.object({
+  type: z.string(),
+  size: z
+    .number({ required_error: 'size is required' })
+    .int()
+    .positive('size must be greater than 0'),
+});
+
 router.post(
   '/signed',
   requireJWT,
+  addErrorHandling(UPLOAD_ERRORS.INVALID_SIZE),
+  wrapAsyncHandler(async (req, res, next) => {
+    const result = signedSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        message: result.error.issues[0]?.message ?? 'Invalid request body',
+      });
+    }
+    // Normalize so `checkStorageLimit` (which reads `req.body.size`) gates on
+    // the validated value.
+    req.body.size = result.data.size;
+    return next();
+  }),
   checkStorageLimit,
   addErrorHandling(UPLOAD_ERRORS.NO_BUCKET),
   wrapAsyncHandler(async (req, res) => {
     const uploadId = uuidv4();
-    const { type } = req.body;
+    const { type, size } = req.body;
+    // Sign the exact ciphertext content-length into the URL. `size` is the
+    // plaintext size the client stated (validated above); storage holds ECE
+    // ciphertext, which is deterministically larger, so we sign the encrypted
+    // size, not the plaintext claim (private #36).
+    const contentLength = calculateEncryptedSize(size);
     try {
-      const url = await storage.getUploadBucketUrl(uploadId, type);
+      const url = await storage.getUploadBucketUrl(
+        uploadId,
+        type,
+        contentLength
+      );
       return res.json({ id: uploadId, url });
     } catch (error) {
       console.error('Error generating pre-signed URL:', error);

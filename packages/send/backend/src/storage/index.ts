@@ -161,12 +161,19 @@ export class FileStore {
     return this.s3;
   }
 
-  async getUploadBucketUrl(key: string, contentType: string) {
+  async getUploadBucketUrl(
+    key: string,
+    contentType: string,
+    // Exact ciphertext size the PUT is allowed to carry, signed into the URL so
+    // a client cannot request a small object and upload a large one (#36).
+    contentLength?: number
+  ) {
     const { presigner, bucket } = this.bucketApi();
     return await getSignedUrl(presigner, {
       Bucket: bucket,
       Key: key,
       ContentType: contentType,
+      ContentLength: contentLength,
     });
   }
 
