@@ -12,6 +12,7 @@ import {
 import { createHash } from 'crypto';
 import { Router } from 'express';
 import { RequestWithOIDC, requireOIDCAuth } from '../auth/oidc-middleware';
+import { createRateLimiter } from '../middleware/rate-limit';
 import {
   addErrorHandling,
   AUTH_ERRORS,
@@ -180,6 +181,8 @@ router.post(
 router.get(
   '/oidc/me',
   requireOIDCAuth,
+  // Authenticated, high-frequency read: the loosest tier, keyed per user.
+  createRateLimiter('read'),
   addErrorHandling(AUTH_ERRORS.AUTH_FAILED),
   wrapAsyncHandler(async (req: RequestWithOIDC, res) => {
     if (!req.oidcUser) {

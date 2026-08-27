@@ -18,6 +18,7 @@ import { getLoginSession } from '@send-backend/models';
 import { getUserByEmail, getUserById } from '@send-backend/models/users';
 import { getCookie } from '@send-backend/utils';
 import { requireJWT, requirePublicLogin } from '../middleware';
+import { createRateLimiter } from '../middleware/rate-limit';
 
 export type AuthResponse = {
   id: User['id'];
@@ -51,6 +52,9 @@ router.get(
 
 router.get(
   '/refresh',
+  // Pre-auth credential path: the tightest tier. Keyed on IP + refresh-token
+  // cookie hash (there is no user yet) to blunt brute-forcing of refresh tokens.
+  createRateLimiter('auth'),
   addErrorHandling(AUTH_ERRORS.AUTH_FAILED),
   wrapAsyncHandler(async (req, res) => {
     // try to refresh token
