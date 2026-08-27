@@ -1,16 +1,18 @@
-// Deterministic ECE (Encrypted Content-Encoding) size math, mirrored from the
-// frontend (`frontend/src/lib/ece.ts` + `helpers.ts:calculateEncryptedSize`).
+// Deterministic ECE (Encrypted Content-Encoding) size math for the ciphertext
+// the browser produces in `frontend/src/lib/ece.ts` (`encryptStream`). The
+// frontend has no size function of its own -- the one in `helpers.ts` went with
+// the WebSocket upload path in #1161 -- so this is the only place the math
+// lives, and it is derived from ece.ts's constants below.
 //
 // Storage holds ECE-encrypted ciphertext, which is ALWAYS strictly larger than
 // the plaintext blob (per-record tag + padding, plus a one-time header). The
-// backend needs the same function the client uses so it can:
+// backend has to predict that size exactly, so it can:
 //   1. sign the exact ciphertext content-length into the presigned PUT, and
 //   2. verify the uploaded object against provider ground truth
 // without trusting a client-stated number (private #36).
 //
-// These constants MUST match the frontend. If the client's record size or
-// overhead ever changes, both sides change together or every upload is
-// rejected.
+// These constants MUST match ece.ts. If the client's record size or overhead
+// ever changes, both sides change together or every upload is rejected.
 
 export const ECE_RECORD_SIZE = 1024 * 64;
 const TAG_LENGTH = 16;
