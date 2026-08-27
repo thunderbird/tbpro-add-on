@@ -72,15 +72,18 @@ function keyForRequest(req: Request): string {
 export function createRateLimiter(tier: RateLimitTier): RequestHandler {
   const { windowMs, max } = RATE_LIMITS[tier];
 
-  // Built once here, at route-registration time (not per request). Building it
-  // per request is what express-rate-limit warns about (ERR_ERL_CREATED_IN_
-  // REQUEST_HANDLER), and it would also discard the counters between requests.
+  // Built once here at route-registration time (not per request). Building it
+  // per request triggers express-rate-limit's ERR_ERL_CREATED_IN_REQUEST_HANDLER
+  // warning and discards counters between requests.
   //
-  // The RedisStore constructor kicks off a Lua-script load via sendCommand. We
-  // must not let that reach Redis at construction time, because route files are
-  // imported in tests and in environments with no Redis configured. So
-  // sendCommand below is a no-op until Redis is both configured and reachable;
-  // the per-request guard is what actually enforces (or 503s) once it is.
+  // The catch: RedisStore's constructor eagerly loads a Lua script via
+  // sendCommand and requires a *string* reply (`SCRIPT LOAD` returns a SHA),
+  // throwing "unexpected reply from redis client" otherwise. Route files are
+  // imported in environments with no Redis (tests, dev, E2E), so we must answer
+  // that construction-time load without touching Redis. When rate limiting is
+  // off or Redis is down, sendCommand returns a harmless empty string for the
+  // script load and null for anything else; the per-request guard below has
+  // already decided pass-through/503 by the time any real command would run.
   const limiter = rateLimit({
     windowMs,
     max,
@@ -89,11 +92,12 @@ export function createRateLimiter(tier: RateLimitTier): RequestHandler {
     store: new RedisStore({
       prefix: `rl:${tier}:`,
       sendCommand: (command: string, ...args: string[]) => {
-        // Only talk to Redis when it is configured and up. Otherwise resolve to
-        // null so the store's script-load and any stray call are harmless; the
-        // request-level guard has already decided pass-through or 503 by then.
         if (!isRateLimitingEnabled() || !isRedisHealthy()) {
-          return Promise.resolve(null) as Promise<never>;
+          // Keep the store constructible with no reachable Redis. SCRIPT LOAD
+          // wants a string SHA back; hand it one so construction never rejects.
+          const isScriptLoad =
+            command === 'SCRIPT' && args[0]?.toUpperCase?.() === 'LOAD';
+          return Promise.resolve(isScriptLoad ? '' : null) as Promise<never>;
         }
         return getRedisClient().call(command, ...args) as Promise<never>;
       },
