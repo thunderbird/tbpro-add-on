@@ -32,12 +32,9 @@ vi.mock('rate-limit-redis', () => {
 });
 
 // Redis health and configured-state are toggled per test to exercise the
-// fail-closed and not-configured paths. getRedisClient is stubbed so
-// constructing the (mocked) store never touches a real connection. It is a
-// vi.fn(), not a plain arrow function, so tests can assert it was actually
-// called -- that call is what a real process depends on to ever establish a
-// connection and flip isRedisHealthy() true (see redis.ts); a middleware that
-// skips it on an unhealthy start can never recover.
+// fail-closed and not-configured paths. getRedisClient is a vi.fn(), not a
+// plain stub, so tests can assert it was actually called: that's the call a
+// real process depends on to ever flip isRedisHealthy() true (see redis.ts).
 const getRedisClientMock = vi.fn(() => ({ call: () => Promise.resolve(null) }));
 
 vi.mock('@send-backend/redis', () => ({
@@ -128,14 +125,12 @@ describe('rate-limit middleware', () => {
   });
 
   it('still calls getRedisClient on a cold, unhealthy start, so the connection that would flip it healthy actually gets made', async () => {
-    // Regression test: getRedisClient() is the ONLY thing that ever creates the
-    // ioredis client and registers the 'ready' listener that flips
-    // isRedisHealthy() true. RedisStore's own sendCommand only calls it when
-    // ALREADY healthy (see rate-limit.ts), so on a fresh process (healthy ===
-    // false, client === null) that path never runs it. If this middleware also
-    // skipped the call while unhealthy, nothing in the process would ever call
-    // getRedisClient() at all -- a permanent 503 with no way to recover, no
-    // matter how reachable Redis actually is.
+    // Regression test for the production deadlock: this middleware must call
+    // getRedisClient() even while unhealthy, since RedisStore's own call to it
+    // (rate-limit.ts) only fires once already healthy. Skipping it here was
+    // the bug: index.ts's eager startup call covers most processes, but a
+    // process that reached this middleware without it (a stale pod, a test)
+    // would otherwise 503 forever with no path to recovery.
     const createRateLimiter = await loadLimiterFactory();
     const app = appWithLimiter(createRateLimiter('auth'));
     (globalThis as { __rlHealthy?: boolean }).__rlHealthy = false;
