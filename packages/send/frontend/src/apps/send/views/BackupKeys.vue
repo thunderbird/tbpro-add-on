@@ -11,7 +11,10 @@ import {
 } from '@send-frontend/stores';
 import { computed, onMounted, ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
-import { useSendConfig } from '@send-frontend/composables/useSendConfig';
+import {
+  isKnownSignedOut,
+  useSendConfig,
+} from '@send-frontend/composables/useSendConfig';
 import { useRouter } from 'vue-router';
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 import RenderOnEnvironment from '@send-frontend/apps/common/RenderOnEnvironment.vue';
@@ -70,10 +73,9 @@ const handleLogout = async () => {
 onMounted(async () => {
   if (isRunningInsideThunderbird.value) {
     const addonLoginState = await queryAddonLoginState();
-    // Only close on a *known* signed-out state — when the add-on could not read
-    // its storage it reports signed out without knowing, and closing the window
-    // on that guess strands a signed-in user (see Bug 2064203 comment 4).
-    if (!addonLoginState.isLoggedIn && !addonLoginState.storageUnavailable) {
+    // Known signed-out only: don't close the window on a storage failure the
+    // add-on couldn't see past (see isKnownSignedOut).
+    if (isKnownSignedOut(addonLoginState)) {
       console.log('[router] User not logged in to addon, closing window');
       window.close();
       router.push('/force-close');

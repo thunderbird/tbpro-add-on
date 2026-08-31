@@ -195,7 +195,7 @@ export async function menuLogout() {
   //
   // This blanket clear() is ONLY reached from a genuine logout (menuLogout(),
   // driven by the LOGOUT menu action / the SIGN_OUT message). The read-only
-  // getLoginState() probe (60s timer + route guard) MUST NOT reach this and
+  // getLoginState() probe (periodic probe + route guard) MUST NOT reach this and
   // does not -- it only ever calls storage.local.get(). See #948/#949.
   await browser.storage.local.clear();
 
@@ -245,6 +245,10 @@ async function closeAllAddOnTabs() {
  * still signed in (Bug 2064203 comment 4). Callers that act on a signed-out
  * result -- unregistering the provider, redirecting, closing a window -- must
  * check this flag first and do nothing when it is set.
+ *
+ * The flag is simply absent on any answer read from working storage;
+ * background.ts normalizes it to a plain boolean before the answer crosses the
+ * token bridge to the Send web app.
  */
 export type LoginState = {
   isLoggedIn: boolean;
@@ -258,47 +262,39 @@ type StoredAuth = {
   profile?: { preferred_username?: string; email?: string };
 };
 
-type AuthRead =
-  | { ok: true; auth: StoredAuth | undefined }
-  | { ok: false; error: unknown };
-
 /**
- * Backoff between attempts at reading the stored session. Its length also sets
- * the number of retries.
+ * Waits between retries of the stored-session read. Its length also sets the
+ * number of retries.
  *
- * A single read is enough on a healthy profile, but it makes startup a coin
+ * A single read is enough on a healthy profile, but it made startup a coin
  * flip on a slow or still-initializing storage backend: background's main()
- * reads once, and if that one read loses the race the add-on spends the whole
- * session believing the user is signed out. These retries are deliberately
- * short -- they cover a storage layer that is coming up, not one that is broken.
+ * reads once, and when that read lost the race the add-on used to spend the
+ * whole session treating the user as signed out. (Today it would spend it in
+ * the "storage unavailable" state instead -- better, but the cloud file
+ * decision made at startup would still be wrong.) These retries are
+ * deliberately short -- they cover a storage layer that is coming up, not one
+ * that is broken.
  */
 const AUTH_READ_RETRY_DELAYS_MS = [250, 1000];
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function readStoredAuth(): Promise<AuthRead> {
-  let lastError: unknown;
-
-  for (
-    let attempt = 0;
-    attempt <= AUTH_READ_RETRY_DELAYS_MS.length;
-    attempt++
-  ) {
+/**
+ * Reads the stored session, retrying briefly; rethrows the last error once the
+ * retries are spent.
+ */
+async function readStoredAuth(): Promise<StoredAuth | undefined> {
+  for (let attempt = 0; ; attempt++) {
     try {
       const authStorageData = await browser.storage.local.get(STORAGE_KEY_AUTH);
-      return {
-        ok: true,
-        auth: authStorageData[STORAGE_KEY_AUTH] as StoredAuth,
-      };
+      return authStorageData[STORAGE_KEY_AUTH] as StoredAuth | undefined;
     } catch (error) {
-      lastError = error;
-      if (attempt < AUTH_READ_RETRY_DELAYS_MS.length) {
-        await wait(AUTH_READ_RETRY_DELAYS_MS[attempt]);
+      if (attempt === AUTH_READ_RETRY_DELAYS_MS.length) {
+        throw error;
       }
+      await wait(AUTH_READ_RETRY_DELAYS_MS[attempt]);
     }
   }
-
-  return { ok: false, error: lastError };
 }
 
 /**
@@ -325,7 +321,7 @@ function noteStorageFailure(error: unknown) {
 function noteStorageRecovered() {
   if (storageFailureStreak > 0) {
     console.info(
-      `Storage is readable again after ${storageFailureStreak} failed attempt(s).`
+      `Storage is readable again after ${storageFailureStreak} failed check(s).`
     );
     storageFailureStreak = 0;
   }
@@ -334,8 +330,9 @@ function noteStorageRecovered() {
 /*
   Checks if the add-on is logged in, this is separate from the web context.
   It's a read-only probe: it's called by the Send route guard (via GET_LOGIN_STATE)
-  and by a 60s timer, so it MUST NOT have destructive side effects (closing tabs,
-  wiping storage, forcing the menu to log out).
+  and by a periodic probe (60s base, backing off while storage is unreadable --
+  see startLoginStateChecks), so it MUST NOT have destructive side effects
+  (closing tabs, wiping storage, forcing the menu to log out).
 
   Note on `expires_at`: that field is the short-lived OIDC *access token* expiry. An
   expired access token does NOT mean the session is over — the Send web app refreshes
@@ -345,19 +342,15 @@ function noteStorageRecovered() {
   SIGN_OUT message path, which calls menuLogout().
  */
 export async function getLoginState(): Promise<LoginState> {
-  const read = await readStoredAuth();
-
-  // `=== false` rather than `!read.ok`: this package compiles with
-  // strictNullChecks off, where only the explicit comparison narrows AuthRead
-  // to its failure branch.
-  if (read.ok === false) {
-    noteStorageFailure(read.error);
+  let auth: StoredAuth | undefined;
+  try {
+    auth = await readStoredAuth();
+  } catch (error) {
+    noteStorageFailure(error);
     return { isLoggedIn: false, username: null, storageUnavailable: true };
   }
 
   noteStorageRecovered();
-
-  const { auth } = read;
 
   if (!auth) {
     return { isLoggedIn: false, username: null };
@@ -409,19 +402,22 @@ export async function closeLoginTab() {
  * (Bug 2064203 comment 4 / Bug 2067502). Backing off costs us nothing: there is
  * no session change to notice while storage cannot be read, and the very next
  * successful probe drops straight back to the normal interval.
+ *
+ * Exported only so tests can drive the schedule with fake timers; init() is
+ * the real caller.
  */
-function checkLoginStateOnInterval() {
-  const CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
+export function startLoginStateChecks() {
+  const BASE_CHECK_INTERVAL_MS = 60 * 1000;
   const MAX_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 
-  let intervalMs = CHECK_INTERVAL_MS;
+  let intervalMs = BASE_CHECK_INTERVAL_MS;
 
   const scheduleNextCheck = () => {
     setTimeout(async () => {
       const state = await getLoginState().catch(() => null);
       intervalMs = state?.storageUnavailable
         ? Math.min(intervalMs * 2, MAX_CHECK_INTERVAL_MS)
-        : CHECK_INTERVAL_MS;
+        : BASE_CHECK_INTERVAL_MS;
       scheduleNextCheck();
     }, intervalMs);
   };
@@ -483,6 +479,6 @@ export function init() {
   // But we do not need to wait for it synchronously.
   getLoginState();
 
-  // Start interval to check login state periodically
-  checkLoginStateOnInterval();
+  // Keep the login state in sync with the web context on a schedule.
+  startLoginStateChecks();
 }

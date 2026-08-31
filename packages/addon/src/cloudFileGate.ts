@@ -33,8 +33,16 @@ export type CloudFileStartupAction = 'register' | 'unregister' | 'leave-as-is';
  * failure (Bug 2067502) made the add-on unregister the provider for people who
  * were signed in — they simply lost the ability to send with Send until the
  * storage fault was repaired (Bug 2064203 comment 4). When we cannot tell, the
- * safe move is to touch nothing: a signed-in user keeps working, and a fresh
- * profile stays clean because nothing was registered there in the first place.
+ * least harmful move is to touch nothing.
+ *
+ * `leave-as-is` accepts a known, narrow regression against Bug 2036665: the
+ * manifest `cloud_file` key has already registered the provider by the time we
+ * run, so skipping the unregister leaves a Send entry visible in the provider
+ * list on a signed-out or fresh profile whose storage is broken. No cloudfile
+ * *account* is created (that is the `register` branch only), so the
+ * clean-account-baseline assertions quoted above still hold, and Thunderbird's
+ * own test runs use healthy profiles. Losing the ability to send for a whole
+ * session is the worse failure, so we take the visible-provider one.
  */
 export function cloudFileStartupAction(
   state: LoginState

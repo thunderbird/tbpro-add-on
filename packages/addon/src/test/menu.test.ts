@@ -174,15 +174,20 @@ describe('getLoginState', () => {
 describe('getLoginState when storage is unavailable', () => {
   const storageError = () => new Error('An unexpected error occurred');
 
-  /** Drives the retry backoff without spending real time on it. */
+  /**
+   * Drives readStoredAuth's retry waits without spending real time on them.
+   * These specs never start the probe timer, so the retry waits are the only
+   * timers pending and running them all terminates.
+   */
   async function settle<T>(pending: Promise<T>): Promise<T> {
-    await vi.advanceTimersByTimeAsync(5000);
+    await vi.runAllTimersAsync();
     return pending;
   }
 
-  function setupFailingStorage(get: unknown) {
+  /** Replaces storage.local.get with the given behavior (failing or not). */
+  function setupStorage(getImpl: () => Promise<Record<string, unknown>>) {
     setupBrowserMock(undefined);
-    (browser.storage.local as { get: unknown }).get = get;
+    browser.storage.local.get = getImpl as typeof browser.storage.local.get;
   }
 
   beforeEach(() => {
@@ -194,7 +199,7 @@ describe('getLoginState when storage is unavailable', () => {
   });
 
   it('reports storageUnavailable instead of a bare signed-out state', async () => {
-    setupFailingStorage(vi.fn().mockRejectedValue(storageError()));
+    setupStorage(vi.fn().mockRejectedValue(storageError()));
 
     const { getLoginState } = await loadMenu();
 
@@ -209,13 +214,14 @@ describe('getLoginState when storage is unavailable', () => {
 
   it('retries a failing read before giving up', async () => {
     const get = vi.fn().mockRejectedValue(storageError());
-    setupFailingStorage(get);
+    setupStorage(get);
 
     const { getLoginState } = await loadMenu();
 
     await settle(getLoginState());
 
-    expect(get.mock.calls.length).toBeGreaterThan(1);
+    // One initial read plus one per entry in AUTH_READ_RETRY_DELAYS_MS.
+    expect(get).toHaveBeenCalledTimes(3);
   });
 
   it('recovers the session when a retry succeeds', async () => {
@@ -223,7 +229,7 @@ describe('getLoginState when storage is unavailable', () => {
       .fn()
       .mockRejectedValueOnce(storageError())
       .mockResolvedValue({ [STORAGE_KEY_AUTH]: authWith() });
-    setupFailingStorage(get);
+    setupStorage(get);
 
     const { getLoginState } = await loadMenu();
 
@@ -233,7 +239,7 @@ describe('getLoginState when storage is unavailable', () => {
   });
 
   it('logs the storage error once per failure streak, not once per probe', async () => {
-    setupFailingStorage(vi.fn().mockRejectedValue(storageError()));
+    setupStorage(vi.fn().mockRejectedValue(storageError()));
     const consoleError = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
@@ -250,7 +256,7 @@ describe('getLoginState when storage is unavailable', () => {
 
   it('logs again once storage has recovered and failed anew', async () => {
     const get = vi.fn().mockRejectedValue(storageError());
-    setupFailingStorage(get);
+    setupStorage(get);
     const consoleError = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
@@ -267,6 +273,59 @@ describe('getLoginState when storage is unavailable', () => {
     await settle(getLoginState());
 
     expect(consoleError.mock.calls.length).toBeGreaterThan(afterFirstStreak);
+  });
+});
+
+/**
+ * The probe schedule is the other half of the storage-failure fix: with
+ * storage broken, a fixed 60s tick reprinted the error group every minute for
+ * the whole session (Bug 2064203 comment 4). The schedule must back off while
+ * storage is unreadable and snap back to the base interval on the first
+ * successful probe.
+ */
+describe('startLoginStateChecks', () => {
+  const BASE_INTERVAL = 60_000;
+  // One probe's worth of failing reads: the 250ms + 1000ms waits in
+  // AUTH_READ_RETRY_DELAYS_MS. Keep in step with menu.ts.
+  const RETRY_TIME = 1_250;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('backs off while storage is unreadable and recovers to the base interval', async () => {
+    const get = vi.fn().mockRejectedValue(new Error('unavailable'));
+    setupBrowserMock(undefined);
+    browser.storage.local.get = get as typeof browser.storage.local.get;
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { startLoginStateChecks } = await loadMenu();
+    startLoginStateChecks();
+
+    // The first probe fires at the base interval and burns 3 reads retrying.
+    await vi.advanceTimersByTimeAsync(BASE_INTERVAL + RETRY_TIME);
+    expect(get).toHaveBeenCalledTimes(3);
+
+    // Backed off: one base interval later, no second probe has fired.
+    await vi.advanceTimersByTimeAsync(BASE_INTERVAL);
+    expect(get).toHaveBeenCalledTimes(3);
+
+    // The second probe arrives after the doubled (2x base) delay.
+    await vi.advanceTimersByTimeAsync(BASE_INTERVAL + RETRY_TIME);
+    expect(get).toHaveBeenCalledTimes(6);
+
+    // Storage recovers: the third probe (after a 4x base delay) reads once...
+    get.mockResolvedValue({});
+    await vi.advanceTimersByTimeAsync(4 * BASE_INTERVAL);
+    expect(get).toHaveBeenCalledTimes(7);
+
+    // ...and the schedule is back at the base interval.
+    await vi.advanceTimersByTimeAsync(BASE_INTERVAL);
+    expect(get).toHaveBeenCalledTimes(8);
   });
 });
 

@@ -15,7 +15,10 @@ import {
   validateToken,
 } from '@send-frontend/lib/validations';
 
-import { useSendConfig } from '@send-frontend/composables/useSendConfig';
+import {
+  isKnownSignedOut,
+  useSendConfig,
+} from '@send-frontend/composables/useSendConfig';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import {
   useApiStore,
@@ -299,11 +302,10 @@ router.beforeEach(async (to, from, next) => {
   if (requiresExtensionLogin && isThunderbirdHost) {
     try {
       const addonLoginState = await queryAddonLoginState();
-      // A storage failure in the add-on reports isLoggedIn: false without
-      // knowing anything. Bouncing to the login flow on that guess logs out a
-      // user who never signed out (see Bug 2064203 comment 4), so treat an
-      // unknown answer the same as the query failing below: carry on.
-      if (!addonLoginState.isLoggedIn && !addonLoginState.storageUnavailable) {
+      // Known signed-out only: when the add-on couldn't read its storage, we
+      // carry on rather than bounce a possibly signed-in user to the login
+      // flow (see isKnownSignedOut).
+      if (isKnownSignedOut(addonLoginState)) {
         return next('/auto-login');
       }
     } catch (error) {
