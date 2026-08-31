@@ -157,12 +157,13 @@ async function buildSignedInMenu(username: string) {
 }
 
 /**
- * Handles logout process by resetting menu to logged-out state and opening logout page.
- * Clears the username and removes authenticated menu items.
- * Also clears all localStorage and extension storage data.
+ * Resets the menu to its signed-out state WITHOUT any of menuLogout()'s other
+ * side effects (no storage wipe, no tab closing, no /logout tab). Used both by
+ * menuLogout() itself and by background.ts's silent startup revalidation
+ * (#1030), which must flip the menu for a server-side-revoked session without
+ * surprising the user with a browser tab.
  */
-export async function menuLogout() {
-  console.log('🧹 Clearing menu items and storage');
+export async function menuSignedOut() {
   await queueMenuWork(async () => {
     // Dropped before the teardown, the mirror of buildSignedInMenu() committing
     // it after the build: if either call below fails the menu is in an unknown
@@ -177,6 +178,16 @@ export async function menuLogout() {
     });
     await browser.TBProMenu.clear(MENU_ACTIONS.ROOT);
   });
+}
+
+/**
+ * Handles logout process by resetting menu to logged-out state and opening logout page.
+ * Clears the username and removes authenticated menu items.
+ * Also clears all localStorage and extension storage data.
+ */
+export async function menuLogout() {
+  console.log('🧹 Clearing menu items and storage');
+  await menuSignedOut();
 
   // Full wipe of the add-on's storage to a clean, logged-out state.
   //
