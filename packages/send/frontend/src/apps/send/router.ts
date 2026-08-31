@@ -299,7 +299,11 @@ router.beforeEach(async (to, from, next) => {
   if (requiresExtensionLogin && isThunderbirdHost) {
     try {
       const addonLoginState = await queryAddonLoginState();
-      if (!addonLoginState.isLoggedIn) {
+      // A storage failure in the add-on reports isLoggedIn: false without
+      // knowing anything. Bouncing to the login flow on that guess logs out a
+      // user who never signed out (see Bug 2064203 comment 4), so treat an
+      // unknown answer the same as the query failing below: carry on.
+      if (!addonLoginState.isLoggedIn && !addonLoginState.storageUnavailable) {
         return next('/auto-login');
       }
     } catch (error) {

@@ -1,4 +1,7 @@
-import { GET_LOGIN_STATE, LOGIN_STATE_RESPONSE } from '@send-frontend/lib/const';
+import {
+  GET_LOGIN_STATE,
+  LOGIN_STATE_RESPONSE,
+} from '@send-frontend/lib/const';
 import { pullBridgedPassphrase } from '@send-frontend/lib/bridgePassphrase';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import init from '@send-frontend/lib/init';
@@ -130,6 +133,13 @@ export function useSendConfig() {
   const queryAddonLoginState = (): Promise<{
     isLoggedIn: boolean;
     username: string | null;
+    /**
+     * True when the add-on could not read its storage and therefore does not
+     * know whether anyone is signed in. `isLoggedIn` is false in that case too,
+     * so any caller that redirects or closes a window on a signed-out answer
+     * must check this first and stay put.
+     */
+    storageUnavailable: boolean;
   }> => {
     return new Promise((resolve, reject) => {
       // Guards against the token-bridge content script being absent or
@@ -147,6 +157,7 @@ export function useSendConfig() {
           resolve({
             isLoggedIn: event.data.isLoggedIn,
             username: event.data.username,
+            storageUnavailable: event.data.storageUnavailable ?? false,
           });
         }
       };

@@ -70,7 +70,10 @@ const handleLogout = async () => {
 onMounted(async () => {
   if (isRunningInsideThunderbird.value) {
     const addonLoginState = await queryAddonLoginState();
-    if (!addonLoginState.isLoggedIn) {
+    // Only close on a *known* signed-out state — when the add-on could not read
+    // its storage it reports signed out without knowing, and closing the window
+    // on that guess strands a signed-in user (see Bug 2064203 comment 4).
+    if (!addonLoginState.isLoggedIn && !addonLoginState.storageUnavailable) {
       console.log('[router] User not logged in to addon, closing window');
       window.close();
       router.push('/force-close');

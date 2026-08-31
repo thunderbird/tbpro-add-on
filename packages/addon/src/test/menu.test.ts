@@ -1,6 +1,6 @@
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Safe to import statically: MENU_ACTIONS is frozen string constants, so it
 // carries none of the module state that loadMenu() exists to reset.
@@ -161,6 +161,112 @@ describe('getLoginState', () => {
 
     expect(state).toEqual({ isLoggedIn: false, username: null });
     expect(browser.tabs.remove).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Regression guard for Bug 2064203 comment 4 / Bug 2067502. When Thunderbird's
+ * QuotaManager fails, every browser.storage.local call rejects. The probe used
+ * to swallow that and answer "signed out", which is a different statement than
+ * "I could not tell" — and callers acted on it, unregistering the Send cloud
+ * file provider for people who were still signed in.
+ */
+describe('getLoginState when storage is unavailable', () => {
+  const storageError = () => new Error('An unexpected error occurred');
+
+  /** Drives the retry backoff without spending real time on it. */
+  async function settle<T>(pending: Promise<T>): Promise<T> {
+    await vi.advanceTimersByTimeAsync(5000);
+    return pending;
+  }
+
+  function setupFailingStorage(get: unknown) {
+    setupBrowserMock(undefined);
+    (browser.storage.local as { get: unknown }).get = get;
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reports storageUnavailable instead of a bare signed-out state', async () => {
+    setupFailingStorage(vi.fn().mockRejectedValue(storageError()));
+
+    const { getLoginState } = await loadMenu();
+
+    const state = await settle(getLoginState());
+
+    expect(state).toEqual({
+      isLoggedIn: false,
+      username: null,
+      storageUnavailable: true,
+    });
+  });
+
+  it('retries a failing read before giving up', async () => {
+    const get = vi.fn().mockRejectedValue(storageError());
+    setupFailingStorage(get);
+
+    const { getLoginState } = await loadMenu();
+
+    await settle(getLoginState());
+
+    expect(get.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('recovers the session when a retry succeeds', async () => {
+    const get = vi
+      .fn()
+      .mockRejectedValueOnce(storageError())
+      .mockResolvedValue({ [STORAGE_KEY_AUTH]: authWith() });
+    setupFailingStorage(get);
+
+    const { getLoginState } = await loadMenu();
+
+    const state = await settle(getLoginState());
+
+    expect(state).toEqual({ isLoggedIn: true, username: USERNAME });
+  });
+
+  it('logs the storage error once per failure streak, not once per probe', async () => {
+    setupFailingStorage(vi.fn().mockRejectedValue(storageError()));
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const { getLoginState } = await loadMenu();
+
+    await settle(getLoginState());
+    const afterFirstProbe = consoleError.mock.calls.length;
+    await settle(getLoginState());
+    await settle(getLoginState());
+
+    expect(consoleError.mock.calls.length).toBe(afterFirstProbe);
+  });
+
+  it('logs again once storage has recovered and failed anew', async () => {
+    const get = vi.fn().mockRejectedValue(storageError());
+    setupFailingStorage(get);
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const { getLoginState } = await loadMenu();
+
+    await settle(getLoginState());
+    const afterFirstStreak = consoleError.mock.calls.length;
+
+    get.mockResolvedValueOnce({});
+    await settle(getLoginState());
+
+    get.mockRejectedValue(storageError());
+    await settle(getLoginState());
+
+    expect(consoleError.mock.calls.length).toBeGreaterThan(afterFirstStreak);
   });
 });
 
