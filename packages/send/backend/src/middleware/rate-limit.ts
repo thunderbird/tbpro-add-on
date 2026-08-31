@@ -125,6 +125,16 @@ export function createRateLimiter(tier: RateLimitTier): RequestHandler {
       return;
     }
 
+    // Ensure the client exists and a connection attempt is under way. Without
+    // this call, a fresh process never reaches getRedisClient() at all: the
+    // ONLY other caller is RedisStore's sendCommand below, which is itself
+    // gated behind isRedisHealthy() -- so on a cold start (healthy === false,
+    // client === null) this middleware would return 503 forever without ever
+    // making the one call that could flip it true. This line is what makes
+    // "created lazily on first use" (see redis.ts) actually happen; ioredis
+    // takes it from there (connect, retry, emit 'ready').
+    getRedisClient();
+
     // Redis is configured but not currently reachable: fail closed with an
     // explicit, predictable 503 rather than letting the request through
     // unlimited. (express-rate-limit would otherwise surface the store error to

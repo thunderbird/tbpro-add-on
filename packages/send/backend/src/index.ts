@@ -32,6 +32,7 @@ import { TRPC_WS_PATH } from './config';
 import { errorHandler } from './errors/routes';
 import { addVersionHeader } from './middleware';
 import { originsHandler } from './origins';
+import { getRedisClient, isRateLimitingEnabled } from './redis';
 import metricsRoute from './routes/metrics';
 import { openapiSpecification } from './swagger';
 import { createContext } from './trpc/context';
@@ -154,6 +155,15 @@ Sentry.setupExpressErrorHandler(app);
 
 // errorHandler needs to be final middleware registered.
 app.use(errorHandler);
+
+// Start connecting before the first request arrives rather than on it. ioredis
+// connects asynchronously without blocking this call, so it costs nothing at
+// boot; the payoff is that every pod in a rolling restart gets a head start on
+// the handshake instead of racing its first real request against it (see
+// middleware/rate-limit.ts for the fail-closed check this feeds).
+if (isRateLimitingEnabled()) {
+  getRedisClient();
+}
 
 const server = app.listen(PORT, HOST, async () => {
   console.log(`🚀 Server ready at: http://${HOST}:${PORT}`);

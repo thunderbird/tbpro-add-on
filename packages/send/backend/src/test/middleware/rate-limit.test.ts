@@ -33,13 +33,19 @@ vi.mock('rate-limit-redis', () => {
 
 // Redis health and configured-state are toggled per test to exercise the
 // fail-closed and not-configured paths. getRedisClient is stubbed so
-// constructing the (mocked) store never touches a real connection.
+// constructing the (mocked) store never touches a real connection. It is a
+// vi.fn(), not a plain arrow function, so tests can assert it was actually
+// called -- that call is what a real process depends on to ever establish a
+// connection and flip isRedisHealthy() true (see redis.ts); a middleware that
+// skips it on an unhealthy start can never recover.
+const getRedisClientMock = vi.fn(() => ({ call: () => Promise.resolve(null) }));
+
 vi.mock('@send-backend/redis', () => ({
   isRedisHealthy: () =>
     (globalThis as { __rlHealthy?: boolean }).__rlHealthy ?? true,
   isRateLimitingEnabled: () =>
     (globalThis as { __rlEnabled?: boolean }).__rlEnabled ?? true,
-  getRedisClient: () => ({ call: () => Promise.resolve(null) }),
+  getRedisClient: () => getRedisClientMock(),
 }));
 
 // The limit tiers are read from env at config import time, so the small,
@@ -75,6 +81,7 @@ function appWithLimiter(limiter: RequestHandler, attachUser?: string) {
 describe('rate-limit middleware', () => {
   beforeEach(() => {
     counts.clear();
+    getRedisClientMock.mockClear();
     (globalThis as { __rlHealthy?: boolean }).__rlHealthy = true;
     (globalThis as { __rlEnabled?: boolean }).__rlEnabled = true;
   });
@@ -118,6 +125,24 @@ describe('rate-limit middleware', () => {
     const res = await request(app).get('/test');
     expect(res.status).toBe(503);
     expect(res.body.error).toBe('rate_limiter_unavailable');
+  });
+
+  it('still calls getRedisClient on a cold, unhealthy start, so the connection that would flip it healthy actually gets made', async () => {
+    // Regression test: getRedisClient() is the ONLY thing that ever creates the
+    // ioredis client and registers the 'ready' listener that flips
+    // isRedisHealthy() true. RedisStore's own sendCommand only calls it when
+    // ALREADY healthy (see rate-limit.ts), so on a fresh process (healthy ===
+    // false, client === null) that path never runs it. If this middleware also
+    // skipped the call while unhealthy, nothing in the process would ever call
+    // getRedisClient() at all -- a permanent 503 with no way to recover, no
+    // matter how reachable Redis actually is.
+    const createRateLimiter = await loadLimiterFactory();
+    const app = appWithLimiter(createRateLimiter('auth'));
+    (globalThis as { __rlHealthy?: boolean }).__rlHealthy = false;
+
+    await request(app).get('/test').expect(503);
+
+    expect(getRedisClientMock).toHaveBeenCalled();
   });
 
   it('passes requests through when rate limiting is not configured (no REDIS_URL)', async () => {
