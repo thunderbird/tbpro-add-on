@@ -125,10 +125,6 @@ export function createRateLimiter(tier: RateLimitTier): RequestHandler {
       return;
     }
 
-    // Defense in depth alongside index.ts's eager connect: RedisStore's
-    // sendCommand below only calls getRedisClient() once already healthy, so
-    // without this line a process that skipped that eager call (a stale
-    // pod, a test) would never make the one call that can flip healthy true.
     getRedisClient();
 
     // Redis is configured but not currently reachable: fail closed with an

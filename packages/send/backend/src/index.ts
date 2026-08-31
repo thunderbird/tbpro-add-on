@@ -156,13 +156,6 @@ Sentry.setupExpressErrorHandler(app);
 // errorHandler needs to be final middleware registered.
 app.use(errorHandler);
 
-// Connect before the first request arrives rather than on it, so a rolling
-// restart doesn't race every pod's first request against the handshake (see
-// middleware/rate-limit.ts for the fail-closed check this feeds). Wrapped in
-// try/catch because the Redis constructor parses REDIS_URL synchronously: a
-// malformed value throws here, and with no uncaughtException handler that
-// would crash the process before it starts listening rather than degrade to
-// the existing per-request 503.
 if (isRateLimitingEnabled()) {
   try {
     getRedisClient();
