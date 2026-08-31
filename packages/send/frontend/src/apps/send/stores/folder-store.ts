@@ -16,7 +16,7 @@ import {
   ItemResponse,
 } from '@send-frontend/apps/send/stores/folder-store.types';
 import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
-import { ApiConnection } from '@send-frontend/lib/api';
+import { ApiCallFailure, ApiConnection } from '@send-frontend/lib/api';
 import { NamedBlob } from '@send-frontend/lib/filesync';
 import { backupKeys } from '@send-frontend/lib/keychain';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
@@ -169,10 +169,50 @@ const useFolderStore = defineStore('folderManager', () => {
     selectedFileId.value = null;
   }
 
-  async function fetchSubtree(rootFolderId: string): Promise<void> {
+  async function fetchSubtree(folderId: string): Promise<void> {
+    let failure: ApiCallFailure | null = null;
     const tree = await api.call<ContainerResponse>(
-      `containers/${rootFolderId}/`
+      `containers/${folderId}/`,
+      {},
+      'GET',
+      {},
+      {
+        onFailure: (f) => {
+          failure = f;
+        },
+      }
     );
+
+    // `api.call` returns null on any failure (403/404 included). Never
+    // dereference it (#1115) — leave the store in a consistent empty state
+    // instead of crashing the folder view.
+    if (!tree || !tree.children) {
+      console.error(
+        `Failed to fetch subtree for container ${folderId}`,
+        failure
+      );
+      folders.value = [];
+      rootFolder.value = null;
+
+      // Self-recovery (#1115): a 403/404 on the cached root means the server
+      // never created / no longer has that container (a phantom id). Clear the
+      // stale cache so sync stops looping on the dead id, and fall back to the
+      // user's folder list so init.ts's default-folder reconciliation can
+      // re-provision.
+      const status: number | null =
+        failure && (failure as ApiCallFailure).kind === 'http'
+          ? (failure as ApiCallFailure & { kind: 'http' }).status
+          : null;
+      if (
+        (status === 403 || status === 404) &&
+        rootFolderId.value === folderId
+      ) {
+        rootFolderId.value = null;
+        await fetchUserFolders();
+      }
+      return;
+    }
+
     folders.value = tree.children;
     rootFolder.value = tree;
   }

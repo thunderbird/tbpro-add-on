@@ -244,6 +244,8 @@ describe('FolderStore — createFolder()', () => {
 // (a root folder whose key is missing from the keychain).
 // ---------------------------------------------------------------------------
 
+import { trpc } from '@send-frontend/lib/trpc';
+
 const asContainer = (id: string) => ({ id, name: id }) as Container;
 
 describe('selectDefaultFolder — orphan-aware default folder selection (#1116)', () => {
@@ -300,5 +302,94 @@ describe('FolderStore — defaultFolder routes to a keychain-openable container 
     await folderStore.sync();
 
     expect(folderStore.defaultFolder?.id).toBe(openable.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #1115 — phantom cached root container must not crash the folder view and
+// must self-recover instead of looping on the dead id.
+// ---------------------------------------------------------------------------
+
+describe('FolderStore — fetchSubtree null-guard & phantom-root recovery (#1115)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('does not throw and leaves an empty/error state when api.call resolves null', async () => {
+    vi.spyOn(useApiStore().api, 'call').mockResolvedValue(null);
+
+    const folderStore = useFolderStore();
+    await expect(
+      folderStore.fetchSubtree('dead-container')
+    ).resolves.not.toThrow();
+
+    expect(folderStore.visibleFolders).toEqual([]);
+    expect(folderStore.rootFolder).toBeNull();
+  });
+
+  it('clears the cached rootFolderId and falls back to users/folders on a 403 for the cached root', async () => {
+    const PHANTOM_ID = 'phantom-container';
+    vi.mocked(trpc.getDefaultFolder.query).mockResolvedValue({
+      id: PHANTOM_ID,
+    } as never);
+
+    const apiCallSpy = vi
+      .spyOn(useApiStore().api, 'call')
+      .mockImplementation(async (path, _body, _method, _headers, options) => {
+        if (typeof path === 'string' && path.startsWith('containers/')) {
+          (options as { onFailure?: (f: unknown) => void })?.onFailure?.({
+            kind: 'http',
+            status: 403,
+            statusText: 'Forbidden',
+          });
+          return null;
+        }
+        // users/folders fallback
+        return [];
+      });
+
+    const folderStore = useFolderStore();
+    await folderStore.getDefaultFolderId();
+    expect(folderStore.rootFolderId).toBe(PHANTOM_ID);
+
+    await folderStore.fetchSubtree(PHANTOM_ID);
+
+    // The dead id is invalidated so sync won't re-request it in a loop.
+    expect(folderStore.rootFolderId).toBeNull();
+    // It fell back to the user's folder list (re-provisioning path).
+    expect(apiCallSpy).toHaveBeenCalledWith(`users/folders`);
+    expect(folderStore.rootFolder).toBeNull();
+  });
+
+  it('does NOT clear the cached rootFolderId when a non-root subtree fetch 404s', async () => {
+    const ROOT_ID = 'real-root';
+    vi.mocked(trpc.getDefaultFolder.query).mockResolvedValue({
+      id: ROOT_ID,
+    } as never);
+
+    const apiCallSpy = vi
+      .spyOn(useApiStore().api, 'call')
+      .mockImplementation(async (_path, _body, _method, _headers, options) => {
+        (options as { onFailure?: (f: unknown) => void })?.onFailure?.({
+          kind: 'http',
+          status: 404,
+          statusText: 'Not Found',
+        });
+        return null;
+      });
+
+    const folderStore = useFolderStore();
+    await folderStore.getDefaultFolderId();
+
+    await folderStore.fetchSubtree('some-other-folder');
+
+    expect(folderStore.rootFolderId).toBe(ROOT_ID);
+    expect(apiCallSpy).not.toHaveBeenCalledWith(`users/folders`);
   });
 });
