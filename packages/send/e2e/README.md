@@ -3,8 +3,8 @@
 Guide for running the Thunderbird Send E2E tests. The E2E tests run automatically in CI on PRs/branches, and nightly on production. You can also run the E2E tests yourself against your local dev stack.
 
 Currently there are two sets of E2E tests:
-- One set of tests that run against a local dev stack. You can run these tests on your machine against your local dev stack, and they also run in CI against PRs/branches (on a dev stack running on a Github Actions worker). These dev E2E tests are found in `/e2e/tests/desktop/dev/`.
-- A separate new set of tests that can run aganist production (in the nightly E2E tests GHA job that runs on BrowserStack). These test are found in `packages/send/e2e/tests/desktop/*.spec.ts`.
+- One set of tests that run against a local dev stack. You can run these tests on your machine against your local dev stack, and they also run in CI against PRs/branches (on a dev stack running on a Github Actions worker). These dev E2E tests are found in `/e2e/tests/dev/`.
+- A separate new set of tests that can run aganist production (in the nightly E2E tests GHA job that runs on BrowserStack). These test are found in `/e2e/tests/*.spec.ts`.
 
 Eventually in the future we will just have one set of E2E tests that will run on all environments, but for now we have these two sets of tests until we build out the new set of tests further.
 

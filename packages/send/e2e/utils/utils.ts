@@ -10,6 +10,14 @@ import {
   TIMEOUT_30_SECONDS,
 } from "../const/const";
 
+const MOBILE_PROJECT_NAMES = new Set([
+  'Google-Pixel-7-View',
+  'android-chrome',
+]);
+
+export const isMobileProject = (projectName: string) =>
+  MOBILE_PROJECT_NAMES.has(projectName);
+
 /**
  * Navigate to TB Send (at the TB_SEND_BASE_URL in the test/e2e/.env file). If already signed in
  * then just exit; otherwise if not currently signed in then sign in using the credentials

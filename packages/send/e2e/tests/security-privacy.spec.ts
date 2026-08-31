@@ -2,14 +2,23 @@ import { test } from '@playwright/test';
 
 import {
   PLAYWRIGHT_TAG_DESKTOP_NIGHTLY,
+  PLAYWRIGHT_TAG_MOBILE_NIGHTLY,
   TB_SEND_SECURITY_AND_PRIVACY_URL,
-} from '../../const/const';
-import { SecurityPrivacyPage } from '../../pages/security-privacy-page';
+} from '../const/const';
+import { SecurityPrivacyPage } from '../pages/security-privacy-page';
+import { isMobileProject, signInAndRestoreSendKey } from '../utils/utils';
 
-test.describe('security and privacy on desktop', () => {
+const FIVE_MINUTES = 5 * 60 * 1000;
+
+test.describe('security and privacy', () => {
   test('verifies encryption key, reset, support, and user menu controls', {
-    tag: [PLAYWRIGHT_TAG_DESKTOP_NIGHTLY],
-  }, async ({ page }) => {
+    tag: [PLAYWRIGHT_TAG_DESKTOP_NIGHTLY, PLAYWRIGHT_TAG_MOBILE_NIGHTLY],
+  }, async ({ page }, testInfo) => {
+    if (isMobileProject(testInfo.project.name)) {
+      test.setTimeout(FIVE_MINUTES);
+      await signInAndRestoreSendKey(page);
+    }
+
     const securityPrivacyPage = new SecurityPrivacyPage(page);
 
     await page.goto(TB_SEND_SECURITY_AND_PRIVACY_URL);

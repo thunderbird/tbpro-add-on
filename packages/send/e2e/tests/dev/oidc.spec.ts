@@ -6,9 +6,9 @@
 // auth-stage.tb.pro being up — inside the serial group, one bad afternoon at the
 // provider would cost the whole dev suite's signal.
 
-import { PLAYWRIGHT_TAG_DEV_DESKTOP } from "../../../const/const";
-import { oidc_login } from "../../../pages/dev/oidc";
-import { test } from "../../../utils/dev/fixtures";
+import { PLAYWRIGHT_TAG_DEV_DESKTOP } from "../../const/const";
+import { oidc_login } from "../../pages/dev/oidc";
+import { test } from "../../utils/dev/fixtures";
 
 test.describe(
   "OIDC flow",

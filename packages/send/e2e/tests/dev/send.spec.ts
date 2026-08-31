@@ -5,13 +5,13 @@ import fs from "fs";
 
 import {
   PLAYWRIGHT_TAG_DEV_DESKTOP,
- } from "../../../const/const"
+ } from "../../const/const"
 
 import {
   log_out_restore_keys,
   register_and_login,
   reset_keys,
-} from "../../../pages/dev/dashboard"
+} from "../../pages/dev/dashboard"
 
 import {
   delete_file,
@@ -19,11 +19,11 @@ import {
   mobile_info_panel_modal,
   share_links,
   upload_workflow,
-} from "../../../pages/dev/myFiles"
+} from "../../pages/dev/myFiles"
 
-import { emptyState, storageStatePath } from "../../../utils/dev/paths"
-import { test } from "../../../utils/dev/fixtures"
-import { resetShareLinks } from "../../../utils/dev/testUtils"
+import { emptyState, storageStatePath } from "../../utils/dev/paths"
+import { test } from "../../utils/dev/fixtures"
+import { resetShareLinks } from "../../utils/dev/testUtils"
 
 // Every test in this file works on the one account "Register and log in" creates,
 // in order: share, upload, download, mobile panel, delete, reset. Serial mode makes that
