@@ -284,6 +284,7 @@ describe('validator', () => {
       isTokenValid: true,
       hasCorrectKeys: true,
       hasForcedLogin: false,
+      cookieAccess: 'ok',
     });
   });
 
@@ -350,9 +351,128 @@ describe('validator', () => {
       isTokenValid: false, // No auth validation done when keys are invalid
       hasCorrectKeys: false,
       hasForcedLogin: true,
+      cookieAccess: 'ok', // users/me answered, so the cookie is arriving
     });
 
     reloadSpy.mockRestore();
+  });
+
+  /**
+   * Bugzilla 2064458. `users/me` is gated by requireJWT, which reads the
+   * session only from the `authorization` cookie; `auth/me` / `auth/oidc/me`
+   * stand in for the leg that still answers. The validator's job here is to
+   * carry the *reason* users/me failed into the classifier -- it used to throw
+   * that away, which is why a blocked cookie was indistinguishable from a
+   * signed-out user.
+   */
+  describe('cookie access', () => {
+    /** requireJWT's answer when no cookie reached the server. */
+    const noCookieBody = JSON.stringify({
+      message: 'Not authorized: Token not found',
+      error: 'token_not_found',
+    });
+
+    /** Fails `users/me` as "no cookie", answers every other path successfully. */
+    const refuseUsersMe = () =>
+      vi.fn(
+        async (
+          path: string,
+          _body?: unknown,
+          _method?: string,
+          _headers?: unknown,
+          options?: { onFailure?: (f: unknown) => void }
+        ) => {
+          if (path === 'users/me') {
+            options?.onFailure?.({
+              kind: 'http',
+              status: 403,
+              statusText: 'Forbidden',
+              body: noCookieBody,
+            });
+            return null;
+          }
+          return true;
+        }
+      );
+
+    it('reports the cookie as blocked when users/me says no cookie arrived while the token check still passes', async () => {
+      mockApi.call = refuseUsersMe() as unknown as MockedFunction<
+        ApiConnection['call']
+      >;
+
+      const result = await (
+        await import('@send-frontend/lib/validations')
+      ).validator({
+        api: mockApi as unknown as ApiConnection,
+        userStore: mockUserStore as UserStore,
+        keychain: mockKeychain as unknown as Keychain,
+      });
+
+      expect(result.isTokenValid).toBe(true);
+      expect(result.cookieAccess).toBe('blocked');
+    });
+
+    it('reports the cookie as unknown when users/me says no cookie arrived and the token check fails too, because that is just a signed-out user', async () => {
+      mockApi.call = vi.fn(
+        async (
+          path: string,
+          _body?: unknown,
+          _method?: string,
+          _headers?: unknown,
+          options?: { onFailure?: (f: unknown) => void }
+        ) => {
+          if (path === 'users/me') {
+            options?.onFailure?.({
+              kind: 'http',
+              status: 403,
+              statusText: 'Forbidden',
+              body: noCookieBody,
+            });
+          }
+          return null;
+        }
+      ) as unknown as MockedFunction<ApiConnection['call']>;
+
+      const result = await (
+        await import('@send-frontend/lib/validations')
+      ).validator({
+        api: mockApi as unknown as ApiConnection,
+        userStore: mockUserStore as UserStore,
+        keychain: mockKeychain as unknown as Keychain,
+      });
+
+      expect(result.isTokenValid).toBe(false);
+      expect(result.cookieAccess).toBe('unknown');
+    });
+
+    it('determines cookie access without issuing any request beyond the ones the validator already made', async () => {
+      // The whole design rests on this: the answer is read off calls the
+      // validator makes anyway, so the popup pays nothing for it. If someone
+      // turns the classifier into an active probe, this is what fails.
+      const runWith = async (call: MockedFunction<ApiConnection['call']>) => {
+        mockApi.call = call;
+        await (
+          await import('@send-frontend/lib/validations')
+        ).validator({
+          api: mockApi as unknown as ApiConnection,
+          userStore: mockUserStore as UserStore,
+          keychain: mockKeychain as unknown as Keychain,
+        });
+        return call.mock.calls.length;
+      };
+
+      const okCalls = await runWith(
+        vi.fn().mockResolvedValue({ user: { id: '123' } }) as MockedFunction<
+          ApiConnection['call']
+        >
+      );
+      const blockedCalls = await runWith(
+        refuseUsersMe() as unknown as MockedFunction<ApiConnection['call']>
+      );
+
+      expect(okCalls).toBe(2); // users/me, then auth/me
+      expect(blockedCalls).toBe(okCalls);
+    });
   });
 
   // This tests the case where the user ID is not found in the backend.
@@ -371,6 +491,9 @@ describe('validator', () => {
       isTokenValid: false,
       hasCorrectKeys: true,
       hasForcedLogin: false,
+      // users/me threw, so onFailure never fired and there is no evidence
+      // either way -- never guess "blocked" from an absent failure.
+      cookieAccess: 'unknown',
     });
   });
 });

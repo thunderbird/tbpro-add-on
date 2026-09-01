@@ -235,7 +235,15 @@ export async function requireJWT(
   const validationResult = validateJWT({ jwtToken, jwtRefreshToken });
 
   if (!validationResult) {
-    return res.status(403).json({ message: `Not authorized: Token not found` });
+    // No cookie reached us at all. `error` is the machine-readable half, and
+    // exists for the add-on: this is the only answer here that means "the
+    // cookie is missing" rather than "the cookie is stale", and telling those
+    // apart is what lets the add-on say Thunderbird is blocking cookies.
+    // See send/frontend/src/lib/cookieAccess.ts (Bugzilla 2064458).
+    return res.status(403).json({
+      message: `Not authorized: Token not found`,
+      error: 'token_not_found',
+    });
   }
 
   if (validationResult === 'valid') {
@@ -244,8 +252,11 @@ export async function requireJWT(
 
   // When refresh token is invalid, we should return 403 and ask to login
   if (validationResult === 'shouldLogin') {
+    // The refresh cookie did arrive; it just failed to verify. Cookies work,
+    // they are only too old -- hence a different code to the case above.
     return res.status(403).json({
       message: `Not authorized: Refresh token expired`,
+      error: 'refresh_token_expired',
     });
   }
 
@@ -254,6 +265,7 @@ export async function requireJWT(
   if (validationResult === 'shouldRefresh') {
     return res.status(401).json({
       message: `Not authorized: Token expired`,
+      error: 'access_token_expired',
     });
   }
 }

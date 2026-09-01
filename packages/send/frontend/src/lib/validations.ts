@@ -1,7 +1,8 @@
 import type { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
 import { UserType } from '@send-frontend/types';
-import { ApiConnection } from './api';
+import { ApiCallFailure, ApiConnection } from './api';
 import { MAX_ACCESS_LINK_RETRIES } from './const';
+import { CookieAccess, classifyCookieAccess } from './cookieAccess';
 import { Keychain, restoreKeysUsingLocalStorage } from './keychain';
 import { trpc } from './trpc';
 
@@ -78,10 +79,19 @@ export const validateToken = async (api: ApiConnection): Promise<boolean> => {
 };
 
 export const validateUser = async (
-  api: ApiConnection
+  api: ApiConnection,
+  // `call` returns a bare null on failure, so the caller has to be handed the
+  // reason: it is the evidence classifyCookieAccess needs.
+  onFailure?: (failure: ApiCallFailure) => void
 ): Promise<{ user: UserType } | null> => {
   try {
-    const userResponse = await api.call<{ user: UserType }>(`users/me`);
+    const userResponse = await api.call<{ user: UserType }>(
+      `users/me`,
+      {},
+      'GET',
+      {},
+      { onFailure }
+    );
     if (userResponse?.user) {
       return userResponse;
     }
@@ -129,11 +139,20 @@ export const validator = async ({
     hasCorrectKeys: false,
     // Flag used to force login
     hasForcedLogin: false,
+    // Whether the session cookie is reaching the backend at all. See
+    // classifyCookieAccess; stays 'unknown' on the paths that cannot tell.
+    cookieAccess: 'unknown' as CookieAccess,
   };
 
   let shouldClearSessionAndStorage = false;
 
-  const userResponse = await validateUser(api);
+  // A property rather than a plain `let`: TypeScript does not track assignments
+  // made inside a callback, so a `let` here would be narrowed to `null` at the
+  // point it is read below and any inspection of it would fail to compile.
+  const cookieRoute: { failure: ApiCallFailure | null } = { failure: null };
+  const userResponse = await validateUser(api, (failure) => {
+    cookieRoute.failure = failure;
+  });
   const userIDFromBackend = userResponse?.user?.id;
   const userIDFromStore = userStore?.user?.id;
 
@@ -175,6 +194,16 @@ export const validator = async ({
       userStore.getBackup,
       keychain
     );
+
+    // Must come after isTokenValid: the Bearer session is half of the evidence.
+    // On the user-ID-mismatch branch above isTokenValid is never assigned, so
+    // cookieAccess stays 'unknown' there -- that path already forces a logout
+    // and must not be relabelled a cookie problem.
+    validations.cookieAccess = classifyCookieAccess({
+      cookieRouteSucceeded: !!userResponse?.user,
+      cookieRouteFailure: cookieRoute.failure,
+      bearerSessionValid: validations.isTokenValid,
+    });
   }
 
   // Finally, if we should flush data, we will do so

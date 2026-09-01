@@ -58,4 +58,22 @@ describe('manifest.json match patterns', () => {
     expect(LEGAL_HOST.test(hostOf('https://*.tb.pro/*'))).toBe(true);
     expect(LEGAL_HOST.test(hostOf('https://send-stage.tb.pro/*'))).toBe(true);
   });
+
+  /**
+   * Without this permission Thunderbird strips the Send session cookie as soon
+   * as third-party cookies are blocked -- see send/frontend/src/lib/cookieAccess.ts
+   * for why. CORS lets the fetches through regardless, which is how it went
+   * missing unnoticed. Bugzilla 2064458.
+   */
+  describe('Send backend host permission — Bugzilla 2064458', () => {
+    it('grants a host permission for the production Send backend', () => {
+      expect(hostPermissions).toContain('https://send-backend.tb.pro/*');
+    });
+
+    it('carries no port in any host permission, since Firefox silently drops such patterns', () => {
+      expect(hostPermissions.filter((p) => /:\d+$/.test(hostOf(p)))).toEqual(
+        []
+      );
+    });
+  });
 });

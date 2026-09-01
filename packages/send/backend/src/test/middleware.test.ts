@@ -170,8 +170,12 @@ describe('requireJWT', () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(403);
+    // `error` is what the add-on's blocked-cookie check reads: this is the
+    // only answer here that means the cookie never arrived, as opposed to
+    // arriving stale. See send/frontend/src/lib/cookieAccess.ts (Bugzilla 2064458).
     expect(mockResponse.json).toHaveBeenCalledWith({
       message: 'Not authorized: Token not found',
+      error: 'token_not_found',
     });
   });
 
@@ -189,8 +193,11 @@ describe('requireJWT', () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(401);
+    // A distinct code from token_not_found on purpose: reaching here means
+    // the refresh cookie verified, so the cookie is arriving.
     expect(mockResponse.json).toBeCalledWith({
       message: `Not authorized: Token expired`,
+      error: 'access_token_expired',
     });
   });
 
@@ -208,8 +215,10 @@ describe('requireJWT', () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(403);
+    // Also arriving, just too old -- so also not a blocked cookie.
     expect(mockResponse.json).toBeCalledWith({
       message: `Not authorized: Refresh token expired`,
+      error: 'refresh_token_expired',
     });
   });
 });

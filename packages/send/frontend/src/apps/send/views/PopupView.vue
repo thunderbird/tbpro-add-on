@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import init from '@send-frontend/lib/init';
 
@@ -25,7 +25,12 @@ import {
 import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import { openPopup } from '@send-frontend/lib/login';
+import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
 import { canUploadQuery } from '@send-frontend/lib/queries';
+import {
+  findUploadBlocker,
+  type UploadReadiness,
+} from '@send-frontend/lib/uploadReadiness';
 import useApiStore from '@send-frontend/stores/api-store';
 import { useQuery } from '@tanstack/vue-query';
 import UploadPage from '../pages/UploadPage.vue';
@@ -47,7 +52,6 @@ const folderStore = useFolderStore();
 const { isError: uploadingError, uploadAndShare } = useUploadAndShare();
 
 const files = ref<FileItem[] | null>(null);
-const message = ref('');
 
 async function handleUploadAndShare(
   files: FileItem[],
@@ -70,35 +74,38 @@ const { error: uploadBlockedDuetoSize } = useQuery({
 });
 
 const {
-  data: isConfigured,
+  data: readiness,
   refetch,
   isLoading: isLoadingConfigured,
 } = useQuery({
   queryKey: ['is-configured-for-upload'],
-  queryFn: async () => {
+  queryFn: async (): Promise<UploadReadiness> => {
     await refetchAuth();
     // At the very end we have to validate that everything is in order for the upload to happen
-    const { hasBackedUpKeys, isTokenValid, hasForcedLogin } =
-      await validators();
-
-    if (!hasBackedUpKeys) {
-      message.value = `Please make sure you have backed up or restored your keys. Go back to the compositon panel and follow the instructions`;
-      // close this window and open the management page
-      return false;
-    }
-    if (!isTokenValid || hasForcedLogin) {
-      message.value = `You're not logged in properly. Please go back to the compositon panel to log back in`;
-      return false;
+    const blocker = findUploadBlocker(await validators());
+    if (blocker) {
+      return blocker;
     }
     // If everything is fine, we initialize the app
     await initialize();
-    return true;
+    return { status: 'ready' };
   },
   refetchOnWindowFocus: true,
   refetchOnMount: true,
 });
 
+const isConfigured = computed(() => readiness.value?.status === 'ready');
+
 const isSecurityPopupOpen = ref(false);
+
+// Latched, and deliberately never reset: the setup window may open itself at
+// most once per popup. `isSecurityPopupOpen` cannot do this job because the
+// close callback clears it, which is exactly how the window came to reopen
+// every time the readiness check answered "not set up" again (Bugzilla 2064458).
+const hasAutoOpenedSetup = ref(false);
+// Set when the setup window closes, so a second visit can say setup didn't
+// finish rather than silently showing the same prompt again.
+const hasClosedSetupWindow = ref(false);
 
 // When the user isn't set up for uploads, send them to the Security & Privacy
 // page in its own window instead of embedding the backup/restore flow in this
@@ -115,6 +122,7 @@ async function openSecurityPopup() {
     `${BASE_URL}/send/security-and-privacy?closeOnComplete=true`,
     () => {
       isSecurityPopupOpen.value = false;
+      hasClosedSetupWindow.value = true;
       refetch();
     }
   );
@@ -125,11 +133,23 @@ async function openSecurityPopup() {
   }
 }
 
-watch(isConfigured, (configured) => {
-  if (configured === false && isLoggedIn.value) {
+// Only the status matters; each refetch hands back a fresh object.
+watch(
+  () => readiness.value?.status,
+  (status) => {
+    // Only a positive "no key backup" answer may open the setup window: no
+    // other state is one the setup flow can resolve.
+    if (
+      status !== 'needs-setup' ||
+      !isLoggedIn.value ||
+      hasAutoOpenedSetup.value
+    ) {
+      return;
+    }
+    hasAutoOpenedSetup.value = true;
     openSecurityPopup();
   }
-});
+);
 
 const initialize = async () => {
   try {
@@ -186,15 +206,56 @@ const initialize = async () => {
   <WithLoader :is-loading="isLoadingAuth || isLoadingConfigured">
     <PromptPopupLogin v-if="!isLoggedIn" />
     <div v-else>
-      <div v-if="!isConfigured" class="finish-setup">
-        <h1>Finish setting up Send</h1>
-        <p>
-          To continue your upload, please complete your passphrase
-          setup/recovery.
-        </p>
-        <ProButton v-if="!isSecurityPopupOpen" @click="openSecurityPopup">
-          Continue Setup
-        </ProButton>
+      <div v-if="!isConfigured" class="finish-setup" data-testid="finish-setup">
+        <!-- No "Continue Setup" here: the passphrase flow cannot fix a
+             blocked cookie, and offering it is what left users clicking a
+             dialog that closed itself. -->
+        <template v-if="readiness?.status === 'cookies-blocked'">
+          <h1 data-testid="cookies-blocked-title">
+            {{ CLIENT_MESSAGES.COOKIES_BLOCKED_TITLE }}
+          </h1>
+          <p data-testid="cookies-blocked-body">
+            {{ CLIENT_MESSAGES.COOKIES_BLOCKED_BODY }}
+          </p>
+          <ProButton data-testid="recheck-readiness" @click="refetch">
+            Check again
+          </ProButton>
+        </template>
+
+        <template v-else-if="readiness?.status === 'needs-setup'">
+          <h1>Finish setting up Send</h1>
+          <p>
+            To continue your upload, please complete your passphrase
+            setup/recovery.
+          </p>
+          <p v-if="hasClosedSetupWindow" data-testid="setup-did-not-complete">
+            {{ CLIENT_MESSAGES.SETUP_DID_NOT_COMPLETE }}
+          </p>
+          <ProButton
+            v-if="!isSecurityPopupOpen"
+            data-testid="continue-setup"
+            @click="openSecurityPopup"
+          >
+            Continue Setup
+          </ProButton>
+        </template>
+
+        <template v-else-if="readiness?.status === 'signed-out'">
+          <h1>You're signed out</h1>
+          <p data-testid="signed-out-body">
+            {{ CLIENT_MESSAGES.SIGNED_OUT_RETURN_TO_COMPOSE }}
+          </p>
+        </template>
+
+        <template v-else>
+          <h1>Send couldn't check your setup</h1>
+          <p data-testid="readiness-unknown">
+            {{ CLIENT_MESSAGES.SETUP_CHECK_FAILED }}
+          </p>
+          <ProButton data-testid="recheck-readiness" @click="refetch">
+            Check again
+          </ProButton>
+        </template>
       </div>
       <div v-else>
         <!-- We only show the error message when storage limit has been exceeded -->
