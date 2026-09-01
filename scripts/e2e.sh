@@ -104,52 +104,58 @@ cleanup() {
 }
 trap cleanup INT TERM
 
-# Wait for HTTPS server (nginx reverse-proxy) to return 200
-echo "Waiting for HTTPS server..."
-START_TIME=$(date +%s)
-LAST_LOG_TIME=0
-MAX_WAIT=180  # 3-minute timeout - fail fast rather than waiting for step timeout
-while true; do
-  STATUS=$(curl -s -k -w "%{http_code}" --max-time 5 "https://${DOCKER_HOST}:8088/" -o /dev/null)
-  if [ "$STATUS" = "200" ]; then
-    break
-  fi
+# Both entry points have to answer before Playwright starts, and together they get
+# ONE 3-minute budget. Per-call budgets would let the stack burn twice that, which
+# is what the timeout-minutes on the CI step is sized against; the Vite loop used
+# to have no budget at all, so a frontend that never came up read as a silent
+# 10-minute step timeout naming nothing.
+STACK_MAX_WAIT=180
+STACK_START=$(date +%s)
 
-  CURRENT_TIME=$(date +%s)
-  ELAPSED=$((CURRENT_TIME - START_TIME))
+# nginx reverse-proxy, on the port the browser reaches over TLS.
+https_ready() {
+  [ "$(curl -s -k -o /dev/null -w '%{http_code}' --max-time 5 \
+        "https://${DOCKER_HOST}:8088/")" = 200 ]
+}
 
-  if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-    echo "ERROR: HTTPS server not ready after ${MAX_WAIT}s (last status: ${STATUS})"
-    docker compose "${COMPOSE_FILES[@]}" logs 2>&1 | tail -40
-    exit 1
-  fi
+frontend_ready() {
+  curl -s --max-time 5 "http://${DOCKER_HOST}:5173/send" \
+    | grep -q '<title>Thunderbird Send</title>'
+}
 
-  # Log every 30 seconds with container status and backend logs
-  if [ $((ELAPSED - LAST_LOG_TIME)) -ge 30 ]; then
-    echo "Waiting for HTTPS server... (${ELAPSED}s elapsed, curl status: ${STATUS})"
-    docker compose "${COMPOSE_FILES[@]}" ps 2>&1 || docker compose ps 2>&1
-    echo "--- backend logs (last 20 lines) ---"
-    docker compose "${COMPOSE_FILES[@]}" logs --no-log-prefix backend 2>&1 | tail -20
-    echo "--- end backend logs ---"
-    LAST_LOG_TIME=$ELAPSED
-  fi
+wait_for() {
+  local what="$1"
+  shift
+  local last_log=0 elapsed
+  echo "Waiting for ${what}..."
 
-  sleep 1
-done
-echo "HTTPS server is ready"
+  until "$@"; do
+    elapsed=$(( $(date +%s) - STACK_START ))
 
-while true; do
-  RESPONSE=$(curl -s "http://${DOCKER_HOST}:5173/send")
-  if [ -n "$RESPONSE" ] && [[ "$RESPONSE" == *"<title>Thunderbird Send</title>"* ]]; then
-    echo $RESPONSE
-    break
-  fi
-  # log the response for debugging
-  echo $RESPONSE
-  echo "Waiting for Vite dev server..."
-  sleep 1
-done
-echo "Vite dev server is ready"
+    if [ "$elapsed" -ge "$STACK_MAX_WAIT" ]; then
+      echo "ERROR: ${what} not ready ${elapsed}s into the stack's ${STACK_MAX_WAIT}s budget"
+      docker compose "${COMPOSE_FILES[@]}" ps 2>&1
+      docker compose "${COMPOSE_FILES[@]}" logs 2>&1 | tail -40
+      exit 1
+    fi
+
+    if [ $(( elapsed - last_log )) -ge 30 ]; then
+      echo "Waiting for ${what}... (${elapsed}s elapsed)"
+      docker compose "${COMPOSE_FILES[@]}" ps 2>&1
+      echo "--- backend logs (last 20 lines) ---"
+      docker compose "${COMPOSE_FILES[@]}" logs --no-log-prefix backend 2>&1 | tail -20
+      echo "--- end backend logs ---"
+      last_log=$elapsed
+    fi
+
+    sleep 1
+  done
+
+  echo "${what} is ready"
+}
+
+wait_for "HTTPS server" https_ready
+wait_for "Vite dev server" frontend_ready
 
 # In GitHub Actions CI the containers are on the host bridge (DOCKER_HOST).
 # The TLS cert is issued for 'localhost' only, so direct connections to the bridge

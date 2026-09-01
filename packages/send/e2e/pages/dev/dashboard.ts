@@ -1,9 +1,9 @@
 import { expect } from "@playwright/test";
 import { dashboardLocators, fileLocators } from "./locators";
-import { PlaywrightProps } from "../../tests/desktop/dev/send.spec";
-import { playwrightConfig, saveStorage, setup_browser } from "../../utils/dev/testUtils";
+import { PlaywrightProps } from "../../utils/dev/fixtures";
+import { playwrightConfig, saveStorage } from "../../utils/dev/testUtils";
 
-const { email, password, shareLinks } = playwrightConfig;
+const { email, password } = playwrightConfig;
 
 export async function register_and_login({ page, context }: PlaywrightProps) {
   const {
@@ -36,23 +36,28 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
   await profileButton.click();
 
   await saveStorage(context);
-  // context.close();
 }
 
-export async function log_out_restore_keys() {
-  // Log in with a new page to simulate a new session
-  const { page } = await setup_browser({ usesEmptyStorage: true });
-  const secondPage = page;
-  const { emailField, passwordField, submitLogin, restoreKeysButton, restorekeyInput, recoverAccessButton } =
-    dashboardLocators(page);
-  const { folderRowSelector, folderRowTestID } = fileLocators(page);
+/**
+ * Sign back in from a session that has no keys, then restore them from the
+ * passphrase `register_and_login` saved. The caller supplies a context built from
+ * the empty storage state — that empty session *is* the thing under test.
+ */
+export async function log_out_restore_keys({ page }: PlaywrightProps) {
+  const {
+    emailField,
+    passwordField,
+    submitLogin,
+    restoreKeysButton,
+    restorekeyInput,
+    recoverAccessButton,
+  } = dashboardLocators(page);
+  const { folderRowTestID } = fileLocators(page);
 
-  secondPage.on("dialog", (dialog) => dialog.accept());
-
-  await secondPage.goto("/send/profile");
+  page.on("dialog", (dialog) => dialog.accept());
 
   // wait for network idle
-  await secondPage.waitForLoadState("networkidle");
+  await page.waitForLoadState("networkidle");
 
   // log back in
   await emailField.fill(email);
@@ -61,22 +66,24 @@ export async function log_out_restore_keys() {
 
   // restore keys
   const passphrase = playwrightConfig.passphrase;
-  // await secondPage.goto("/send/profile");
-  await secondPage.waitForLoadState("networkidle");
+  await page.waitForLoadState("networkidle");
   await recoverAccessButton.click();
   await restorekeyInput.fill(passphrase!);
   await restoreKeysButton.click();
 
   // look for folder (only shows when keys are restored)
-  await secondPage.goto("/send");
+  await page.goto("/send");
 
   // Create a new folder
-  await secondPage.getByTestId("new-folder-button").click();
+  await page.getByTestId("new-folder-button").click();
 
-  // Check that newly created folder exists
-  await secondPage.waitForSelector(folderRowSelector);
-  let folder = secondPage.getByTestId(folderRowTestID);
-  await folder.click();
+  // Check that newly created folder exists. Assert the count, not just presence:
+  // the create has been seen to fire twice from one click (two folders 772ms
+  // apart), and every later test locates the folder with a strict
+  // `getByTestId("folder-row")` -- so without this the duplicate surfaces as a
+  // strict-mode violation three tests away from the click that caused it.
+  await expect(page.getByTestId(folderRowTestID)).toHaveCount(1);
+  await page.getByTestId(folderRowTestID).click();
 }
 
 export async function reset_keys({ page }: PlaywrightProps) {
@@ -86,7 +93,6 @@ export async function reset_keys({ page }: PlaywrightProps) {
     submitLogin,
     backupKeysButtonOverlay,
     passphraseInputOverlay,
-    securityButton,
     showReset,
     understandCheckbox,
     dangerButton,
@@ -94,7 +100,7 @@ export async function reset_keys({ page }: PlaywrightProps) {
 
   const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
 
-  let profileButton = page.getByTestId("navlink-encrypted-files");
+  const profileButton = page.getByTestId("navlink-encrypted-files");
   // Create a new folder
   await page.getByTestId("new-folder-button").click();
 
@@ -125,12 +131,13 @@ export async function reset_keys({ page }: PlaywrightProps) {
   // Back up keys
   const passPhrase = await passphraseInputOverlay.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");
-  playwrightConfig.recoveredPassphrase = passPhrase!;
+  playwrightConfig.recoveredPassphrase = passPhrase;
   await backupKeysButtonOverlay.click();
 
   // Navigate to files
   await page.goto("/send");
 
-  // Check that the folder is empty
-  expect(await emptyFolderIndicator.isVisible()).toBe(false);
+  // `empty-folder` is a hidden marker element (FolderView.vue renders it with
+  // `display: none`), so this is a weak check by construction.
+  await expect(emptyFolderIndicator).toBeHidden();
 }

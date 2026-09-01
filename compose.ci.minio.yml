@@ -33,9 +33,11 @@ services:
       - MINIO_API_CORS_ALLOW_ORIGIN=*
     healthcheck:
       test: [ "CMD", "mc", "ready", "local" ]
-      interval: 5s
+      # Same reasoning as the db healthcheck: minio-init (and through it the
+      # backend) waits on the first successful probe, not on minio being ready.
+      interval: 2s
       timeout: 5s
-      retries: 10
+      retries: 25
 
   # Creates the bucket and exits. Reads the same env_file as the backend so the
   # two cannot name different buckets.

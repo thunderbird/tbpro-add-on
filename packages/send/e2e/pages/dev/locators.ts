@@ -9,7 +9,6 @@ export const fileLocators = (page: Page) => {
   const submitButtonID = "submit-button";
   const tableCellID = `[data-testid="folder-table-row-cell"]`;
   const emptyFolderIndicator = page.getByTestId("empty-folder");
-  const createdShareLinkWithPassword = page.getByTestId("access-link-item-1");
   const sharelinkButton = page.getByTestId("create-share-link");
   const submitButton = page.getByTestId(submitButtonID);
   const createdShareLink = page.getByTestId("access-link-item-0");
@@ -19,12 +18,10 @@ export const fileLocators = (page: Page) => {
   const downloadButton = page.getByTestId("download-button-0");
   const confirmDownload = page.getByTestId("confirm-download");
   const deleteFileButton = page.getByTestId("delete-file");
-  const homeButton = page.getByTestId("home-button");
   const dropZone = page.getByTestId("drop-zone");
   return {
     folderRowSelector,
     folderRowTestID,
-    createdShareLinkWithPassword,
     sharelinkButton,
     createdShareLink,
     passwordInput,
@@ -39,7 +36,6 @@ export const fileLocators = (page: Page) => {
     tableCellID,
     confirmDownload,
     fileCountID,
-    homeButton,
     dropZone,
     emptyFolderIndicator,
   };
@@ -71,7 +67,6 @@ export const dashboardLocators = (page: Page) => {
   const understandCheckbox = page.getByTestId("understand-checkbox");
   const resetAccessButton = page.getByTestId("reset-access");
   const dangerButton = page.getByTestId("danger-button");
-  const securityButton = page.getByTestId("security-and-privacy");
   const showReset = page.getByTestId("show-reset");
 
   return {
@@ -95,7 +90,6 @@ export const dashboardLocators = (page: Page) => {
     recoverAccessButton,
     resetAccessButton,
     dangerButton,
-    securityButton,
     showReset,
   };
 };
