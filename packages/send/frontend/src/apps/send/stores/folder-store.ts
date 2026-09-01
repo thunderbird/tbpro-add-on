@@ -76,6 +76,31 @@ export interface FolderStore {
   ) => Promise<boolean>;
 }
 
+/**
+ * Picks the folder to treat as the user's default (root) folder.
+ *
+ * Prefers the newest folder whose key is present in the keychain so we never
+ * route the UI to an orphaned container (one whose key was lost, e.g. after a
+ * failed provisioning — #1116) while init.ts reconciles it. Falls back to the
+ * newest folder when none are openable, which lets the existing
+ * delete-and-recreate branch in init.ts detect the missing key and repair it.
+ */
+export function selectDefaultFolder(
+  folders: Container[],
+  keychainKeys: Record<string, string>
+): Container | null {
+  const total = folders.length;
+  if (total === 0) {
+    return null;
+  }
+  for (let i = total - 1; i >= 0; i--) {
+    if (keychainKeys[folders[i].id]) {
+      return folders[i];
+    }
+  }
+  return folders[total - 1];
+}
+
 const useFolderStore = defineStore('folderManager', () => {
   const { api } = useApiStore();
   const { user, populateFromBackend } = useUserStore();
@@ -115,8 +140,7 @@ const useFolderStore = defineStore('folderManager', () => {
     if (!folders?.value) {
       return null;
     }
-    const total = folders.value.length;
-    return total === 0 ? null : folders.value[total - 1];
+    return selectDefaultFolder(folders.value, keychain.keys);
   });
 
   const visibleFolders = computed(() => {

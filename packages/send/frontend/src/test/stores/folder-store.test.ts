@@ -1,4 +1,7 @@
-import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import useFolderStore, {
+  selectDefaultFolder,
+} from '@send-frontend/apps/send/stores/folder-store';
+import type { Container } from '@send-frontend/apps/send/stores/folder-store.types';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import { createPinia, setActivePinia } from 'pinia';
@@ -233,5 +236,69 @@ describe('FolderStore — createFolder()', () => {
 
     expect(result).toBeNull();
     expect(newKeySpy).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #1116 — defaultFolder must never route the UI to an orphaned container
+// (a root folder whose key is missing from the keychain).
+// ---------------------------------------------------------------------------
+
+const asContainer = (id: string) => ({ id, name: id }) as Container;
+
+describe('selectDefaultFolder — orphan-aware default folder selection (#1116)', () => {
+  const OPENABLE = asContainer('openable-folder');
+  const ORPHAN = asContainer('orphan-folder');
+
+  it('prefers the folder whose key exists in the keychain over a newer orphan', () => {
+    const result = selectDefaultFolder([OPENABLE, ORPHAN], {
+      [OPENABLE.id]: 'wrapped-key',
+    });
+
+    expect(result?.id).toBe(OPENABLE.id);
+  });
+
+  it('returns the newest folder when multiple folders are openable', () => {
+    const result = selectDefaultFolder([OPENABLE, ORPHAN], {
+      [OPENABLE.id]: 'wrapped-key-1',
+      [ORPHAN.id]: 'wrapped-key-2',
+    });
+
+    expect(result?.id).toBe(ORPHAN.id);
+  });
+
+  it('falls back to the newest folder when NO folder is openable (init.ts reconciles it)', () => {
+    const result = selectDefaultFolder([OPENABLE, ORPHAN], {});
+
+    expect(result?.id).toBe(ORPHAN.id);
+  });
+
+  it('returns null for an empty folder list', () => {
+    expect(selectDefaultFolder([], {})).toBeNull();
+  });
+});
+
+describe('FolderStore — defaultFolder routes to a keychain-openable container (#1116)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('picks the openable root container instead of the newest orphan', async () => {
+    const openable = asContainer('openable-folder');
+    const orphan = asContainer('orphan-folder');
+    // `users/folders` response: the orphan is the NEWEST (last) entry.
+    vi.spyOn(useApiStore().api, 'call').mockResolvedValue([openable, orphan]);
+    // Only the openable container's key is present in the keychain.
+    useKeychainStore().keychain.keys = { [openable.id]: 'wrapped-key' };
+
+    const folderStore = useFolderStore();
+    await folderStore.sync();
+
+    expect(folderStore.defaultFolder?.id).toBe(openable.id);
   });
 });
