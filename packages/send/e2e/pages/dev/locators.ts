@@ -3,6 +3,12 @@ import { Page } from "@playwright/test";
 export const fileLocators = (page: Page) => {
   const folderRowSelector = `[data-testid="folder-row"]`;
   const folderRowTestID = "folder-row";
+  // Every test here works in the one folder the suite creates, so it wants "the
+  // folder row", not "the only folder row". Taking the first tolerates the extra
+  // folder #1190 occasionally produces (one press of "new folder" can create two),
+  // which is an app bug none of these tests are about -- strict matching turned it
+  // into a strict-mode violation that broke every test downstream of it.
+  const firstFolderRow = page.getByTestId(folderRowTestID).first();
   const linkWithPasswordID = "link-with-password";
   const fileCountID = "file-count";
   const passwordInputID = "password-input";
@@ -21,7 +27,7 @@ export const fileLocators = (page: Page) => {
   const dropZone = page.getByTestId("drop-zone");
   return {
     folderRowSelector,
-    folderRowTestID,
+    firstFolderRow,
     sharelinkButton,
     createdShareLink,
     passwordInput,

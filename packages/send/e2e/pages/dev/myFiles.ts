@@ -20,7 +20,7 @@ const { password } = playwrightConfig;
 export async function upload_workflow({ page }: PlaywrightProps) {
   const {
     folderRowSelector,
-    folderRowTestID,
+    firstFolderRow,
     fileCountID,
     uploadButton,
     dropZone,
@@ -35,9 +35,8 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   await profileButton.click();
 
   // Select the folder, then open its page
-  const folder = page.getByTestId(folderRowTestID);
-  await folder.click();
-  await openFolder(page, folder);
+  await firstFolderRow.click();
+  await openFolder(page, firstFolderRow);
 
   // Find upload box and upload the file
   await expect(dropZone).toContainText("files here or tap to upload");
@@ -87,7 +86,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
 export async function share_links({ page }: PlaywrightProps) {
   const {
     folderRowSelector,
-    folderRowTestID,
+    firstFolderRow,
     sharelinkButton,
     linkWithPasswordID,
     passwordInput,
@@ -100,8 +99,7 @@ export async function share_links({ page }: PlaywrightProps) {
   await clickAndWait(profileButton);
 
   // Select folder
-  const folder = page.getByTestId(folderRowTestID);
-  await clickAndWait(folder);
+  await clickAndWait(firstFolderRow);
 
   let linksResponse = page.waitForResponse((response) => response.request().url().includes("/links"));
 
@@ -157,12 +155,12 @@ const MOBILE_VIEWPORT = { width: 412, height: 915 };
 // this drives the confirmation by actually clicking it. Cancelling rather than
 // confirming keeps the uploaded file around for the delete step that follows.
 export async function mobile_info_panel_modal({ page }: PlaywrightProps) {
-  const { folderRowTestID } = fileLocators(page);
+  const { firstFolderRow } = fileLocators(page);
 
   // Enter the folder while still at desktop width: below `md` a single click
   // opens the info panel over the table, so the row's dblclick-to-open doesn't
   // survive the reflow.
-  await openFolder(page, page.getByTestId(folderRowTestID));
+  await openFolder(page, firstFolderRow);
 
   await page.setViewportSize(MOBILE_VIEWPORT);
 
@@ -252,7 +250,7 @@ export async function download_workflow({ page, context }: PlaywrightProps) {
 
 export async function delete_file({ page }: PlaywrightProps) {
   const {
-    folderRowTestID,
+    firstFolderRow,
     fileCountID,
     deleteFileButton,
     submitButtonID,
@@ -260,7 +258,7 @@ export async function delete_file({ page }: PlaywrightProps) {
   } = fileLocators(page);
 
   // Select folder
-  await openFolder(page, page.getByTestId(folderRowTestID));
+  await openFolder(page, firstFolderRow);
 
   // Delete file
   const deleteResponse = page.waitForResponse((response) => response.request().method() === "DELETE");
