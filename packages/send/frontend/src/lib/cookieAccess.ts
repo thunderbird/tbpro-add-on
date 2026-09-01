@@ -79,6 +79,12 @@ function saysCookieMissing(failure: ApiCallFailure | null): boolean {
  * exclusively from the cookie. A live Bearer session alongside a cookie route
  * that reports no cookie at all means the session is fine and the cookie is
  * the thing going missing.
+ *
+ * That last sentence is load-bearing and will stop being true: issue #1191
+ * proposes making those routes accept the Bearer token too, at which point the
+ * cookie leg succeeds on the token and this silently always answers 'ok'. If
+ * you are here doing that migration, this needs a Bearer-suppressed leg or
+ * deleting outright -- see #1191 for both options.
  */
 export function classifyCookieAccess({
   cookieRouteSucceeded,

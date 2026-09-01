@@ -239,7 +239,8 @@ export async function requireJWT(
     // exists for the add-on: this is the only answer here that means "the
     // cookie is missing" rather than "the cookie is stale", and telling those
     // apart is what lets the add-on say Thunderbird is blocking cookies.
-    // See send/frontend/src/lib/cookieAccess.ts (Bugzilla 2064458).
+    // See send/frontend/src/lib/cookieAccess.ts (Bugzilla 2064458). These
+    // codes have no other consumer, so they go when #1191 does.
     return res.status(403).json({
       message: `Not authorized: Token not found`,
       error: 'token_not_found',
