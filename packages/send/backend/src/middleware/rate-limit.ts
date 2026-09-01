@@ -125,6 +125,8 @@ export function createRateLimiter(tier: RateLimitTier): RequestHandler {
       return;
     }
 
+    getRedisClient();
+
     // Redis is configured but not currently reachable: fail closed with an
     // explicit, predictable 503 rather than letting the request through
     // unlimited. (express-rate-limit would otherwise surface the store error to

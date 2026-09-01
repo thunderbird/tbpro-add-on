@@ -32,6 +32,7 @@ import { TRPC_WS_PATH } from './config';
 import { errorHandler } from './errors/routes';
 import { addVersionHeader } from './middleware';
 import { originsHandler } from './origins';
+import { getRedisClient, isRateLimitingEnabled } from './redis';
 import metricsRoute from './routes/metrics';
 import { openapiSpecification } from './swagger';
 import { createContext } from './trpc/context';
@@ -154,6 +155,14 @@ Sentry.setupExpressErrorHandler(app);
 
 // errorHandler needs to be final middleware registered.
 app.use(errorHandler);
+
+if (isRateLimitingEnabled()) {
+  try {
+    getRedisClient();
+  } catch (err) {
+    console.error('Failed to start the Redis connection at boot:', err);
+  }
+}
 
 const server = app.listen(PORT, HOST, async () => {
   console.log(`🚀 Server ready at: http://${HOST}:${PORT}`);
