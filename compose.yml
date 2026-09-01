@@ -11,9 +11,13 @@ services:
       - POSTGRES_DB=send-suite
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 10s
+      # Postgres is ready in a second or two, but `depends_on: service_healthy`
+      # cannot release the backend until a probe actually succeeds -- so a 10s
+      # interval spent ~10s of every stack boot waiting to ask. Probe often, keep
+      # roughly the same total patience via retries.
+      interval: 2s
       timeout: 5s
-      retries: 5
+      retries: 25
 
   # The bucket. Every upload is a presigned PUT from the browser straight to
   # object storage, so the dev stack needs one to store a single file -- there is
@@ -45,9 +49,11 @@ services:
       - MINIO_API_CORS_ALLOW_ORIGIN=*
     healthcheck:
       test: [ "CMD", "mc", "ready", "local" ]
-      interval: 5s
+      # Same reasoning as the db healthcheck: minio-init (and through it the
+      # backend) waits on the first successful probe, not on minio being ready.
+      interval: 2s
       timeout: 5s
-      retries: 10
+      retries: 25
 
   # Creates the dev bucket and exits. `mc mb --ignore-existing` is idempotent, so
   # this is a no-op on every boot after the first. `env_file` is the same one the

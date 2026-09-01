@@ -2,14 +2,13 @@ import {
   Browser,
   BrowserContext,
   expect,
-  firefox,
   Locator,
   Page,
 } from "@playwright/test";
 import { readFileSync } from "fs";
 
 import { fileLocators } from "../../pages/dev/locators";
-import { emptystatePath, storageStatePath } from "./paths";
+import { storageStatePath } from "./paths";
 import path from "path";
 
 const sharelinks = {
@@ -22,12 +21,17 @@ const sharelinks = {
 export const playwrightConfig = {
   password: `qghp392784rq3rgqp329r@$`,
   email: `myemail${Date.now()}@tb.pro`,
-  timeout: 3_000,
   shareLinks: sharelinks,
   passphrase: "" as string,
   recoveredPassphrase: "" as string,
-  fileLinks: [] as string[],
 };
+
+/**
+ * Every share link this run has read out of the clipboard. The clipboard keeps the
+ * previous link until the app overwrites it, so "a link we have not seen" is how
+ * `readNewShareLink` knows the copy for the click it just made has landed.
+ */
+const seenShareLinks = new Set<string>();
 
 /**
  * Reset the module-level `shareLinks` singleton back to its empty baseline.
@@ -38,6 +42,7 @@ export function resetShareLinks() {
   for (const key of Object.keys(playwrightConfig.shareLinks)) {
     playwrightConfig.shareLinks[key] = null;
   }
+  seenShareLinks.clear();
 }
 
 /**
@@ -58,30 +63,162 @@ export function requireShareLink(key: string): string {
 
 export async function downloadFirstFile(page: Page) {
   const { downloadButton, confirmDownload } = fileLocators(page);
+
+  // `FolderTree.vue` renders `not_found` ("This link is no longer active") for any
+  // shared container that comes back with no items -- a deleted link and a folder
+  // that simply has nothing in it look identical. Assert it is gone rather than
+  // clicking blind: same 10s budget, but a failure that names the page instead of
+  // the bare `download-button-0` timeout the #930 reports are full of.
+  await expect(
+    page.getByTestId("not_found"),
+    `the shared container rendered as empty: ${page.url()}`
+  ).toHaveCount(0);
+
+  // Listen before clicking: the download can start before the second click
+  // resolves, and a listener attached afterwards would miss it.
+  const downloadStarted = page.waitForEvent("download");
   await downloadButton.click();
   await confirmDownload.click();
-  await page.waitForEvent("download");
-  page.on("download", async (download) => {
-    expect(download.suggestedFilename()).toBe("test.png");
-  });
+
+  // `dragAndDropFile` hands the app a File with an empty MIME type, so `formatBlob`
+  // wraps it in a whole-file zip on upload and stores it as "test.png.zip" -- the
+  // name every download in this suite gets back. This assertion used to sit in a
+  // `page.on("download")` handler registered *after* the event had already fired,
+  // so it never ran, and it named the unzipped file.
+  const download = await downloadStarted;
+  expect(download.suggestedFilename()).toBe("test.png.zip");
 }
 
-export async function saveClipboardItem(page: Page, key: string) {
-  // wait a second to avoid a copy clipboard read operation err
-  await page.waitForTimeout(1000);
-  const handle = await page.evaluateHandle(() =>
-    navigator.clipboard.readText()
-  );
-  const clipboardContent = await handle.jsonValue();
-  playwrightConfig.shareLinks[key] = clipboardContent;
-  console.log(
-    `Saved clipboard content for ${key}: `,
-    playwrightConfig.shareLinks
-  );
-  console.log("data:", playwrightConfig.password);
-  // playwrightConfig.shareLinks;
+const readClipboard = (page: Page) =>
+  page.evaluate(() => navigator.clipboard.readText());
+
+/** `https://host/share/<id>` or `.../share/<id>#<secret>` -> `<id>`. */
+export const shareLinkId = (shareUrl: string) =>
+  shareUrl.split("/share/")[1]?.split("#")[0];
+
+/**
+ * Read the share link the app just copied to the clipboard.
+ *
+ * `CreateAccessLink.vue` fires `clipboard.copy(url)` without awaiting it, so the
+ * write lands a beat after the click and the clipboard still holds the previous
+ * link until it does. Polling for a link this run has not seen yet is both
+ * deterministic and quicker than the fixed one-second sleep it replaces.
+ *
+ * The clipboard is the source of truth rather than the rendered input: the input
+ * can be a beat behind on the `#` fragment that carries the decryption secret for
+ * links created without a password.
+ */
+export async function readNewShareLink(page: Page): Promise<string> {
+  let link = "";
+
+  await expect
+    .poll(
+      async () => {
+        const clipboard = await readClipboard(page);
+        const isNew =
+          clipboard.includes("/share/") && !seenShareLinks.has(clipboard);
+        if (isNew) link = clipboard;
+        return isNew;
+      },
+      { message: "clipboard never received a new share link" }
+    )
+    .toBe(true);
+
+  seenShareLinks.add(link);
+  return link;
 }
 
+/** Record the link the app just copied so later tests can open it. */
+export async function saveShareLink(page: Page, key: string) {
+  playwrightConfig.shareLinks[key] = await readNewShareLink(page);
+  console.log(`Saved share link for ${key}`);
+}
+
+/**
+ * The `access-link-item-N` row that shows `shareUrl`.
+ *
+ * Both list endpoints (`getAccessLinksForContainer` and
+ * `getAccessLinksByUploadIdAndWrappedKey`) query with no `orderBy`, so the
+ * rendered order does not track creation order: index 2 is not reliably "the link
+ * we just made" and index 1 is not reliably "the one created with a password".
+ * Picking the row by the link it shows is what keeps the suite off the wrong one.
+ *
+ * Getting this wrong is the #930 flake, in two shapes: deleting a link a later
+ * test still needed, which surfaced three tests later as a `download-button-0`
+ * timeout against a dead link, and looking for the password badge on whichever
+ * link happened to come back second.
+ */
+export async function accessLinkRow(page: Page, shareUrl: string) {
+  const wanted = shareLinkId(shareUrl);
+  const rows = page.locator('[data-testid^="access-link-item-"]');
+
+  // The list refetch is debounced, so the row may not be rendered yet.
+  let index = -1;
+  await expect
+    .poll(
+      async () => {
+        index = await rows.evaluateAll(
+          (elements, id) =>
+            elements.findIndex((element) => {
+              const input = element.querySelector("input");
+              return input?.value.split("/share/")[1]?.split("#")[0] === id;
+            }),
+          wanted
+        );
+        return index;
+      },
+      { message: `the access-link list never showed ${shareUrl}` }
+    )
+    .toBeGreaterThanOrEqual(0);
+
+  const row = rows.nth(index);
+  // The list can refetch between finding the index and using it. Fail here rather
+  // than acting on whichever row slid into the slot -- picking the wrong row is
+  // the bug this function exists to prevent.
+  await expect(row.locator("input")).toHaveValue(new RegExp(wanted));
+  return row;
+}
+
+/** Delete the access link `shareUrl` points at. */
+export async function deleteAccessLink(page: Page, shareUrl: string) {
+  const row = await accessLinkRow(page, shareUrl);
+  await row.getByTestId(/^delete-link-button-\d+$/).click({ force: true });
+}
+
+/**
+ * Open a folder row and wait for that folder's subtree to arrive.
+ *
+ * The dblclick only fires `router.push`. The upload and delete actions that follow
+ * target `folderStore.rootFolder`, which becomes this folder only once the folder
+ * page's subtree fetch resolves, so that response is the signal. The
+ * `waitForLoadState("networkidle")` this replaces was not one: networkidle has
+ * already fired for this document, so it returned immediately (see the latching
+ * behaviour in playwright-core's frames.js).
+ *
+ * Getting this wait wrong is the other half of #930: without it the file lands in
+ * the account root while the share link "Share links" created points at this
+ * folder, and "Download workflow" reports an empty container three tests later.
+ */
+export async function openFolder(page: Page, folderRow: Locator) {
+  const folderPath = await folderRow
+    .locator('a[href^="/send/folder/"]')
+    .getAttribute("href");
+  const folderId = folderPath?.split("/").pop();
+
+  const subtreeLoaded = page.waitForResponse((response) =>
+    // `endsWith`, not `includes`: selecting the folder a moment ago also fired
+    // `containers/<id>/links`, and that response would satisfy an `includes` check
+    // before the subtree this function exists to wait for has arrived.
+    new URL(response.url()).pathname.endsWith(`/containers/${folderId}/`)
+  );
+  await folderRow.dblclick();
+  await subtreeLoaded;
+}
+
+// Note: the `networkidle` half of this is inert for a click that does not start a
+// new document -- Playwright latches the event per document (see `openFolder`), so
+// it returns immediately. The waits that do the work are the `waitForResponse`
+// gates at the call sites.
 async function clickAndWaitForIdle(page: Page, locator: Locator) {
   await Promise.all([locator.click(), page.waitForLoadState("networkidle")]);
 }
@@ -90,49 +227,13 @@ export async function clickAndWaitForIdleBuilder(page: Page) {
   return async (locator: Locator) => clickAndWaitForIdle(page, locator);
 }
 
-export async function setup_browser({
-  usesEmptyStorage = false,
-}: {
-  usesEmptyStorage?: boolean;
-} = {}) {
-  const browser = await firefox.launch();
-
-  // Base context options
-  const contextOptions = {
-    ignoreHTTPSErrors: true,
-    viewport: { width: 1280, height: 720 },
-    acceptDownloads: true,
-    serviceWorkers: "block" as const,
-    bypassCSP: true,
-  };
-
-  // Create main context with storage state
-  const context = await browser.newContext({
-    ...contextOptions,
-    storageState: usesEmptyStorage ? emptystatePath : storageStatePath,
-  });
-
-  const page = await context.newPage();
-
-  return { context, page };
-}
-
+/**
+ * A context with no cookies and no keys, for opening a share link the way a
+ * recipient would. As in utils/dev/fixtures.ts, everything except the storage
+ * state comes from the `use` block in playwright.config.dev.ts.
+ */
 export async function create_incognito_context(browser: Browser) {
-  // Create incognito context with clean state
-  const incognitoContext = await browser.newContext({
-    ignoreHTTPSErrors: true,
-    viewport: { width: 1280, height: 720 },
-    acceptDownloads: true,
-    serviceWorkers: "block" as const,
-    bypassCSP: true,
-    // Start with a clean state
-    storageState: {
-      cookies: [],
-      origins: [],
-    },
-  });
-
-  return incognitoContext;
+  return browser.newContext({ storageState: { cookies: [], origins: [] } });
 }
 
 export const dragAndDropFile = async (
@@ -142,11 +243,7 @@ export const dragAndDropFile = async (
   fileName: string,
   fileType = ""
 ) => {
-  // print current path
-  console.log("current path: ", __dirname);
   const testFile = path.resolve(__dirname, filePath);
-  console.log("test file path: ", testFile);
-
   const buffer = readFileSync(testFile).toString("base64");
 
   const dataTransfer = await page.evaluateHandle(
@@ -170,12 +267,5 @@ export const dragAndDropFile = async (
 };
 
 export async function saveStorage(context: BrowserContext) {
-  const storageStatePath = path.resolve(
-    __dirname,
-    "../../data/lockboxstate.json"
-  );
-
-  await context.storageState({
-    path: storageStatePath,
-  });
+  await context.storageState({ path: storageStatePath });
 }

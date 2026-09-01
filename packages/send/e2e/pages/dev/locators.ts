@@ -3,13 +3,18 @@ import { Page } from "@playwright/test";
 export const fileLocators = (page: Page) => {
   const folderRowSelector = `[data-testid="folder-row"]`;
   const folderRowTestID = "folder-row";
+  // Every test here works in the one folder the suite creates, so it wants "the
+  // folder row", not "the only folder row". Taking the first tolerates the extra
+  // folder #1190 occasionally produces (one press of "new folder" can create two),
+  // which is an app bug none of these tests are about -- strict matching turned it
+  // into a strict-mode violation that broke every test downstream of it.
+  const firstFolderRow = page.getByTestId(folderRowTestID).first();
   const linkWithPasswordID = "link-with-password";
   const fileCountID = "file-count";
   const passwordInputID = "password-input";
   const submitButtonID = "submit-button";
   const tableCellID = `[data-testid="folder-table-row-cell"]`;
   const emptyFolderIndicator = page.getByTestId("empty-folder");
-  const createdShareLinkWithPassword = page.getByTestId("access-link-item-1");
   const sharelinkButton = page.getByTestId("create-share-link");
   const submitButton = page.getByTestId(submitButtonID);
   const createdShareLink = page.getByTestId("access-link-item-0");
@@ -19,12 +24,10 @@ export const fileLocators = (page: Page) => {
   const downloadButton = page.getByTestId("download-button-0");
   const confirmDownload = page.getByTestId("confirm-download");
   const deleteFileButton = page.getByTestId("delete-file");
-  const homeButton = page.getByTestId("home-button");
   const dropZone = page.getByTestId("drop-zone");
   return {
     folderRowSelector,
-    folderRowTestID,
-    createdShareLinkWithPassword,
+    firstFolderRow,
     sharelinkButton,
     createdShareLink,
     passwordInput,
@@ -39,7 +42,6 @@ export const fileLocators = (page: Page) => {
     tableCellID,
     confirmDownload,
     fileCountID,
-    homeButton,
     dropZone,
     emptyFolderIndicator,
   };
@@ -71,7 +73,6 @@ export const dashboardLocators = (page: Page) => {
   const understandCheckbox = page.getByTestId("understand-checkbox");
   const resetAccessButton = page.getByTestId("reset-access");
   const dangerButton = page.getByTestId("danger-button");
-  const securityButton = page.getByTestId("security-and-privacy");
   const showReset = page.getByTestId("show-reset");
 
   return {
@@ -95,7 +96,6 @@ export const dashboardLocators = (page: Page) => {
     recoverAccessButton,
     resetAccessButton,
     dangerButton,
-    securityButton,
     showReset,
   };
 };

@@ -1,21 +1,32 @@
 import { expect } from "@playwright/test";
 import { fileLocators } from "./locators";
-import { PlaywrightProps } from "../../tests/desktop/dev/send.spec";
+import { PlaywrightProps } from "../../utils/dev/fixtures";
 import {
+  accessLinkRow,
   clickAndWaitForIdleBuilder,
   create_incognito_context,
+  deleteAccessLink,
   downloadFirstFile,
   dragAndDropFile,
+  openFolder,
   playwrightConfig,
+  readNewShareLink,
   requireShareLink,
-  saveClipboardItem,
+  saveShareLink,
 } from "../../utils/dev/testUtils";
 
-const { password, timeout, fileLinks } = playwrightConfig;
+const { password } = playwrightConfig;
 
 export async function upload_workflow({ page }: PlaywrightProps) {
-  const { folderRowSelector, folderRowTestID, fileCountID, uploadButton, dropZone, tableCellID, passwordInput } =
-    fileLocators(page);
+  const {
+    folderRowSelector,
+    firstFolderRow,
+    fileCountID,
+    uploadButton,
+    dropZone,
+    tableCellID,
+    passwordInput,
+  } = fileLocators(page);
 
   const clickAndWait = await clickAndWaitForIdleBuilder(page);
 
@@ -23,17 +34,12 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   await page.waitForSelector(folderRowSelector);
   await profileButton.click();
 
-  // Select folder
-  let folder = page.getByTestId(folderRowTestID);
-  await folder.click();
-
-  // Open folder page
-  folder = page.getByTestId(folderRowTestID);
-  await folder.dblclick();
-  await page.waitForLoadState("networkidle");
+  // Select the folder, then open its page
+  await firstFolderRow.click();
+  await openFolder(page, firstFolderRow);
 
   // Find upload box and upload the file
-  expect(await dropZone.textContent({ timeout })).toContain("files here or tap to upload");
+  await expect(dropZone).toContainText("files here or tap to upload");
   await dragAndDropFile(page, "#drop-zone", "../../test-files/test.png", "test.png");
   await uploadButton.click();
   // wait for network idle
@@ -41,7 +47,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   await page.waitForSelector(tableCellID);
 
   // Check if the file count has updated
-  expect(await page.getByTestId(fileCountID).textContent()).toBe("1");
+  await expect(page.getByTestId(fileCountID)).toHaveText("1");
 
   // FILE SHARE LINKS
 
@@ -52,41 +58,35 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   // Generate a share link for the file
   const shareLinkButton = page.getByTestId("create-share-link");
   await shareLinkButton.click();
-  // await clickAndWait(shareLinkButton);
 
-  expect(await page.getByTestId("link-0").inputValue()).toContain("/share/");
-  await saveClipboardItem(page, "file-no-password");
-  // let handle = await page.evaluateHandle(() => navigator.clipboard.readText());
-  // let clipboardContent = await handle.jsonValue();
-  // fileLinks.push(clipboardContent);
+  await expect(page.getByTestId("link-0")).toHaveValue(/\/share\//);
+  await saveShareLink(page, "file-no-password");
 
   // Create a share link with password
   await passwordInput.fill(password);
   await clickAndWait(shareLinkButton);
-  expect(await page.getByTestId("link-1").inputValue()).toContain("/share/");
-  await saveClipboardItem(page, "file-with-password");
-  // handle = await page.evaluateHandle(() => navigator.clipboard.readText());
-  // clipboardContent = await handle.jsonValue();
-  // fileLinks.push(clipboardContent);
+
+  await expect(page.getByTestId("link-1")).toHaveValue(/\/share\//);
+  await saveShareLink(page, "file-with-password");
 
   // Create a third share link without password
   await clickAndWait(shareLinkButton);
-  expect(await page.getByTestId("link-2").inputValue()).toContain("/share/");
+  const throwawayLink = await readNewShareLink(page);
 
-  // Remove the newly created link
-  await page.getByTestId("delete-link-button-2").click({ force: true });
-  await page.waitForLoadState("networkidle");
-
-  // Wait for the link to be removed and the api is called to update the links
-  let linksResponse = page.waitForResponse((response) => response.request().url().includes("/links?type=file"));
-  await linksResponse;
+  // Remove the link we just created. Listen before clicking: deleting a link
+  // refetches the list immediately, so a promise created after the click waits
+  // for the *next* refetch instead of this one.
+  const linksRefreshed = page.waitForResponse((response) =>
+    response.request().url().includes("/links?type=file")
+  );
+  await deleteAccessLink(page, throwawayLink);
+  await linksRefreshed;
 }
 
-export async function share_links({ page, context }: PlaywrightProps) {
+export async function share_links({ page }: PlaywrightProps) {
   const {
     folderRowSelector,
-    folderRowTestID,
-    createdShareLinkWithPassword,
+    firstFolderRow,
     sharelinkButton,
     linkWithPasswordID,
     passwordInput,
@@ -99,8 +99,7 @@ export async function share_links({ page, context }: PlaywrightProps) {
   await clickAndWait(profileButton);
 
   // Select folder
-  let folder = page.getByTestId(folderRowTestID);
-  await clickAndWait(folder);
+  await clickAndWait(firstFolderRow);
 
   let linksResponse = page.waitForResponse((response) => response.request().url().includes("/links"));
 
@@ -109,8 +108,8 @@ export async function share_links({ page, context }: PlaywrightProps) {
   await linksResponse;
   await page.waitForLoadState("networkidle");
 
-  expect(await firstLink.inputValue()).toContain("/share/");
-  await saveClipboardItem(page, "folder-no-password");
+  await expect(firstLink).toHaveValue(/\/share\//);
+  await saveShareLink(page, "folder-no-password");
 
   linksResponse = page.waitForResponse((response) => response.request().url().includes("/links"));
 
@@ -119,24 +118,27 @@ export async function share_links({ page, context }: PlaywrightProps) {
   await clickAndWait(sharelinkButton);
   await linksResponse;
   await page.waitForLoadState("networkidle");
-  await saveClipboardItem(page, "folder-with-password");
+  await saveShareLink(page, "folder-with-password");
 
-  // Wait for the password badge to be visible and check its content
-  await createdShareLinkWithPassword.waitFor({ state: "visible" });
-  const passwordBadge = createdShareLinkWithPassword.getByTestId(linkWithPasswordID);
-  await passwordBadge.waitFor({ state: "visible" });
-  expect(await passwordBadge.textContent()).toContain("Password");
+  // Wait for the password badge to be visible and check its content. The row is
+  // found by the link it shows rather than by index -- see accessLinkRow.
+  const passwordLinkRow = await accessLinkRow(
+    page,
+    requireShareLink("folder-with-password")
+  );
+  const passwordBadge = passwordLinkRow.getByTestId(linkWithPasswordID);
+  await expect(passwordBadge).toBeVisible();
+  await expect(passwordBadge).toContainText("Password");
 
   // Create a third share link without password
   await clickAndWait(sharelinkButton);
-  expect(await page.getByTestId("link-2").inputValue()).toContain("/share/");
+  const throwawayLink = await readNewShareLink(page);
 
-  // Remove the newly created link
-  await page.getByTestId("delete-link-button-2").click({ force: true });
-  await page.waitForLoadState("networkidle");
-
-  // Wait for the link to be removed and the api is called to update the links
+  // Remove the link we just created. Listen before clicking: deleting a link
+  // refetches the list immediately, so a promise created after the click waits
+  // for the *next* refetch instead of this one.
   linksResponse = page.waitForResponse((response) => response.request().url().includes("/links"));
+  await deleteAccessLink(page, throwawayLink);
   await linksResponse;
 }
 
@@ -153,13 +155,12 @@ const MOBILE_VIEWPORT = { width: 412, height: 915 };
 // this drives the confirmation by actually clicking it. Cancelling rather than
 // confirming keeps the uploaded file around for the delete step that follows.
 export async function mobile_info_panel_modal({ page }: PlaywrightProps) {
-  const { folderRowTestID } = fileLocators(page);
+  const { firstFolderRow } = fileLocators(page);
 
   // Enter the folder while still at desktop width: below `md` a single click
   // opens the info panel over the table, so the row's dblclick-to-open doesn't
   // survive the reflow.
-  await page.getByTestId(folderRowTestID).dblclick();
-  await page.waitForLoadState("networkidle");
+  await openFolder(page, firstFolderRow);
 
   await page.setViewportSize(MOBILE_VIEWPORT);
 
@@ -179,12 +180,6 @@ export async function mobile_info_panel_modal({ page }: PlaywrightProps) {
 
 export async function download_workflow({ page, context }: PlaywrightProps) {
   const { submitButtonID, passwordInputID } = fileLocators(page);
-
-  // // Store URLs before using them
-  // const [regularUrl, passwordUrl] = [shareLinks[0], shareLinks[1]];
-
-  // // Store URLs before using them
-  // const [noPasswordFileUrl, filePasswordUrl] = [fileLinks[0], fileLinks[1]];
 
   // Regular window downloads
   let otherPage = await context.newPage();
@@ -254,32 +249,36 @@ export async function download_workflow({ page, context }: PlaywrightProps) {
 }
 
 export async function delete_file({ page }: PlaywrightProps) {
-  const { folderRowTestID, fileCountID, deleteFileButton, homeButton } = fileLocators(page);
-  const { shareLinks } = playwrightConfig;
-  const clickAndWait = await clickAndWaitForIdleBuilder(page);
-  const { submitButtonID, passwordInputID } = fileLocators(page);
-  let folder = page.getByTestId(folderRowTestID);
+  const {
+    firstFolderRow,
+    fileCountID,
+    deleteFileButton,
+    submitButtonID,
+    passwordInputID,
+  } = fileLocators(page);
+
   // Select folder
-  await folder.dblclick();
+  await openFolder(page, firstFolderRow);
 
   // Delete file
-  const responsePromise = page.waitForResponse((response) => response.request().method() === "DELETE");
+  const deleteResponse = page.waitForResponse((response) => response.request().method() === "DELETE");
   await deleteFileButton.click({ force: true });
 
   // Click the confirmation button in the modal
   await page.getByText("Yes, Delete").click();
 
   // Wait for DELETE request to complete
-  await responsePromise;
+  expect((await deleteResponse).status()).toBe(202);
 
-  expect((await responsePromise).status()).toBe(202);
-  expect(await page.getByTestId(fileCountID).isVisible()).toBeFalsy();
+  // `file-count` is a hidden marker element (FolderView.vue renders it with
+  // `display: none`), so this is a weak check by construction.
+  await expect(page.getByTestId(fileCountID)).toBeHidden();
 
   // Check that the share links are no longer accessible
   // Folder no password link
   await page.goto(requireShareLink("folder-no-password"));
   await page.waitForLoadState("networkidle");
-  expect(await page.getByTestId("not_found").textContent()).toContain("This link is no longer active");
+  await expect(page.getByTestId("not_found")).toContainText("This link is no longer active");
 
   // Folder with password link
   await page.goto(requireShareLink("folder-with-password"));
@@ -287,5 +286,5 @@ export async function delete_file({ page }: PlaywrightProps) {
   await page.getByTestId(passwordInputID).fill(password);
   await page.getByTestId(submitButtonID).click();
   await page.waitForLoadState("networkidle");
-  expect(await page.getByTestId("not_found").textContent()).toContain("This link is no longer active");
+  await expect(page.getByTestId("not_found")).toContainText("This link is no longer active");
 }

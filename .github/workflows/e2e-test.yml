@@ -43,6 +43,7 @@ jobs:
       backend-changed: ${{ steps.check.outputs.backend-changed }}
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
+      e2e-changed: ${{ steps.check.outputs.e2e-changed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -57,11 +58,24 @@ jobs:
               - '.github/workflows/validate.yml'
             frontend-changed:
               - 'packages/send/frontend/**'
+            # A change to the suite, its runner, or the stack it drives has to run
+            # the suite -- otherwise the only check on the thing that guards the
+            # product is someone running it by hand.
+            e2e-changed:
+              - 'packages/send/e2e/**'
+              - 'scripts/e2e.sh'
+              - 'compose.yml'
+              - 'compose.ci.yml'
+              - 'compose.ci.minio.yml'
+              - '.github/workflows/e2e-test.yml'
             shared-changed:
               - 'packages/shared/**'
   build-e2e-images:
     needs: detect-changes
-    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
+    if: >-
+      needs.detect-changes.outputs.backend-changed == 'true' ||
+      needs.detect-changes.outputs.frontend-changed == 'true' ||
+      needs.detect-changes.outputs.e2e-changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -136,7 +150,8 @@ jobs:
     # reporting a failure the contributor cannot act on.
     if: >-
       (needs.detect-changes.outputs.backend-changed == 'true' ||
-       needs.detect-changes.outputs.frontend-changed == 'true') &&
+       needs.detect-changes.outputs.frontend-changed == 'true' ||
+       needs.detect-changes.outputs.e2e-changed == 'true') &&
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
@@ -216,15 +231,20 @@ jobs:
         working-directory: packages/send/e2e
         run: mise exec -- pnpm exec playwright install
 
+      # Must exceed the runner's own bounds so Playwright gets to write a report:
+      # scripts/e2e.sh gives the whole stack one 180s budget and
+      # playwright.config.dev.ts caps the run at globalTimeout (10min) -- 13min
+      # total, leaving room for the image pulls. A step timeout that fires first
+      # SIGKILLs the run and uploads nothing.
       - name: Run stack and test
         id: run-stack-and-test
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: |
           # Create .env file with secrets (for end to end run only)
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
           # The dev OIDC spec loads credentials from tests/desktop/dev/.env
-          # (send.spec.ts: dotenv path = __dirname/.env), so place it there too.
+          # (utils/dev/credentials.ts resolves that path), so place it there too.
           cp .env packages/send/e2e
           mv .env packages/send/e2e/tests/desktop/dev/
           cd packages/send/e2e

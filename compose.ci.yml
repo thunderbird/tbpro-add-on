@@ -11,9 +11,13 @@ services:
       - POSTGRES_DB=send-suite
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 10s
+      # Postgres is ready in a second or two, but `depends_on: service_healthy`
+      # cannot release the backend until a probe actually succeeds -- so a 10s
+      # interval spent ~10s of every stack boot waiting to ask. Probe often, keep
+      # roughly the same total patience via retries.
+      interval: 2s
       timeout: 5s
-      retries: 5
+      retries: 25
 
   backend:
     build:
