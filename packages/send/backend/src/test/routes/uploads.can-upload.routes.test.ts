@@ -65,12 +65,14 @@ describe('GET /api/uploads/can-upload', () => {
       expect(response.status).toBe(403);
 
       // The assertion that pins the ordering. Both orders now answer 403 --
-      // `checkStorageLimit` fails closed too -- so only the message says which
+      // `checkStorageLimit` fails closed too -- so only the body says which
       // middleware got there first. This one is `requireJWT`'s; running
       // `checkStorageLimit` first yields the bare 'Not authorized' from
-      // `reject()`.
+      // `reject()`. `error` is read by the add-on's blocked-cookie check
+      // (send/frontend/src/lib/cookieAccess.ts), so it is pinned here too.
       expect(response.body).toEqual({
         message: 'Not authorized: Token not found',
+        error: 'token_not_found',
       });
 
       // And the storage read stays out of reach of an anonymous caller.
