@@ -20,6 +20,13 @@ export const CLIENT_MESSAGES = {
     `refusing it. Open Settings → Privacy & Security → Web Content and turn on ` +
     `"Accept cookies from sites". If that is already on, also set "Accept ` +
     `third-party cookies" to "From visited". Then choose "Check again".`,
+  // Passive login-banner variant of COOKIES_BLOCKED_BODY: the banner offers a
+  // "Retry" button instead of the popup's "Check again" wording.
+  COOKIES_BLOCKED_BANNER_BODY:
+    `Send stores a cookie to keep you signed in, and your browser is currently ` +
+    `refusing it. Open Settings → Privacy & Security → Web Content and turn on ` +
+    `"Accept cookies from sites". If that is already on, also set "Accept ` +
+    `third-party cookies" to "From visited". Then choose "Retry".`,
   SETUP_CHECK_FAILED: `Send couldn't check whether your account is ready to upload. Check your internet connection, then choose "Check again".`,
   SETUP_DID_NOT_COMPLETE: `Setup didn't finish last time. Choose "Continue Setup" to try again.`,
   SIGNED_OUT_RETURN_TO_COMPOSE: `You're not signed in to Send. Go back to the compose window and sign in again to continue this upload.`,
