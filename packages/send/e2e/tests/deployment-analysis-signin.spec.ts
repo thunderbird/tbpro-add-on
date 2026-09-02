@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-import { PLAYWRIGHT_TAG_DEPLOYMENT_ANALYSIS } from '../../const/const';
-import { signInOnly } from '../../utils/utils';
+import { PLAYWRIGHT_TAG_DEPLOYMENT_ANALYSIS } from '../const/const';
+import { signInOnly } from '../utils/utils';
 
 /**
  * Kargo freight-verification gate for TB Send.

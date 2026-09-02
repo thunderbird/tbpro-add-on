@@ -229,7 +229,7 @@ jobs:
           echo "TBPRO_USERNAME=${{ secrets.TBPRO_USERNAME }}" > .env
           echo "TBPRO_PASSWORD=${{ secrets.TBPRO_PASSWORD }}" >> .env
           cp .env packages/send/e2e
-          mv .env packages/send/e2e/tests/desktop/dev/
+          mv .env packages/send/e2e/tests/dev/
           cd packages/send/e2e
           mise exec -- pnpm run test:e2e:ci
 

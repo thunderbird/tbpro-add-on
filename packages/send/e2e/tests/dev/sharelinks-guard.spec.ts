@@ -4,13 +4,13 @@
 
 import { expect, test } from "@playwright/test";
 
-import { PLAYWRIGHT_TAG_DEV_DESKTOP } from "../../../const/const";
+import { PLAYWRIGHT_TAG_DEV_DESKTOP } from "../../const/const";
 import {
   playwrightConfig,
   requireShareLink,
   resetShareLinks,
   shareLinkId,
-} from "../../../utils/dev/testUtils";
+} from "../../utils/dev/testUtils";
 
 test.describe("share-link guards (#930)", { tag: [PLAYWRIGHT_TAG_DEV_DESKTOP] }, () => {
   test("resetShareLinks clears every entry back to null", () => {

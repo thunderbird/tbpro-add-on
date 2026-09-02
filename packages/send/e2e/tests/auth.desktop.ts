@@ -1,10 +1,10 @@
 import { test as setup } from '@playwright/test';
 import path from 'path';
 
-import { signInAndRestoreSendKey } from '../../utils/utils';
+import { signInAndRestoreSendKey } from '../utils/utils';
 
 const fs = require('fs');
-const directoryPath = path.join(__dirname, '../../test-results/.auth');
+const directoryPath = path.join(__dirname, '../test-results/.auth');
 
 // when use storageState in browserstack yml, browserstack requires the file to exist already even on the
 // first time the auth-setup step is run; so must create an empty user.json file here
@@ -19,7 +19,7 @@ try {
 }
 
 // We write it here so it is blown away and re-created at the start of every test run; and is in .gitignore
-const authFile = path.join(__dirname, '../../test-results/.auth/user.json');
+const authFile = path.join(__dirname, '../test-results/.auth/user.json');
 
 setup('desktop browser authenticate', async ({ page }) => {
   console.log('inside desktop authenticate, about to sign-in and restore send key');

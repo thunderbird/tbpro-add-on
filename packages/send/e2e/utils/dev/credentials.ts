@@ -5,7 +5,7 @@ import path from "path";
 // test" step in .github/workflows/e2e-test.yml). Locally it does not exist, and the
 // only spec that needs them skips itself.
 config.config({
-  path: path.resolve(__dirname, "../../tests/desktop/dev/.env"),
+  path: path.resolve(__dirname, "../../tests/dev/.env"),
 });
 
 export const credentials = {

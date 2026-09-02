@@ -11,7 +11,7 @@ export default defineConfig({
   // Only the dev suite uses this config; the nightly and deployment-analysis
   // projects live in playwright.config.ts. Pointing at the one directory keeps
   // the runner from loading (and reporting on) specs it will never run.
-  testDir: "./tests/desktop/dev",
+  testDir: "./tests/dev",
   outputDir: './playwright-test-results',
   globalTimeout: TEN_MINUTES, // odds are the test will timeout at the locator level before that anyway
   timeout: THREE_MINUTES,
