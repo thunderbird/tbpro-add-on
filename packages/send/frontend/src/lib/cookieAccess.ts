@@ -97,6 +97,14 @@ export function classifyCookieAccess({
 
   // Without a live Bearer session there is nothing to disagree with: a missing
   // cookie is equally well explained by the user having signed out.
+  //
+  // Known accepted edge: immediately after a fresh OIDC login (Bearer live, but
+  // the JWT session cookie not yet minted by auth/oidc/me) or right after the
+  // user clears cookies, this also reads as 'blocked'. That is a transient,
+  // self-correcting state -- the next validator run after the cookie is minted
+  // answers 'ok' -- and the "Check again" button the blocked screen offers is
+  // exactly the recovery. Worth flagging rather than papering over with a
+  // heuristic that could suppress a genuine block.
   if (bearerSessionValid && saysCookieMissing(cookieRouteFailure)) {
     return 'blocked';
   }

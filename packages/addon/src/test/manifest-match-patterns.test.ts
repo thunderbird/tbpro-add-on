@@ -71,9 +71,26 @@ describe('manifest.json match patterns', () => {
     });
 
     it('carries no port in any host permission, since Firefox silently drops such patterns', () => {
+      // A host permission like `http://localhost:5173/*` is not a narrower
+      // grant -- Firefox rejects the whole pattern (bug 1362809), so it grants
+      // nothing. The dev localhost permissions below are portless on purpose;
+      // this pins that they stay that way.
       expect(hostPermissions.filter((p) => /:\d+$/.test(hostOf(p)))).toEqual(
         []
       );
+    });
+  });
+
+  /**
+   * Local dev builds run the Send app from http(s)://localhost, so the add-on
+   * needs a host permission for it -- portless, since a port makes the whole
+   * pattern inert (bug 1362809). Kept out of shipped builds separately: prod
+   * strips localhost from content_scripts in build.sh.
+   */
+  describe('localhost host permission — dev', () => {
+    it('grants portless localhost host permissions for local development', () => {
+      expect(hostPermissions).toContain('http://localhost/*');
+      expect(hostPermissions).toContain('https://localhost/*');
     });
   });
 });

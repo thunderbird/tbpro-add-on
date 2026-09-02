@@ -43,7 +43,9 @@
     "tabs",
     "activeTab",
     "https://*.backblazeb2.com/*",
-    "https://send-backend.tb.pro/*"
+    "https://send-backend.tb.pro/*",
+    "http://localhost/*",
+    "https://localhost/*"
   ],
   "experiment_apis": {
     "AccountHub": {
