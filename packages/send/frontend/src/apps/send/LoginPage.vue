@@ -37,6 +37,7 @@ import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import CookiesBlockedBanner from '../common/CookiesBlockedBanner.vue';
 import FeedbackBox from '../common/FeedbackBox.vue';
 
 import PublicLogin from '../common/PublicLogin.vue';
@@ -98,9 +99,11 @@ async function _loginToOIDC() {
 <template>
   <main class="container">
     <div v-if="!isPublicLogin">
+      <CookiesBlockedBanner />
       <p>Redirecting to TB Pro login...</p>
     </div>
     <div v-else>
+      <CookiesBlockedBanner />
       <TBBanner />
       <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />
       <FeedbackBox />
