@@ -75,8 +75,10 @@ overrides:
   # postcss: pulled by the addon build and root vite.
   postcss@<=8.5.22: '>=8.5.23 <9'
   # qs: pulled by express@4 (ships qs 6.14.2); express@5 would clear it but is a
-  #   breaking major for the backend.
-  qs@>=6.11.1 <=6.15.1: '>=6.15.2 <7'
+  #   breaking major for the backend. Floor raised to >=6.16.0 for GHSA (#468 DoS
+  #   via isBuffer, #469 array-limit bypass); the prior <=6.15.1/>=6.15.2 pin was
+  #   one patch short of the advisory range.
+  qs@>=6.11.1 <6.16.0: '>=6.16.0 <7'
   # tar: pulled by lerna + lerna>arborist>pacote. Clears a critical advisory.
   tar@<=7.5.20: '>=7.5.21 <8'
   # uuid: old majors pulled by browserstack-node-sdk (e2e) and google-gax.
