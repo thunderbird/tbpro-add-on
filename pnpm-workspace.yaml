@@ -63,8 +63,10 @@ overrides:
   brace-expansion@<1.1.18: '>=1.1.18 <2'
   brace-expansion@>=2.0.0 <2.1.4: '>=2.1.4 <3'
   brace-expansion@>=4.0.0 <5.0.9: '>=5.0.9 <6'
-  # fast-uri: pulled by browserstack-node-sdk>table>ajv (e2e).
-  fast-uri@>=3.0.0 <3.1.5: '>=3.1.5 <4'
+  # fast-uri: pulled by browserstack-node-sdk>table>ajv (e2e only). Floor raised
+  #   to >=3.1.6 for GHSA #470-#473 (host confusion / SSRF via URI normalization);
+  #   the prior >=3.1.5 pin predated those advisories. Test-only path, no runtime.
+  fast-uri@>=3.0.0 <3.1.6: '>=3.1.6 <4'
   # ip-address: pulled by lerna>...>socks-proxy-agent>socks.
   ip-address@<=10.3.0: '>=10.3.1 <11'
   # js-yaml: v3 via browserstack-node-sdk (e2e), v4 via lerna + lerna>cosmiconfig.
