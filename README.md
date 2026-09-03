@@ -16,7 +16,7 @@ This monorepo is managed using [Lerna](https://lerna.js.org/) and [pnpm](https:/
 - [Node.js](https://nodejs.org/en/download/) 22.x — `engines` requires `>=22.11.0`. Stay on 22: on Node 24 `playwright install` hangs unpacking the browser archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)).
 - [pnpm](https://pnpm.io/installation) (v10.6.4 or later)
 - [bun](https://bun.sh/) (v1.1.13) — a handful of package scripts run through it (`compare_envs`, the frontend and add-on build scripts), so the repo needs it even though it is not the package manager
-- [Docker](https://www.docker.com/get-started/) with the [Compose](https://docs.docker.com/compose/install/) plugin (v2.24.4 or later — older 2.24.x silently ignores the `!override` tag used for [parallel stacks](./packages/send/README.md#running-a-second-stack-in-parallel))
+- [Docker](https://www.docker.com/get-started/) with the [Compose](https://docs.docker.com/compose/install/) plugin
 - `rsync`, `jq` and `zip` — the backend's Docker build context and the add-on/frontend builds shell out to these (preinstalled on macOS and most Linux distros)
 
 ## Environment setup
@@ -79,9 +79,6 @@ The backend is served over TLS with a self-signed certificate. Visit `https://lo
 once and accept it, or the app will load while every API call quietly fails.
 
 In order to login, you must create a new account. Click the "Or register" link and follow the prompts to create an account, which will then log you in to your local instance of Send.
-
-Running a second stack alongside this one — from another worktree, on other ports — is covered in
-[the Send README](./packages/send/README.md#running-a-second-stack-in-parallel).
 
 ## Addon
 

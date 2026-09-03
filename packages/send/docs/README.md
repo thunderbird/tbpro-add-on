@@ -16,7 +16,7 @@ Both are end-to-end encrypted.
 - Node.js 22.x (`engines` requires `>=22.11.0`)
 - `pnpm` (v10.6.4 or later) — this is a pnpm workspace, so `npm` and `yarn` will not resolve it
 - `bun` — a few package scripts run through it
-- `docker` with the `compose` plugin (v2.24.4 or later)
+- `docker` with the `compose` plugin
 
 ## Quick start
 

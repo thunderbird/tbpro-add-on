@@ -81,25 +81,6 @@ archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)). `.t
 this folder pins Node for [mise](https://mise.jdx.dev/), which CI uses; if your default Node is
 already 22.x you don't need mise at all.
 
-#### Running against a stack on non-default ports
-
-The `test:e2e*` scripts above all target `http://localhost:5173`, and `test:e2e:ci` additionally
-hardcodes that URL and the ports it health-checks inside `scripts/e2e.sh` — so none of them can be
-aimed at a second stack running on other ports. Pass the base URL explicitly instead, from this
-folder (a bare `pnpm exec playwright` does not resolve anywhere else in the monorepo):
-
-```sh
-PLAYWRIGHT_BASE_URL=http://localhost:5873 pnpm exec playwright test \
-  --config playwright.config.dev.ts --grep dev-desktop
-```
-
-`playwright.config.dev.ts` defines a single Firefox project, which the upload and download tests
-depend on: Chromium cannot restore the encrypted keychain from the saved `storageState`, so the
-browser would have no key to decrypt with.
-
-See [Running a second stack in parallel](../README.md#running-a-second-stack-in-parallel) for the
-rest of the setup.
-
 #### Reading the results
 
 A clean run is currently 12 passed and 1 skipped; the only expected skip is `oidc.spec.ts`, which
