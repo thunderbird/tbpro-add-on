@@ -17,7 +17,7 @@ test.describe('encrypted files', () => {
     tag: [PLAYWRIGHT_TAG_DESKTOP_NIGHTLY, PLAYWRIGHT_TAG_MOBILE_NIGHTLY],
   }, async ({ page }, testInfo) => {
     const isMobile = isMobileProject(testInfo.project.name);
-    test.skip(isMobile, 'Skipping on mobile until issue 977 (file info panel covers delete button on mobile) is resolved');
+    const isBrowserStackAndroid = testInfo.project.name === 'android-chrome';
 
     if (isMobile) {
       test.setTimeout(FIVE_MINUTES);
@@ -50,13 +50,18 @@ test.describe('encrypted files', () => {
       await encryptedFilesPage.uploadFileWithFilePicker(filePickerFixture);
       await encryptedFilesPage.uploadFileWithDragAndDrop(dragDropFixture);
       if (isMobile) {
-        await encryptedFilesPage.downloadFileFromInfoPanelAndExpectDownload(filePickerFixture);
+        await encryptedFilesPage.downloadFileFromInfoPanelAndExpectDownload(
+          filePickerFixture,
+          isBrowserStackAndroid
+        );
       } else {
         await encryptedFilesPage.downloadFileAndExpectDownload(filePickerFixture);
       }
     } finally {
       // Keep the shared test account tidy even if a later upload assertion fails.
-      await encryptedFilesPage.deleteUploadedFiles(uploadedFileNames);
+      // Mobile exposes delete in the full-screen file info panel; desktop keeps
+      // using the action button rendered directly in each file row.
+      await encryptedFilesPage.deleteUploadedFiles(uploadedFileNames, isMobile);
     }
   });
 });
