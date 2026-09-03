@@ -63,6 +63,11 @@ overrides:
   brace-expansion@<1.1.18: '>=1.1.18 <2'
   brace-expansion@>=2.0.0 <2.1.4: '>=2.1.4 <3'
   brace-expansion@>=4.0.0 <5.0.9: '>=5.0.9 <6'
+  # browserslist: build-time only, via autoprefixer / @babel/helper-compilation-
+  #   targets (frontend + addon build tooling). Floor for GHSA #466/#467 (crash /
+  #   OOM from untrusted browserslist-stats.json) which need <4.28.7. Runs on
+  #   trusted repo files at build time; no runtime path.
+  browserslist@<4.28.7: '>=4.28.7 <5'
   # fast-uri: pulled by browserstack-node-sdk>table>ajv (e2e).
   fast-uri@>=3.0.0 <3.1.5: '>=3.1.5 <4'
   # ip-address: pulled by lerna>...>socks-proxy-agent>socks.
