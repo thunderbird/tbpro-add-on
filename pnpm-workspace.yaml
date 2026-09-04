@@ -38,53 +38,29 @@ onlyBuiltDependencies:
   - vue-demi
 
 overrides:
-  # Load-bearing (NOT a retired security floor): browserstack-node-sdk declares
-  # aws-sdk@^3.0.1 which does not exist (aws-sdk only publishes v2.x). Pin to the
-  # latest v2 to unblock install. See #958.
-  browserstack-node-sdk>aws-sdk: '2.1693.0'
-
-  # Security floors that remain unavoidable: the vulnerable version is pulled by a
-  # deep transitive with no upgradable direct parent (see PR #1064 notes).
-  #
-  # Every floor below is upper-bounded to its own major. An override REPLACES the
-  # dependent's declared range outright, so an unbounded floor such as
-  # `brace-expansion@<1.1.18: '>=1.1.18'` resolves to the newest release of ANY
-  # major -- which silently dragged minimatch@3.x onto brace-expansion@5.x, whose
-  # CJS entry point exports {expand} instead of a callable, breaking it with
-  # "TypeError: expand is not a function". Keep the `<next-major` bound when
-  # raising these.
-  #
-  # @opentelemetry/core: pulled by @sentry/node@8 (resolves 2.7.1); clearing it
-  #   naturally would require the @sentry/* v8->v10 major bump (out of scope here).
   '@opentelemetry/core@<2.8.0': '>=2.8.0'
-  # brace-expansion: three live majors, each pulled by a different minimatch
-  #   generation (lerna>minimatch@3, eslint-plugin-n>minimatch@9, nx +
-  #   arborist>minimatch@10). Each major has its own patched release.
   brace-expansion@<1.1.18: '>=1.1.18 <2'
   brace-expansion@>=2.0.0 <2.1.4: '>=2.1.4 <3'
   brace-expansion@>=4.0.0 <5.0.9: '>=5.0.9 <6'
-  # fast-uri: pulled by browserstack-node-sdk>table>ajv (e2e).
+  browserslist@<=4.28.6: '>=4.28.7'
+  browserstack-node-sdk>aws-sdk: 2.1693.0
   fast-uri@>=3.0.0 <3.1.5: '>=3.1.5 <4'
-  # ip-address: pulled by lerna>...>socks-proxy-agent>socks.
+  fast-uri@>=3.0.0 <3.1.6: '>=3.1.6'
+  fast-uri@>=3.1.2 <3.1.6: '>=3.1.6'
+  fast-uri@>=3.1.3 <3.1.6: '>=3.1.6'
+  fflate@>=0.4.5 <0.4.9: '>=0.4.9'
   ip-address@<=10.3.0: '>=10.3.1 <11'
-  # js-yaml: v3 via browserstack-node-sdk (e2e), v4 via lerna + lerna>cosmiconfig.
   js-yaml@>=3.0.0 <3.15.1: '>=3.15.1 <4'
   js-yaml@>=4.0.0 <4.3.1: '>=4.3.1 <5'
-  # nanoid: pulled by postcss (addon + root vite).
   nanoid@<3.3.17: '>=3.3.17 <4'
-  # postcss: pulled by the addon build and root vite.
+  pacote@>=11.2.7 <21.5.1: '>=21.5.1'
+  postcss-selector-parser@>=6.1.0 <6.1.3: '>=6.1.3'
+  postcss-selector-parser@>=7.1.0 <7.1.3: '>=7.1.3'
   postcss@<=8.5.22: '>=8.5.23 <9'
-  # qs: pulled by express@4 (ships qs 6.14.2); express@5 would clear it but is a
-  #   breaking major for the backend.
+  qs@>=2.2.5 <6.16.0: '>=6.16.0'
   qs@>=6.11.1 <=6.15.1: '>=6.15.2 <7'
-  # tar: pulled by lerna + lerna>arborist>pacote. Clears a critical advisory.
+  qs@>=6.14.2 <=6.15.3: '>=6.16.0'
   tar@<=7.5.20: '>=7.5.21 <8'
-  # uuid: old majors pulled by browserstack-node-sdk (e2e) and google-gax.
+  tsx: 4.23.1
   uuid@<11.1.1: '>=11.1.1'
-  # yaml: swagger-jsdoc (backend) pins yaml@2.0.0-1 even at its latest release.
   yaml@>=2.0.0 <2.8.3: '>=2.8.3 <3'
-  # tsx: pulled only as an optional peer of vite@8; pnpm otherwise resolves it to
-  #   the newest release, which trips the repo's minimumReleaseAge supply-chain
-  #   policy in CI. Pin to a settled release that still uses esbuild ~0.28.
-  #   (Not a security floor.)
-  tsx: '4.23.1'
