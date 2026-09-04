@@ -1,6 +1,6 @@
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Safe to import statically: MENU_ACTIONS is frozen string constants, so it
 // carries none of the module state that loadMenu() exists to reset.
@@ -161,6 +161,171 @@ describe('getLoginState', () => {
 
     expect(state).toEqual({ isLoggedIn: false, username: null });
     expect(browser.tabs.remove).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Regression guard for Bug 2064203 comment 4 / Bug 2067502. When Thunderbird's
+ * QuotaManager fails, every browser.storage.local call rejects. The probe used
+ * to swallow that and answer "signed out", which is a different statement than
+ * "I could not tell" — and callers acted on it, unregistering the Send cloud
+ * file provider for people who were still signed in.
+ */
+describe('getLoginState when storage is unavailable', () => {
+  const storageError = () => new Error('An unexpected error occurred');
+
+  /**
+   * Drives readStoredAuth's retry waits without spending real time on them.
+   * These specs never start the probe timer, so the retry waits are the only
+   * timers pending and running them all terminates.
+   */
+  async function settle<T>(pending: Promise<T>): Promise<T> {
+    await vi.runAllTimersAsync();
+    return pending;
+  }
+
+  /** Replaces storage.local.get with the given behavior (failing or not). */
+  function setupStorage(getImpl: () => Promise<Record<string, unknown>>) {
+    setupBrowserMock(undefined);
+    browser.storage.local.get = getImpl as typeof browser.storage.local.get;
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reports storageUnavailable instead of a bare signed-out state', async () => {
+    setupStorage(vi.fn().mockRejectedValue(storageError()));
+
+    const { getLoginState } = await loadMenu();
+
+    const state = await settle(getLoginState());
+
+    expect(state).toEqual({
+      isLoggedIn: false,
+      username: null,
+      storageUnavailable: true,
+    });
+  });
+
+  it('retries a failing read before giving up', async () => {
+    const get = vi.fn().mockRejectedValue(storageError());
+    setupStorage(get);
+
+    const { getLoginState } = await loadMenu();
+
+    await settle(getLoginState());
+
+    // One initial read plus one per entry in AUTH_READ_RETRY_DELAYS_MS.
+    expect(get).toHaveBeenCalledTimes(3);
+  });
+
+  it('recovers the session when a retry succeeds', async () => {
+    const get = vi
+      .fn()
+      .mockRejectedValueOnce(storageError())
+      .mockResolvedValue({ [STORAGE_KEY_AUTH]: authWith() });
+    setupStorage(get);
+
+    const { getLoginState } = await loadMenu();
+
+    const state = await settle(getLoginState());
+
+    expect(state).toEqual({ isLoggedIn: true, username: USERNAME });
+  });
+
+  it('logs the storage error once per failure streak, not once per probe', async () => {
+    setupStorage(vi.fn().mockRejectedValue(storageError()));
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const { getLoginState } = await loadMenu();
+
+    await settle(getLoginState());
+    const afterFirstProbe = consoleError.mock.calls.length;
+    await settle(getLoginState());
+    await settle(getLoginState());
+
+    expect(consoleError.mock.calls.length).toBe(afterFirstProbe);
+  });
+
+  it('logs again once storage has recovered and failed anew', async () => {
+    const get = vi.fn().mockRejectedValue(storageError());
+    setupStorage(get);
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const { getLoginState } = await loadMenu();
+
+    await settle(getLoginState());
+    const afterFirstStreak = consoleError.mock.calls.length;
+
+    get.mockResolvedValueOnce({});
+    await settle(getLoginState());
+
+    get.mockRejectedValue(storageError());
+    await settle(getLoginState());
+
+    expect(consoleError.mock.calls.length).toBeGreaterThan(afterFirstStreak);
+  });
+});
+
+/**
+ * The probe schedule is the other half of the storage-failure fix: with
+ * storage broken, a fixed 60s tick reprinted the error group every minute for
+ * the whole session (Bug 2064203 comment 4). The schedule must back off while
+ * storage is unreadable and snap back to the base interval on the first
+ * successful probe.
+ */
+describe('startLoginStateChecks', () => {
+  const BASE_INTERVAL = 60_000;
+  // One probe's worth of failing reads: the 250ms + 1000ms waits in
+  // AUTH_READ_RETRY_DELAYS_MS. Keep in step with menu.ts.
+  const RETRY_TIME = 1_250;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('backs off while storage is unreadable and recovers to the base interval', async () => {
+    const get = vi.fn().mockRejectedValue(new Error('unavailable'));
+    setupBrowserMock(undefined);
+    browser.storage.local.get = get as typeof browser.storage.local.get;
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { startLoginStateChecks } = await loadMenu();
+    startLoginStateChecks();
+
+    // The first probe fires at the base interval and burns 3 reads retrying.
+    await vi.advanceTimersByTimeAsync(BASE_INTERVAL + RETRY_TIME);
+    expect(get).toHaveBeenCalledTimes(3);
+
+    // Backed off: one base interval later, no second probe has fired.
+    await vi.advanceTimersByTimeAsync(BASE_INTERVAL);
+    expect(get).toHaveBeenCalledTimes(3);
+
+    // The second probe arrives after the doubled (2x base) delay.
+    await vi.advanceTimersByTimeAsync(BASE_INTERVAL + RETRY_TIME);
+    expect(get).toHaveBeenCalledTimes(6);
+
+    // Storage recovers: the third probe (after a 4x base delay) reads once...
+    get.mockResolvedValue({});
+    await vi.advanceTimersByTimeAsync(4 * BASE_INTERVAL);
+    expect(get).toHaveBeenCalledTimes(7);
+
+    // ...and the schedule is back at the base interval.
+    await vi.advanceTimersByTimeAsync(BASE_INTERVAL);
+    expect(get).toHaveBeenCalledTimes(8);
   });
 });
 

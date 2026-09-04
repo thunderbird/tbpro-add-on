@@ -1,4 +1,7 @@
-import { GET_LOGIN_STATE, LOGIN_STATE_RESPONSE } from '@send-frontend/lib/const';
+import {
+  GET_LOGIN_STATE,
+  LOGIN_STATE_RESPONSE,
+} from '@send-frontend/lib/const';
 import { pullBridgedPassphrase } from '@send-frontend/lib/bridgePassphrase';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import init from '@send-frontend/lib/init';
@@ -15,6 +18,30 @@ import {
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { useQuery } from '@tanstack/vue-query';
 import { storeToRefs } from 'pinia';
+
+/**
+ * The add-on's answer to GET_LOGIN_STATE, relayed through the token bridge.
+ *
+ * `storageUnavailable` is true when the add-on could not read its storage and
+ * therefore does not know whether anyone is signed in. `isLoggedIn` is false
+ * in that case too, so a bare `!isLoggedIn` check cannot tell the two apart --
+ * use isKnownSignedOut() for anything that acts on a signed-out answer.
+ */
+export type AddonLoginState = {
+  isLoggedIn: boolean;
+  username: string | null;
+  storageUnavailable: boolean;
+};
+
+/**
+ * True only when the add-on positively read "no session" -- not when it merely
+ * failed to read storage. Anything that redirects, closes a window, or logs
+ * the user out on a signed-out answer must use this instead of `!isLoggedIn`,
+ * or a Thunderbird-wide storage failure turns into a forced logout for a user
+ * who never signed out (Bug 2064203 comment 4).
+ */
+export const isKnownSignedOut = (state: AddonLoginState) =>
+  !state.isLoggedIn && !state.storageUnavailable;
 
 export function useSendConfig() {
   const userStore = useUserStore();
@@ -124,13 +151,10 @@ export function useSendConfig() {
 
   /**
    * Queries the addon's login state via bidirectional message passing.
-   * Returns a promise that resolves with the login state or times out after 5 seconds.
-   * @returns Promise<{isLoggedIn: boolean, username: string | null}>
+   * Resolves with an AddonLoginState (see its doc for the storageUnavailable
+   * flag) or rejects after a 5 second timeout.
    */
-  const queryAddonLoginState = (): Promise<{
-    isLoggedIn: boolean;
-    username: string | null;
-  }> => {
+  const queryAddonLoginState = (): Promise<AddonLoginState> => {
     return new Promise((resolve, reject) => {
       // Guards against the token-bridge content script being absent or
       // unresponsive (e.g. the page is open outside of Thunderbird, or the
@@ -147,6 +171,7 @@ export function useSendConfig() {
           resolve({
             isLoggedIn: event.data.isLoggedIn,
             username: event.data.username,
+            storageUnavailable: event.data.storageUnavailable ?? false,
           });
         }
       };
