@@ -16,7 +16,16 @@ lerna run build:dev --scope=addon
 This outputs an xpi file at `packages/addon`, named after the version in `package.json` with the
 dots replaced by hyphens — at 2.0.11, `tbpro-addon-2-0-11.xpi`.
 
-You can use this xpi file to install the addon in your Thunderbird for testing.
+You can use this xpi file to install the addon in your Thunderbird for testing: **Add-ons and
+Themes** → gear icon → **Debug Add-ons** → **Load Temporary Add-on…**, then pick the xpi.
+
+If it is talking to a Send stack on your machine, trust that stack's certificate first — the dev
+backend is served over TLS with a self-signed one, and without the exception every request the
+add-on makes fails the handshake (Gecko reports it as a misleading CORS error). In Thunderbird, go
+to **Settings → Privacy & Security → Security**, click **Manage Certificates**, open the
+**Servers** tab, click **Add Exception…**, enter `https://localhost:8088`, and click **Get
+Certificate**, then confirm. [More on the certificate, including the options that survive a
+temporary profile](#the-self-signed-cert-is-the-real-gotcha).
 
 ## Testing as the built-in / system add-on (local comm-central build)
 
