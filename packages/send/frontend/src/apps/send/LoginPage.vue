@@ -98,17 +98,21 @@ async function _loginToOIDC() {
 </script>
 <template>
   <main class="container">
-    <div v-if="!isPublicLogin">
-      <CookiesBlockedBanner />
-      <p>Redirecting to TB Pro login...</p>
-    </div>
-    <div v-else>
+    <!--
+      In extension mode we immediately signinRedirect() on mount (see onMounted),
+      which navigates away before the banner's async probe can resolve. The
+      pre-app boot check (BootDiagnostics.vue) already covers that path, so the
+      banner only belongs on the public-login screen where the user actually
+      stays and can act on it.
+    -->
+    <p v-if="!isPublicLogin">Redirecting to TB Pro login...</p>
+    <template v-else>
       <CookiesBlockedBanner />
       <TBBanner />
-      <PublicLogin v-if="isPublicLogin" :on-success="onSuccess" />
+      <PublicLogin :on-success="onSuccess" />
       <FeedbackBox />
       <SecureSendIcon />
-    </div>
+    </template>
   </main>
 </template>
 
