@@ -1,6 +1,6 @@
 # Building the Addon Locally
 
-To build the addon locally, you need to install **all** the packages in the monorepo. This is because the backend needed for most operations is inside the `addon-backend` package and the rest of the packages contain dependencies to build the addon. You can do this by running the following command from the root of the monorepo:
+To build the addon locally, you need to install **all** the packages in the monorepo. This is because the backend needed for most operations is inside the `send-backend` package and the rest of the packages contain dependencies to build the addon. You can do this by running the following command from the root of the monorepo:
 
 ```sh
 # Install all dependencies
@@ -13,7 +13,8 @@ Build the addon
 lerna run build:dev --scope=addon
 ```
 
-This outputs an xpi file at `packages/addon`, you should see something like `tbpro-add-on-0.1.23.xpi`.
+This outputs an xpi file at `packages/addon`, named after the version in `package.json` with the
+dots replaced by hyphens — at 2.0.11, `tbpro-addon-2-0-11.xpi`.
 
 You can use this xpi file to install the addon in your Thunderbird for testing.
 
@@ -24,6 +25,31 @@ To test the add-on the way Thunderbird ships it — as the **built-in / system a
 (id `tbpro-system-add-on@thunderbird.net`, loaded from `resource://builtin-addons/thundermail/`,
 enabled by default, no install flow) — sync a system-id build into a local comm-central checkout and
 rebuild Thunderbird.
+
+### Before you start: a local Thunderbird build
+
+This flow rebuilds Thunderbird from source, so you need a comm-central checkout that already builds
+and runs. If you don't have one, follow Thunderbird's
+[getting started guide](https://developer.thunderbird.net/thunderbird-development/getting-started)
+first. Everything below drives that tree through `TB_COMM_SRC`, which must point at its **source
+root** — the directory containing `comm/`. The sync script refuses to run without it.
+
+### The loop
+
+```sh
+export TB_COMM_SRC=/Users/you/tb-build/source
+
+cd packages/addon
+pnpm run sync:builtin:local          # build against your local Send stack, then sync into the tree
+
+cd "$TB_COMM_SRC"
+./mach build faster                  # repackage messenger.jar
+./mach run                           # add --temp-profile to start from a clean profile
+```
+
+That is the whole cycle; the rest of this section is what each step does and how to vary it. The
+`:local` variant points the add-on at a Send stack on your machine — drop the suffix
+(`pnpm run sync:builtin`) to build against the stage hosts in your `.env` instead.
 
 The add-on is vendored in comm-central at
 `comm/mail/extensions/builtin-addons/thundermail/extension/` and packaged into `messenger.jar` via
@@ -39,6 +65,18 @@ pnpm --filter addon sync:builtin
 # …or watch mode: auto re-syncs on every source change
 pnpm --filter addon dev:builtin
 ```
+
+If you already have a build in `dist/` and only want to push it into the tree again, run the sync
+on its own — it resolves its own location, so any working directory will do:
+
+```sh
+./packages/addon/scripts/sync-to-builtin.sh
+```
+
+Note that every build also drops `tbpro-addon-<version>.xpi` beside the package, and the sync does
+**not** use it: it rsyncs `dist/` into the comm tree and strips sourcemaps on the way. Passing the
+xpi path to the script as an argument is silently ignored. That xpi is for installing the add-on by
+hand instead (Add-ons and Themes → gear icon → Debug Add-ons → Load Temporary Add-on).
 
 ### Pointing the built-in add-on at a local backend
 
@@ -114,7 +152,7 @@ Then, in the comm tree, repackage and run:
 ```sh
 cd "$TB_COMM_SRC"
 ./mach build faster      # repackages messenger.jar + regenerates built_in_addons.json
-./mach run --temp-profile  # fresh profile each launch — avoids stale built-in caches
+./mach run --temp-profile  # --temp-profile is optional; a fresh profile avoids stale built-in caches
 ```
 
 Notes:

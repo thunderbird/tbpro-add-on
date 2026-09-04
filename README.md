@@ -97,6 +97,10 @@ Build the addon
 lerna run build --scope=addon
 ```
 
+That produces an xpi you can load by hand. To test the add-on the way Thunderbird ships it — as the
+built-in system add-on inside a local Thunderbird build — see
+[the add-on README](./packages/addon/README.md#testing-as-the-built-in--system-add-on-local-comm-central-build).
+
 ## Pre-commit hooks
 
 We use `lint-staged` + `husky` to run prettier and eslint on staged files.
