@@ -132,6 +132,9 @@ const COOKIE_PROBE_MAX_AGE_MS = 60_000;
  *                   example: true
  */
 router.get('/api/cookie-check/set', (_, res) => {
+  // Never from cache: a replayed answer without its Set-Cookie would make
+  // `verify` report a block that never happened.
+  res.set('Cache-Control', 'no-store');
   res.cookie(COOKIE_PROBE_NAME, '1', {
     maxAge: COOKIE_PROBE_MAX_AGE_MS,
     // Matches the session cookie's attributes as closely as possible so the
@@ -167,6 +170,7 @@ router.get('/api/cookie-check/set', (_, res) => {
  *                   example: true
  */
 router.get('/api/cookie-check/verify', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({
     cookiesEnabled: Boolean(req.cookies?.[COOKIE_PROBE_NAME]),
   });

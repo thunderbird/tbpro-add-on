@@ -4,9 +4,14 @@
  *
  * The Send backend keeps the session in an httpOnly, SameSite=None cookie;
  * when the browser/Thunderbird refuses it, the entire app is non-functional.
- * The post-login detection in `cookieAccess.ts` needs a live session to infer
- * from, so this banner runs the positive pre-login round-trip probe in
- * `cookieProbe.ts` instead and warns before the user even attempts to log in.
+ * Post-login detection (cookie-gated routes failing while Bearer routes
+ * succeed) needs a live session to infer from, so this banner runs the
+ * positive pre-login round-trip probe in `cookieProbe.ts` instead and warns
+ * before the user even attempts to log in.
+ *
+ * The same probe also runs in the pre-app boot check (BootDiagnostics.vue),
+ * which is what a user sees first: this banner covers the case where they
+ * chose "Continue anyway" there, or navigated here later.
  *
  * Deliberately NOT dismissible: unlike the update prompt in
  * CompatibilityBanner, there is nothing useful the user can do in the app

@@ -1,14 +1,6 @@
 import { assertConfigured } from '@send-frontend/config';
-import { closeSentry, initSentry } from '@send-frontend/lib/sentry';
-import {
-  isTelemetryAllowed,
-  onTelemetryChanged,
-} from '@send-frontend/lib/telemetryConsent';
-import { setPosthogConsent } from '@send-frontend/plugins/posthog';
 import { createApp } from 'vue';
-import Send from './SendPage.vue';
-import router from './router';
-import { mountApp, setupApp } from './setup';
+import BootDiagnostics from './BootDiagnostics.vue';
 
 // Web-app entry ONLY (index.html), which is the one entry point that loads
 // /config.js. Fail loud here rather than booting an SPA that renders and then
@@ -17,27 +9,45 @@ import { mountApp, setupApp } from './setup';
 // /config.js and is configured by the baked VITE_* values instead.
 assertConfigured();
 
-const app = createApp(Send);
+// Boot in two stages (Bugzilla 2064458). Everything behind `startApp` — the
+// router, the Pinia stores, oidc-client-ts, services-ui — is imported
+// dynamically, AFTER the diagnostics pass, because some of it touches
+// localStorage/sessionStorage while being evaluated, and Firefox makes those
+// getters throw when Thunderbird blocks all cookies. A static import here would
+// hoist that evaluation ahead of this file's own code and the page would die
+// blank before anything could explain why — which is exactly what happened to
+// the login-screen banner. See lib/bootDiagnostics.ts.
 
-// Resolve the Thunderbird telemetry opt-out before initializing any telemetry,
-// so nothing is sent when the user has opted out. Outside Thunderbird this
-// resolves to allowed, preserving existing website behavior. See issue #892.
-(async () => {
-  const telemetryAllowed = await isTelemetryAllowed();
-  if (telemetryAllowed) {
-    initSentry(app);
+let appModule;
+
+// Starts downloading the app bundle. The panel calls this as soon as browser
+// storage passes, so the download overlaps the network checks — and never
+// earlier, because evaluating the bundle with storage denied is the very crash
+// this bootstrap exists to explain.
+function loadApp() {
+  if (!appModule) {
+    appModule = import('./startApp');
+    // Nothing awaits this until `start`; mark a rejection as observed so the
+    // browser does not report it as unhandled in the meantime. `start` awaits
+    // the original promise and still receives the error.
+    appModule.catch(() => {});
   }
-  app.use(router);
-  setupApp(app, telemetryAllowed);
-  mountApp(app, '#app');
+  return appModule;
+}
 
-  // React to runtime pref changes without requiring a reinstall/reload.
-  onTelemetryChanged((enabled) => {
-    setPosthogConsent(enabled);
-    if (enabled) {
-      initSentry(app);
-    } else {
-      closeSentry();
-    }
-  });
-})();
+// The panel gets its own element rather than `#app`: the real app owns `#app`
+// outright (no "app already mounted" warning, no shared `__vue_app__`), and
+// the panel is still on screen to report a failure anywhere in `startApp`.
+const bootRoot = document.createElement('div');
+document.body.prepend(bootRoot);
+
+const boot = createApp(BootDiagnostics, {
+  preload: loadApp,
+  start: async () => {
+    const { startApp } = await loadApp();
+    await startApp();
+    boot.unmount();
+    bootRoot.remove();
+  },
+});
+boot.mount(bootRoot);

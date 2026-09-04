@@ -25,6 +25,7 @@ describe('GET /api/cookie-check', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true });
+    expect(response.headers['cache-control']).toBe('no-store');
 
     const setCookie = response.headers['set-cookie'];
     expect(setCookie).toBeDefined();
@@ -45,6 +46,7 @@ describe('GET /api/cookie-check', () => {
       .set('Cookie', 'send_cookie_probe=1');
 
     expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toEqual({ cookiesEnabled: true });
   });
 
