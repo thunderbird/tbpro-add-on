@@ -16,17 +16,17 @@ To get started, you need to install the dependencies for the monorepo. You can d
 pnpm install
 ```
 
-You can run the setup automatically with
+Then create the `.env` files. They are gitignored, so a fresh checkout has none, and the stack
+will not start without `backend/.env` — compose reads it directly and fails with
+`env file .../packages/send/backend/.env not found`. This prompts for a `Y` and **overwrites** any
+`.env` already in `frontend/`, `backend/` and `e2e/`:
 
 ```sh
-lerna run setup:local --scope=send-suite
+pnpm --filter send-suite run setup
 ```
 
-Or, do the following to run the local setup:
-
-```sh
-lerna run setup --scope=send-suite
-```
+(There is also a `setup:local`, which flips the public-login flags on afterwards. The samples
+ship those flags on, so it does nothing `setup` doesn't; CI still calls it.)
 
 Finally, run the full stack (you can use this command anytime you want to run the application back again):
 
@@ -91,11 +91,10 @@ It will also move your `.xpi` to the `packages/send` directory.
 
 ### Public login
 
-If you want to use the application without an account, you can set these environment variables.
-
-`packages/send/backend/.env` to `ALLOW_PUBLIC_LOGIN=true`
-
-`packages/send/frontend/.env` to `VITE_ALLOW_PUBLIC_LOGIN=true`
+Local password login — registering an account on your own stack, no Mozilla Account involved — is
+on by default: both `.env.sample` files ship `ALLOW_PUBLIC_LOGIN=true` and
+`VITE_ALLOW_PUBLIC_LOGIN=true`. Set them to `false` in `packages/send/backend/.env` and
+`packages/send/frontend/.env` to require OIDC instead.
 
 ### Using the webapp
 
@@ -124,7 +123,9 @@ Build the extension:
 lerna run build:dev --scope=send-frontend
 ```
 
-This outputs an xpi file at `packages/send`, you should see something like `send-suite-0.1.22.xpi`.
+This outputs an xpi file at `packages/send`, named after the version in
+`packages/send/frontend/package.json` with the dots replaced by hyphens — at 8.0.6 that is
+`send-suite-8-0-6.xpi`.
 
 ## Sentry
 
@@ -156,7 +157,7 @@ You can use VSCode's debugger for the backend.
 
 ```
 
-3. From the root, run `pnpm dev`
+3. From the root, run `pnpm run dev:send`
 
 4. Run your debug session. If you have multiple configs, make sure you run the one called `Docker: Attach to Node`
 
@@ -257,28 +258,29 @@ Updating retention rules
 
 Sometimes npm packages get screwed you come back to the project after a while. You can have a clean run by running.
 
+All of these run from the **repo root** — `compose.yml` lives there, not in `packages/send`.
+
 ```sh
 lerna clean
-cd packages/send
 docker compose down
 docker system prune -a --volumes
 pnpm i
-pnpm dev
+lerna run bootstrap   # regenerates the backend's .docker-build build context
+pnpm run dev:send
 ```
 
 If you're having any issues with docker (ex: no memory left, or volumes do not contain expected files), prune docker and rebuild containers from scratch:
 
 ```sh
-cd packages/send
 docker compose down
 docker system prune -a --volumes
-docker-compose build --no-cache
+lerna run bootstrap
+docker compose build --no-cache
 ```
 
 Then run
 
 ```sh
-# from packages/send
 docker compose up -d
 ```
 
@@ -287,7 +289,6 @@ Everything should run well now
 When you're done with the project, you can run:
 
 ```sh
-# from packages/send
 docker compose down
 ```
 

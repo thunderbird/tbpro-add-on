@@ -4,7 +4,7 @@ Guide for running the Thunderbird Send E2E tests. The E2E tests run automaticall
 
 Currently there are two sets of E2E tests:
 - One set of tests that run against a local dev stack. You can run these tests on your machine against your local dev stack, and they also run in CI against PRs/branches (on a dev stack running on a Github Actions worker). These dev E2E tests are found in `/e2e/tests/dev/`.
-- A separate new set of tests that can run aganist production (in the nightly E2E tests GHA job that runs on BrowserStack). These test are found in `/e2e/tests/*.spec.ts`.
+- A separate new set of tests that can run against production (in the nightly E2E tests GHA job that runs on BrowserStack). These test are found in `/e2e/tests/*.spec.ts`.
 
 Eventually in the future we will just have one set of E2E tests that will run on all environments, but for now we have these two sets of tests until we build out the new set of tests further.
 
@@ -20,7 +20,7 @@ When the E2E tests run on your local stack (or in CI on a GHA worker local stack
 pnpm install
 ```
 
-2. In order for the tests to run locally, you have to set up your `.env` files to match the default. This will overwrite your `.env` files. If you need to back up your keys before that you can run:
+2. In order for the tests to run locally, you have to set up your `.env` files to match the default. This will overwrite your `.env` files. If you already have `.env` files whose keys you need, back them up first (a fresh checkout has none, so skip this):
 
 ```sh
 cd packages/send
@@ -32,14 +32,14 @@ cd ../e2e
 cp .env .env.backup
 ```
 
-The E2E tests run regardless of which storage method your test environment is using (local storage, Backblaze cloud storage, etc). The storage method is configured in the /backend/.env file.
+The E2E tests run against either storage backend: `STORAGE_BACKEND=s3` (the MinIO service in the dev stack, and the default) or `b2` (Backblaze). There is no local-filesystem option — every upload is a presigned PUT from the browser straight to a bucket. The storage backend is configured in `packages/send/backend/.env`.
 
 3. Set your environment variables as follows.
 
 The E2E tests require that your local stack use local password auth. To do that, run this (from the root folder):
 
 ```sh
-lerna run setup:local --scope=send-suite
+pnpm --filter send-suite run setup
 ```
 
 #### Headed mode
@@ -48,7 +48,7 @@ To run the E2E tests on Firefox in headed mode (where you can watch the tests ru
 
 ```sh
 docker compose down
-lerna run setup:local --scope=send-suite
+pnpm --filter send-suite run setup
 pnpm dev:detach
 lerna run test:e2e --scope=send-suite-e2e
 ```
@@ -59,7 +59,7 @@ You can run the test suite in UI Mode. UI Mode lets you explore, run, and debug 
 
 ```sh
 docker compose down
-lerna run setup:local --scope=send-suite
+pnpm --filter send-suite run setup
 pnpm dev:detach
 lerna run test:e2e:ui --scope=send-suite-e2e
 ```
@@ -69,10 +69,34 @@ lerna run test:e2e:ui --scope=send-suite-e2e
 The tests run automatically in CI against branches/PR in headless mode. To run in headless mode:
 ```sh
 docker compose down
-lerna run setup:local --scope=send-suite
+pnpm --filter send-suite run setup
 pnpm dev:detach
 lerna run test:e2e:headless --scope=send-suite-e2e
 ```
+
+#### Toolchain note
+
+`playwright install` has to run under Node 22 — on Node 24 it hangs while unpacking the browser
+archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)). `.tool-versions` in
+this folder pins Node for [mise](https://mise.jdx.dev/), which CI uses; if your default Node is
+already 22.x you don't need mise at all.
+
+#### Reading the results
+
+A clean run is currently 12 passed and 1 skipped; the only expected skip is `oidc.spec.ts`, which
+runs in CI only.
+
+Every test in `send.spec.ts` works on the one account that `Register and log in` creates, so that
+file runs in serial mode: **a red run reports one failure and skips everything behind it.** The
+failure you see is the real one, and a retry re-runs the chain from registration, which is the only
+way a retry can pass. The config already reports with `line`, so the console output is in execution
+order — read it top-down rather than the html report's list.
+
+One intermittent failure is known and is test-side, not a product bug: `Download workflow` times
+out on `download-button-0` because the test looks up access links by index over a backend query
+with no ordering (#930). A failure anywhere else is worth investigating — `Register and log in`
+usually means the backend's CORS origins don't include the frontend's URL, and `Upload workflow`
+usually means `S3_PUBLIC_ENDPOINT` doesn't match the port MinIO is published on.
 
 ### Clean up
 
@@ -88,31 +112,27 @@ There is a nightly E2E tests job that runs each night against TB Send production
 
 The same nightly E2E tests suite can also be run on your local machine's browser but against the TB Send production environment. This is useful if you are developing more E2E tests to run in the nightly E2E test suite on prod and want to debug them.
 
-### Nightly E2E Tests Prerequistes
+### Nightly E2E Tests Prerequisites
 
-When the nightly E2E tests run they run against the TB Send production environment and therefore you need an existing TB Acocunts / TB Send test account already setup that the tests will use for sign-in.
+When the nightly E2E tests run they run against the TB Send production environment and therefore you need an existing TB Accounts / TB Send test account already setup that the tests will use for sign-in.
 
-**Also the nigthly tests assume that the production test account already has TB Send setup (i.e. already signed in at least once before and encryption key code already created). When you sign into TB Send you should see the main dashboard profile screen, NOT the initial create encryprtion keys screen that apepars the very first time you sign into TB Send with a new account.**
+**Also the nightly tests assume that the production test account already has TB Send setup (i.e. already signed in at least once before and encryption key code already created). When you sign into TB Send you should see the main dashboard profile screen, NOT the initial create encryption keys screen that appears the very first time you sign into TB Send with a new account.**
 
 ### Running the nightly prod E2E tests on Firefox on your local machine
 
 To run the nightly E2E test suite against prod but on Firefox on your local machine:
 
-1. Copy over the example production .env file (from the root folder of the repo):
+1. `/e2e/.env` is read by the BrowserStack SDK, but a plain `playwright test` run does not load it — the specs read `process.env` directly. So for a local run, export the settings and credentials for your production TB Pro test account in the shell you run the tests from (`packages/send/e2e/.env.prod.sample` lists them):
 
 ```sh
-cp packages/send/e2e/.env.prod.sample packages/send/e2e/.env
+export TB_SEND_TARGET_ENV=prod
+export TB_SEND_BASE_URL=https://send.tb.pro/
+export TBPRO_USERNAME=<tb-pro-username>
+export TBPRO_PASSWORD=<associated-password>
+export TB_SEND_ENCRYPTION_KEY_CODE=<associated-tb-send-encryption-key>
 ```
 
-2. Then edit the `/e2e/.env` file and add your credentials for your production TB Pro test account:
-
-```sh
-TBPRO_USERNAME=<tb-pro-username>
-TBPRO_PASSWORD=<associated-password>
-TB_SEND_ENCRYPTION_KEY_CODE=<associated-tb-send-encryption-key>
-```
-
-3. Then to run the nightly tests on Firefox desktop, from the root folder run:
+2. Then to run the nightly tests on Firefox desktop, from the root folder run:
 
 ```sh
 lerna run test:e2e:nightly --scope=send-suite-e2e
@@ -126,27 +146,27 @@ lerna run test:e2e:nightly:mobile:viewport --scope=send-suite-e2e
 
 ### Running nightly E2E tests in BrowserStack
 
-The nightly E2E tests run automatically each night in BrowserStack via Github Actions. You can trigger the nightly E2E tests job anytime via Github Actions, or you can run the nigthly test suite in BrowserStack from your local machine.
+The nightly E2E tests run automatically each night in BrowserStack via Github Actions. You can trigger the nightly E2E tests job anytime via Github Actions, or you can run the nightly test suite in BrowserStack from your local machine.
 
 #### Running the nightly E2E tests on production via Github Actions
 
 If you want to trigger the nightly BrowserStack E2E test suite against the current production environment:
 
 1. In the `tbpro-add-on` repo click on `Actions`
-2. On the left side, click on `nightly-e2e-tests-desktop`
+2. On the left side, click on the nightly workflow you want: `nightly-tests-desktop-firefox`, `nightly-tests-desktop-chrome`, `nightly-tests-desktop-safari` or `nightly-tests-mobile-android`
 3. On the right side click the `Run workflow` button
 4. Leave the branch as `main`
 5. Then click the `Run workflow` button
 
 The E2E tests will then run against the current production environment; they will sign in using the TB Pro test account credentials provided via the corresponding GHA secrets.
 
-If you are developing new E2E tests or making E2E test changes, you can run the nightly E2E tests job against production but use your branch with your updated E2E tests. First ensure your udpated branch with the E2E test changes is pushed to the repo; and then follow the above directions except in step 4 select your branch instead of main.
+If you are developing new E2E tests or making E2E test changes, you can run the nightly E2E tests job against production but use your branch with your updated E2E tests. First ensure your updated branch with the E2E test changes is pushed to the repo; and then follow the above directions except in step 4 select your branch instead of main.
 
 #### Running the nightly E2E test job in production on BrowserStack from your local machine
 
 If you want to debug the E2E tests that run on production on BrowserStack, you can also run the tests on BrowserStack but from your local machine. First you need to set the vars in the `/e2e/.env` file to be used with production.
 
-<b>For security reasons when running the tests on BrowserStack I recommend that you use a dedicated test Appointment account / credentials (NOT your own personal Appointment credentials).</b>
+<b>For security reasons when running the tests on BrowserStack I recommend that you use a dedicated TB Pro test account / credentials (NOT your own personal TB Pro credentials).</b>
 
 Once you have credentials for an existing TB Pro test account:
 
@@ -176,25 +196,25 @@ export BROWSERSTACK_ACCESS_KEY=<your-browserstack-access-key>
 4. Then to run on prod in BrowserStack Firefox Desktop but from your machine, from the root folder of this repo:
 
 ```sh
-lerna run test:e2e:nightly:prod:browserstack:desktop:firefox
+lerna run test:e2e:nightly:prod:browserstack:desktop:firefox --scope=send-suite-e2e
 ```
  
 To run on Chromium Desktop:
 
 ```sh
-lerna run test:e2e:nightly:prod:browserstack:desktop:chromium
+lerna run test:e2e:nightly:prod:browserstack:desktop:chromium --scope=send-suite-e2e
 ```
 
 To run on Safari Desktop:
 
 ```sh
-lerna run test:e2e:nightly:prod:browserstack:desktop:safari
+lerna run test:e2e:nightly:prod:browserstack:desktop:safari --scope=send-suite-e2e
 ```
 
 To run on Android Chrome:
 
 ```sh
-lerna run test:e2e:nightly:prod:browserstack:mobile:android:chrome
+lerna run test:e2e:nightly:prod:browserstack:mobile:android:chrome --scope=send-suite-e2e
 ```
 
 ## Debugging E2E Test Failures
@@ -225,7 +245,7 @@ If you notice an email from Github actions indicating that one of the Nightly E2
     - Click on the `View workflow run` link in the email - or -
     - Go into the Github repo, and
         - Choose `Actions` at the top
-        - On the list of Actions on the left side choose the failing action i.e. `e2e-desktop-nightly-chrome`
+        - On the list of Actions on the left side choose the failing action i.e. `nightly-tests-desktop-chrome`
         - In the corresponding list of completed nightly test action jobs, click on the failing one
     - Then click on the failed E2E test step to open the console view
     - In the console view, expand the E2E tests job and read the test failure details
