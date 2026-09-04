@@ -47,6 +47,13 @@ cd "$TB_COMM_SRC"
 ./mach run                           # add --temp-profile to start from a clean profile
 ```
 
+One-time, in the Thunderbird you just launched: trust the Send dev stack's certificate, or every
+request the add-on makes fails the TLS handshake. Go to **Settings → Privacy & Security →
+Security**, click **Manage Certificates**, open the **Servers** tab, click **Add Exception…**,
+enter `https://localhost:8088`, and click **Get Certificate** (then confirm). A `--temp-profile`
+run discards the exception, so either use a persistent profile or trust the certificate at the OS
+level — see [the TLS options below](#the-self-signed-cert-is-the-real-gotcha).
+
 That is the whole cycle; the rest of this section is what each step does and how to vary it. The
 `:local` variant points the add-on at a Send stack on your machine — drop the suffix
 (`pnpm run sync:builtin`) to build against the stage hosts in your `.env` instead.
@@ -113,7 +120,9 @@ differ, e.g. `VITE_SEND_SERVER_URL=https://localhost:9000 pnpm --filter addon bu
 local backend has `SEND_BACKEND_CORS_ORIGINS` set (it throws on startup otherwise) and including
 `http://localhost:5173`.
 
-**The self-signed cert is the real gotcha.** The Send dev stack serves `https://localhost:8088`
+### The self-signed cert is the real gotcha
+
+The Send dev stack serves `https://localhost:8088`
 through the tls-dev-proxy (`packages/send/backend/tls-dev-proxy/`) using a self-signed cert.
 Thunderbird's extension `fetch` can't skip cert validation and gets no interactive prompt at
 startup, so an untrusted cert fails the TLS handshake — and Gecko reports that as
@@ -121,8 +130,8 @@ startup, so an untrusted cert fails the TLS handshake — and Gecko reports that
 rejection, which would carry a real status and an "Access-Control-Allow-Origin missing" error). Pick
 one of these:
 
-- **Trust the cert at the OS level (recommended — survives `--temp-profile`, keeps `wss` uploads
-  working).** Import the proxy cert into the macOS keychain and enable Gecko's enterprise-roots
+- **Trust the cert at the OS level (survives `--temp-profile`, and keeps the `wss` tRPC
+  connection working too).** Import the proxy cert into the macOS keychain and enable Gecko's enterprise-roots
   support per run:
 
   ```sh
@@ -134,8 +143,9 @@ one of these:
   `enterprise_roots` makes Gecko read the macOS keychain; passing it as a `--setpref` means it
   applies even to a fresh temp profile.
 
-- **Add a permanent cert exception in a persistent profile.** Thunderbird → Settings → Privacy &
-  Security → Certificates → Manage Certificates → *Servers* → Add Exception → `https://localhost:8088`.
+- **Add a cert exception in a persistent profile (simplest).** Thunderbird → Settings → Privacy &
+  Security → Security → Manage Certificates → *Servers* tab → Add Exception… → enter
+  `https://localhost:8088` → Get Certificate → confirm.
   Downside: a `--temp-profile` run discards it, which fights the stale-cache advice below — use a
   named profile (`./mach run -P <profile>`) instead.
 
