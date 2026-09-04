@@ -15,6 +15,11 @@ import {
   SIGN_OUT,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
+import {
+  acquireRefreshLock,
+  releaseRefreshLock,
+  waitForRefreshLockRelease,
+} from '@send-frontend/lib/refreshLock';
 import { ref, watch } from 'vue';
 
 const settings: UserManagerSettings = {
@@ -39,6 +44,14 @@ const settings: UserManagerSettings = {
 };
 
 const userManager = new UserManager(settings);
+
+// Cross-context refresh lock id (#1022). The add-on holds at most ONE OIDC
+// session per Thunderbird profile — every context shares it through
+// browser.storage.local[STORAGE_KEY_AUTH] — so a single fixed lock id is
+// exactly as precise as a per-account key while staying correct in the
+// contexts (background cold start, popup before checkAuthStatus) where
+// currentUser/profile.sub isn't populated yet.
+const REFRESH_LOCK_ID = 'session';
 
 /**
  * OIDC error codes that mean the session is genuinely over — the refresh token
@@ -106,6 +119,17 @@ export const useAuthStore = defineStore('auth', () => {
   /**
    * Refresh the access token via the refresh_token, deduping concurrent callers.
    *
+   * Two layers of dedup (#1022): `inFlightRefresh` coalesces callers WITHIN
+   * this module instance, and the storage-backed cross-context lock
+   * (refreshLock.ts) serializes refreshes ACROSS the background/popup/web-tab
+   * contexts, each of which has its own module instance (see shared-pinia.ts).
+   * With refresh-token rotation, a context that fires its own signinSilent()
+   * while another context is mid-rotation loses with invalid_grant — which
+   * would read as a genuine failure and spuriously sign the user out. A
+   * context that cannot get the lock therefore WAITS for the holder and then
+   * reads the freshly-persisted session instead of racing; losing the lock
+   * must never, by itself, sign the user out.
+   *
    * Returns the refreshed User on success. On a genuine auth failure (refresh
    * token revoked/expired) it clears local login state, notifies the add-on,
    * and returns null. On a transient failure (network/timeout) it leaves the
@@ -117,6 +141,48 @@ export const useAuthStore = defineStore('auth', () => {
 
     inFlightRefresh = (async () => {
       lastRefreshFailedGenuinely = false;
+
+      // Cross-context serialization (#1022). In a plain web tab with no
+      // extension storage, acquire always succeeds and this is a no-op layer.
+      const lockToken = await acquireRefreshLock(REFRESH_LOCK_ID);
+      if (lockToken === null) {
+        try {
+          // Another context is rotating the refresh token right now. Do NOT
+          // fire our own signinSilent() — with rotation we'd lose with
+          // invalid_grant and sign the user out over a race we created. Wait
+          // for the holder to finish, then read through to the session it
+          // persisted under STORAGE_KEY_AUTH. Read the key directly rather
+          // than via loadUser(): loadUser flips isLoggedIn=false when the key
+          // is absent, which would break the no-signout-on-lock-loss invariant.
+          await waitForRefreshLockRelease(REFRESH_LOCK_ID);
+          try {
+            const result = await browser.storage.local.get(STORAGE_KEY_AUTH);
+            if (result?.[STORAGE_KEY_AUTH]) {
+              const user = new User(result[STORAGE_KEY_AUTH]);
+              if (!user.expired) {
+                await userManager.storeUser(user);
+                currentUser.value = user;
+                return user;
+              }
+            }
+          } catch (error) {
+            console.warn('Failed to read session after peer refresh:', error);
+          }
+          // No fresh session appeared (holder crashed, or its refresh failed
+          // — in which case the holder already handled state/notification).
+          // Fall back conservatively: return null WITHOUT flagging a genuine
+          // failure or touching isLoggedIn — a later call retries, exactly
+          // like a transient error. Losing the lock race must never, by
+          // itself, cause a sign-out.
+          console.warn(
+            'Refresh lock held by another context and no fresh session appeared; keeping session.'
+          );
+          return null;
+        } finally {
+          inFlightRefresh = null;
+        }
+      }
+
       try {
         const user = await userManager.signinSilent();
         currentUser.value = user;
@@ -146,6 +212,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
         return null;
       } finally {
+        await releaseRefreshLock(REFRESH_LOCK_ID, lockToken);
         inFlightRefresh = null;
       }
     })();
