@@ -10,7 +10,7 @@ const LIMITS = {
   // Other tiers (only used for testing)
   [UserTier.EPHEMERAL]:
     // We set this value using an env variable so we can test easily
-    ONE_MB_IN_BYTES * (Number(process.env.EPHIMERAL_TIER_LIMIT_MB) || 5),
+    ONE_MB_IN_BYTES * (Number(process.env.EPHEMERAL_TIER_LIMIT_MB) || 5),
 };
 
 export const getStorageLimitForTier = (tier: UserTier): number => {
