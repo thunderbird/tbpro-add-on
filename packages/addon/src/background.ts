@@ -36,6 +36,7 @@ import {
   TELEMETRY_STATE_RESPONSE,
 } from '@send-frontend/lib/const';
 
+import config from '@send-frontend/config';
 import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
@@ -47,6 +48,7 @@ import {
   init as initMenu,
   menuLoggedIn,
   menuLogout,
+  menuSignedOut,
 } from './menu';
 import { shouldInitCloudFileOnStartup } from './cloudFileGate';
 import { checkAndUninstallIfDeprecated } from './selfUninstall';
@@ -867,6 +869,79 @@ function initTelemetryListener() {
   });
 }
 
+// #1030: getLoginState() is (deliberately) a pure local-storage read, so a
+// startup/re-enable trusts a stored session that may have been revoked
+// server-side. This fires ONE non-blocking backend check of the stored access
+// token (the same GET /api/auth/oidc/me the web app's checkAuthStatus() uses)
+// and, ONLY on a definitive auth rejection (401/403/404), silently tears the
+// stale session down: clear STORAGE_KEY_AUTH (the storage watcher then
+// broadcasts SIGN_OUT to any live popup/web contexts), flip the menu to
+// signed-out, and unregister the cloud file provider that main() had already
+// re-activated. Transient/network errors change nothing (fail-open) — mirror
+// of auth-store's refreshAccessToken()/isGenuineAuthFailure() philosophy:
+// never end a session over a network blip.
+async function validateStoredSessionOnStartup() {
+  try {
+    const serverUrl = (config.sendServerUrl ?? '').trim();
+    if (!serverUrl) {
+      // Unconfigured build (e.g. CI/automation): skip, never break startup.
+      return;
+    }
+    const authStorageData = await browser.storage.local.get(STORAGE_KEY_AUTH);
+    const auth = authStorageData[STORAGE_KEY_AUTH];
+    if (!auth?.access_token) {
+      return;
+    }
+    // Only a NON-expired access token that the backend rejects proves the
+    // session was revoked. A merely-expired access token (very common: the
+    // extension sat idle past the ~5min token lifetime) is NOT proof of
+    // revocation — the web app silently refreshes it via the refresh_token on
+    // next use, and the background can't easily do that here. Treating a 401
+    // on an already-expired token as "revoked" would sign out a perfectly
+    // valid idle user at startup. So if the stored token is already expired,
+    // skip the check and let the normal refresh path handle it.
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (typeof auth.expires_at === 'number' && auth.expires_at <= nowSeconds) {
+      return;
+    }
+    const response = await fetch(`${serverUrl}/api/auth/oidc/me`, {
+      headers: {
+        Authorization: `Bearer ${auth.access_token}`,
+      },
+    });
+    if ([401, 403, 404].includes(response.status)) {
+      console.warn(
+        '[background] Stored session was rejected by the backend ' +
+          `(HTTP ${response.status}); signing out.`
+      );
+      // Silent forced logout — intentionally NOT menuLogout(), which closes
+      // Send tabs and opens a /logout tab; a background revalidation must not
+      // pop UI at the user.
+      try {
+        await browser.storage.local.remove(STORAGE_KEY_AUTH);
+      } catch (e) {
+        console.warn('Error clearing stale auth on revoked session:', e);
+      }
+      await menuSignedOut();
+      try {
+        await browser.CloudFileAccounts.unregisterProvider();
+      } catch (e) {
+        console.warn(
+          'Error unregistering cloud file provider on revoked session:',
+          e
+        );
+      }
+    }
+  } catch (error) {
+    // Fail-open: a network error / server hiccup is NOT proof the session is
+    // dead. Keep the user signed in; a later genuine 401 will handle it.
+    console.warn(
+      '[background] Startup session validation skipped (transient error):',
+      error
+    );
+  }
+}
+
 (async function main() {
   await checkAndUninstallIfDeprecated();
   initMenu();
@@ -893,6 +968,13 @@ function initTelemetryListener() {
   initStorageWatcher();
   initAccountHubListener();
   initTelemetryListener();
+  // Fire-and-forget (#1030): main() already proceeded on the locally-stored
+  // login state above; this check tears that back down if the backend says
+  // the session is revoked. Runs after the watchers so the cleanup's storage
+  // change is observed and broadcast.
+  if (isLoggedIn) {
+    void validateStoredSessionOnStartup();
+  }
 })().catch((error) => {
   console.error('Error initializing background.js', error);
 });
