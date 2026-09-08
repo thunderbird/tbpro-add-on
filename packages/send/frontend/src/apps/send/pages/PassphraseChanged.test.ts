@@ -14,22 +14,21 @@ import PassphraseChanged from './PassphraseChanged.vue';
  *      keychain is locked at mount time.
  *   3. Direct navigation to /passphrase-changed (route has no guards of its own).
  *
- * The page now offers a self-service recovery flow: the user enters their NEW
- * passphrase, we persist it (lb/passphrase), remove the stale wrapped keys
- * (lb/keys), and reload so the app restores from the server backup.
+ * The page is intentionally dumb: a single button clears the stale local key
+ * material (lb/keys + lb/passphrase) and reloads. The normal validation/restore
+ * flow on the next load prompts for the new passphrase and re-fetches keys from
+ * the server backup — so this page does NOT ask for or store a passphrase.
  *
  * The Storage class is mocked here so these tests don't depend on a real
  * localStorage (unavailable in this Node env); the storage behavior itself is
  * covered by src/test/lib/storage.clearWrappedKeys.test.ts.
  */
 
-const storePassPhrase = vi.fn().mockResolvedValue(undefined);
-const clearWrappedKeys = vi.fn().mockResolvedValue(undefined);
+const clearKeys = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@send-frontend/lib/storage', () => ({
   Storage: class {
-    storePassPhrase = storePassPhrase;
-    clearWrappedKeys = clearWrappedKeys;
+    clearKeys = clearKeys;
   },
 }));
 
@@ -42,8 +41,6 @@ const stubs = {
 };
 
 const mountPage = () => mount(PassphraseChanged, { global: { stubs } });
-
-const VALID_PASSPHRASE = 'alpha bravo charlie delta echo foxtrot';
 
 describe('PassphraseChanged.vue', () => {
   let reloadSpy: ReturnType<typeof vi.fn>;
@@ -82,8 +79,6 @@ describe('PassphraseChanged.vue', () => {
     expect(text).toContain('Your keys are incorrect');
     // Mentions the common cause so the user isn't alarmed.
     expect(text).toContain('reset your passphrase on a different device');
-    // The actionable recovery instruction is the whole point of the page.
-    expect(text).toContain('Enter your new passphrase');
   });
 
   it('renders the recovery flow inside a KeysTemplate wrapper with a SupportBox', () => {
@@ -95,92 +90,30 @@ describe('PassphraseChanged.vue', () => {
     expect(wrapper.findComponent({ name: 'SupportBox' }).exists()).toBe(true);
   });
 
-  it('renders a passphrase input and a submit button', () => {
+  it('renders a single recovery button and no passphrase input', () => {
     const wrapper = mountPage();
 
-    expect(
-      wrapper.find('[data-testid="passphrase-changed-input"]').exists()
-    ).toBe(true);
     expect(
       wrapper.find('[data-testid="passphrase-changed-submit"]').exists()
     ).toBe(true);
+    // The page must not collect the passphrase itself.
+    expect(
+      wrapper.find('[data-testid="passphrase-changed-input"]').exists()
+    ).toBe(false);
   });
 
-  it('stores the new passphrase, clears wrapped keys, then reloads', async () => {
+  it('clears the stale keys and reloads when the button is clicked', async () => {
     const wrapper = mountPage();
 
-    await wrapper
-      .find('[data-testid="passphrase-changed-input"]')
-      .setValue(VALID_PASSPHRASE);
     await wrapper
       .find('[data-testid="passphrase-changed-submit"]')
       .trigger('click');
 
-    expect(storePassPhrase).toHaveBeenCalledWith(VALID_PASSPHRASE);
-    expect(clearWrappedKeys).toHaveBeenCalledTimes(1);
-    // Order matters: the new passphrase must be written before the stale
-    // wrapped keys are removed, and reload comes last.
-    expect(storePassPhrase.mock.invocationCallOrder[0]).toBeLessThan(
-      clearWrappedKeys.mock.invocationCallOrder[0]
+    expect(clearKeys).toHaveBeenCalledTimes(1);
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+    // Keys must be cleared before the reload so the fresh load starts clean.
+    expect(clearKeys.mock.invocationCallOrder[0]).toBeLessThan(
+      reloadSpy.mock.invocationCallOrder[0]
     );
-    expect(reloadSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('normalizes dash-separated passphrases to the space-separated stored form', async () => {
-    const wrapper = mountPage();
-
-    await wrapper
-      .find('[data-testid="passphrase-changed-input"]')
-      .setValue('  alpha-bravo-charlie-delta-echo-foxtrot  ');
-    await wrapper
-      .find('[data-testid="passphrase-changed-submit"]')
-      .trigger('click');
-
-    expect(storePassPhrase).toHaveBeenCalledWith(VALID_PASSPHRASE);
-    expect(reloadSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('does nothing when the input is empty or whitespace', async () => {
-    const wrapper = mountPage();
-
-    await wrapper
-      .find('[data-testid="passphrase-changed-input"]')
-      .setValue('   ');
-    await wrapper
-      .find('[data-testid="passphrase-changed-submit"]')
-      .trigger('click');
-
-    expect(storePassPhrase).not.toHaveBeenCalled();
-    expect(clearWrappedKeys).not.toHaveBeenCalled();
-    expect(reloadSpy).not.toHaveBeenCalled();
-  });
-
-  it('shows an error and does not touch storage for an invalid passphrase', async () => {
-    const wrapper = mountPage();
-
-    await wrapper
-      .find('[data-testid="passphrase-changed-input"]')
-      .setValue('only three words');
-    await wrapper
-      .find('[data-testid="passphrase-changed-submit"]')
-      .trigger('click');
-
-    expect(storePassPhrase).not.toHaveBeenCalled();
-    expect(clearWrappedKeys).not.toHaveBeenCalled();
-    expect(reloadSpy).not.toHaveBeenCalled();
-    const error = wrapper.find('[data-testid="passphrase-changed-error"]');
-    expect(error.exists()).toBe(true);
-    expect(error.text()).toContain('Expected 6 words');
-  });
-
-  it('submits on Enter in the input', async () => {
-    const wrapper = mountPage();
-
-    const input = wrapper.find('[data-testid="passphrase-changed-input"]');
-    await input.setValue(VALID_PASSPHRASE);
-    await input.trigger('keydown.enter');
-
-    expect(storePassPhrase).toHaveBeenCalledWith(VALID_PASSPHRASE);
-    expect(reloadSpy).toHaveBeenCalledTimes(1);
   });
 });
