@@ -26,7 +26,7 @@ class MemoryAdapter implements StorageAdapter {
   }
 }
 
-describe('Storage.clearWrappedKeys', () => {
+describe('Storage.clearKeys', () => {
   let storage: Storage;
   let adapter: MemoryAdapter;
 
@@ -39,15 +39,17 @@ describe('Storage.clearWrappedKeys', () => {
     await storage.storePassPhrase('alpha bravo charlie delta echo foxtrot');
   });
 
-  it('removes only lb/keys', async () => {
-    await storage.clearWrappedKeys();
+  it('removes both lb/keys and lb/passphrase', async () => {
+    await storage.clearKeys();
 
     expect(adapter.get('lb/keys')).toBeNull();
+    expect(adapter.get('lb/passphrase')).toBeNull();
     expect(await storage.loadKeys()).toBeNull();
+    expect(storage.getPassPhrase()).toBe('');
   });
 
-  it('leaves user, keypair, and passphrase intact', async () => {
-    await storage.clearWrappedKeys();
+  it('leaves user and keypair intact', async () => {
+    await storage.clearKeys();
 
     expect(await storage.getUserFromLocalStorage()).toEqual({
       id: '12345',
@@ -57,15 +59,5 @@ describe('Storage.clearWrappedKeys', () => {
       publicKey: 'abc123',
       privateKey: 'xyz789',
     });
-    expect(storage.getPassPhrase()).toBe(
-      'alpha bravo charlie delta echo foxtrot'
-    );
-  });
-
-  it('storePassPhrase writes lb/passphrase as { passPhrase }', async () => {
-    await storage.storePassPhrase('new words');
-
-    expect(adapter.get('lb/passphrase')).toEqual({ passPhrase: 'new words' });
-    expect(storage.getPassPhrase()).toBe('new words');
   });
 });

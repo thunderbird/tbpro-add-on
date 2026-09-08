@@ -56,12 +56,15 @@ export class Storage {
   }
 
   /**
-   * Removes only the wrapped (container) keys from storage, leaving the
-   * user, session, and passphrase intact. Used when the passphrase changed
-   * on another device and the locally cached wrapped keys are stale.
+   * Removes the stale key material — the wrapped (container) keys and the
+   * cached passphrase — while leaving the user/session intact. Used when the
+   * passphrase changed on another device: clearing both lets the normal
+   * validation/restore flow start fresh (prompt for the new passphrase and
+   * re-fetch keys from the server backup) instead of retrying the stale one.
    */
-  async clearWrappedKeys(): Promise<void> {
+  async clearKeys(): Promise<void> {
     this.adapter.remove(this.OTHER_KEYS_KEY);
+    this.adapter.remove(this.PASS_PHRASE);
   }
 
   async clear(): Promise<void> {

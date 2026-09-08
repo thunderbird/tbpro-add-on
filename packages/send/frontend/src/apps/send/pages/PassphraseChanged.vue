@@ -1,37 +1,18 @@
 <script setup lang="ts">
-import { parsePassphrase } from '@send-frontend/lib/passphraseUtils';
 import { Storage } from '@send-frontend/lib/storage';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
-import { ref } from 'vue';
 import KeysTemplate from '../views/KeysTemplate.vue';
 import SupportBox from '../views/SupportBox.vue';
 
-const newPassphrase = ref('');
-const errorMessage = ref('');
-
-const submit = async () => {
-  const input = newPassphrase.value.trim();
-  if (!input) {
-    return;
-  }
-
-  let canonicalPassphrase: string;
-  try {
-    // Accept space- or dash-separated words; normalize the same way
-    // useBackupAndRestore does: parsePassphrase -> words joined by spaces
-    // (the stored passphrase is later split by ' ' during restore).
-    canonicalPassphrase = parsePassphrase(input).split('-').join(' ');
-  } catch (e) {
-    errorMessage.value = String((e as Error)?.message ?? e);
-    return;
-  }
-
+// Clear the stale local key material (wrapped keys + cached passphrase) and
+// reload. We intentionally do NOT ask for or store a new passphrase here: the
+// normal validation/restore flow that runs on the next page load handles the
+// rest (prompting for the new passphrase and re-fetching keys from the server
+// backup). Keeping this page dumb avoids duplicating that logic and avoids
+// writing the passphrase from here.
+const clearKeysAndReload = async () => {
   const storage = new Storage();
-  // Order matters: write the NEW passphrase first so the app can restore
-  // with it after reload, then drop the stale wrapped keys so they get
-  // re-fetched from the server backup under the new passphrase.
-  await storage.storePassPhrase(canonicalPassphrase);
-  await storage.clearWrappedKeys();
+  await storage.clearKeys();
   location.reload();
 };
 </script>
@@ -44,31 +25,15 @@ const submit = async () => {
           <h2 class="section-title text-red-700">Warning</h2>
           <p class="description">
             Your keys are incorrect. This may happen if you reset your
-            passphrase on a different device. Enter your new passphrase below to
-            restore access to your keys on this device.
-          </p>
-          <div class="restore-container">
-            <input
-              v-model="newPassphrase"
-              class="restore-input"
-              type="text"
-              placeholder="Enter your new passphrase"
-              data-testid="passphrase-changed-input"
-              @keydown.enter.prevent="submit"
-            />
-          </div>
-          <p
-            v-if="errorMessage"
-            class="error-message"
-            data-testid="passphrase-changed-error"
-          >
-            {{ errorMessage }}
+            passphrase on a different device. Click below to clear the outdated
+            keys on this device; you'll then be asked for your new passphrase to
+            restore access.
           </p>
           <PrimaryButton
             data-testid="passphrase-changed-submit"
-            @click.prevent="submit"
+            @click.prevent="clearKeysAndReload"
           >
-            Use new passphrase
+            Enter new passphrase
           </PrimaryButton>
         </KeysTemplate>
       </div>
@@ -90,14 +55,5 @@ const submit = async () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-}
-.restore-container {
-  display: flex;
-}
-.restore-input {
-  width: 100%;
-}
-.error-message {
-  color: #b91c1c;
 }
 </style>
