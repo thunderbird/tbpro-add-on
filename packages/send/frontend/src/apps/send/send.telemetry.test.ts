@@ -10,8 +10,10 @@ import {
  *
  * The dashboard runs as a plain web page inside Thunderbird (no direct
  * experiment API), so it learns the telemetry state over the token-bridge.
- * This exercises the *real* send.js entry, the *real* telemetryConsent bridge
- * path, and the *real* sentry.ts gate — only `@sentry/vue` and the heavy Vue
+ * This exercises the *real* startApp() (the app-start half of the send.js
+ * entry; the boot diagnostics that gate it live in send.js and are tested in
+ * BootDiagnostics.test.ts), the *real* telemetryConsent bridge path, and the
+ * *real* sentry.ts gate — only `@sentry/vue` and the heavy Vue
  * wiring are mocked — to lock in the scenario:
  *
  *   pref OFF → open dashboard → Sentry never initializes (zero network calls)
@@ -111,10 +113,11 @@ function installFakeBridge(enabled: boolean) {
   return () => window.removeEventListener('message', handler);
 }
 
-/** Runs the entry's IIFE fresh (module state, sentry.ts `initialized`, reset). */
+/** Runs startApp() fresh (module state, sentry.ts `initialized`, reset). */
 async function loadDashboardEntry() {
   vi.resetModules();
-  await import('@send-frontend/apps/send/send');
+  const { startApp } = await import('@send-frontend/apps/send/startApp');
+  await startApp();
 }
 
 describe('Send dashboard telemetry gate (bridge → initSentry)', () => {
