@@ -272,7 +272,15 @@ const useFolderStore = defineStore('folderManager', () => {
       const { container } = containerResponse;
       try {
         await keychain.newKeyForContainer(container.id);
-        await backupKeys(keychain, api, msg);
+        // Only back up keys when the keychain is unlocked. If the keychain is
+        // locked (e.g. the passphrase was changed on another client and this
+        // client's local passphrase is stale), backing up here would generate
+        // a fresh salt and overwrite the single shared server backup row,
+        // clobbering the good backup so NO passphrase can decrypt it
+        // (cross-client lockout after passphrase reset).
+        if (!keychain.locked) {
+          await backupKeys(keychain, api, msg);
+        }
         await keychain.store();
         folders.value = [...folders.value, container];
         return container;
