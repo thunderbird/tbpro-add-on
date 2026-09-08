@@ -90,6 +90,20 @@ const {
       message.value = `You're not logged in properly. Please go back to the compositon panel to log back in`;
       return false;
     }
+    // Guard: a locked keychain means the stored passphrase no longer decrypts
+    // the server key backup (e.g. the passphrase was reset on another client).
+    // hasBackedUpKeys is TRUE in that case (a backup exists; the passphrase is
+    // just wrong), so without this check the popup would show the upload UI
+    // and upload file bytes that can never be shared. Checked BEFORE
+    // initialize() so a locked keychain never wires up the upload listeners.
+    // The isConfigured watcher below routes the user to the Security & Privacy
+    // popup to complete passphrase recovery. (Covered by the composable-level
+    // test in src/test/composables/useUploadAndShare.test.ts; this SFC is not
+    // unit-tested in isolation.)
+    if (keychain.locked === true) {
+      message.value = `Your passphrase changed on another device. Please complete passphrase recovery to continue.`;
+      return false;
+    }
     // If everything is fine, we initialize the app
     await initialize();
     return true;
