@@ -1,16 +1,36 @@
-# Vue 3 + Vite
+# Send Frontend
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+The Thunderbird Send web client: a Vue 3 + Vite app, built with `<script setup>` SFCs. It is also
+the source the Thunderbird extension is built from.
 
 ## Recommended IDE Setup
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur). The old "TypeScript Vue Plugin (Volar)" is no longer needed — it was folded into that extension.
+
+## Before you run the app
+
+This package needs a `.env` file, and it is gitignored, so a fresh checkout has none. Nothing
+errors without it — the unit tests pass, and so does `vite build` — but every `VITE_*` value comes
+out empty, so the app has no backend to talk to.
+
+```sh
+cp .env.sample .env
+```
+
+(`pnpm --filter send-suite run setup`, from the repo root, does this for the frontend, backend and
+e2e packages at once.)
+
+Note that `public/config.js` — which the deployed app uses to configure itself at runtime — is
+read _before_ the `VITE_*` values baked in from `.env`. The committed copy is intentionally empty
+so local development falls through to `.env`; if you put values in it, they win. See
+`src/config.ts`.
 
 ## Building the application
 
 Run `pnpm i && pnpm build`
 
-This command will generate a `send-suite-alpha.xpi`, that is the extension file. Additionally, it will generate a `dist` folder with the extension files, a `dist-web` folder with the web files.
+This generates the extension file at `packages/send`, named after the version in this package's
+`package.json` with the dots replaced by hyphens — at 8.0.6, `send-suite-8-0-6.xpi`. Additionally, it will generate a `dist` folder with the extension files, a `dist-web` folder with the web files.
 
 ## Previewing a production build (web)
 

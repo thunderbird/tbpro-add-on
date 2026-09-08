@@ -1,33 +1,41 @@
 # Thunderbird Send Suite
 
-A set of mini-applications that extend the functionality of Thunderbird:
+Two applications that extend the functionality of Thunderbird:
 
 - Send extension: email attachments using the CloudFile API
 - Send web: file storage and sharing
-- Messages: easy to use private chat (between individuals or groups)
 
-All of these services are end-to-end encrypted.
+Both are end-to-end encrypted.
+
+> The quick start below is a summary. The maintained setup instructions live in the
+> [repo README](../../../README.md) and the [Send README](../README.md); the rest of this folder is
+> design documentation.
 
 ## Tooling
 
-- Node.js (v22 was used for development, though an earlier LTS should work)
-- `pnpm` (examples will use `pnpm`, but `npm` or `yarn` should be fine)
+- Node.js 22.x (`engines` requires `>=22.11.0`)
+- `pnpm` (v10.6.4 or later) — this is a pnpm workspace, so `npm` and `yarn` will not resolve it
+- `bun` — a few package scripts run through it
 - `docker` with the `compose` plugin
 
 ## Quick start
 
-### Create a `.env` file from the `.env.sample`
+### Install dependencies and create the `.env` files
 
+From the repo root:
+
+```sh
+pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
+pnpm --filter send-suite run setup
 ```
-cp backend/.env.sample backend/.env
 
-```
+### Start the whole stack
 
-### Start the backend
+One `compose.yml`, at the repo root, runs the database, the object store, the backend, the TLS
+reverse proxy and the frontend together:
 
-```
-cd backend
-docker compose up
+```sh
+pnpm run dev:send
 ```
 
 ### Let your browser use the self-signed TLS certificate
@@ -36,26 +44,18 @@ docker compose up
 - allow your browser to go to the page, despite the certificate being self-signed
 - you should see a page with the word "echo"
 
-### Start the frontend
-
-```sh
-cd frontend
-docker compose up
-```
-
 ### Open the Send UI in the browser
 
 Visit `http://localhost:5173/`
 
-### Set up your encryption keys and user
+### Create your user and encryption keys
 
-- Click `Show debug panel` at the top-center of the page
-- Click the "Gen Keypair" button
-- Click the "Store Keys" button
-- Enter an/any email address in the Email field
-- Click the "Log in" button
-- Click the "Store User" button
-- Click "Hide debug panel"
+- Click `Or register` on the login screen
+- Enter an email address and a password
+- Click `Download and Continue` to create your recovery key
+
+Your keys are generated in the browser. The recovery key you download is the only way to restore
+them on another device — it is never stored on the server.
 
 ### Use the app!
 

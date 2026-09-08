@@ -8,15 +8,16 @@ The packages inside this monorepo are:
 - `send-backend`: The backend code for the Thunderbird Send webapp. It is a Node.js app that uses Express as a web server and postgres as a database.
 - `addon`: The Thunderbird Send extension code. This puts everything together and outputs a single xpi (addon package). It depends on `send-frontend` to build.
 
-This includes the Thunderbird Send webapp, the Thunderbird Send extension, and the shared code between them.
+This includes the Thunderbird Send webapp and the Thunderbird Send extension.
 This monorepo is managed using [Lerna](https://lerna.js.org/) and [pnpm](https://pnpm.io/).
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/en/download/) (v22 or later)
-- [Docker](https://www.docker.com/get-started/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-- [pnpm](https://pnpm.io/installation) (v8 or later)
+- [Node.js](https://nodejs.org/en/download/) 22.x — `engines` requires `>=22.11.0`. Stay on 22: on Node 24 `playwright install` hangs unpacking the browser archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)).
+- [pnpm](https://pnpm.io/installation) (v10.6.4 or later)
+- [bun](https://bun.sh/) (v1.1.13) — a handful of package scripts run through it (`compare_envs`, the frontend and add-on build scripts), so the repo needs it even though it is not the package manager
+- [Docker](https://www.docker.com/get-started/) with the [Compose](https://docs.docker.com/compose/install/) plugin
+- `rsync`, `jq` and `zip` — the backend's Docker build context and the add-on/frontend builds shell out to these (preinstalled on macOS and most Linux distros)
 
 ## Environment setup
 
@@ -25,7 +26,8 @@ Install the package managers `bun` and `pnpm` globally. You can do this using np
 ```sh
 npm install -g bun
 npm install -g pnpm
-# This step is optional if you don't have lerna installed globally but it's easier to run commands that use it
+# lerna is a dev dependency of the repo, so `pnpm exec lerna ...` always works. Installing it
+# globally just lets you type the bare `lerna ...` commands used throughout these docs.
 pnpm install -g lerna
 ```
 
@@ -42,12 +44,28 @@ To get started, you need to install the dependencies for the monorepo. You can d
 pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
 ```
 
-You can run the setup automatically with
+Don't skip `bootstrap`. Besides installing the backend's dependencies it generates the Prisma
+client and, through `packages/send/backend/scripts/build.sh`, the backend's Docker build context
+at `packages/send/backend/.docker-build`. That directory is generated rather than checked in, so
+without it the first `pnpm run dev:send` fails with
+`unable to prepare context: path ".../packages/send/backend/.docker-build" not found`. Re-run
+`lerna run bootstrap` (or just `pnpm --filter send-backend run build:image`) after changing
+anything under `packages/send/backend`.
+
+Next, create your `.env` files:
 
 ```sh
-lerna run setup --scope=send-suite
-lerna run setup --scope=addon
+pnpm --filter send-suite run setup
+pnpm --filter addon run setup
 ```
+
+Both prompt for a `Y` and then **overwrite** any `.env` you already have in those packages, so
+back yours up first if it holds anything you care about. Two footguns:
+
+- Keep the `run`. `pnpm --filter send-suite setup` matches pnpm's own `setup` command and fails
+  with `Unknown option: 'recursive'`.
+- Don't pipe the `Y` into `lerna run setup` — the prompt never reaches the script and the command
+  hangs. Use the `pnpm ... run setup` form above in scripts.
 
 Finally, run the full stack (you can use this command anytime you want to run the application back again):
 
@@ -57,9 +75,10 @@ pnpm run dev:send
 
 Congrats! Now you should be able to see the app on `http://localhost:5173/` and the backend running on `https://localhost:8088/`
 
-In order to login, you must create a new account. Click the "Or register" link and follow the prompts to create an account, which will then log you in to your local instance of Send.
+The backend is served over TLS with a self-signed certificate. Visit `https://localhost:8088/`
+once and accept it, or the app will load while every API call quietly fails.
 
-This will install all the dependencies for all the packages in the monorepo.
+In order to login, you must create a new account. Click the "Or register" link and follow the prompts to create an account, which will then log you in to your local instance of Send.
 
 ## Addon
 
@@ -78,15 +97,9 @@ Build the addon
 lerna run build --scope=addon
 ```
 
-## Prerequisites
-
-Make sure you install [docker](https://www.docker.com/get-started/) for local development.
-
-Finally, install the dependencies (this command will install both frontend and backend)
-
-```sh
-pnpm install
-```
+That produces an xpi you can load by hand. To test the add-on the way Thunderbird ships it — as the
+built-in system add-on inside a local Thunderbird build — see
+[the add-on README](./packages/addon/README.md#testing-as-the-built-in--system-add-on-local-comm-central-build).
 
 ## Pre-commit hooks
 
@@ -116,8 +129,6 @@ You should see the output of the hook as if you actually commited your files.
 If for some reason you're confident on a change and would like to skip pre-commit hooks. Add `--no-verify` at the end of your commit command.
 
 ### More about hooks
-
-See the `docs/` folder for a draft of the detailed documentation.
 
 [Here](https://typicode.github.io/husky/how-to.html#testing-hooks-without-committing) you can read more.
 
@@ -151,7 +162,7 @@ Although we're using semantic versioning for our packages, the release workflow 
 
 ## Monorepo
 
-## Project management
+### Project management
 
 Each project inside the `packages` folder, contains a `package.json` where the `name` is used as the reference for command execution (we'll call this the package name). Each package is declared inside the `pnpm-workspace.yaml` and `lerna.json` files.
 
@@ -175,9 +186,11 @@ You can run any package's commands by running the following:
 
 `lerna run <your-command> --scope=<package-name>`
 
-For example, If I want to run e2e tests on send, I can run
+For example, if I want to build the add-on, I can run
 
-`lerna run test:e2e:ci --scope=send-suite`
+`lerna run build --scope=addon`
 
-### Packages
+The `lerna run ... --scope=<package>` form works from anywhere, because it runs the script inside
+that package. A bare `pnpm exec playwright`, by contrast, only resolves inside
+`packages/send/e2e`. See the [E2E README](./packages/send/e2e/README.md) for the E2E suites.
 
