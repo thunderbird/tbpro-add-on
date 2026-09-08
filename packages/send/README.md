@@ -262,7 +262,7 @@ All of these run from the **repo root** — `compose.yml` lives there, not in `p
 
 ```sh
 lerna clean
-docker compose down
+docker compose down -v
 docker system prune -a --volumes
 pnpm i
 lerna run bootstrap   # regenerates the backend's .docker-build build context
@@ -272,7 +272,7 @@ pnpm run dev:send
 If you're having any issues with docker (ex: no memory left, or volumes do not contain expected files), prune docker and rebuild containers from scratch:
 
 ```sh
-docker compose down
+docker compose down -v
 docker system prune -a --volumes
 lerna run bootstrap
 docker compose build --no-cache
@@ -289,7 +289,7 @@ Everything should run well now
 When you're done with the project, you can run:
 
 ```sh
-docker compose down
+docker compose down -v
 ```
 
 This stops containers and removes containers, networks, volumes, and images created by `dev`.

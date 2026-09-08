@@ -47,7 +47,7 @@ pnpm --filter send-suite run setup
 To run the E2E tests on Firefox in headed mode (where you can watch the tests run in the browser), from the root folder of this repo:
 
 ```sh
-docker compose down
+docker compose down -v
 pnpm --filter send-suite run setup
 pnpm dev:detach
 lerna run test:e2e --scope=send-suite-e2e
@@ -58,7 +58,7 @@ lerna run test:e2e --scope=send-suite-e2e
 You can run the test suite in UI Mode. UI Mode lets you explore, run, and debug tests with a time travel experience complete with a watch mode. All test files are displayed in the testing sidebar, allowing you to expand each file and describe block to individually run, view, watch, and debug each test. Run from the root folder of this repo:
 
 ```sh
-docker compose down
+docker compose down -v
 pnpm --filter send-suite run setup
 pnpm dev:detach
 lerna run test:e2e:ui --scope=send-suite-e2e
@@ -68,7 +68,7 @@ lerna run test:e2e:ui --scope=send-suite-e2e
 
 The tests run automatically in CI against branches/PR in headless mode. To run in headless mode:
 ```sh
-docker compose down
+docker compose down -v
 pnpm --filter send-suite run setup
 pnpm dev:detach
 lerna run test:e2e:headless --scope=send-suite-e2e
@@ -103,7 +103,7 @@ usually means `S3_PUBLIC_ENDPOINT` doesn't match the port MinIO is published on.
 When you're finished running the E2E tests from your machine, be sure to shutdown the TB Pro docker containers. From the root folder of this repo:
 
 ```sh
-docker compose down
+docker compose down -v
 ```
 
 ## Nightly E2E Tests
