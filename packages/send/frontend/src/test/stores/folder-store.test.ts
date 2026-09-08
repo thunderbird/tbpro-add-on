@@ -129,6 +129,46 @@ describe('FolderStore — createFolder()', () => {
     expect(folderStore.defaultFolder?.id).toBe(CONTAINER_ID);
   });
 
+  // --- Locked keychain must not clobber the server key backup ---
+  // Regression guard for the cross-client lockout bug: when the passphrase
+  // was changed on another client, this client's keychain is locked and a
+  // backup here would overwrite the good server backup with one encrypted
+  // under the stale passphrase (fresh salt each time), locking out everyone.
+
+  it('does NOT call backupKeys when the keychain is locked', async () => {
+    mockCreateContainerSuccess();
+    vi.spyOn(
+      useKeychainStore().keychain,
+      'newKeyForContainer'
+    ).mockResolvedValue(undefined);
+    vi.spyOn(useKeychainStore().keychain, 'store').mockResolvedValue(undefined);
+    useKeychainStore().keychain.locked = true;
+
+    const folderStore = useFolderStore();
+    const result = await folderStore.createFolder();
+
+    expect(vi.mocked(backupKeys)).not.toHaveBeenCalled();
+    // Folder creation itself still succeeds locally.
+    expect(result).toMatchObject({ id: CONTAINER_ID });
+
+    useKeychainStore().keychain.locked = false;
+  });
+
+  it('calls backupKeys when the keychain is unlocked', async () => {
+    mockCreateContainerSuccess();
+    vi.spyOn(
+      useKeychainStore().keychain,
+      'newKeyForContainer'
+    ).mockResolvedValue(undefined);
+    vi.spyOn(useKeychainStore().keychain, 'store').mockResolvedValue(undefined);
+    useKeychainStore().keychain.locked = false;
+
+    const folderStore = useFolderStore();
+    await folderStore.createFolder();
+
+    expect(vi.mocked(backupKeys)).toHaveBeenCalledOnce();
+  });
+
   // --- Rollback on key-setup failure ---
 
   it('returns null when newKeyForContainer throws', async () => {
