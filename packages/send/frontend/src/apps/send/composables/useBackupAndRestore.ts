@@ -1,6 +1,7 @@
 import { computed, onMounted, watchEffect } from 'vue';
 import { storeToRefs } from 'pinia';
 
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import useBackupStore from '@send-frontend/stores/backup-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 
@@ -231,7 +232,7 @@ export const useBackupAndRestore = () => {
       keychain.storePassPhrase(passphraseString.value);
       sendMessageToBridge(passphraseString.value);
     } catch (e) {
-      metrics.capture('send.restoreKeys.error', {
+      metrics.capture(ANALYTICS_EVENTS.KEYS_RESTORE_FAILED, {
         message: errorMessage.value,
       });
       backupStore.setErrorMessage(String(e));

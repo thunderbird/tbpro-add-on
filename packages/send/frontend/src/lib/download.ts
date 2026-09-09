@@ -1,4 +1,5 @@
 import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import { ApiConnection } from '@send-frontend/lib/api';
 import { getBlob } from '@send-frontend/lib/filesync';
 import { Keychain } from '@send-frontend/lib/keychain';
@@ -73,7 +74,7 @@ export default class Downloader {
         progressTracker
       );
 
-      metrics.capture('download.size', { size, type });
+      metrics.capture(ANALYTICS_EVENTS.FILE_DOWNLOADED, { size, type });
       return true;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {

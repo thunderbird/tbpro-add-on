@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import useApiStore from '@send-frontend/stores/api-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { ref } from 'vue';
@@ -18,7 +19,10 @@ const hasReported = ref(false);
 async function reportContent({ uploadId, containerId }: ReportProps) {
   console.log('reporting content', { uploadId, containerId });
   await api.call(`containers/${containerId}/report`, { uploadId }, 'POST');
-  metrics.capture('report_content_confirm', { uploadId, containerId });
+  metrics.capture(ANALYTICS_EVENTS.CONTENT_REPORT_COMPLETED, {
+    upload_id: uploadId,
+    container_id: containerId,
+  });
 
   hasReported.value = true;
   setTimeout(() => {
@@ -27,12 +31,15 @@ async function reportContent({ uploadId, containerId }: ReportProps) {
 }
 
 function handleClickReport({ uploadId, containerId }: ReportProps) {
-  metrics.capture('report_content_attempt', { uploadId, containerId });
+  metrics.capture(ANALYTICS_EVENTS.CONTENT_REPORT_STARTED, {
+    upload_id: uploadId,
+    container_id: containerId,
+  });
   hasClicked.value = true;
 }
 
 async function markAsSuspicious({ uploadId }: ReportProps) {
-  metrics.capture('report_suspicious_content');
+  metrics.capture(ANALYTICS_EVENTS.CONTENT_REPORT_FLAGGED);
   await api.call('uploads/report', { uploadId }, 'POST');
   hasReported.value = true;
   setTimeout(() => {
