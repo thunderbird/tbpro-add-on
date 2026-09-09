@@ -195,7 +195,7 @@ export async function menuLogout() {
   //
   // This blanket clear() is ONLY reached from a genuine logout (menuLogout(),
   // driven by the LOGOUT menu action / the SIGN_OUT message). The read-only
-  // getLoginState() probe (60s timer + route guard) MUST NOT reach this and
+  // getLoginState() probe (periodic probe + route guard) MUST NOT reach this and
   // does not -- it only ever calls storage.local.get(). See #948/#949.
   await browser.storage.local.clear();
 
@@ -234,11 +234,105 @@ async function closeAllAddOnTabs() {
   }
 }
 
+/**
+ * What the read-only login probe found.
+ *
+ * `storageUnavailable` exists because "we could not read storage" and "the user
+ * is signed out" are different answers that used to look identical. When
+ * Thunderbird's QuotaManager fails, every `browser.storage.local` call in every
+ * add-on rejects (Bug 2067502); reporting that as a plain signed-out state made
+ * the add-on tear down the Send cloud file provider underneath a user who was
+ * still signed in (Bug 2064203 comment 4). Callers that act on a signed-out
+ * result -- unregistering the provider, redirecting, closing a window -- must
+ * check this flag first and do nothing when it is set.
+ *
+ * The flag is simply absent on any answer read from working storage;
+ * background.ts normalizes it to a plain boolean before the answer crosses the
+ * token bridge to the Send web app.
+ */
+export type LoginState = {
+  isLoggedIn: boolean;
+  username: string | null;
+  storageUnavailable?: true;
+};
+
+/** The subset of the stored OIDC session that decides the login state. */
+type StoredAuth = {
+  refresh_token?: string;
+  profile?: { preferred_username?: string; email?: string };
+};
+
+/**
+ * Waits between retries of the stored-session read. Its length also sets the
+ * number of retries.
+ *
+ * A single read is enough on a healthy profile, but it made startup a coin
+ * flip on a slow or still-initializing storage backend: background's main()
+ * reads once, and when that read lost the race the add-on used to spend the
+ * whole session treating the user as signed out. (Today it would spend it in
+ * the "storage unavailable" state instead -- better, but the cloud file
+ * decision made at startup would still be wrong.) These retries are
+ * deliberately short -- they cover a storage layer that is coming up, not one
+ * that is broken.
+ */
+const AUTH_READ_RETRY_DELAYS_MS = [250, 1000];
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Reads the stored session, retrying briefly; rethrows the last error once the
+ * retries are spent.
+ */
+async function readStoredAuth(): Promise<StoredAuth | undefined> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const authStorageData = await browser.storage.local.get(STORAGE_KEY_AUTH);
+      return authStorageData[STORAGE_KEY_AUTH] as StoredAuth | undefined;
+    } catch (error) {
+      if (attempt === AUTH_READ_RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+      await wait(AUTH_READ_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+}
+
+/**
+ * How many probes in a row have failed to read storage. Only the first failure
+ * of a streak is logged: the underlying fault lasts for the whole session, so
+ * repeating it every probe buries everything else in the Error Console without
+ * adding a single new fact.
+ */
+let storageFailureStreak = 0;
+
+function noteStorageFailure(error: unknown) {
+  storageFailureStreak++;
+
+  if (storageFailureStreak === 1) {
+    console.error('Error retrieving auth state from storage:', error);
+    console.error(
+      'Thunderbird storage is unavailable, so the add-on cannot tell whether ' +
+        'anyone is signed in. Leaving the current setup untouched and retrying ' +
+        'quietly; further failures will not be logged until storage recovers.'
+    );
+  }
+}
+
+function noteStorageRecovered() {
+  if (storageFailureStreak > 0) {
+    console.info(
+      `Storage is readable again after ${storageFailureStreak} failed check(s).`
+    );
+    storageFailureStreak = 0;
+  }
+}
+
 /*
   Checks if the add-on is logged in, this is separate from the web context.
   It's a read-only probe: it's called by the Send route guard (via GET_LOGIN_STATE)
-  and by a 60s timer, so it MUST NOT have destructive side effects (closing tabs,
-  wiping storage, forcing the menu to log out).
+  and by a periodic probe (60s base, backing off while storage is unreadable --
+  see startLoginStateChecks), so it MUST NOT have destructive side effects
+  (closing tabs, wiping storage, forcing the menu to log out).
 
   Note on `expires_at`: that field is the short-lived OIDC *access token* expiry. An
   expired access token does NOT mean the session is over — the Send web app refreshes
@@ -247,16 +341,16 @@ async function closeAllAddOnTabs() {
   of a refresh_token, not by access-token expiry. Genuine logout flows through the
   SIGN_OUT message path, which calls menuLogout().
  */
-export async function getLoginState() {
-  let auth;
+export async function getLoginState(): Promise<LoginState> {
+  let auth: StoredAuth | undefined;
   try {
-    // Get the auth token from browser storage (this is a copy of the auth token stored in the web context, used to determine login state in the add-on context)
-    const authStorageData = await browser.storage.local.get(STORAGE_KEY_AUTH);
-    auth = authStorageData[STORAGE_KEY_AUTH];
+    auth = await readStoredAuth();
   } catch (error) {
-    console.error('Error retrieving auth state from storage:', error);
-    return { isLoggedIn: false, username: null };
+    noteStorageFailure(error);
+    return { isLoggedIn: false, username: null, storageUnavailable: true };
   }
+
+  noteStorageRecovered();
 
   if (!auth) {
     return { isLoggedIn: false, username: null };
@@ -297,12 +391,38 @@ export async function closeLoginTab() {
   }
 }
 
-// To make sure that the login state is in sync with the web context token, we run this every minute
-function checkLoginStateOnInterval() {
-  const CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
-  setInterval(async () => {
-    await getLoginState();
-  }, CHECK_INTERVAL_MS);
+/**
+ * Keeps the add-on's idea of the login state in sync with the web context's
+ * token by re-probing on a timer.
+ *
+ * The delay backs off while storage is unavailable. With a broken QuotaManager
+ * every probe fails, and a fixed 60s tick meant three lines in the Error Console
+ * every single minute for as long as Thunderbird stayed open -- which is how
+ * this Thunderbird-wide storage failure came to be reported as a Thundermail bug
+ * (Bug 2064203 comment 4 / Bug 2067502). Backing off costs us nothing: there is
+ * no session change to notice while storage cannot be read, and the very next
+ * successful probe drops straight back to the normal interval.
+ *
+ * Exported only so tests can drive the schedule with fake timers; init() is
+ * the real caller.
+ */
+export function startLoginStateChecks() {
+  const BASE_CHECK_INTERVAL_MS = 60 * 1000;
+  const MAX_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+
+  let intervalMs = BASE_CHECK_INTERVAL_MS;
+
+  const scheduleNextCheck = () => {
+    setTimeout(async () => {
+      const state = await getLoginState().catch(() => null);
+      intervalMs = state?.storageUnavailable
+        ? Math.min(intervalMs * 2, MAX_CHECK_INTERVAL_MS)
+        : BASE_CHECK_INTERVAL_MS;
+      scheduleNextCheck();
+    }, intervalMs);
+  };
+
+  scheduleNextCheck();
 }
 
 /**
@@ -359,6 +479,6 @@ export function init() {
   // But we do not need to wait for it synchronously.
   getLoginState();
 
-  // Start interval to check login state periodically
-  checkLoginStateOnInterval();
+  // Keep the login state in sync with the web context on a schedule.
+  startLoginStateChecks();
 }

@@ -15,7 +15,10 @@ import {
   validateToken,
 } from '@send-frontend/lib/validations';
 
-import { useSendConfig } from '@send-frontend/composables/useSendConfig';
+import {
+  isKnownSignedOut,
+  useSendConfig,
+} from '@send-frontend/composables/useSendConfig';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import {
   useApiStore,
@@ -299,7 +302,10 @@ router.beforeEach(async (to, from, next) => {
   if (requiresExtensionLogin && isThunderbirdHost) {
     try {
       const addonLoginState = await queryAddonLoginState();
-      if (!addonLoginState.isLoggedIn) {
+      // Known signed-out only: when the add-on couldn't read its storage, we
+      // carry on rather than bounce a possibly signed-in user to the login
+      // flow (see isKnownSignedOut).
+      if (isKnownSignedOut(addonLoginState)) {
         return next('/auto-login');
       }
     } catch (error) {

@@ -48,7 +48,7 @@ import {
   menuLoggedIn,
   menuLogout,
 } from './menu';
-import { shouldInitCloudFileOnStartup } from './cloudFileGate';
+import { cloudFileStartupAction } from './cloudFileGate';
 import { checkAndUninstallIfDeprecated } from './selfUninstall';
 
 // Initialize the shared Pinia instance that will be used by both
@@ -478,6 +478,10 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
               type: LOGIN_STATE_RESPONSE,
               isLoggedIn: loginState.isLoggedIn,
               username: loginState.username,
+              // Forwarded so the Send app can tell "signed out" apart from "we
+              // could not read storage" and avoid bouncing a signed-in user to
+              // the login flow. See LoginState in menu.ts.
+              storageUnavailable: loginState.storageUnavailable ?? false,
             })
             .catch(() => {
               // Ignore errors for tabs that can't receive messages
@@ -803,6 +807,18 @@ function initStorageWatcher() {
 // fires onAccountAdded with the OIDC token so we can log the add-on in
 // automatically without requiring a second login through the web UI.
 function initAccountHubListener() {
+  // The experiment API may be unavailable in some builds/contexts. Degrade
+  // gracefully (Accounts Hub auto-login is simply disabled) instead of
+  // throwing -- this now runs before the cloud file gate in main(), so a
+  // throw here would abort startup and skip that gate entirely.
+  if (!browser.AccountHub?.onAccountAdded?.addListener) {
+    console.warn(
+      '[AccountHub] browser.AccountHub.onAccountAdded unavailable; ' +
+        'Accounts Hub auto-login disabled.'
+    );
+    return;
+  }
+
   browser.AccountHub.onAccountAdded.addListener(async ({ token, email }) => {
     console.log(
       `[AccountHub] onAccountAdded fired for ${email}. Logging in add-on.`
@@ -870,29 +886,42 @@ function initTelemetryListener() {
 (async function main() {
   await checkAndUninstallIfDeprecated();
   initMenu();
-  // Only create the Send cloudfile account when the user is already signed in.
-  // A fresh, never-signed-in profile (e.g. the built-in system add-on under
-  // automation) must leave the cloudfile account list untouched so it doesn't
-  // pollute the default profile or break Thunderbird's cloudfile tests
-  // (Bug 2036665). The account is otherwise created on explicit sign-in.
-  const { isLoggedIn } = await getLoginState();
-  if (shouldInitCloudFileOnStartup(isLoggedIn)) {
-    initCloudFile();
-  } else {
-    // Signed out: the manifest `cloud_file` key makes Thunderbird register the
-    // Send provider on every startup, so on a fresh/never-signed-in profile it
-    // would still appear in the cloud file provider list and break Thunderbird's
-    // own cloudfile tests (Bug 2036665). Unregister it until the user signs in;
-    // initCloudFile() re-registers it on sign-in.
-    try {
-      await browser.CloudFileAccounts.unregisterProvider();
-    } catch (error) {
-      console.warn('Error unregistering cloud file provider:', error);
-    }
-  }
+  // These three only register listeners and don't depend on the login state.
+  // They go before the getLoginState() read below because that read can spend
+  // ~1.25s retrying while storage is slow to come up (see readStoredAuth in
+  // menu.ts), and an Accounts Hub sign-in landing in that window must not be
+  // missed.
   initStorageWatcher();
   initAccountHubListener();
   initTelemetryListener();
+  // Decide what to do with the Send cloudfile setup. cloudFileStartupAction()
+  // carries the full rationale (Bug 2036665, Bug 2064203 comment 4).
+  const loginState = await getLoginState();
+  switch (cloudFileStartupAction(loginState)) {
+    case 'register':
+      initCloudFile();
+      break;
+    case 'unregister':
+      // The manifest `cloud_file` key re-registers the Send provider on every
+      // startup, so a signed-out profile must actively unregister it here;
+      // initCloudFile() re-registers it on sign-in.
+      try {
+        await browser.CloudFileAccounts.unregisterProvider();
+      } catch (error) {
+        console.warn('Error unregistering cloud file provider:', error);
+      }
+      break;
+    case 'leave-as-is':
+      // Storage could not be read, so we do not know whether anyone is signed
+      // in. Registering or unregistering on a guess is what took Send away from
+      // signed-in users during a Thunderbird storage failure (Bug 2064203
+      // comment 4), so leave the cloud file setup exactly as Thunderbird left it.
+      console.warn(
+        'Login state unknown (storage unavailable) — leaving the Send cloud ' +
+          'file provider registration untouched.'
+      );
+      break;
+  }
 })().catch((error) => {
   console.error('Error initializing background.js', error);
 });

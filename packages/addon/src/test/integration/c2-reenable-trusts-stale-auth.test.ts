@@ -12,8 +12,10 @@
  *     STORAGE READ -- it checks only for the presence of `refresh_token` in
  *     `browser.storage.local[STORAGE_KEY_AUTH]`, with zero network call to
  *     validate that token against the backend.
- *   - `shouldInitCloudFileOnStartup(isLoggedIn)` is a pure boolean
- *     passthrough of whatever `getLoginState()` produced.
+ *   - `cloudFileStartupAction(state)` maps a successful read straight
+ *     through: isLoggedIn true means 'register'. (Its 'leave-as-is' answer
+ *     only applies when storage could not be read, which is not this
+ *     scenario.)
  *   - If `isLoggedIn` is (falsely) true, `initCloudFile()` runs, which
  *     re-registers the cloud file provider and creates/reactivates a cloud
  *     file account -- fully re-activating cloud-file features for a session
@@ -62,7 +64,8 @@ describe('C2: add-on re-enable trusts stale STORAGE_KEY_AUTH without backend rev
 
     // THE BUG: getLoginState() trusted the stale refresh_token's mere
     // presence and returned isLoggedIn: true purely from local storage, so
-    // shouldInitCloudFileOnStartup() green-lit initCloudFile(), which:
+    // cloudFileStartupAction() answered 'register' and initCloudFile() ran,
+    // which:
     //   1. re-registered the cloud file provider,
     await vi.waitFor(() =>
       expect(ctx.browser.CloudFileAccounts.registerProvider).toHaveBeenCalled()
@@ -79,6 +82,8 @@ describe('C2: add-on re-enable trusts stale STORAGE_KEY_AUTH without backend rev
     //
     // (unregisterProvider is the "signed out" branch and must NOT have run,
     // confirming the code took the "trust local storage" happy path.)
-    expect(ctx.browser.CloudFileAccounts.unregisterProvider).not.toHaveBeenCalled();
+    expect(
+      ctx.browser.CloudFileAccounts.unregisterProvider
+    ).not.toHaveBeenCalled();
   });
 });
