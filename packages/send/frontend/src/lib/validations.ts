@@ -1,6 +1,7 @@
 import type { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
 import { UserType } from '@send-frontend/types';
 import { ApiConnection } from './api';
+import { clearBridgedPassphrase } from './bridgePassphrase';
 import { MAX_ACCESS_LINK_RETRIES } from './const';
 import { Keychain, restoreKeysUsingLocalStorage } from './keychain';
 import { trpc } from './trpc';
@@ -166,6 +167,10 @@ export const validator = async ({
       console.warn(
         'Passphrase mismatch (likely changed on another client). Routing to recovery instead of clearing storage.'
       );
+      // The passphrase that just failed is stale. Clear any staged bridged
+      // copy so pullBridgedPassphrase can't replay the old value back into
+      // the keychain on the next restore (no-op outside the extension).
+      await clearBridgedPassphrase();
     } else {
       shouldClearSessionAndStorage = true;
       console.error('Incorrect passphrase. Removing local storage data.');

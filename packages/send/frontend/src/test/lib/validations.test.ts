@@ -40,6 +40,10 @@ vi.mock('@send-frontend/lib/keychain', () => ({
   restoreKeysUsingLocalStorage: vi.fn(),
 }));
 
+vi.mock('@send-frontend/lib/bridgePassphrase', () => ({
+  clearBridgedPassphrase: vi.fn().mockResolvedValue(true),
+}));
+
 // Helper to create a valid mock Backup object (adjust fields based on actual type)
 const createMockBackup = (data: Partial<Backup> = {}): Backup => ({
   backupContainerKeys: 'encrypted-container-keys',
@@ -386,6 +390,12 @@ describe('validator', () => {
     expect(reloadSpy).not.toHaveBeenCalled();
     expect(result.hasCorrectKeys).toBe(false);
     expect(result.hasForcedLogin).toBe(false);
+
+    // The stale staged bridge value must be invalidated so it can't be
+    // replayed into the keychain on the next restore.
+    const { clearBridgedPassphrase } =
+      await import('@send-frontend/lib/bridgePassphrase');
+    expect(clearBridgedPassphrase).toHaveBeenCalled();
 
     reloadSpy.mockRestore();
   });
