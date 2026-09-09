@@ -1,19 +1,27 @@
 <script setup lang="ts">
 import { Storage } from '@send-frontend/lib/storage';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
+import { useRouter } from 'vue-router';
 import KeysTemplate from '../views/KeysTemplate.vue';
 import SupportBox from '../views/SupportBox.vue';
 
-// Clear the stale local key material (wrapped keys + cached passphrase) and
-// reload. We intentionally do NOT ask for or store a new passphrase here: the
-// normal validation/restore flow that runs on the next page load handles the
-// rest (prompting for the new passphrase and re-fetching keys from the server
-// backup). Keeping this page dumb avoids duplicating that logic and avoids
+const router = useRouter();
+
+// Clear the stale local key material (wrapped keys + cached passphrase), then
+// send the user to Security & Privacy. We intentionally do NOT ask for or store
+// a new passphrase here: with the keys gone, that page resolves to
+// SHOULD_RESTORE_FROM_BACKUP and renders RestoreKeys, which is the normal flow
+// for collecting the new passphrase and re-fetching the keys from the server
+// backup. Keeping this page dumb avoids duplicating that logic and avoids
 // writing the passphrase from here.
-const clearKeysAndReload = async () => {
+//
+// We route instead of reloading so the recovery form is one click away: a
+// reload would land back on whatever guarded route sent the user here, and a
+// locked keychain would just bounce them to this page again.
+const clearKeysAndRestore = async () => {
   const storage = new Storage();
   await storage.clearKeys();
-  location.reload();
+  router.push('/send/security-and-privacy');
 };
 </script>
 
@@ -31,7 +39,7 @@ const clearKeysAndReload = async () => {
           </p>
           <PrimaryButton
             data-testid="passphrase-changed-submit"
-            @click.prevent="clearKeysAndReload"
+            @click.prevent="clearKeysAndRestore"
           >
             Enter new passphrase
           </PrimaryButton>

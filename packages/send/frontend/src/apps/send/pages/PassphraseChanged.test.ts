@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PassphraseChanged from './PassphraseChanged.vue';
 
 /**
@@ -15,9 +15,10 @@ import PassphraseChanged from './PassphraseChanged.vue';
  *   3. Direct navigation to /passphrase-changed (route has no guards of its own).
  *
  * The page is intentionally dumb: a single button clears the stale local key
- * material (lb/keys + lb/passphrase) and reloads. The normal validation/restore
- * flow on the next load prompts for the new passphrase and re-fetches keys from
- * the server backup — so this page does NOT ask for or store a passphrase.
+ * material (lb/keys + lb/passphrase) and routes to /send/security-and-privacy.
+ * With the keys gone, that page resolves to SHOULD_RESTORE_FROM_BACKUP and
+ * renders RestoreKeys, which prompts for the new passphrase and re-fetches keys
+ * from the server backup — so this page does NOT ask for or store a passphrase.
  *
  * The Storage class is mocked here so these tests don't depend on a real
  * localStorage (unavailable in this Node env); the storage behavior itself is
@@ -32,6 +33,12 @@ vi.mock('@send-frontend/lib/storage', () => ({
   },
 }));
 
+const routerPush = vi.fn();
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: routerPush }),
+}));
+
 const stubs = {
   // SupportBox pulls in external constants/links we don't care about here.
   SupportBox: true,
@@ -43,24 +50,8 @@ const stubs = {
 const mountPage = () => mount(PassphraseChanged, { global: { stubs } });
 
 describe('PassphraseChanged.vue', () => {
-  let reloadSpy: ReturnType<typeof vi.fn>;
-  let originalLocation: Location;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    reloadSpy = vi.fn();
-    originalLocation = window.location;
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { ...originalLocation, reload: reloadSpy },
-    });
-  });
-
-  afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
-    });
   });
 
   it('renders the warning heading with the red styling class', () => {
@@ -102,7 +93,7 @@ describe('PassphraseChanged.vue', () => {
     ).toBe(false);
   });
 
-  it('clears the stale keys and reloads when the button is clicked', async () => {
+  it('clears the stale keys and routes to the restore flow when the button is clicked', async () => {
     const wrapper = mountPage();
 
     await wrapper
@@ -110,10 +101,11 @@ describe('PassphraseChanged.vue', () => {
       .trigger('click');
 
     expect(clearKeys).toHaveBeenCalledTimes(1);
-    expect(reloadSpy).toHaveBeenCalledTimes(1);
-    // Keys must be cleared before the reload so the fresh load starts clean.
+    expect(routerPush).toHaveBeenCalledWith('/send/security-and-privacy');
+    // Keys must be cleared before the navigation so the restore page sees a
+    // clean slate and resolves to SHOULD_RESTORE_FROM_BACKUP.
     expect(clearKeys.mock.invocationCallOrder[0]).toBeLessThan(
-      reloadSpy.mock.invocationCallOrder[0]
+      routerPush.mock.invocationCallOrder[0]
     );
   });
 });
