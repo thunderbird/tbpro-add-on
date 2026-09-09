@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Storage } from '@send-frontend/lib/storage';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
 import { useRouter } from 'vue-router';
 import KeysTemplate from '../views/KeysTemplate.vue';
 import SupportBox from '../views/SupportBox.vue';
 
 const router = useRouter();
+const { keychain } = useKeychainStore();
 
 // Clear the stale local key material (wrapped keys + cached passphrase), then
 // send the user to Security & Privacy. We intentionally do NOT ask for or store
@@ -21,6 +23,13 @@ const router = useRouter();
 const clearKeysAndRestore = async () => {
   const storage = new Storage();
   await storage.clearKeys();
+  // The lock flag described the just-deleted stale key material, so clear it
+  // too. Without this, Security & Privacy's useBackupAndRestore onMounted
+  // guard (`if (keychain.locked)`) bounces straight back to this page and the
+  // button is a no-op loop. With keys + lock gone the client is in the same
+  // state as a fresh login: RestoreKeys prompts for the passphrase, and a
+  // wrong entry re-locks via restoreKeys' IncorrectPassphraseError path.
+  keychain.locked = false;
   router.push('/send/security-and-privacy');
 };
 </script>

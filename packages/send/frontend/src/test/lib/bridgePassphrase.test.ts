@@ -123,6 +123,26 @@ describe('clearBridgedPassphrase', () => {
     expect(remove).toHaveBeenCalledWith(SEND_MESSAGE_TO_BRIDGE);
   });
 
+  it('removes the staged value when it matches the stale passphrase', async () => {
+    const { remove } = stubBrowser({ [SEND_MESSAGE_TO_BRIDGE]: 'old stale' });
+
+    const result = await clearBridgedPassphrase('old stale');
+
+    expect(result).toBe(true);
+    expect(remove).toHaveBeenCalledWith(SEND_MESSAGE_TO_BRIDGE);
+  });
+
+  it('keeps a staged value that differs from the stale passphrase (likely the new one)', async () => {
+    const { remove } = stubBrowser({
+      [SEND_MESSAGE_TO_BRIDGE]: 'new correct',
+    });
+
+    const result = await clearBridgedPassphrase('old stale');
+
+    expect(result).toBe(false);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
   it('is a no-op when nothing is staged', async () => {
     const { remove } = stubBrowser({});
 

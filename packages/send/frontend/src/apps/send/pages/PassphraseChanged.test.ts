@@ -39,6 +39,15 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: routerPush }),
 }));
 
+// In-memory keychain state: the page must clear `locked` after removing the
+// stale keys, otherwise useBackupAndRestore's onMounted guard bounces the
+// user straight back to /passphrase-changed and the button is a loop.
+const keychain = { locked: true };
+
+vi.mock('@send-frontend/stores/keychain-store', () => ({
+  default: () => ({ keychain }),
+}));
+
 const stubs = {
   // SupportBox pulls in external constants/links we don't care about here.
   SupportBox: true,
@@ -52,6 +61,7 @@ const mountPage = () => mount(PassphraseChanged, { global: { stubs } });
 describe('PassphraseChanged.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    keychain.locked = true;
   });
 
   it('renders the warning heading with the red styling class', () => {
@@ -102,6 +112,9 @@ describe('PassphraseChanged.vue', () => {
 
     expect(clearKeys).toHaveBeenCalledTimes(1);
     expect(routerPush).toHaveBeenCalledWith('/send/security-and-privacy');
+    // The in-memory lock must be released along with the stale keys, or the
+    // Security & Privacy page's locked-keychain guard bounces right back here.
+    expect(keychain.locked).toBe(false);
     // Keys must be cleared before the navigation so the restore page sees a
     // clean slate and resolves to SHOULD_RESTORE_FROM_BACKUP.
     expect(clearKeys.mock.invocationCallOrder[0]).toBeLessThan(
