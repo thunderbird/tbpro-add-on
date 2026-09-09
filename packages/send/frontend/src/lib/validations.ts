@@ -170,7 +170,9 @@ export const validator = async ({
       // The passphrase that just failed is stale. Clear any staged bridged
       // copy so pullBridgedPassphrase can't replay the old value back into
       // the keychain on the next restore (no-op outside the extension).
-      await clearBridgedPassphrase();
+      // Passing the failing passphrase makes the clear value-matched: a
+      // concurrently staged NEW passphrase (different value) is left intact.
+      await clearBridgedPassphrase(keychain.getPassphraseValue());
     } else {
       shouldClearSessionAndStorage = true;
       console.error('Incorrect passphrase. Removing local storage data.');

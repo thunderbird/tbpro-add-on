@@ -86,9 +86,15 @@ export async function stageBridgedPassphrase(
  *
  * Same guard semantics as pullBridgedPassphrase: no-op in a plain web page.
  *
+ * @param stalePassphrase - when provided, only a staged value equal to it is
+ * removed. A differing staged value was necessarily written after the stale
+ * one was consumed (stageBridgedPassphrase on a passphrase set/re-wrap), so
+ * it is likely the NEW passphrase and must survive for the next restore.
  * @returns true if a staged value was found and removed, false otherwise.
  */
-export async function clearBridgedPassphrase(): Promise<boolean> {
+export async function clearBridgedPassphrase(
+  stalePassphrase?: string
+): Promise<boolean> {
   if (typeof browser === 'undefined' || !browser?.storage?.local) {
     return false;
   }
@@ -96,6 +102,15 @@ export async function clearBridgedPassphrase(): Promise<boolean> {
   try {
     const result = await browser.storage.local.get(SEND_MESSAGE_TO_BRIDGE);
     if (!result?.[SEND_MESSAGE_TO_BRIDGE]) {
+      return false;
+    }
+
+    if (
+      stalePassphrase !== undefined &&
+      result[SEND_MESSAGE_TO_BRIDGE] !== stalePassphrase
+    ) {
+      // A different value was staged after the failing one was consumed —
+      // treat it as fresh and leave it for pullBridgedPassphrase.
       return false;
     }
 
