@@ -63,10 +63,36 @@ ensure_env packages/send/e2e
 echo "Backend build context:"
 sh packages/send/backend/scripts/build.sh
 
+# The bucket creator is a one-shot: minio-init exits as soon as the bucket
+# exists, and `up` has already waited for that -- the backend depends on it
+# completing. What it leaves behind is an `Exited (0)` container sitting in
+# `docker ps -a` right next to a running `minio`, which reads like a crash to
+# anyone bringing this stack up for the first time. Remove it once it has served
+# its purpose; `up` recreates and reruns it next time, harmlessly, because
+# `mc mb --ignore-existing` is idempotent.
+#
+# Only when it exited cleanly, so a real failure leaves the container and its
+# logs behind to read. `up` would have failed the script before we got here in
+# that case, and `rm` without `--stop` cannot touch a container that is still
+# running, so this is the third lock on the same door -- but the one that keeps
+# a future reader from having to trust the other two.
+prune_completed_bucket_init() {
+  # Not named `status`: that is a read-only special variable in zsh, which is
+  # the interactive shell on macOS, and assigning to it fails the moment anyone
+  # sources this file instead of running it.
+  local init_state
+  init_state="$(docker compose ps -a --format '{{.State}} {{.ExitCode}}' minio-init 2>/dev/null)" || return 0
+  if [ "$init_state" = "exited 0" ]; then
+    docker compose rm --force minio-init >/dev/null
+  fi
+}
+
 if [ "$FOLLOW_LOGS" = true ]; then
   docker compose up --build --force-recreate -d
+  prune_completed_bucket_init
   # exec, so Ctrl-C reaches the log tail rather than this shell.
   exec docker compose logs -f
 else
   docker compose up -d --build
+  prune_completed_bucket_init
 fi

@@ -59,6 +59,11 @@ services:
   # this is a no-op on every boot after the first. `env_file` is the same one the
   # backend reads, so the bucket it creates cannot drift from the one the backend
   # signs URLs for.
+  #
+  # If you brought the stack up with `pnpm dev:send` you will not find this
+  # container afterwards: the script removes it once it has exited cleanly, so a
+  # finished one-shot does not sit in `docker ps -a` next to a running `minio`
+  # looking like a crash. A failed one is left behind to read.
   minio-init:
     image: "minio/mc:RELEASE.2025-08-13T08-35-41Z"
     env_file:
