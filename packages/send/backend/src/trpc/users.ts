@@ -268,27 +268,44 @@ export const usersRouter = router({
    *                   type: boolean
    *                   description: Whether the reset was successful
    */
-  resetKeys: trpc.use(isAuthed).mutation(async ({ ctx }) => {
-    const id = ctx.user.id;
-    try {
-      await resetKeys(id);
-      const containers = await getContainersOwnedByUser(id);
-      const uploads = await getUploadsOwnedByUser(id);
+  resetKeys: trpc
+    .use(isAuthed)
+    // The client must generate and hand us a fresh, already-encrypted key blob
+    // so we can swap it in atomically instead of nulling the recovery material
+    // and hoping setup completes before the user closes the tab (issue #1116).
+    .input(
+      z.object({
+        publicKey: z.string().min(1),
+        backupKeypair: z.string().min(1),
+        backupKeystring: z.string().min(1),
+        backupSalt: z.string().min(1),
+        backupContainerKeys: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const id = ctx.user.id;
+      try {
+        // 1. Write-new-then-swap: install the confirmed replacement blob FIRST.
+        //    Only once this succeeds is it safe to abandon the old containers.
+        await resetKeys(id, input);
 
-      // Burn containers
-      await Promise.all(containers.map(({ id }) => deleteContainer(id)));
-      // Burn uploads
-      await Promise.all(uploads.map(({ id }) => deleteUpload(id)));
+        // 2. Now burn the old, unreachable containers/uploads. If this leg
+        //    fails the account is still usable (it has a valid new blob), so a
+        //    partial failure here can no longer strand or lock out the user.
+        const containers = await getContainersOwnedByUser(id);
+        const uploads = await getUploadsOwnedByUser(id);
+        await Promise.all(containers.map(({ id }) => deleteContainer(id)));
+        await Promise.all(uploads.map(({ id }) => deleteUpload(id)));
 
-      return { success: true };
-    } catch (e) {
-      console.error(e);
-      throw new TRPCError({
-        message: 'Could not reset keys',
-        code: 'UNPROCESSABLE_CONTENT',
-      });
-    }
-  }),
+        return { success: true };
+      } catch (e) {
+        console.error(e);
+        throw new TRPCError({
+          message: 'Could not reset keys',
+          code: 'UNPROCESSABLE_CONTENT',
+        });
+      }
+    }),
 
   /**
    * @openapi
