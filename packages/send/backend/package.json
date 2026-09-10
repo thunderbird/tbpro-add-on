@@ -16,7 +16,7 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset --force",
     "db:update": "sh scripts/require-direct-url.sh && prisma migrate deploy",
-    "debug": "pnpm db:browse & pnpm debug:attach",
+    "debug": "prisma studio & nodemon -e js,ts --exec 'node --inspect=0.0.0.0:9229 --require ts-node/register -r tsconfig-paths/register src/index.ts'",
     "debug:attach": "nodemon -e js,ts --exec 'node --inspect=0.0.0.0:9229 --require ts-node/register -r tsconfig-paths/register src/index.ts'",
     "dev": "nodemon -e js,ts src/index.ts",
     "lint:all": "pnpx eslint . --fix --ignore-pattern 'dist/*'",
