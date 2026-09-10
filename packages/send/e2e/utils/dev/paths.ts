@@ -13,6 +13,16 @@ export const emptystatePath = path.resolve(
   "../../data/emptystate.json"
 );
 
+// Account identity (email/password/passphrase) captured by register_and_login,
+// persisted so a replacement worker can keep using the same account. Playwright
+// discards the worker after any test failure; the module-level Date.now() email
+// in a fresh worker would otherwise orphan the registered account and cascade
+// "Incorrect email or password" through every remaining test.
+export const credentialsPath = path.resolve(
+  __dirname,
+  "../../data/credentials.json"
+);
+
 export const emptyState = {
   cookies: [],
   origins: [],
