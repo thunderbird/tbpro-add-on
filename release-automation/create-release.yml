@@ -1,0 +1,172 @@
+---
+name: create-release
+
+# One-click production release creation.
+#
+# What this does:
+#   Takes the production artifacts that a "main" build already produced and
+#   turns them into a GitHub release, so nobody has to download and re-upload
+#   files by hand.
+#
+# How to use it:
+#   Run this workflow from the Actions tab. Optionally point it at a specific
+#   "main" build run; otherwise it uses the latest successful one. It creates a
+#   DRAFT release with notes and all the assets attached. Publishing that draft
+#   is the single confirmation step, and it is what starts the production
+#   deploy (handled by the existing release.yml workflow).
+
+concurrency:
+  group: create-release
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: >-
+          Optional: the "deploy-stage-and-create-release" (merge.yml) run to
+          take artifacts from. Leave blank to use the latest successful run on
+          main.
+        required: false
+        type: string
+      publish:
+        description: >-
+          Publish the release immediately instead of leaving it as a draft.
+          Leave unchecked to keep a human confirmation step (recommended).
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Work out the version and tag
+        id: version
+        run: |
+          version=$(jq -r .version packages/addon/public/manifest.json)
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "Could not read a version from packages/addon/public/manifest.json" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "Release version: $version (tag v$version)"
+
+      - name: Fail if this tag already exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "A release for $TAG already exists. Bump the version before" >&2
+            echo "creating a new release." >&2
+            exit 1
+          fi
+          echo "$TAG is available."
+
+      - name: Find the build run to take artifacts from
+        id: source-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ github.event.inputs.run_id }}
+        run: |
+          if [ -n "$INPUT_RUN_ID" ]; then
+            run_id="$INPUT_RUN_ID"
+            echo "Using the run you provided: $run_id"
+          else
+            run_id=$(gh run list \
+              --workflow=merge.yml \
+              --branch main \
+              --status success \
+              --limit 1 \
+              --json databaseId \
+              -q '.[0].databaseId')
+            if [ -z "$run_id" ]; then
+              echo "Could not find a successful main build to take artifacts from." >&2
+              exit 1
+            fi
+            echo "Using the latest successful main build: $run_id"
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Download the production artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.source-run.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: source-artifacts
+
+      - name: Package the artifacts as release assets
+        id: assets
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          found=0
+
+          # Frontend: a folder of static files -> dist-web-prod.zip
+          if [ -d source-artifacts/dist-web-prod ]; then
+            ( cd source-artifacts/dist-web-prod && zip -r -X "$GITHUB_WORKSPACE/release-assets/dist-web-prod.zip" . )
+            echo "Packaged frontend as dist-web-prod.zip"
+            found=1
+          else
+            echo "No frontend artifact in this build (frontend was unchanged)."
+          fi
+
+          # Backend image tag: a text file -> ecr_tag.zip
+          if [ -d source-artifacts/ecr_tag ]; then
+            ( cd source-artifacts/ecr_tag && zip -r -X "$GITHUB_WORKSPACE/release-assets/ecr_tag.zip" . )
+            echo "Packaged backend image tag as ecr_tag.zip"
+            found=1
+          else
+            echo "No backend artifact in this build (backend was unchanged)."
+          fi
+
+          # System add-on: an .xpi file, kept as-is
+          system_xpi=$(find source-artifacts/system-add-on-prod -name 'tbpro-system-add-on-prod-*.xpi' 2>/dev/null | head -n1 || true)
+          if [ -n "$system_xpi" ]; then
+            cp "$system_xpi" release-assets/
+            echo "Included system add-on: $(basename "$system_xpi")"
+            found=1
+          else
+            echo "No system add-on artifact in this build."
+          fi
+
+          if [ "$found" -ne 1 ]; then
+            echo "No production artifacts were found to release." >&2
+            exit 1
+          fi
+
+          echo "Release assets ready:"
+          ls -l release-assets
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PUBLISH: ${{ github.event.inputs.publish }}
+        run: |
+          set -euo pipefail
+          draft_flag="--draft"
+          if [ "$PUBLISH" = "true" ]; then
+            draft_flag=""
+            echo "Publishing the release immediately (this starts the prod deploy)."
+          else
+            echo "Creating a draft release. Publish it to start the prod deploy."
+          fi
+
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            --target main \
+            $draft_flag \
+            release-assets/*
+
+          echo "Done. Release $TAG created."
