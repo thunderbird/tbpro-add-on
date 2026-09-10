@@ -342,6 +342,21 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
+  // Re-check the lock AFTER attempting a restore. `keychainIsLocked` was captured
+  // at the top of this guard, before restore ran. On a client that still holds
+  // stale in-memory keys (the passphrase was changed on ANOTHER client), the
+  // keychain looks unlocked on entry, so the requiresBackedUpKeys redirect above
+  // is skipped and `validateBackedUpKeys` passes (a backup still exists on the
+  // server, just re-wrapped). The restore above is what discovers the mismatch
+  // and flips `keychain.locked` to true (IncorrectPassphraseError). Without this
+  // second check the navigation would proceed to a cached `/send/folder/<oldId>`,
+  // fail to fetch that subtree, and strand the user on a broken/empty folder view
+  // with no recovery — instead of routing them to re-enter their new passphrase.
+  // Only relevant on routes that need decrypted keys (requiresBackedUpKeys).
+  if (requiresBackedUpKeys && keychain?.locked) {
+    return next('/passphrase-changed');
+  }
+
   if (to.path === '/send/folder/null') {
     // If the user tries to access the folder with id 'null', we redirect them to the root folder
     const rootFolderId = await folderStore.getDefaultFolderId();

@@ -1,5 +1,6 @@
 import useFolderStore, {
   selectDefaultFolder,
+  StaleContainerAccessError,
 } from '@send-frontend/apps/send/stores/folder-store';
 import type { Container } from '@send-frontend/apps/send/stores/folder-store.types';
 import useApiStore from '@send-frontend/stores/api-store';
@@ -431,5 +432,95 @@ describe('FolderStore — fetchSubtree null-guard & phantom-root recovery (#1115
 
     expect(folderStore.rootFolderId).toBe(ROOT_ID);
     expect(apiCallSpy).not.toHaveBeenCalledWith(`users/folders`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cross-client passphrase-reset lockout: a 403 on the cached (old) root while
+// the keychain is locked must route to recovery, NOT re-provision a new root or
+// silently empty the view. This is the case the user hit: stale client B clicks
+// the encrypted-files link to its cached `/send/folder/<oldId>`, the server
+// returns 403 (container still exists, B just lost read access), and B was left
+// on a dead view because the #1115 recovery is gated on `rootFolderId===folderId`
+// (false for B, whose rootFolderId already refreshed to the new root).
+// ---------------------------------------------------------------------------
+
+describe('FolderStore — 403 on a cached container while locked (cross-client lockout)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    useKeychainStore().keychain.locked = false;
+    vi.restoreAllMocks();
+  });
+
+  it('throws StaleContainerAccessError on a 403 when the keychain is locked (even if rootFolderId != folderId)', async () => {
+    const NEW_ROOT = 'new-root-after-reset';
+    const OLD_CACHED = 'old-cached-root-in-memory';
+    // rootFolderId has already refreshed to the NEW root, so the #1115 guard
+    // (rootFolderId === folderId) would NOT match the old cached id.
+    vi.mocked(trpc.getDefaultFolder.query).mockResolvedValue({
+      id: NEW_ROOT,
+    } as never);
+
+    const apiCallSpy = vi
+      .spyOn(useApiStore().api, 'call')
+      .mockImplementation(async (path, _body, _method, _headers, options) => {
+        if (typeof path === 'string' && path.startsWith('containers/')) {
+          (options as { onFailure?: (f: unknown) => void })?.onFailure?.({
+            kind: 'http',
+            status: 403,
+            statusText: 'Forbidden',
+          });
+          return null;
+        }
+        return [];
+      });
+
+    const folderStore = useFolderStore();
+    await folderStore.getDefaultFolderId();
+    expect(folderStore.rootFolderId).toBe(NEW_ROOT);
+
+    useKeychainStore().keychain.locked = true;
+
+    await expect(folderStore.fetchSubtree(OLD_CACHED)).rejects.toBeInstanceOf(
+      StaleContainerAccessError
+    );
+    // Must NOT fall back to re-provisioning via users/folders.
+    expect(apiCallSpy).not.toHaveBeenCalledWith(`users/folders`);
+  });
+
+  it('still re-provisions (no throw) on a 403 for the cached root when the keychain is UNLOCKED (genuine phantom, #1115)', async () => {
+    const PHANTOM_ID = 'phantom-root';
+    vi.mocked(trpc.getDefaultFolder.query).mockResolvedValue({
+      id: PHANTOM_ID,
+    } as never);
+
+    const apiCallSpy = vi
+      .spyOn(useApiStore().api, 'call')
+      .mockImplementation(async (path, _body, _method, _headers, options) => {
+        if (typeof path === 'string' && path.startsWith('containers/')) {
+          (options as { onFailure?: (f: unknown) => void })?.onFailure?.({
+            kind: 'http',
+            status: 403,
+            statusText: 'Forbidden',
+          });
+          return null;
+        }
+        return [];
+      });
+
+    const folderStore = useFolderStore();
+    await folderStore.getDefaultFolderId();
+    useKeychainStore().keychain.locked = false;
+
+    // Unlocked: the lockout throw is skipped; the #1115 phantom recovery runs.
+    await expect(folderStore.fetchSubtree(PHANTOM_ID)).resolves.toBeUndefined();
+    expect(folderStore.rootFolderId).toBeNull();
+    expect(apiCallSpy).toHaveBeenCalledWith(`users/folders`);
   });
 });

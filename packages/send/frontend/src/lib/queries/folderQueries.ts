@@ -1,4 +1,6 @@
-import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import useFolderStore, {
+  StaleContainerAccessError,
+} from '@send-frontend/apps/send/stores/folder-store';
 import type {
   Container,
   ContainerResponse,
@@ -67,6 +69,16 @@ export const useFolderQuery = (
     staleTime: FIVE_MINUTES,
     gcTime: 10 * FIVE_MINUTES, // Keep cached data for 50 minutes
     enabled: true, // Always enabled since we need folder data
+    // A StaleContainerAccessError (403 on a cached container while the keychain
+    // is locked — passphrase changed on another client) is terminal: retrying
+    // just re-hits the same 403. Without this, vue-query's default retry: 3 with
+    // exponential backoff would re-run fetchSubtree ~4 times (~7s) before the
+    // error surfaces and FolderView routes the user to /passphrase-changed,
+    // leaving them on a broken/loading folder view in the meantime. Skip retries
+    // for this case so recovery is immediate; keep the default (3) for everything
+    // else (transient network/server blips).
+    retry: (failureCount, error) =>
+      !(error instanceof StaleContainerAccessError) && failureCount < 3,
   });
 };
 
