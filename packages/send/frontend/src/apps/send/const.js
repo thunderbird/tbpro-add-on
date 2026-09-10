@@ -27,4 +27,9 @@ export const INIT_ERRORS = {
   NO_USER: 1,
   NO_KEYCHAIN: 2,
   COULD_NOT_CREATE_DEFAULT_FOLDER: 3,
+  // The keychain is locked (passphrase was changed on another client), so the
+  // default folder's key can't be unwrapped locally even though it exists on
+  // the server. init() must NOT treat this as an orphaned container and must
+  // NOT delete/recreate it. Callers should route the user to /passphrase-changed.
+  KEYCHAIN_LOCKED: 4,
 };

@@ -37,6 +37,25 @@ import useMetricsStore from '@send-frontend/stores/metrics';
 import type { ProcessStage } from './status-store';
 import { useStatusStore } from './status-store';
 
+/**
+ * Thrown by `fetchSubtree` when a container returns 403 while the keychain is
+ * locked — i.e. the container still exists on the server but this client's keys
+ * are stale because the passphrase was changed on another client. Callers should
+ * treat this as "route to passphrase recovery", NOT as a generic load error and
+ * NOT as an orphaned/phantom container to re-provision.
+ */
+export class StaleContainerAccessError extends Error {
+  readonly containerId: string;
+  constructor(containerId: string) {
+    super(
+      `Access to container ${containerId} is forbidden while the keychain is ` +
+        `locked (passphrase changed on another client).`
+    );
+    this.name = 'StaleContainerAccessError';
+    this.containerId = containerId;
+  }
+}
+
 export interface FolderStore {
   rootFolder: Container;
   defaultFolder: Container | null;
@@ -194,15 +213,39 @@ const useFolderStore = defineStore('folderManager', () => {
       folders.value = [];
       rootFolder.value = null;
 
-      // Self-recovery (#1115): a 403/404 on the cached root means the server
-      // never created / no longer has that container (a phantom id). Clear the
-      // stale cache so sync stops looping on the dead id, and fall back to the
-      // user's folder list so init.ts's default-folder reconciliation can
-      // re-provision.
       const status: number | null =
         failure && (failure as ApiCallFailure).kind === 'http'
           ? (failure as ApiCallFailure & { kind: 'http' }).status
           : null;
+
+      // Cross-client passphrase-reset lockout: a 403 means the container still
+      // exists on the server but this client is no longer authorized to read it
+      // (its keys are stale because the passphrase was changed on another
+      // client). This is NOT a phantom/orphaned container — re-provisioning or
+      // silently emptying the view would strand the user (they'd click into a
+      // cached `/send/folder/<oldId>` and see nothing, with no way forward).
+      //
+      // A 403 on ANY container fetch while the keychain is locked is the lockout
+      // signature (note: this is deliberately NOT gated on
+      // `rootFolderId === folderId`, because a stale client navigating to its
+      // cached old-root URL often has `rootFolderId` already refreshed to the
+      // NEW root, so that guard would miss it). Surface it so the caller/router
+      // can route the user to passphrase recovery instead of a dead view.
+      if (status === 403 && keychain.locked) {
+        console.warn(
+          `fetchSubtree: 403 on container ${folderId} with a locked keychain ` +
+            `(passphrase changed on another client). Signalling stale access ` +
+            `so the user can recover their passphrase.`
+        );
+        throw new StaleContainerAccessError(folderId);
+      }
+
+      // Self-recovery (#1115): a 403/404 on the cached root means the server
+      // never created / no longer has that container (a phantom id). Clear the
+      // stale cache so sync stops looping on the dead id, and fall back to the
+      // user's folder list so init.ts's default-folder reconciliation can
+      // re-provision. Only applies when the keychain is UNLOCKED (a genuine
+      // phantom, not the lockout handled above).
       if (
         (status === 403 || status === 404) &&
         rootFolderId.value === folderId
