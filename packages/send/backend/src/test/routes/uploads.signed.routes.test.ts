@@ -68,9 +68,11 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
   const TB_UA =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Thunderbird/128.0';
 
-  // WEBMAIL frontend (non-extension origin): strict. A missing size is the old
+  const WEB_ORIGIN = 'https://send.tb.pro';
+
+  // WEB CLIENT (non-extension origin): strict. A missing size is the old
   // bypass and must 400.
-  it('rejects a webmail request with no size with 400', async () => {
+  it('rejects a web client request with no size with 400', async () => {
     const res = await request(app)
       .post('/api/uploads/signed')
       .send({ type: 'application/octet-stream' })
@@ -78,6 +80,49 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
 
     expect(res.status).toBe(400);
     expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
+  });
+
+  // Explicit real web-client traffic (a normal https Origin, no Thunderbird UA)
+  // must be rejected — pins the strict path independently of supertest's
+  // default User-Agent so a future default change can't silently mask it.
+  it('rejects a web-origin request with no size with 400', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream' })
+      .set('Content-Type', 'application/json')
+      .set('Origin', WEB_ORIGIN);
+
+    expect(res.status).toBe(400);
+    expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
+  });
+
+  // The web client with a size still binds the signed content-length (guards the
+  // `typeof size === 'number'` branch for the strict, non-add-on path).
+  it('signs the encrypted content-length for a web-origin request that sends size', async () => {
+    const plaintext = 4096;
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: plaintext })
+      .set('Content-Type', 'application/json')
+      .set('Origin', WEB_ORIGIN);
+
+    expect(res.status).toBe(200);
+    const [, , contentLength] = mockGetUploadBucketUrl.mock.calls[0];
+    expect(contentLength).toBeGreaterThan(plaintext);
+  });
+
+  // UA matching is case-insensitive: an uppercase Thunderbird token still counts
+  // as the add-on (lenient no-size path).
+  it('treats an uppercase THUNDERBIRD user-agent as the add-on', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream' })
+      .set('Content-Type', 'application/json')
+      .set('User-Agent', 'SomeClient THUNDERBIRD/128.0');
+
+    expect(res.status).toBe(200);
+    const [, , contentLength] = mockGetUploadBucketUrl.mock.calls[0];
+    expect(contentLength).toBeUndefined();
   });
 
   // BACKWARDS COMPAT (private #36 regression): the add-on (extension origin) may
@@ -130,7 +175,7 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
   });
 
   // A malformed explicit size is a 400 for EITHER client — even the add-on.
-  it('rejects an explicit size: 0 with 400 (webmail)', async () => {
+  it('rejects an explicit size: 0 with 400 (web client)', async () => {
     const res = await request(app)
       .post('/api/uploads/signed')
       .send({ type: 'application/octet-stream', size: 0 })

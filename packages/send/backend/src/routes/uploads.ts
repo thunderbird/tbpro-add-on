@@ -171,11 +171,11 @@ router.post(
 // BACKWARDS COMPAT (private #36 regression): the size requirement is not
 // backwards compatible with add-ons already installed in Thunderbird, which
 // call this endpoint with `{ type }` and no `size` and cannot be force-updated.
-// We tell the add-on apart from the webmail frontend with `isAddonRequest`,
+// We tell the add-on apart from the web client with `isAddonRequest`,
 // which checks the User-Agent for `Thunderbird/...` (primary) and falls back to
-// the extension origin (`moz-extension://...`); the webmail frontend matches
+// the extension origin (`moz-extension://...`); the web client matches
 // neither.
-//   - WEBMAIL frontend (non-extension origin): STRICT. `size` is required; a
+//   - WEB CLIENT (non-extension origin): STRICT. `size` is required; a
 //     missing/invalid size is a 400. This client is deployed with the backend,
 //     so it always sends a valid size and full pre-check enforcement holds.
 //   - ADD-ON (extension origin): LENIENT until patched. `size` is optional; a
@@ -188,25 +188,34 @@ router.post(
 //     path again (sign the exact ciphertext content-length).
 // A `size` that IS supplied but is non-positive/non-integer is always a 400,
 // for either client — that is a malformed request, not a legacy one.
+// Both schemas share the same `size` constraints; they differ only in whether
+// `size` is required (web client) or optional (add-on lenient path). Derive the
+// lenient one from the strict field so the constraint/message stay in lockstep.
+// The strict field keeps its custom `required_error` for the missing-size case.
+const strictSizeField = z
+  .number({ required_error: 'size is required' })
+  .int()
+  .positive('size must be greater than 0');
 const signedSchemaStrict = z.object({
   type: z.string(),
-  size: z
-    .number({ required_error: 'size is required' })
-    .int()
-    .positive('size must be greater than 0'),
+  size: strictSizeField,
 });
 const signedSchemaLenient = z.object({
   type: z.string(),
-  size: z.number().int().positive('size must be greater than 0').optional(),
+  size: strictSizeField.optional(),
 });
 
 router.post(
   '/signed',
   requireJWT,
+  // Rate-limit URL minting like the other sensitive upload endpoints, so a
+  // client (including one spoofing the add-on lenient path) can't mint
+  // unbounded presigned URLs in a tight loop.
+  createRateLimiter('sensitive'),
   addErrorHandling(UPLOAD_ERRORS.INVALID_SIZE),
   wrapAsyncHandler(async (req, res, next) => {
     // The add-on (extension origin) may omit size until it is patched; the
-    // webmail frontend must always send it.
+    // web client must always send it.
     const schema = isAddonRequest(req)
       ? signedSchemaLenient
       : signedSchemaStrict;
