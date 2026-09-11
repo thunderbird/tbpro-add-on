@@ -51,7 +51,7 @@ describe('POST /api/metrics/page-load', () => {
 
     const expectedResponse = {
       distinctId: 'hash',
-      event: 'page-load',
+      event: 'page_loaded',
       properties: {
         ...mockPayload,
         service: 'send',
@@ -87,7 +87,7 @@ describe('POST /api/metrics/page-load', () => {
 
     const expectedResponse = {
       distinctId: mockedHash,
-      event: 'page-load',
+      event: 'page_loaded',
       properties: {
         ...mockPayload,
         service: 'send',
@@ -104,5 +104,51 @@ describe('POST /api/metrics/page-load', () => {
     expect(mockcapture).toBeCalledWith(expectedResponse);
 
     expect(response.status).toBe(200);
+  });
+
+  it('only forwards allow-listed properties and drops arbitrary keys', async () => {
+    mockcapture.mockClear();
+    mockAuth.mockImplementation(() => {
+      throw new Error('no token');
+    });
+
+    const mockPayload = {
+      browser_version: '2.0',
+      os_version: '3.0',
+      path: '/share',
+      page: 'share',
+      // These must NOT leak through:
+      email: 'evil@example.com',
+      $set: { admin: true },
+      random_junk: 'nope',
+    };
+
+    const response = await request(app)
+      .post('/api/metrics/page-load')
+      .send(mockPayload)
+      .set('Content-Type', 'application/json')
+      .set('Accept', 'application/json');
+
+    expect(response.status).toBe(200);
+    expect(mockcapture).toBeCalledWith({
+      distinctId: 'hash',
+      event: 'page_loaded',
+      properties: {
+        service: 'send',
+        browser_version: '2.0',
+        os_version: '3.0',
+        path: '/share',
+        page: 'share',
+      },
+    });
+
+    const captured =
+      mockcapture.mock.calls[mockcapture.mock.calls.length - 1][0];
+    expect(Object.keys(captured.properties).sort()).toEqual(
+      ['browser_version', 'os_version', 'page', 'path', 'service'].sort()
+    );
+    expect(captured.properties).not.toHaveProperty('email');
+    expect(captured.properties).not.toHaveProperty('$set');
+    expect(captured.properties).not.toHaveProperty('random_junk');
   });
 });

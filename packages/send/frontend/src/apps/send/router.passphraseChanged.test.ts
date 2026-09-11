@@ -67,7 +67,7 @@ const guard: NavigationGuardWithThis<undefined> = async (to, _from, next) => {
   if (requiresValidToken) {
     const isTokenValid = await validateToken();
     if (!isTokenValid) {
-      captureMetric('send.invalid.token');
+      captureMetric('token_invalid');
       return next('/login');
     }
   }
@@ -157,7 +157,7 @@ describe('router guard -> /passphrase-changed (trigger path #1)', () => {
 
     // Ordering guarantee: invalid token => /login, NOT /passphrase-changed.
     expect(router.currentRoute.value.path).toBe('/login');
-    expect(captureMetric).toHaveBeenCalledWith('send.invalid.token');
+    expect(captureMetric).toHaveBeenCalledWith('token_invalid');
     expect(validateBackedUpKeys).not.toHaveBeenCalled();
   });
 
