@@ -33,6 +33,7 @@ import {
   requireWritePermission,
 } from '../middleware';
 import { calculateEncryptedSize } from '../utils/encryptedSize';
+import { isAddonRequest } from '../origins';
 
 const router: Router = Router();
 
@@ -163,16 +164,40 @@ router.post(
  *       500:
  *         description: Failed to generate pre-signed URL
  */
-// The client must state the (plaintext) size up front so the quota check runs
-// against a real number, not the `|| 0` default that let any request pass
-// (private #36). `checkStorageLimit` reads `req.body.size`, so validation has
-// to run before it.
-const signedSchema = z.object({
+// Clients state the (plaintext) size up front so the quota check runs against a
+// real number, not the `|| 0` default that let any request pass (private #36).
+// `checkStorageLimit` reads `req.body.size`, so validation has to run before it.
+//
+// BACKWARDS COMPAT (private #36 regression): the size requirement is not
+// backwards compatible with add-ons already installed in Thunderbird, which
+// call this endpoint with `{ type }` and no `size` and cannot be force-updated.
+// We tell the add-on apart from the webmail frontend with `isAddonRequest`,
+// which checks the User-Agent for `Thunderbird/...` (primary) and falls back to
+// the extension origin (`moz-extension://...`); the webmail frontend matches
+// neither.
+//   - WEBMAIL frontend (non-extension origin): STRICT. `size` is required; a
+//     missing/invalid size is a 400. This client is deployed with the backend,
+//     so it always sends a valid size and full pre-check enforcement holds.
+//   - ADD-ON (extension origin): LENIENT until patched. `size` is optional; a
+//     request without it mints an unbound URL (no signed content-length). This
+//     is not a reopening of the bypass: the independent provider-ground-truth
+//     check in `createUpload` (/report) still verifies the stored object
+//     against `calculateEncryptedSize(size)` using the size the add-on reliably
+//     sends to /report, and only the reported row counts toward quota. When a
+//     patched add-on starts sending `size`, it transparently gets the strict
+//     path again (sign the exact ciphertext content-length).
+// A `size` that IS supplied but is non-positive/non-integer is always a 400,
+// for either client — that is a malformed request, not a legacy one.
+const signedSchemaStrict = z.object({
   type: z.string(),
   size: z
     .number({ required_error: 'size is required' })
     .int()
     .positive('size must be greater than 0'),
+});
+const signedSchemaLenient = z.object({
+  type: z.string(),
+  size: z.number().int().positive('size must be greater than 0').optional(),
 });
 
 router.post(
@@ -180,14 +205,21 @@ router.post(
   requireJWT,
   addErrorHandling(UPLOAD_ERRORS.INVALID_SIZE),
   wrapAsyncHandler(async (req, res, next) => {
-    const result = signedSchema.safeParse(req.body);
+    // The add-on (extension origin) may omit size until it is patched; the
+    // webmail frontend must always send it.
+    const schema = isAddonRequest(req)
+      ? signedSchemaLenient
+      : signedSchemaStrict;
+    const result = schema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({
         message: result.error.issues[0]?.message ?? 'Invalid request body',
       });
     }
     // Normalize so `checkStorageLimit` (which reads `req.body.size`) gates on
-    // the validated value.
+    // the validated value when present. A lenient no-size request falls through
+    // with size undefined; checkStorageLimit then treats it as 0 (pre-#36
+    // behaviour) and the /report ground-truth check is the backstop.
     req.body.size = result.data.size;
     return next();
   }),
@@ -196,11 +228,13 @@ router.post(
   wrapAsyncHandler(async (req, res) => {
     const uploadId = uuidv4();
     const { type, size } = req.body;
-    // Sign the exact ciphertext content-length into the URL. `size` is the
-    // plaintext size the client stated (validated above); storage holds ECE
-    // ciphertext, which is deterministically larger, so we sign the encrypted
-    // size, not the plaintext claim (private #36).
-    const contentLength = calculateEncryptedSize(size);
+    // Sign the exact ciphertext content-length into the URL only when the
+    // client stated a size (new clients). `size` is the plaintext size; storage
+    // holds ECE ciphertext, which is deterministically larger, so we sign the
+    // encrypted size, not the plaintext claim (private #36). Legacy no-size
+    // requests get an unbound URL and are enforced at /report time instead.
+    const contentLength =
+      typeof size === 'number' ? calculateEncryptedSize(size) : undefined;
     try {
       const url = await storage.getUploadBucketUrl(
         uploadId,
