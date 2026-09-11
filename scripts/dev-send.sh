@@ -72,10 +72,10 @@ sh packages/send/backend/scripts/build.sh
 # `mc mb --ignore-existing` is idempotent.
 #
 # Only when it exited cleanly, so a real failure leaves the container and its
-# logs behind to read. `up` would have failed the script before we got here in
-# that case, and `rm` without `--stop` cannot touch a container that is still
-# running, so this is the third lock on the same door -- but the one that keeps
-# a future reader from having to trust the other two.
+# logs behind to read. `up` would already have failed the script before this
+# point, and `rm` without `--stop` cannot remove a still-running container -- so
+# the exit-0 guard is belt-and-suspenders, kept so a future reader does not have
+# to rely on those two facts.
 prune_completed_bucket_init() {
   # Not named `status`: that is a read-only special variable in zsh, which is
   # the interactive shell on macOS, and assigning to it fails the moment anyone
