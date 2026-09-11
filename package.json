@@ -9,9 +9,9 @@
   "scripts": {
     "prepare": "husky",
     "sort-package-json": "sort-package-json",
-    "dev:send": "docker compose up --build --force-recreate -d && docker compose logs -f",
+    "dev:send": "./scripts/dev-send.sh",
     "teardown": "docker compose down",
-    "dev:detach": "BUILD_ENV=production docker compose up -d --build",
+    "dev:detach": "BUILD_ENV=production ./scripts/dev-send.sh --detach",
     "test:integration:ci": "IS_CI_AUTOMATION=yes ./scripts/integration.sh"
   },
   "devDependencies": {
