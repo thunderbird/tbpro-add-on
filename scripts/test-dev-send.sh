@@ -29,7 +29,21 @@ new_fixture() {
     > "$root/packages/send/frontend/.env.sample"
   printf 'TB_SEND_BASE_URL=http://localhost:5173/\n' > "$root/packages/send/e2e/.env.sample"
   printf '#!/bin/sh\necho "[stub build.sh]"\n' > "$root/packages/send/backend/scripts/build.sh"
-  printf '#!/bin/sh\necho "[stub docker $*]"\n' > "$root/bin/docker"
+  # The docker stub logs every invocation so tests can assert on calls whose
+  # output the script discards (`rm ... >/dev/null`). Its `compose ps -a`
+  # reply is configurable: a test writes the state line to minio-init-state,
+  # standing in for whatever the real minio-init container reported.
+  cat > "$root/bin/docker" <<'EOF'
+#!/bin/sh
+root="$(cd "$(dirname "$0")/.." && pwd)"
+echo "docker $*" >> "$root/docker.log"
+case "$*" in
+  "compose ps -a"*minio-init*)
+    [ ! -f "$root/minio-init-state" ] || cat "$root/minio-init-state"
+    ;;
+  *) echo "[stub docker $*]" ;;
+esac
+EOF
   chmod +x "$root/packages/send/backend/scripts/build.sh" "$root/bin/docker"
   echo "$root"
 }
@@ -109,6 +123,32 @@ if [ -f "$FIX/packages/send/frontend/.env" ] || [ -f "$FIX/packages/send/fronten
 else
   pass "leaves no partial .env behind"
 fi
+rm -rf "$FIX"
+
+echo "a cleanly exited minio-init is pruned"
+FIX="$(new_fixture)"
+printf 'exited 0\n' > "$FIX/minio-init-state"
+OUT="$(run_dev_send "$FIX")"; RC=$?
+check_exit "exits 0" 0 "$RC"
+check_contains "removes the one-shot container" "$(cat "$FIX/docker.log")" \
+  "docker compose rm --force minio-init"
+rm -rf "$FIX"
+
+echo "a failed minio-init is left behind for debugging"
+FIX="$(new_fixture)"
+printf 'exited 1\n' > "$FIX/minio-init-state"
+OUT="$(run_dev_send "$FIX")"; RC=$?
+check_exit "exits 0" 0 "$RC"
+check_lacks "does not remove the container" "$(cat "$FIX/docker.log")" \
+  "rm --force minio-init"
+rm -rf "$FIX"
+
+echo "no minio-init state reported (stub default) prunes nothing"
+FIX="$(new_fixture)"
+OUT="$(run_dev_send "$FIX")"; RC=$?
+check_exit "exits 0" 0 "$RC"
+check_lacks "does not remove the container" "$(cat "$FIX/docker.log")" \
+  "rm --force minio-init"
 rm -rf "$FIX"
 
 echo "argument handling"
