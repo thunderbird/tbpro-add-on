@@ -1,6 +1,37 @@
 <script setup lang="ts">
+import { Storage } from '@send-frontend/lib/storage';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
+import { PrimaryButton } from '@thunderbirdops/services-ui';
+import { useRouter } from 'vue-router';
 import KeysTemplate from '../views/KeysTemplate.vue';
 import SupportBox from '../views/SupportBox.vue';
+
+const router = useRouter();
+const { keychain } = useKeychainStore();
+
+// Clear the stale local key material (wrapped keys + cached passphrase), then
+// send the user to Security & Privacy. We intentionally do NOT ask for or store
+// a new passphrase here: with the keys gone, that page resolves to
+// SHOULD_RESTORE_FROM_BACKUP and renders RestoreKeys, which is the normal flow
+// for collecting the new passphrase and re-fetching the keys from the server
+// backup. Keeping this page dumb avoids duplicating that logic and avoids
+// writing the passphrase from here.
+//
+// We route instead of reloading so the recovery form is one click away: a
+// reload would land back on whatever guarded route sent the user here, and a
+// locked keychain would just bounce them to this page again.
+const clearKeysAndRestore = async () => {
+  const storage = new Storage();
+  await storage.clearKeys();
+  // The lock flag described the just-deleted stale key material, so clear it
+  // too. Without this, Security & Privacy's useBackupAndRestore onMounted
+  // guard (`if (keychain.locked)`) bounces straight back to this page and the
+  // button is a no-op loop. With keys + lock gone the client is in the same
+  // state as a fresh login: RestoreKeys prompts for the passphrase, and a
+  // wrong entry re-locks via restoreKeys' IncorrectPassphraseError path.
+  keychain.locked = false;
+  router.push('/send/security-and-privacy');
+};
 </script>
 
 <template>
@@ -11,9 +42,16 @@ import SupportBox from '../views/SupportBox.vue';
           <h2 class="section-title text-red-700">Warning</h2>
           <p class="description">
             Your keys are incorrect. This may happen if you reset your
-            passphrase on a different device. Please log out and log back in to
-            restore access to your keys.
+            passphrase on a different device. Click below to clear the outdated
+            keys on this device; you'll then be asked for your new passphrase to
+            restore access.
           </p>
+          <PrimaryButton
+            data-testid="passphrase-changed-submit"
+            @click.prevent="clearKeysAndRestore"
+          >
+            Enter new passphrase
+          </PrimaryButton>
         </KeysTemplate>
       </div>
 

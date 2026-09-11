@@ -31,10 +31,11 @@ function makeUserStore({ hasUser = true } = {}) {
  */
 function makeKeychain(
   keysMap: Record<string, string> = {},
-  { hasKeychain = true } = {}
+  { hasKeychain = true, locked = false } = {}
 ) {
   return {
     load: vi.fn().mockResolvedValue(hasKeychain),
+    locked,
     get keys() {
       return keysMap;
     },
@@ -195,6 +196,74 @@ describe('init()', () => {
     expect(result).toBe(INIT_ERRORS.NONE);
 
     consoleSpy.mockRestore();
+  });
+
+  // --- Cross-client passphrase-reset lockout (the bug reproduced on staging) ---
+  //
+  // When the passphrase was changed on another client, this client's keychain is
+  // LOCKED: the default folder's key exists on the server but can't be unwrapped
+  // locally, so `keychain.keys[defaultFolder.id]` is empty. That is a DECRYPTION
+  // failure, not an orphaned container. init() must never delete + recreate the
+  // real container in this state (doing so creates a fresh root with stale keys
+  // that client A doesn't know about).
+
+  it('does NOT delete or recreate the default folder when the keychain is locked and its key is missing', async () => {
+    const folderId = 'good-container-locked-out';
+    folderStore = makeFolderStore({ defaultFolder: { id: folderId } });
+    // Locked keychain, and the key never made it into local storage (stale passphrase).
+    keychain = makeKeychain({}, { locked: true });
+
+    const result = await init(
+      userStore as any,
+      keychain as any,
+      folderStore as any
+    );
+
+    // The real, server-side-valid container must survive untouched.
+    expect(folderStore.deleteFolder).not.toHaveBeenCalled();
+    expect(folderStore.createFolder).not.toHaveBeenCalled();
+    expect(result).toBe(INIT_ERRORS.KEYCHAIN_LOCKED);
+  });
+
+  it('does NOT create a default folder when the keychain is locked and none is resolved locally', async () => {
+    // No default folder visible locally (can't decrypt any), but keychain is locked:
+    // creating a fresh root here would fork the account away from the server state.
+    folderStore = makeFolderStore({ defaultFolder: null });
+    keychain = makeKeychain({}, { locked: true });
+
+    const result = await init(
+      userStore as any,
+      keychain as any,
+      folderStore as any
+    );
+
+    expect(folderStore.createFolder).not.toHaveBeenCalled();
+    expect(folderStore.deleteFolder).not.toHaveBeenCalled();
+    expect(result).toBe(INIT_ERRORS.KEYCHAIN_LOCKED);
+  });
+
+  it('still deletes + recreates a genuinely orphaned container when the keychain is UNLOCKED', async () => {
+    // Regression guard: the lock check must not weaken the real orphan-cleanup path.
+    const orphanId = 'genuinely-orphaned';
+    folderStore = makeFolderStore({
+      defaultFolder: { id: orphanId },
+      createFolderResult: { id: 'fresh-folder-id' },
+    });
+    keychain = makeKeychain({}, { locked: false });
+
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await init(
+      userStore as any,
+      keychain as any,
+      folderStore as any
+    );
+
+    expect(folderStore.deleteFolder).toHaveBeenCalledWith(orphanId);
+    expect(folderStore.createFolder).toHaveBeenCalledOnce();
+    expect(result).toBe(INIT_ERRORS.NONE);
+
+    vi.restoreAllMocks();
   });
 
   it('returns COULD_NOT_CREATE_DEFAULT_FOLDER when recreation fails after orphan deletion', async () => {

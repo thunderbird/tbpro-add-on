@@ -1,5 +1,6 @@
 // stores/counter.js
 
+import { stageBridgedPassphrase } from '@send-frontend/lib/bridgePassphrase';
 import { SEND_MESSAGE_TO_BRIDGE } from '@send-frontend/lib/const';
 import { defineStore } from 'pinia';
 import { useConfigStore } from './config-store';
@@ -117,6 +118,12 @@ export const useExtensionStore = defineStore('extension', () => {
       { type: SEND_MESSAGE_TO_BRIDGE, value: message },
       window.location.origin
     );
+    // In an extension context (management page) the token-bridge content
+    // script isn't injected, so the postMessage above never reaches the
+    // background. Stage the value in extension storage directly so the
+    // add-on picks up a new/re-wrapped passphrase on its next restore
+    // instead of keeping the old one. No-op on plain web (no `browser`).
+    void stageBridgedPassphrase(message);
   };
 
   return {

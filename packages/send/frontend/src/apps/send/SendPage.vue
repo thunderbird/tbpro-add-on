@@ -24,6 +24,18 @@ onMounted(async () => {
   // Non-zero values indicate a specific error has occurred.
   const errorCode = await init(userStore, keychain, folderStore);
 
+  // A locked keychain (passphrase changed on another client) is a terminal state
+  // here: re-populating the user and retrying init() can't help because the stale
+  // local passphrase still can't unwrap the server backup. Retrying would just run
+  // init() again for nothing. The router's requiresBackedUpKeys guard redirects a
+  // locked keychain to /passphrase-changed, so simply stop and let recovery take
+  // over — never fall through to the retry (which is only useful for a missing/
+  // unpopulated user session).
+  if (errorCode === INIT_ERRORS.KEYCHAIN_LOCKED) {
+    console.info('init: keychain locked — routing to passphrase recovery.');
+    return;
+  }
+
   if (errorCode) {
     console.info('init error: ', Object.keys(INIT_ERRORS)[errorCode]);
     // Load from backend session and retry init()
