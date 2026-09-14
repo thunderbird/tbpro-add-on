@@ -40,6 +40,10 @@ vi.mock('@send-frontend/lib/keychain', () => ({
   restoreKeysUsingLocalStorage: vi.fn(),
 }));
 
+vi.mock('@send-frontend/lib/bridgePassphrase', () => ({
+  clearBridgedPassphrase: vi.fn().mockResolvedValue(true),
+}));
+
 // Helper to create a valid mock Backup object (adjust fields based on actual type)
 const createMockBackup = (data: Partial<Backup> = {}): Backup => ({
   backupContainerKeys: 'encrypted-container-keys',
@@ -352,6 +356,69 @@ describe('validator', () => {
       hasForcedLogin: true,
     });
 
+    reloadSpy.mockRestore();
+  });
+
+  it('does NOT clear storage or reload when restore fails with a locked keychain (passphrase changed on another client)', async () => {
+    mockApi.call = vi
+      .fn()
+      .mockResolvedValueOnce({ user: { id: '123' } }) // users/me matches
+      .mockResolvedValueOnce(true); // auth/me
+
+    // Simulate restoreKeysUsingLocalStorage failing due to an incorrect
+    // (stale) passphrase: keychain.locked is set true before the rethrow.
+    vi.mocked(restoreKeysUsingLocalStorage).mockImplementationOnce(async () => {
+      (mockKeychain as { locked?: boolean }).locked = true;
+      throw new Error('Could not restore keys');
+    });
+
+    const reloadSpy = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {});
+
+    const result = await (
+      await import('@send-frontend/lib/validations')
+    ).validator({
+      api: mockApi as unknown as ApiConnection,
+      userStore: mockUserStore as UserStore,
+      keychain: mockKeychain as unknown as Keychain,
+    });
+
+    // Recoverable: no destructive wipe, no forced reload. The locked
+    // keychain lets the router redirect to /passphrase-changed.
+    expect(mockUserStore.clearUserFromStorage).not.toHaveBeenCalled();
+    expect(reloadSpy).not.toHaveBeenCalled();
+    expect(result.hasCorrectKeys).toBe(false);
+    expect(result.hasForcedLogin).toBe(false);
+
+    // The stale staged bridge value must be invalidated so it can't be
+    // replayed into the keychain on the next restore.
+    const { clearBridgedPassphrase } =
+      await import('@send-frontend/lib/bridgePassphrase');
+    expect(clearBridgedPassphrase).toHaveBeenCalled();
+
+    reloadSpy.mockRestore();
+  });
+
+  it('still clears storage on genuine user ID mismatch (destructive path regression guard)', async () => {
+    mockApi.call = vi
+      .fn()
+      .mockResolvedValueOnce({ user: { id: 'backend-id' } });
+    mockUserStore.user = { id: 'store-id', email: '', tier: UserTier.FREE };
+    const reloadSpy = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {});
+
+    const result = await (
+      await import('@send-frontend/lib/validations')
+    ).validator({
+      api: mockApi as unknown as ApiConnection,
+      userStore: mockUserStore as UserStore,
+      keychain: mockKeychain as unknown as Keychain,
+    });
+
+    expect(mockUserStore.clearUserFromStorage).toHaveBeenCalledOnce();
+    expect(result.hasForcedLogin).toBe(true);
     reloadSpy.mockRestore();
   });
 

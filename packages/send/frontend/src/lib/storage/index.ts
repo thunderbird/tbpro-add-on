@@ -7,6 +7,7 @@ export interface StorageAdapter {
   get: (k: string) => any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   set: (k: string, v: any) => void;
+  remove: (k: string) => void;
   clear: () => void;
 }
 
@@ -52,6 +53,18 @@ export class Storage {
 
   async loadKeypair(): Promise<JwkKeyPair> {
     return this.adapter.get(this.RSA_KEYS_KEY);
+  }
+
+  /**
+   * Removes the stale key material — the wrapped (container) keys and the
+   * cached passphrase — while leaving the user/session intact. Used when the
+   * passphrase changed on another device: clearing both lets the normal
+   * validation/restore flow start fresh (prompt for the new passphrase and
+   * re-fetch keys from the server backup) instead of retrying the stale one.
+   */
+  async clearKeys(): Promise<void> {
+    this.adapter.remove(this.OTHER_KEYS_KEY);
+    this.adapter.remove(this.PASS_PHRASE);
   }
 
   async clear(): Promise<void> {

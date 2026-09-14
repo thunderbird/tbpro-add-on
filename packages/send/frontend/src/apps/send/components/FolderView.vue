@@ -3,7 +3,9 @@
 import { DayJsKey, Item } from '@send-frontend/types';
 import { computed, inject, onBeforeMount, ref, watch } from 'vue';
 
-import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import useFolderStore, {
+  StaleContainerAccessError,
+} from '@send-frontend/apps/send/stores/folder-store';
 import { useStatusStore } from '@send-frontend/apps/send/stores/status-store';
 import { useFolderQuery } from '@send-frontend/lib/queries/folderQueries';
 import '@thunderbirdops/services-ui/style.css';
@@ -161,6 +163,21 @@ const folderId = computed(() => {
 
 // Use the cached folder query
 const folderQuery = useFolderQuery(folderId);
+
+// A 403 on the cached folder while the keychain is locked means the passphrase
+// was changed on another client: the container still exists on the server but we
+// can no longer read it. fetchSubtree throws StaleContainerAccessError for this;
+// route the user to passphrase recovery instead of leaving them on a broken
+// folder view. (Covers the cached in-memory old-root URL case where the router
+// guard didn't already redirect — e.g. the query resolved from cache first.)
+watch(
+  () => folderQuery.error.value,
+  (err) => {
+    if (err instanceof StaleContainerAccessError) {
+      router.replace('/passphrase-changed');
+    }
+  }
+);
 
 const gotoRoute = useDebounceFn(async () => {
   isRouterLoading.value = true;

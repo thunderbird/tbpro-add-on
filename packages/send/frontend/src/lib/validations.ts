@@ -1,6 +1,7 @@
 import type { UserStoreType as UserStore } from '@send-frontend/stores/user-store';
 import { UserType } from '@send-frontend/types';
 import { ApiConnection } from './api';
+import { clearBridgedPassphrase } from './bridgePassphrase';
 import { MAX_ACCESS_LINK_RETRIES } from './const';
 import { Keychain, restoreKeysUsingLocalStorage } from './keychain';
 import { trpc } from './trpc';
@@ -150,8 +151,32 @@ export const validator = async ({
     validations.hasCorrectKeys = true;
   } catch {
     validations.hasCorrectKeys = false;
-    shouldClearSessionAndStorage = true;
-    console.error('Incorrect passphrase. Removing local storage data.');
+    // Distinguish a recoverable stale/incorrect passphrase from genuine
+    // corruption. When the backup can't be decrypted because the passphrase
+    // changed on another client, restoreKeys sets `keychain.locked = true`
+    // before rethrowing (it rethrows a generic Error, so `keychain.locked`
+    // is the most reliable discriminator available at this layer — see
+    // IncorrectPassphraseError handling in keychain.ts).
+    //
+    // In that case we must NOT wipe local storage or force a reload:
+    // wiping here permanently locked out a second already-logged-in client
+    // after a passphrase reset on the first client. Instead we leave the
+    // keychain locked and let the router redirect to /passphrase-changed,
+    // where the user can re-enter the new passphrase.
+    if (keychain.locked) {
+      console.warn(
+        'Passphrase mismatch (likely changed on another client). Routing to recovery instead of clearing storage.'
+      );
+      // The passphrase that just failed is stale. Clear any staged bridged
+      // copy so pullBridgedPassphrase can't replay the old value back into
+      // the keychain on the next restore (no-op outside the extension).
+      // Passing the failing passphrase makes the clear value-matched: a
+      // concurrently staged NEW passphrase (different value) is left intact.
+      await clearBridgedPassphrase(keychain.getPassphraseValue());
+    } else {
+      shouldClearSessionAndStorage = true;
+      console.error('Incorrect passphrase. Removing local storage data.');
+    }
   }
 
   /* 

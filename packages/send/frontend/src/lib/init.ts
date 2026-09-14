@@ -53,6 +53,29 @@ async function _init(
     defaultFolder && !keychain.keys[defaultFolder.id];
 
   if (!defaultFolder || defaultFolderKeyIsMissing) {
+    // Last line of defense against the cross-client passphrase-reset lockout.
+    //
+    // If the keychain is LOCKED, the passphrase was changed on another client and
+    // the restore above threw IncorrectPassphraseError. In that state a "missing"
+    // default-folder key is a DECRYPTION failure, not a truly orphaned container:
+    // the container is fine on the server, this client just can't read it. The
+    // delete+recreate branch below would then destroy the good container and
+    // create a fresh root with stale keys (reproduced live on staging: two
+    // `POST /api/containers` before /passphrase-changed caught it).
+    //
+    // Bail out here so the destructive branch can never run while locked,
+    // regardless of which caller reached init(). Callers route KEYCHAIN_LOCKED to
+    // /passphrase-changed for recovery. This deliberately does NOT weaken the
+    // genuine-orphan cleanup path, which only runs when the keychain is UNLOCKED.
+    if (keychain.locked) {
+      console.warn(
+        'init(): keychain is locked (passphrase changed on another client); ' +
+          'skipping default-folder delete/recreate to avoid destroying the ' +
+          'server-side container. Routing to passphrase recovery.'
+      );
+      return INIT_ERRORS.KEYCHAIN_LOCKED;
+    }
+
     // The delete+recreate branch below is the one that must never run twice
     // concurrently for the same account (see #930, #1032): background, popup,
     // and any web-app tab each hold their own JS module instance of this file,
@@ -72,7 +95,9 @@ async function _init(
       // behind rather than racing it. If it fails partway (e.g. the tab
       // closes), the lock's short TTL lets the next init() attempt through.
       await folderStore.sync();
-      return folderStore?.defaultFolder ? INIT_ERRORS.NONE : INIT_ERRORS.NO_KEYCHAIN;
+      return folderStore?.defaultFolder
+        ? INIT_ERRORS.NONE
+        : INIT_ERRORS.NO_KEYCHAIN;
     }
 
     try {

@@ -6,6 +6,7 @@ import {
 } from '@send-frontend/lib/const';
 import { organizeFiles } from '@send-frontend/lib/folderView';
 import useApiStore from '@send-frontend/stores/api-store';
+import useKeychainStore from '@send-frontend/stores/keychain-store';
 import { Item } from '@send-frontend/types';
 import { ref } from 'vue';
 
@@ -28,6 +29,7 @@ export function useUploadAndShare() {
   const folderStore = useFolderStore();
   const sharingStore = useSharingStore();
   const { api } = useApiStore();
+  const { keychain } = useKeychainStore();
 
   const isUploading = ref(false);
   const isError = ref(false);
@@ -39,6 +41,15 @@ export function useUploadAndShare() {
     expiration?: string,
     onStatusUpdate?: StatusUpdateCallback
   ): Promise<void> {
+    // Defensive guard: never upload bytes while the keychain is locked (e.g.
+    // the passphrase was reset on another client). Sharing would fail later
+    // anyway, but only after the file bytes had already been uploaded.
+    if (keychain.locked) {
+      isError.value = true;
+      throw new Error(
+        'Cannot upload: encryption keys are locked. Please re-enter your passphrase.'
+      );
+    }
     isUploading.value = true;
     isError.value = false;
     const uploadedItems: UploadResult[] = [];
