@@ -13,6 +13,8 @@ export default defineConfig({
   // the runner from loading (and reporting on) specs it will never run.
   testDir: "./tests/dev",
   outputDir: './playwright-test-results',
+  /* Reset cross-worker state files (credentials, storageState) once per run. */
+  globalSetup: "./utils/dev/global-setup.ts",
   globalTimeout: TEN_MINUTES, // odds are the test will timeout at the locator level before that anyway
   timeout: THREE_MINUTES,
   /* The dev suite is one ordered chain against a single account -- see the
@@ -39,8 +41,10 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5173",
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: "on-first-retry",
+    /* Keep the trace for every failed attempt (not just retries): first-attempt
+       failures are the ones that carry the real signal, retries often only show
+       cascade effects. See https://playwright.dev/docs/trace-viewer */
+    trace: "retain-on-failure",
     actionTimeout: 10_000,
     screenshot: "only-on-failure",
     video: "retain-on-failure",
