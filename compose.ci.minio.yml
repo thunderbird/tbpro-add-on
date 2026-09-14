@@ -22,7 +22,7 @@ services:
   # be reachable from the runner's bridge, not just its loopback.
   # No console: nothing looks at a web UI in a headless run.
   minio:
-    image: "minio/minio:RELEASE.2025-09-07T16-13-09Z"
+    image: "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
     command: server /data
     ports:
       - "9000:9000"
@@ -42,7 +42,7 @@ services:
   # Creates the bucket and exits. Reads the same env_file as the backend so the
   # two cannot name different buckets.
   minio-init:
-    image: "minio/mc:RELEASE.2025-08-13T08-35-41Z"
+    image: "quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z"
     env_file:
       - ./packages/send/backend/.env
     depends_on:
