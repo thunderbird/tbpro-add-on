@@ -270,12 +270,10 @@ jobs:
           pnpm install --filter send-frontend
           cd packages/send/frontend
 
-          # Build static frontend assets and the .xpi
-          pnpm build
+          # Web bundle only -- `pnpm build` also builds the legacy standalone
+          # XPI, which CI must not publish (scripts/build.sh, issue #1238).
+          pnpm build:web
           mv dist-web ../dist-web-${{ matrix.env }}
-          cd ..
-          mv "$(find send-suite-*.xpi)" "send-suite-${{ matrix.env }}-$(basename "$(find send-suite-*.xpi)" | cut -d'-' -f3-)"
-          ls -l send-suite-${{ matrix.env }}-*.xpi
 
       - name: Archive the ${{ matrix.env }} frontend build
         if: needs.detect-changes.outputs.frontend-changed == 'true'
@@ -285,14 +283,6 @@ jobs:
           name: dist-web-${{ matrix.env }}
           path: packages/send/dist-web-${{ matrix.env }}
           compression-level: 0
-
-      - name: Archive the ${{ matrix.env }} XPI
-        if: needs.detect-changes.outputs.frontend-changed == 'true'
-        id: xpi-archive-stage
-        uses: actions/upload-artifact@v4
-        with:
-          name: xpi-${{ matrix.env }}
-          path: packages/send/send-suite-${{ matrix.env }}-*.xpi
 
   frontend-deploy-stage-aws:
     needs: ["frontend-build", "detect-changes"]

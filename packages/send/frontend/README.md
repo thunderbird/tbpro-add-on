@@ -32,6 +32,12 @@ Run `pnpm i && pnpm build`
 This generates the extension file at `packages/send`, named after the version in this package's
 `package.json` with the dots replaced by hyphens — at 8.0.6, `send-suite-8-0-6.xpi`. Additionally, it will generate a `dist` folder with the extension files, a `dist-web` folder with the web files.
 
+That `send-suite-*.xpi` is the **legacy standalone add-on**, kept only for loading an unsigned build
+locally. The add-on that ships is the system add-on built from `packages/addon`, so CI does not build
+or upload the standalone one. If you only want the web bundle, run `pnpm build:web` — the same build,
+minus everything only the extension needs (the three extension bundles, `dist/headers.json`, and the
+XPI they get packed into).
+
 ## Previewing a production build (web)
 
 Prerequisite: If you have different values you want to use for a production build, it would be a good time to set them on your `frontend/.env`. If you're running a backend locally, that should be running.
