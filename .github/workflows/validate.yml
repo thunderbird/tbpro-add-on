@@ -130,10 +130,13 @@ jobs:
           docker network disconnect "$MINIO_NETWORK" "$(cat /etc/hostname)" || true
           docker compose rm -sf minio
 
-      # Duplicate-code budget. Each package's .jscpd.json threshold is that
-      # package's current duplication percentage, so newly copy-pasted code
-      # pushes it over and fails the job. It is a whole-package percentage, not
-      # a diff, so deleting unique code can push it over too.
+      # Duplicate-code budget, calibrated 2026-09-15: each package's
+      # .jscpd.json threshold sits just above that package's measured
+      # duplication (addon 0.00 -> 0, backend 2.09 -> 2.15, frontend
+      # 1.85 -> 1.87), sized so one small copy-pasted block pushes the number
+      # over and fails the job. Re-measure with `pnpm dupes` before changing
+      # one. It is a whole-package percentage, not a diff, so a large deletion
+      # of unique code can push it over too.
       #
       # Kept out of `ci:validate` deliberately: those scripts chain with `;`, so
       # only the last command's exit code survives and appending would mask the

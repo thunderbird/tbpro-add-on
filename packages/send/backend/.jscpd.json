@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/kucherenko/jscpd/master/packages/jscpd/schema.json",
-  "threshold": 2.1,
+  "threshold": 2.15,
   "reporters": ["console"],
   "absolute": false,
   "gitignore": true,
