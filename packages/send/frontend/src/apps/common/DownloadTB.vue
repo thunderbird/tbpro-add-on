@@ -4,7 +4,7 @@ import ProButton from './ProButton.vue';
 
 const handleDownloadTB = () => {
   window.open(
-    'https://addons.thunderbird.net/en-US/thunderbird/addon/pro/?src=ext-send-dashboard',
+    'https://www.thunderbird.net/desktop/',
     '_blank',
     'noopener,noreferrer'
   );
@@ -13,13 +13,13 @@ const handleDownloadTB = () => {
 <template>
   <div class="bg card-shadow">
     <p class="text">
-      To use Send in Thunderbird Desktop, install the Thundermail add-on and
-      sign in from the Thunderbird menu.
+      To use Send in Thunderbird Desktop, install it and sign in from the
+      Thunderbird menu.
     </p>
     <div class="buttonwrapper">
       <ProButton class="button" type="secondary" @click="handleDownloadTB">
         <DownloadIconBlue />
-        Get add-on</ProButton
+        Download</ProButton
       >
     </div>
     <img

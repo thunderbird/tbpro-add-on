@@ -139,5 +139,22 @@ const {
   .row {
     grid-template-columns: 1fr;
   }
+
+  /* On mobile, flatten the section so children can be reordered
+     across rows, then push the Support + Download block to the bottom. */
+  .content-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .content-layout > .row {
+    display: contents;
+  }
+
+  .right-column.alignleft {
+    order: 1;
+    display: flex;
+    flex-direction: column;
+  }
 }
 </style>
