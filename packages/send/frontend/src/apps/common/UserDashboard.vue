@@ -154,7 +154,7 @@ const {
   .right-column.alignleft {
     order: 1;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
   }
 }
 </style>
