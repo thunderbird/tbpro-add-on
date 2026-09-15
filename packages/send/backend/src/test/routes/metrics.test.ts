@@ -2,6 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import router from '../../routes/metrics';
+import { ANALYTICS_EVENTS } from '../../metrics/events';
 
 const { mockcapture, mockAuth, mockAuthenticatedRequest } = vi.hoisted(() => ({
   mockcapture: vi.fn(),
@@ -51,7 +52,7 @@ describe('POST /api/metrics/page-load', () => {
 
     const expectedResponse = {
       distinctId: 'hash',
-      event: 'page_loaded',
+      event: ANALYTICS_EVENTS.PAGE_LOADED,
       properties: {
         ...mockPayload,
         service: 'send',
@@ -87,7 +88,7 @@ describe('POST /api/metrics/page-load', () => {
 
     const expectedResponse = {
       distinctId: mockedHash,
-      event: 'page_loaded',
+      event: ANALYTICS_EVENTS.PAGE_LOADED,
       properties: {
         ...mockPayload,
         service: 'send',
@@ -132,7 +133,7 @@ describe('POST /api/metrics/page-load', () => {
     expect(response.status).toBe(200);
     expect(mockcapture).toBeCalledWith({
       distinctId: 'hash',
-      event: 'page_loaded',
+      event: ANALYTICS_EVENTS.PAGE_LOADED,
       properties: {
         service: 'send',
         browser_version: '2.0',

@@ -1,3 +1,4 @@
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createMemoryHistory,
@@ -67,7 +68,7 @@ const guard: NavigationGuardWithThis<undefined> = async (to, _from, next) => {
   if (requiresValidToken) {
     const isTokenValid = await validateToken();
     if (!isTokenValid) {
-      captureMetric('token_invalid');
+      captureMetric(ANALYTICS_EVENTS.TOKEN_INVALID);
       return next('/login');
     }
   }
@@ -157,7 +158,7 @@ describe('router guard -> /passphrase-changed (trigger path #1)', () => {
 
     // Ordering guarantee: invalid token => /login, NOT /passphrase-changed.
     expect(router.currentRoute.value.path).toBe('/login');
-    expect(captureMetric).toHaveBeenCalledWith('token_invalid');
+    expect(captureMetric).toHaveBeenCalledWith(ANALYTICS_EVENTS.TOKEN_INVALID);
     expect(validateBackedUpKeys).not.toHaveBeenCalled();
   });
 
