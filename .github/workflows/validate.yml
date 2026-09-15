@@ -130,6 +130,20 @@ jobs:
           docker network disconnect "$MINIO_NETWORK" "$(cat /etc/hostname)" || true
           docker compose rm -sf minio
 
+      # Duplicate-code budget. Each package's .jscpd.json threshold is that
+      # package's current duplication percentage, so newly copy-pasted code
+      # pushes it over and fails the job. It is a whole-package percentage, not
+      # a diff, so deleting unique code can push it over too.
+      #
+      # Kept out of `ci:validate` deliberately: those scripts chain with `;`, so
+      # only the last command's exit code survives and appending would mask the
+      # checks already in them. Invoked via `pnpm`, not `lerna run`, which exits
+      # 0 when the script is missing and would fail open.
+      - name: Check for duplicate code
+        run: |
+          cd packages/send/backend
+          pnpm dupes
+
   # When Pulumi code or configs change, run these steps
   iac-lint:
     needs: detect-changes
@@ -183,6 +197,12 @@ jobs:
         run: |
           lerna run ci:validate --scope=send-frontend
 
+      # Duplicate-code budget. See the note on this step in `backend-tests`.
+      - name: Check for duplicate code
+        run: |
+          cd packages/send/frontend
+          pnpm dupes
+
   # When the addon package code changes, run these steps
   addon-changes:
     needs: detect-changes
@@ -220,3 +240,9 @@ jobs:
         run: |
           lerna run ci:validate --scope=addon
           lerna run test --scope=addon
+
+      # Duplicate-code budget. See the note on this step in `backend-tests`.
+      - name: Check for duplicate code
+        run: |
+          cd packages/addon
+          pnpm dupes
