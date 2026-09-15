@@ -27,6 +27,7 @@ import {
   useKeychainStore,
   useUserStore,
 } from '@send-frontend/stores';
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { storeToRefs } from 'pinia';
 
@@ -284,7 +285,7 @@ router.beforeEach(async (to, from, next) => {
   if (requiresValidToken) {
     const isTokenValid = await validateToken(api);
     if (!isTokenValid) {
-      metrics.capture('send.invalid.token');
+      metrics.capture(ANALYTICS_EVENTS.TOKEN_INVALID);
       return next('/login');
     }
   }

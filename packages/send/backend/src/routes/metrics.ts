@@ -4,6 +4,7 @@ import {
 } from '@send-backend/auth/client';
 import { Router } from 'express';
 import { useMetrics } from '../metrics';
+import { ANALYTICS_EVENTS } from '../metrics/events';
 import { getUniqueHashFromAnonId } from '../utils/session';
 
 const router: Router = Router();
@@ -19,7 +20,7 @@ router.post('/api/metrics/page-load', (req, res) => {
     // will use anon_id
   }
 
-  const data = req.body;
+  const data = req.body ?? {};
 
   const metrics = useMetrics();
 
@@ -27,11 +28,22 @@ router.post('/api/metrics/page-load', (req, res) => {
 
   anon_id = getUniqueHashFromAnonId(anon_id);
 
-  const event = 'page-load';
-  const properties = {
-    ...data,
-    service: 'send',
-  };
+  const event = ANALYTICS_EVENTS.PAGE_LOADED;
+
+  // Only forward an explicit allow-list of properties; never spread req.body.
+  const ALLOWED_PROPERTIES = [
+    'browser_version',
+    'os_version',
+    'path',
+    'page',
+  ] as const;
+
+  const properties: Record<string, unknown> = { service: 'send' };
+  for (const key of ALLOWED_PROPERTIES) {
+    if (data[key] !== undefined) {
+      properties[key] = data[key];
+    }
+  }
 
   if (uniqueHash) {
     metrics.capture({

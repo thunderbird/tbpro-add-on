@@ -26,6 +26,7 @@ import { deleteUploadsByIds, reportUpload } from '@send-backend/models';
 import storage from '@send-backend/storage';
 import { createRateLimiter } from '../middleware/rate-limit';
 import { useMetrics } from '../metrics';
+import { ANALYTICS_EVENTS } from '../metrics/events';
 import {
   checkStorageLimit,
   getGroupMemberPermissions,
@@ -110,7 +111,7 @@ router.post(
       );
       // Capture metrics
       Metrics.capture({
-        event: 'upload.size',
+        event: ANALYTICS_EVENTS.UPLOAD_COMPLETED,
         properties: { size, type },
         distinctId,
       });

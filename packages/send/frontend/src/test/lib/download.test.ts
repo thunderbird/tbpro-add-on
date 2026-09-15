@@ -102,7 +102,7 @@ describe('Downloader', () => {
       expect(mockProgressTracker.setProcessStage).toHaveBeenCalledWith(
         'downloading'
       );
-      expect(mockMetrics.capture).toHaveBeenCalledWith('download.size', {
+      expect(mockMetrics.capture).toHaveBeenCalledWith('file_downloaded', {
         size: 1024,
         type: 'text/plain',
       });

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ButtonComponent from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import {
   CopyIcon,
@@ -63,7 +64,7 @@ const onCopy = (text: string) => {
 };
 
 const submit = async () => {
-  metrics.capture('send.restore_keys_attempt', { type: 'attempt' });
+  metrics.capture(ANALYTICS_EVENTS.KEYS_RESTORE_ATTEMPTED, { type: 'attempt' });
   setPassphrase(userSetPassword.value);
   restoreFromBackup();
 };
