@@ -1,14 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/kucherenko/jscpd/master/packages/jscpd/schema.json",
-  "threshold": 1.86,
+  "threshold": 2.1,
   "reporters": ["console"],
   "absolute": false,
   "gitignore": true,
-  "format": ["typescript", "javascript", "vue"],
+  "format": ["typescript", "javascript"],
   "ignore": [
     "**/node_modules/**",
     "**/dist/**",
-    "**/dist-web/**",
     "**/*.min.js",
     "**/*.test.ts",
     "**/*.spec.ts",

@@ -239,6 +239,9 @@ importers:
       happy-dom:
         specifier: ^20.9.0
         version: 20.9.0
+      jscpd:
+        specifier: ^5.2.1
+        version: 5.2.1
       jsonwebtoken:
         specifier: 9.0.2
         version: 9.0.2
@@ -477,6 +480,9 @@ importers:
       globals:
         specifier: ^17.5.0
         version: 17.5.0
+      jscpd:
+        specifier: ^5.2.1
+        version: 5.2.1
       lint-staged:
         specifier: ^15.5.2
         version: 15.5.2(supports-color@8.1.1)
