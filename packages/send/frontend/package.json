@@ -79,6 +79,7 @@
     "form-data": "^4.0.5",
     "globals": "^17.5.0",
     "happy-dom": "^20.9.0",
+    "jscpd": "^5.2.1",
     "jsonwebtoken": "9.0.2",
     "lint-staged": "^15.5.2",
     "mock-socket": "^9.3.1",
