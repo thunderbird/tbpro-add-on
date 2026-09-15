@@ -64,22 +64,133 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
     mockGetUploadBucketUrl.mockResolvedValue('https://bucket/signed-url');
   });
 
-  it('rejects a request with no size (the old bypass) with 400', async () => {
+  const EXT_ORIGIN = 'moz-extension://abcd-1234';
+  const TB_UA =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Thunderbird/128.0';
+
+  const WEB_ORIGIN = 'https://send.tb.pro';
+
+  // WEB CLIENT (non-extension origin): strict. A missing size is the old
+  // bypass and must 400.
+  it('rejects a web client request with no size with 400', async () => {
     const res = await request(app)
       .post('/api/uploads/signed')
       .send({ type: 'application/octet-stream' })
       .set('Content-Type', 'application/json');
 
     expect(res.status).toBe(400);
-    // No URL is minted for an unsized request.
     expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
   });
 
-  it('rejects size: 0 with 400', async () => {
+  // Explicit real web-client traffic (a normal https Origin, no Thunderbird UA)
+  // must be rejected — pins the strict path independently of supertest's
+  // default User-Agent so a future default change can't silently mask it.
+  it('rejects a web-origin request with no size with 400', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream' })
+      .set('Content-Type', 'application/json')
+      .set('Origin', WEB_ORIGIN);
+
+    expect(res.status).toBe(400);
+    expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
+  });
+
+  // The web client with a size still binds the signed content-length (guards the
+  // `typeof size === 'number'` branch for the strict, non-add-on path).
+  it('signs the encrypted content-length for a web-origin request that sends size', async () => {
+    const plaintext = 4096;
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: plaintext })
+      .set('Content-Type', 'application/json')
+      .set('Origin', WEB_ORIGIN);
+
+    expect(res.status).toBe(200);
+    const [, , contentLength] = mockGetUploadBucketUrl.mock.calls[0];
+    expect(contentLength).toBeGreaterThan(plaintext);
+  });
+
+  // UA matching is case-insensitive: an uppercase Thunderbird token still counts
+  // as the add-on (lenient no-size path).
+  it('treats an uppercase THUNDERBIRD user-agent as the add-on', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream' })
+      .set('Content-Type', 'application/json')
+      .set('User-Agent', 'SomeClient THUNDERBIRD/128.0');
+
+    expect(res.status).toBe(200);
+    const [, , contentLength] = mockGetUploadBucketUrl.mock.calls[0];
+    expect(contentLength).toBeUndefined();
+  });
+
+  // BACKWARDS COMPAT (private #36 regression): the add-on (extension origin) may
+  // omit size until it is patched. It must keep working — the
+  // provider-ground-truth check in createUpload (/report) is the backstop — so a
+  // no-size add-on request mints an UNBOUND url (no signed content-length)
+  // instead of 400ing.
+  it('accepts an add-on request (extension origin) with no size and mints an unbound url', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream' })
+      .set('Content-Type', 'application/json')
+      .set('Origin', EXT_ORIGIN);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ url: 'https://bucket/signed-url' });
+    // No content-length is signed for an unsized add-on request.
+    const [, , contentLength] = mockGetUploadBucketUrl.mock.calls[0];
+    expect(contentLength).toBeUndefined();
+  });
+
+  // The primary add-on signal is the Thunderbird User-Agent, even with no
+  // extension origin present.
+  it('accepts an add-on request (Thunderbird User-Agent) with no size and mints an unbound url', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream' })
+      .set('Content-Type', 'application/json')
+      .set('User-Agent', TB_UA);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ url: 'https://bucket/signed-url' });
+    const [, , contentLength] = mockGetUploadBucketUrl.mock.calls[0];
+    expect(contentLength).toBeUndefined();
+  });
+
+  // A patched add-on that DOES send size transparently gets the strict path:
+  // the signed content-length is the ciphertext size.
+  it('signs the encrypted content-length for an add-on request that sends size', async () => {
+    const plaintext = 2048;
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: plaintext })
+      .set('Content-Type', 'application/json')
+      .set('Origin', EXT_ORIGIN);
+
+    expect(res.status).toBe(200);
+    const [, , contentLength] = mockGetUploadBucketUrl.mock.calls[0];
+    expect(contentLength).toBeGreaterThan(plaintext);
+  });
+
+  // A malformed explicit size is a 400 for EITHER client — even the add-on.
+  it('rejects an explicit size: 0 with 400 (web client)', async () => {
     const res = await request(app)
       .post('/api/uploads/signed')
       .send({ type: 'application/octet-stream', size: 0 })
       .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(400);
+    expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
+  });
+
+  it('rejects an explicit size: 0 with 400 (add-on origin)', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 0 })
+      .set('Content-Type', 'application/json')
+      .set('Origin', EXT_ORIGIN);
 
     expect(res.status).toBe(400);
     expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();

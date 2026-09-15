@@ -129,7 +129,15 @@ export async function dbUserSetup(
   // - loading keychain from storage
   // - creating the default folder
   const initResult = await init(userStore, keychain, folderStore);
-  if (initResult !== INIT_ERRORS.NONE) {
+  if (initResult === INIT_ERRORS.KEYCHAIN_LOCKED) {
+    // Expected, non-error state: the passphrase was changed on another client, so
+    // the keychain is locked and init() correctly declined to touch the default
+    // folder. The router redirects the user to /passphrase-changed for recovery;
+    // don't surface this as an error.
+    console.info(
+      'init(): keychain locked — user should recover their passphrase.'
+    );
+  } else if (initResult !== INIT_ERRORS.NONE) {
     console.error(
       `User setup incomplete — init() returned error: ${Object.keys(INIT_ERRORS)[initResult]}`
     );

@@ -16,10 +16,21 @@ To get started, you need to install the dependencies for the monorepo. You can d
 pnpm install
 ```
 
-Then create the `.env` files. They are gitignored, so a fresh checkout has none, and the stack
-will not start without `backend/.env` — compose reads it directly and fails with
-`env file .../packages/send/backend/.env not found`. This prompts for a `Y` and **overwrites** any
-`.env` already in `frontend/`, `backend/` and `e2e/`:
+Then run the full stack (you can use this command anytime you want to run the application back
+again):
+
+```sh
+pnpm run dev:send
+```
+
+That is the whole setup. `dev:send` does the two things a fresh checkout is missing before it hands
+off to `docker compose`: it creates any absent `.env` by copying the `.env.sample` next to it (they
+are gitignored, and compose reads `backend/.env` itself, so without one the stack fails outright
+with `env file .../packages/send/backend/.env not found`), and it generates the backend image's
+build context. An `.env` you already have is never touched, and a second run has nothing to do.
+
+To *reset* your `.env` files back to the samples there is a separate script. It prompts for a `Y`
+and **overwrites** any `.env` already in `frontend/`, `backend/` and `e2e/`:
 
 ```sh
 pnpm --filter send-suite run setup
@@ -27,12 +38,6 @@ pnpm --filter send-suite run setup
 
 (There is also a `setup:local`, which flips the public-login flags on afterwards. The samples
 ship those flags on, so it does nothing `setup` doesn't; CI still calls it.)
-
-Finally, run the full stack (you can use this command anytime you want to run the application back again):
-
-```sh
-pnpm run dev:send
-```
 
 ### Setting up the environment
 
@@ -211,6 +216,12 @@ worktree is already using port 9000, start the stack with `SEND_MINIO_PORT=9010`
 and set `TEST_MINIO_ENDPOINT=http://localhost:9010` and
 `S3_PUBLIC_ENDPOINT=http://localhost:9010` in `packages/send/backend/.env`.
 
+### Dev-stack tooling
+
+`scripts/test-dev-send.sh`, from the repo root, covers `dev-send.sh`: which `.env` files it creates,
+that it leaves an existing one alone, and that a second run still starts the stack. It runs against
+a throwaway fixture tree with a stub `docker`, so it starts no containers and takes about a second.
+
 ### E2E testing
 
 For details on how to run the E2E tests please see the [E2E Tests README](e2e/README.md).
@@ -265,8 +276,8 @@ lerna clean
 docker compose down -v
 docker system prune -a --volumes
 pnpm i
-lerna run bootstrap   # regenerates the backend's .docker-build build context
-pnpm run dev:send
+lerna run bootstrap   # host-side backend deps + prisma client
+pnpm run dev:send     # regenerates the backend's .docker-build build context itself
 ```
 
 If you're having any issues with docker (ex: no memory left, or volumes do not contain expected files), prune docker and rebuild containers from scratch:

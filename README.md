@@ -44,34 +44,37 @@ To get started, you need to install the dependencies for the monorepo. You can d
 pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
 ```
 
-Don't skip `bootstrap`. Besides installing the backend's dependencies it generates the Prisma
-client and, through `packages/send/backend/scripts/build.sh`, the backend's Docker build context
-at `packages/send/backend/.docker-build`. That directory is generated rather than checked in, so
-without it the first `pnpm run dev:send` fails with
-`unable to prepare context: path ".../packages/send/backend/.docker-build" not found`. Re-run
-`lerna run bootstrap` (or just `pnpm --filter send-backend run build:image`) after changing
-anything under `packages/send/backend`.
+`bootstrap` installs the backend's dependencies and generates the Prisma client, which is what
+host-side backend commands (`pnpm typecheck`, `pnpm test`, prisma) need. It is not a prerequisite
+for starting the stack.
 
-Next, create your `.env` files:
-
-```sh
-pnpm --filter send-suite run setup
-pnpm --filter addon run setup
-```
-
-Both prompt for a `Y` and then **overwrite** any `.env` you already have in those packages, so
-back yours up first if it holds anything you care about. Two footguns:
-
-- Keep the `run`. `pnpm --filter send-suite setup` matches pnpm's own `setup` command and fails
-  with `Unknown option: 'recursive'`.
-- Don't pipe the `Y` into `lerna run setup` — the prompt never reaches the script and the command
-  hangs. Use the `pnpm ... run setup` form above in scripts.
-
-Finally, run the full stack (you can use this command anytime you want to run the application back again):
+Then run the full stack (you can use this command anytime you want to run the application back
+again):
 
 ```sh
 pnpm run dev:send
 ```
+
+That is all the Send stack needs. `dev:send` copies any missing `.env` from its `.env.sample` and
+regenerates the backend's Docker build context before calling `docker compose`, so a fresh checkout
+or a new worktree comes up on one command. Both are files that are generated rather than checked
+in, which is why they used to have to be created by hand first. An `.env` you already have is left
+untouched.
+
+The add-on has its own `.env`, which is not part of the stack and is still copied by hand:
+
+```sh
+pnpm --filter addon run setup
+```
+
+It prompts for a `Y` and then **overwrites** any `.env` you already have in that package, so back
+yours up first if it holds anything you care about. Two footguns, which also apply to
+`pnpm --filter send-suite run setup` (the script that *resets* the Send `.env` files):
+
+- Keep the `run`. `pnpm --filter addon setup` matches pnpm's own `setup` command and fails
+  with `Unknown option: 'recursive'`.
+- Don't pipe the `Y` into `lerna run setup` — the prompt never reaches the script and the command
+  hangs. Use the `pnpm ... run setup` form above in scripts.
 
 Congrats! Now you should be able to see the app on `http://localhost:5173/` and the backend running on `https://localhost:8088/`
 

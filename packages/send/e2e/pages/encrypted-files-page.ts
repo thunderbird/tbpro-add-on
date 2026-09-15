@@ -1,7 +1,4 @@
-import { expect, type Download, type Locator, type Page } from '@playwright/test';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { buffer } from 'node:stream/consumers';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import {
   TB_ACCTS_EMAIL,
@@ -14,6 +11,10 @@ import {
   dragAndDropUploadFile,
   type UploadFixture,
 } from '../utils/upload-files';
+import {
+  expectDownloadMatchesFixture,
+  expectGeneratedDownloadIsTriggered,
+} from '../utils/download-files';
 
 export class EncryptedFilesPage {
   readonly page: Page;
@@ -155,31 +156,7 @@ export class EncryptedFilesPage {
     const downloadPromise = this.page.waitForEvent('download');
     await this.page.getByTestId('confirm-download').click();
 
-    await this.expectDownloadMatchesFixture(await downloadPromise, uploadFixture);
-  }
-
-  /**
-   * The bytes are the point. Checking only the file name passes on a download
-   * that came back short, reordered, or still encrypted.
-   *
-   * The fixture is 1.3 MB and the frontend's split size is 500 MB, so this is a
-   * single-part round trip. Multipart reassembly is not covered anywhere in the
-   * e2e suite -- see the follow-up on the bucket job's split-size override.
-   */
-  private async expectDownloadMatchesFixture(download: Download, uploadFixture: UploadFixture) {
-    expect(download.suggestedFilename()).toBe(uploadFixture.fileName);
-
-    // `path()` throws when the browser is remote, which every nightly run is
-    // ("Path is not available when connecting remotely"). `createReadStream()`
-    // streams the bytes back to the runner instead and works either way.
-    const downloaded = await buffer(await download.createReadStream());
-    const expected = readFileSync(uploadFixture.filePath);
-    // Length first, then digest: "expected 1331200 to be 1391309" says truncated,
-    // where a bare buffer comparison only ever says "expected false to be true".
-    expect(downloaded.byteLength).toBe(expected.byteLength);
-    expect(createHash('sha256').update(downloaded).digest('hex')).toBe(
-      createHash('sha256').update(expected).digest('hex')
-    );
+    await expectDownloadMatchesFixture(await downloadPromise, uploadFixture);
   }
 
   async downloadFileFromInfoPanelAndExpectDownload(
@@ -216,7 +193,7 @@ export class EncryptedFilesPage {
       // outside the web page and cannot be located by Playwright, so observe
       // Send clicking its generated <a download> link instead. That is the
       // page-side action which immediately hands the file to Android Chrome.
-      await this.expectGeneratedDownloadIsTriggered(downloadButton);
+      await expectGeneratedDownloadIsTriggered(this.page, downloadButton);
     } else {
       // PIXEL VIEWPORT PATH: the emulated browser reports Playwright download
       // events normally. Send must first fetch and decrypt the complete file,
@@ -228,7 +205,7 @@ export class EncryptedFilesPage {
         downloadButton.click(),
       ]);
 
-      await this.expectDownloadMatchesFixture(download, uploadFixture);
+      await expectDownloadMatchesFixture(download, uploadFixture);
     }
 
     // The mobile info panel is a full-screen overlay. Close it after the
@@ -316,47 +293,121 @@ export class EncryptedFilesPage {
     await expect(fileRow).toBeVisible();
   }
 
-  private async expectGeneratedDownloadIsTriggered(downloadButton: Locator) {
-    // Send downloads and decrypts the file before creating a blob URL and
-    // programmatically clicking a temporary <a download> element. Install this
-    // test-only hook before the user-facing click so the BrowserStack Android
-    // path can observe that final handoff even though the native browser message
-    // and Playwright Download object are unavailable to the page. The original
-    // anchor click still runs, so Android downloads the file normally.
+  async createPasswordProtectedShareLink(
+    fileName: string,
+    password: string,
+    isMobile: boolean
+  ) {
+    // Capture the app's copy action without depending on device clipboard permissions.
     await this.page.evaluate(() => {
-      const captureWindow = window as typeof window & {
-        __tbSendE2EDownloadTriggered?: boolean;
-      };
-      const originalClick = HTMLAnchorElement.prototype.click;
-      captureWindow.__tbSendE2EDownloadTriggered = false;
-
-      HTMLAnchorElement.prototype.click = function () {
-        if (this.download && this.href.startsWith('blob:')) {
-          captureWindow.__tbSendE2EDownloadTriggered = true;
-
-          // Restore immediately after intercepting Send's generated link so the
-          // hook cannot affect any later anchor interactions in this test.
-          HTMLAnchorElement.prototype.click = originalClick;
-        }
-
-        return originalClick.call(this);
-      };
+      const captureWindow = window as typeof window & { __tbSendShareUrl?: string };
+      captureWindow.__tbSendShareUrl = '';
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (value: string) => {
+            captureWindow.__tbSendShareUrl = value;
+          },
+        },
+      });
     });
 
-    await downloadButton.click();
+    const row = this.fileRow(fileName);
+    if (isMobile) {
+      await this.scrollFileRowClearOfUploadBar(row);
+    } else {
+      await row.scrollIntoViewIfNeeded();
+    }
+    await row.click();
+    const panel = this.fileInfoPanel();
+    await expect(panel.getByText(fileName, { exact: true })).toBeVisible();
+    await panel.getByTestId('password-input').fill(password);
+    await panel.getByTestId('create-share-link').click();
 
+    let shareUrl = '';
+    await expect
+      .poll(
+        async () => {
+          shareUrl = await this.page.evaluate(
+            () =>
+              (window as typeof window & { __tbSendShareUrl?: string })
+                .__tbSendShareUrl ?? ''
+          );
+          try {
+            const url = new URL(shareUrl);
+            return (
+              /^https?:$/.test(url.protocol) &&
+              /^\/share\/[^/]+$/.test(url.pathname)
+            );
+          } catch {
+            return false;
+          }
+        },
+        {
+          timeout: TIMEOUT_30_SECONDS,
+          message: 'The app must copy a new share URL',
+        }
+      )
+      .toBe(true);
+    return shareUrl;
+  }
+
+  async deleteShareLink(shareUrl: string) {
+    const linkId = new URL(shareUrl).pathname.split('/').pop()!;
+    const rows = this.fileInfoPanel().locator(
+      '[data-testid^="access-link-item-"]'
+    );
+    let index = -1;
+    // Input values identify links even when a refetch changes their list order.
+    await expect
+      .poll(
+        async () => {
+          index = await rows.evaluateAll(
+            (elements, wantedId) =>
+              elements.findIndex((element) => {
+                const input = element.querySelector('input');
+                return input?.value.split('/share/')[1] === wantedId;
+              }),
+            linkId
+          );
+          return index;
+        },
+        {
+          timeout: TIMEOUT_30_SECONDS,
+          message: `The access-link list must show ${shareUrl}`,
+        }
+      )
+      .toBeGreaterThanOrEqual(0);
+
+    const row = rows.nth(index);
+    await expect(row).toBeVisible({ timeout: TIMEOUT_30_SECONDS });
+    await expect(row.locator('input')).toHaveValue(new RegExp(`${linkId}$`));
+    await row.getByTestId(/^delete-link-button-/).click();
     await expect
       .poll(
         () =>
-          this.page.evaluate(() => {
-            const captureWindow = window as typeof window & {
-              __tbSendE2EDownloadTriggered?: boolean;
-            };
-            return captureWindow.__tbSendE2EDownloadTriggered;
-          }),
-        { timeout: TIMEOUT_60_SECONDS }
+          rows.evaluateAll(
+            (elements, deletedId) =>
+              elements.some((element) => {
+                const input = element.querySelector('input');
+                return input?.value.split('/share/')[1] === deletedId;
+              }),
+            linkId
+          ),
+        {
+          timeout: TIMEOUT_30_SECONDS,
+          message: `The deleted access link must disappear: ${shareUrl}`,
+        }
       )
-      .toBe(true);
+      .toBe(false);
+  }
+
+  async closeFileInfoPanelIfOpen() {
+    const panel = this.fileInfoPanel();
+    if (await panel.isVisible()) {
+      await panel.getByTestId('close-file-info').click();
+      await expect(panel).not.toBeVisible();
+    }
   }
 
   private fileInfoPanel() {

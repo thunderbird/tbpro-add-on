@@ -20,14 +20,16 @@ Both are end-to-end encrypted.
 
 ## Quick start
 
-### Install dependencies and create the `.env` files
+### Install dependencies
 
 From the repo root:
 
 ```sh
 pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
-pnpm --filter send-suite run setup
 ```
+
+There is no separate `.env` step: `dev:send` below copies any that are missing from their
+`.env.sample`, and leaves any you already have alone.
 
 ### Start the whole stack
 
