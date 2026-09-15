@@ -10,6 +10,7 @@
     "build:watch": "nodemon -e vue,ts,js,json --watch './{src,public}/**/*' --exec 'pnpm build'",
     "ci:validate": "pnpm lint:all; pnpm prettier:all; pnpm run test; pnpm run typecheck",
     "dev": "vite --host",
+    "dupes": "jscpd src",
     "lint:all": "pnpx eslint src/**/*.ts --fix",
     "prettier:all": "prettier --write .",
     "preview": "vite preview",
