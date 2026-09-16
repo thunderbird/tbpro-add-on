@@ -120,7 +120,7 @@ https_ready() {
 
 frontend_ready() {
   curl -s --max-time 5 "http://${DOCKER_HOST}:5173/send" \
-    | grep -q '<title>Thunderbird Send</title>'
+    | grep -q '<title>Send – Thunderbird</title>'
 }
 
 wait_for() {
