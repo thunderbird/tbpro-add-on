@@ -46,7 +46,7 @@ export const test = base.extend<{
   sendHome: async ({ openSendContext }, use) => {
     const session = await openSendContext();
     await session.page.goto("/send");
-    await expect(session.page).toHaveTitle(/Thunderbird Send/);
+    await expect(session.page).toHaveTitle(/Send.*Thunderbird/);
     await use(session);
   },
 });
