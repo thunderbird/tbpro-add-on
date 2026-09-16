@@ -22,17 +22,6 @@ allowBuilds:
 
 injectWorkspacePackages: true
 
-minimumReleaseAgeExclude:
-  - jscpd-darwin-arm64@5.2.1
-  - jscpd-darwin-x64@5.2.1
-  - jscpd-linux-arm64-gnu@5.2.1
-  - jscpd-linux-arm64-musl@5.2.1
-  - jscpd-linux-x64-gnu@5.2.1
-  - jscpd-linux-x64-musl@5.2.1
-  - jscpd-windows-arm64-msvc@5.2.1
-  - jscpd-windows-x64-msvc@5.2.1
-  - jscpd@5.2.1
-
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
