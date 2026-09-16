@@ -1,5 +1,6 @@
 import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
 import { ApiConnection } from '@send-frontend/lib/api';
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import Downloader from '@send-frontend/lib/download';
 import { Keychain } from '@send-frontend/lib/keychain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -102,10 +103,13 @@ describe('Downloader', () => {
       expect(mockProgressTracker.setProcessStage).toHaveBeenCalledWith(
         'downloading'
       );
-      expect(mockMetrics.capture).toHaveBeenCalledWith('file_downloaded', {
-        size: 1024,
-        type: 'text/plain',
-      });
+      expect(mockMetrics.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.FILE_DOWNLOADED,
+        {
+          size: 1024,
+          type: 'text/plain',
+        }
+      );
     });
 
     it('should return false when id is missing', async () => {
