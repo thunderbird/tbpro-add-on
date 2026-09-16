@@ -19,7 +19,7 @@ on:
         type: boolean
         default: false
       force_addon:
-        description: Force addon build, artifact upload, ATN upload
+        description: Force the system add-on build and artifact upload for this manual run
         required: false
         type: boolean
         default: false
@@ -354,41 +354,32 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
+    ### Prod only, and no build matrix. The one add-on we ship is the system
+    ### add-on, which is repacked from this prod build. There used to be a stage
+    ### leg too, but it existed solely to build the standalone stage XPI and sign
+    ### it onto ATN, and neither of those happens any more (issue #1238).
     env:
       IS_CI_AUTOMATION: yes
+      ENV: prod
+      BASE_URL: https://send.tb.pro
+      SEND_SERVER_URL: https://send-backend.tb.pro
+      SEND_CLIENT_URL: https://send.tb.pro
     if: needs.detect-changes.outputs.addon-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true' || github.event.inputs.force_addon == 'true'
     environment:
       name: send-stage
-    strategy:
-      matrix:
-        env: ["stage", "prod"]
-        include:
-          - env: "stage"
-            base_url: "https://send-stage.tb.pro"
-            send_server_url: "https://send-backend-stage.tb.pro"
-            send_client_url: "https://send-stage.tb.pro"
-          - env: "prod"
-            base_url: "https://send.tb.pro"
-            send_server_url: "https://send-backend.tb.pro"
-            send_client_url: "https://send.tb.pro"
     steps:
       - uses: actions/checkout@v4
 
-      # Addon build configuration
-      - name: (Addon) Create .env file from secrets
+      - name: (send frontend) Create .env file from secrets
         env:
-          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN: ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
-          POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}}
-          OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD}}
-          BASE_URL: ${{ matrix.base_url }}
-          SEND_SERVER_URL: ${{ matrix.send_server_url }}
-          SEND_CLIENT_URL: ${{ matrix.send_client_url }}
-
+          SENTRY_AUTH_TOKEN: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN_PROD }}
+          POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST_PROD }}
+          OIDC_CLIENT_ID: ${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          OIDC_ROOT_URL: ${{ secrets.VITE_OIDC_ROOT_URL_PROD }}
         run: |
-          echo "Environment: ${{ matrix.env }}"
+          echo "Environment: $ENV"
           cd packages/send/frontend
           cat << EOF > .env
           VUE_BASE_URL=${BASE_URL}
@@ -402,20 +393,17 @@ jobs:
           VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}                    
           EOF
 
-      - name: (Addon) Create .env file from secrets
+      - name: (addon) Create .env file from secrets
         env:
-          SENTRY_AUTH_TOKEN: ${{ matrix.env == 'stage' && secrets.VITE_SENTRY_AUTH_TOKEN_STAGE || secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
-          SENTRY_DSN: ${{ matrix.env == 'stage' && vars.VITE_SENTRY_DSN_STAGE || vars.VITE_SENTRY_DSN_PROD}}
-          POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
-          POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE ||  vars.VITE_POSTHOG_HOST_PROD}}
-          OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD}}
-          BASE_URL: ${{ matrix.base_url }}
-          SEND_SERVER_URL: ${{ matrix.send_server_url }}
-          SEND_CLIENT_URL: ${{ matrix.send_client_url }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.VITE_SENTRY_AUTH_TOKEN_PROD }}
+          SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN_PROD }}
+          POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
+          POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST_PROD }}
+          OIDC_CLIENT_ID: ${{ secrets.VITE_OIDC_CLIENT_ID_PROD }}
+          OIDC_ROOT_URL: ${{ secrets.VITE_OIDC_ROOT_URL_PROD }}
           DEPRECATION_VERSION: "153.0.0"
         run: |
-          echo "Environment: ${{ matrix.env }}"
+          echo "Environment: $ENV"
           cd packages/addon
           cat << EOF > .env
           VUE_BASE_URL=${BASE_URL}
@@ -432,10 +420,6 @@ jobs:
 
       - name: Build the frontend's static assets
         id: addon-frontend-build
-        env:
-          BASE_URL: ${{matrix.base_url}}
-          ENV: ${{ matrix.env }}
-          IS_CI_AUTOMATION: yes
         run: |
           # install packages that addon depends on
           pnpm install --filter addon
@@ -458,16 +442,10 @@ jobs:
           echo "xpi_filename=$RENAMED_XPI" >> "$GITHUB_OUTPUT"
           echo "xpi_file_path=packages/addon/$RENAMED_XPI" >> "$GITHUB_OUTPUT"
 
-      - name: Archive the XPI
-        id: xpi-archive-addon
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.addon-frontend-build.outputs.xpi_filename }}
-          path: ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
-          compression-level: 0 # <-- don't zip!
-
-      - name: Build system-add-on XPI for prod
-        if: matrix.env == 'prod'
+      - name: Build system-add-on XPI
+        ### The tbpro-addon-prod-*.xpi built above is deliberately not archived:
+        ### it is the standalone add-on, which is not shipped for any purpose any
+        ### more. It survives only as the input to this repack.
         id: system-addon-build
         run: |
           PROD_XPI="${{ steps.addon-frontend-build.outputs.xpi_filename }}"
@@ -498,25 +476,9 @@ jobs:
           echo "system_xpi_file_path=packages/addon/$SYSTEM_XPI" >> "$GITHUB_OUTPUT"
 
       - name: Archive the system-add-on XPI
-        if: matrix.env == 'prod'
         id: xpi-archive-system-addon
         uses: actions/upload-artifact@v4
         with:
           name: system-add-on-prod
           path: ${{ steps.system-addon-build.outputs.system_xpi_file_path }}
           compression-level: 0 # <-- don't zip!
-
-      - name: Deploy addon stage to ATN via web-ext
-        if: matrix.env == 'stage'
-        continue-on-error: true
-        id: web-ext-sign-stage-addon
-        uses: kewisch/action-web-ext@v1
-        env:
-          BASE_URL: https://send-stage.tb.pro
-        with:
-          cmd: sign
-          source: ${{ steps.addon-frontend-build.outputs.xpi_file_path }}
-          channel: listed
-          apiUrlPrefix: "https://addons.thunderbird.net/api/v4"
-          apiKey: ${{ secrets.ATN_API_KEY }}
-          apiSecret: ${{ secrets.ATN_API_SECRET }}

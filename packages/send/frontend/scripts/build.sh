@@ -1,9 +1,9 @@
 #!/bin/sh
 ### Usage: scripts/build.sh [web|all]
 ###
-###   all (default) -- the web bundle AND the legacy standalone add-on
-###                    (send-suite-*.xpi), for local extension work.
-###   web           -- the web bundle only.
+###   web           -- the web bundle only. Use this.
+###   all (default) -- also runs the legacy standalone add-on build, which is
+###                    dead and broken; see the note above that section.
 ###
 ### CI (.github/workflows/merge.yml) passes `web`: the shipping add-on is the
 ### system add-on built from packages/addon, so a merge build has no use for the
@@ -57,13 +57,16 @@ if [ "$TARGET" = "web" ]; then
     exit 0
 fi
 
-### Everything below builds the legacy standalone add-on. Nothing in CI or in
-### the shipped product consumes it -- it is kept for loading an unsigned build
-### straight from `dist` during local development. Gated rather than deleted
-### because deleting it also orphans public/manifest.json, scripts/set-id.ts and
-### the three extension vite configs, and set-id.ts rewrites a manifest that
-### vite's publicDir copies into dist-web -- i.e. removing it would change the
-### deployed web bundle, which is out of scope for issue #1238.
+### Everything below builds the legacy standalone add-on, which nothing
+### consumes and which does not even work: the background step below points at
+### vite.config.background.js while the file on disk is vite.config.background.ts
+### (the .js copy lives in packages/addon), so it fails, this script has no
+### `set -e` to stop it, and the XPI gets packed without a background script.
+###
+### Gated rather than deleted only to keep issue #1238 scoped to CI: deleting it
+### also orphans public/manifest.json, which vite's publicDir copies into
+### dist-web, so removing it changes the deployed web bundle. That removal is
+### tracked in issue #1243.
 
 # Get version from package.json and replace dots with hyphens
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
