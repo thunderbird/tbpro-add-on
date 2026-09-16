@@ -130,6 +130,15 @@ jobs:
           docker network disconnect "$MINIO_NETWORK" "$(cat /etc/hostname)" || true
           docker compose rm -sf minio
 
+      # Kept out of `ci:validate`: those scripts chain with `;`, so only the last
+      # command's exit code survives and appending would mask the checks already
+      # in them. Run with `pnpm`, not `lerna run`: `lerna run` exits 0 when the
+      # named script is missing, so it would pass without checking anything.
+      - name: Check for duplicate code
+        run: |
+          cd packages/send/backend
+          pnpm dupes
+
   # When Pulumi code or configs change, run these steps
   iac-lint:
     needs: detect-changes
@@ -183,6 +192,15 @@ jobs:
         run: |
           lerna run ci:validate --scope=send-frontend
 
+      # Kept out of `ci:validate`: those scripts chain with `;`, so only the last
+      # command's exit code survives and appending would mask the checks already
+      # in them. Run with `pnpm`, not `lerna run`: `lerna run` exits 0 when the
+      # named script is missing, so it would pass without checking anything.
+      - name: Check for duplicate code
+        run: |
+          cd packages/send/frontend
+          pnpm dupes
+
   # When the addon package code changes, run these steps
   addon-changes:
     needs: detect-changes
@@ -220,3 +238,12 @@ jobs:
         run: |
           lerna run ci:validate --scope=addon
           lerna run test --scope=addon
+
+      # Kept out of `ci:validate`: those scripts chain with `;`, so only the last
+      # command's exit code survives and appending would mask the checks already
+      # in them. Run with `pnpm`, not `lerna run`: `lerna run` exits 0 when the
+      # named script is missing, so it would pass without checking anything.
+      - name: Check for duplicate code
+        run: |
+          cd packages/addon
+          pnpm dupes

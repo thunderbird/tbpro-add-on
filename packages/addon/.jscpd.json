@@ -1,0 +1,7 @@
+{
+  "threshold": 0,
+  "minLines": 5,
+  "minTokens": 50,
+  "format": ["typescript", "javascript", "vue"],
+  "ignore": ["**/*.test.ts", "**/*.spec.ts", "**/test/**"]
+}
