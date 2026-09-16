@@ -1,0 +1,30 @@
+<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .bg-path { opacity: 0.2; fill: #1373D9; stroke: #1373D9; }
+    .fg-path { fill: #1373D9; }
+
+    @media (prefers-color-scheme: dark) {
+      .bg-path { fill: #58C9FF; stroke: #58C9FF; }
+      .fg-path { fill: #58C9FF; }
+    }
+  </style>
+  <g clip-path="url(#clip0_2062_700)">
+    <mask id="mask0_2062_700" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="0" y="0"
+      width="12" height="12">
+      <path d="M11.5 0.5V11.5H0.5V0.5H11.5Z" fill="white" stroke="white" />
+    </mask>
+    <g mask="url(#mask0_2062_700)">
+      <g class="bg-path">
+        <path d="M0 6.75H12H0Z" />
+        <path d="M0 6.75H12" stroke-width="1.25" />
+      </g>
+      <path class="fg-path"
+        d="M6 0.125C8.63945 0.125 10.7499 2.31959 10.75 4.99023V9.1748C10.75 10.6495 9.58243 11.875 8.10645 11.875C6.66524 11.8748 5.375 10.684 5.375 9.1748V5.38672H4.1543C3.95486 5.38645 3.85504 5.14503 3.99609 5.00391L5.7627 3.2373C5.89388 3.10658 6.10612 3.10658 6.2373 3.2373L8.00391 5.00391C8.14495 5.14503 8.04514 5.38645 7.8457 5.38672H6.625V9.1748C6.625 9.95714 7.31856 10.6248 8.10645 10.625C8.85979 10.625 9.5 9.99183 9.5 9.1748V4.99023C9.49992 2.97722 7.91681 1.375 6 1.375C4.08319 1.375 2.50008 2.97722 2.5 4.99023V6.125H1.25V4.99023C1.25008 2.31959 3.36056 0.125001 6 0.125Z" />
+    </g>
+  </g>
+  <defs>
+    <clipPath id="clip0_2062_700">
+      <rect width="12" height="12" fill="white" />
+    </clipPath>
+  </defs>
+</svg>
