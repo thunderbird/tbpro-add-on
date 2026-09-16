@@ -240,7 +240,7 @@ importers:
         specifier: ^20.9.0
         version: 20.9.0
       jscpd:
-        specifier: ^5.2.1
+        specifier: 5.2.1
         version: 5.2.1
       jsonwebtoken:
         specifier: 9.0.2
@@ -481,7 +481,7 @@ importers:
         specifier: ^17.5.0
         version: 17.5.0
       jscpd:
-        specifier: ^5.2.1
+        specifier: 5.2.1
         version: 5.2.1
       lint-staged:
         specifier: ^15.5.2
@@ -680,7 +680,7 @@ importers:
         specifier: ^20.9.0
         version: 20.9.0
       jscpd:
-        specifier: ^5.2.1
+        specifier: 5.2.1
         version: 5.2.1
       jsonwebtoken:
         specifier: 9.0.2
