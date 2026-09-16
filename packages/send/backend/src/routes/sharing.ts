@@ -25,6 +25,7 @@ import {
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { useMetrics } from '@send-backend/metrics';
+import { ANALYTICS_EVENTS } from '@send-backend/metrics/events';
 import {
   addExpiryToContainer,
   formatAccessLinkWithPasswordHash,
@@ -128,7 +129,7 @@ router.post(
     );
 
     Metrics.capture({
-      event: 'accessLink.created',
+      event: ANALYTICS_EVENTS.ACCESS_LINK_CREATED,
       distinctId: uniqueHash,
       properties: {
         id: accessLink.id,
