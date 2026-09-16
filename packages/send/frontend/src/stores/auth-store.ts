@@ -140,13 +140,18 @@ export const useAuthStore = defineStore('auth', () => {
     if (inFlightRefresh) return inFlightRefresh;
 
     inFlightRefresh = (async () => {
-      lastRefreshFailedGenuinely = false;
+      // Outer guard: clear the in-flight dedup no matter how this IIFE exits.
+      // acquireRefreshLock() below runs outside the inner try/finally blocks,
+      // so if IT throws (e.g. browser.storage.local rejects) we must still
+      // reset inFlightRefresh here — otherwise the settled promise would wedge
+      // every future refresh permanently.
+      try {
+        lastRefreshFailedGenuinely = false;
 
-      // Cross-context serialization (#1022). In a plain web tab with no
-      // extension storage, acquire always succeeds and this is a no-op layer.
-      const lockToken = await acquireRefreshLock(REFRESH_LOCK_ID);
-      if (lockToken === null) {
-        try {
+        // Cross-context serialization (#1022). In a plain web tab with no
+        // extension storage, acquire always succeeds and this is a no-op layer.
+        const lockToken = await acquireRefreshLock(REFRESH_LOCK_ID);
+        if (lockToken === null) {
           // Another context is rotating the refresh token right now. Do NOT
           // fire our own signinSilent() — with rotation we'd lose with
           // invalid_grant and sign the user out over a race we created. Wait
@@ -178,41 +183,42 @@ export const useAuthStore = defineStore('auth', () => {
             'Refresh lock held by another context and no fresh session appeared; keeping session.'
           );
           return null;
-        } finally {
-          inFlightRefresh = null;
         }
-      }
 
-      try {
-        const user = await userManager.signinSilent();
-        currentUser.value = user;
-        // Persist the freshly-rotated token so the extension popup's next cold
-        // start reads a current token instead of a stale one.
-        if (isExtension && user) {
-          await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
+        try {
+          const user = await userManager.signinSilent();
+          currentUser.value = user;
+          // Persist the freshly-rotated token so the extension popup's next
+          // cold start reads a current token instead of a stale one.
+          if (isExtension && user) {
+            await browser.storage.local.set({ [STORAGE_KEY_AUTH]: user });
+          }
+          return user;
+        } catch (error) {
+          if (isGenuineAuthFailure(error)) {
+            lastRefreshFailedGenuinely = true;
+            console.warn(
+              `Silent token refresh failed — session ended (${
+                (error as { error?: string }).error
+              }). Signing out.`
+            );
+            isLoggedIn.value = false;
+            currentUser.value = null;
+            notifyAddonSignedOut();
+          } else {
+            // Transient failure: keep the session and let a later call retry.
+            console.warn(
+              'Silent token refresh hit a transient error; keeping session:',
+              error
+            );
+          }
+          return null;
+        } finally {
+          await releaseRefreshLock(REFRESH_LOCK_ID, lockToken);
         }
-        return user;
-      } catch (error) {
-        if (isGenuineAuthFailure(error)) {
-          lastRefreshFailedGenuinely = true;
-          console.warn(
-            `Silent token refresh failed — session ended (${
-              (error as { error?: string }).error
-            }). Signing out.`
-          );
-          isLoggedIn.value = false;
-          currentUser.value = null;
-          notifyAddonSignedOut();
-        } else {
-          // Transient failure: keep the session and let a later call retry.
-          console.warn(
-            'Silent token refresh hit a transient error; keeping session:',
-            error
-          );
-        }
-        return null;
       } finally {
-        await releaseRefreshLock(REFRESH_LOCK_ID, lockToken);
+        // Always clear the dedup, even if acquireRefreshLock() above threw
+        // before either inner try/finally was reached (#1022 review).
         inFlightRefresh = null;
       }
     })();

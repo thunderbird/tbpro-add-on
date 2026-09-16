@@ -19,6 +19,11 @@
  * that was previously unguarded 100% of the time.
  */
 
+import {
+  generateToken,
+  hasExtensionStorage,
+} from '@send-frontend/lib/storageLock';
+
 const LOCK_TTL_MS = 15_000;
 
 function lockStorageKey(accountId: string): string {
@@ -28,23 +33,6 @@ function lockStorageKey(accountId: string): string {
 interface LockRecord {
   token: string;
   expiresAt: number;
-}
-
-function generateToken(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // Fallback for environments without crypto.randomUUID (matches the
-  // fallback pattern already used in keychain.ts).
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function hasExtensionStorage(): boolean {
-  return (
-    typeof browser !== 'undefined' &&
-    !!browser?.storage?.local &&
-    typeof browser.storage.local.get === 'function'
-  );
 }
 
 /**
