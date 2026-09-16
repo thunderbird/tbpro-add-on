@@ -3,7 +3,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Feature Request
     url: https://ideas.tb.pro
-    about: Submit your ideas to improve Thunderbird Send and Pro Add-on
+    about: Submit your ideas to improve Thunderbird Send and Thundermail Add-on
   - name: Support
     url: https://support.tb.pro
     about: Knowledge base and customer support requests
