@@ -132,8 +132,8 @@ jobs:
 
       # Kept out of `ci:validate`: those scripts chain with `;`, so only the last
       # command's exit code survives and appending would mask the checks already
-      # in them. Invoked via `pnpm`, not `lerna run`, which exits 0 when the
-      # script is missing and would fail open.
+      # in them. Run with `pnpm`, not `lerna run`: `lerna run` exits 0 when the
+      # named script is missing, so it would pass without checking anything.
       - name: Check for duplicate code
         run: |
           cd packages/send/backend
@@ -194,8 +194,8 @@ jobs:
 
       # Kept out of `ci:validate`: those scripts chain with `;`, so only the last
       # command's exit code survives and appending would mask the checks already
-      # in them. Invoked via `pnpm`, not `lerna run`, which exits 0 when the
-      # script is missing and would fail open.
+      # in them. Run with `pnpm`, not `lerna run`: `lerna run` exits 0 when the
+      # named script is missing, so it would pass without checking anything.
       - name: Check for duplicate code
         run: |
           cd packages/send/frontend
@@ -241,8 +241,8 @@ jobs:
 
       # Kept out of `ci:validate`: those scripts chain with `;`, so only the last
       # command's exit code survives and appending would mask the checks already
-      # in them. Invoked via `pnpm`, not `lerna run`, which exits 0 when the
-      # script is missing and would fail open.
+      # in them. Run with `pnpm`, not `lerna run`: `lerna run` exits 0 when the
+      # named script is missing, so it would pass without checking anything.
       - name: Check for duplicate code
         run: |
           cd packages/addon
