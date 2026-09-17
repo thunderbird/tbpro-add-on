@@ -132,6 +132,7 @@ describe('posthog.init wiring (issue #1254)', () => {
         $current_url: 'https://send.tb.pro/share/secret?a=1',
         $pathname: '/locked/secret',
         $referrer: 'https://send.tb.pro/share/other-secret',
+        $prev_pageview_pathname: '/share/prev-secret',
         keep: 'https://send.tb.pro/folder/42',
       },
     });
@@ -142,6 +143,9 @@ describe('posthog.init wiring (issue #1254)', () => {
     expect(scrubbed.properties.$pathname).toBe('/locked/[redacted]');
     expect(scrubbed.properties.$referrer).toBe(
       'https://send.tb.pro/share/[redacted]'
+    );
+    expect(scrubbed.properties.$prev_pageview_pathname).toBe(
+      '/share/[redacted]'
     );
     // Non-URL property left untouched.
     expect(scrubbed.properties.keep).toBe('https://send.tb.pro/folder/42');

@@ -27,8 +27,17 @@ export function redactSensitiveUrl(url) {
   return url.replace(SENSITIVE_URL_SEGMENT, '/$1/[redacted]');
 }
 
-// URL-bearing PostHog properties that can contain the share-link secret.
-const URL_PROPERTIES = ['$current_url', '$pathname', '$referrer'];
+// URL-bearing PostHog auto-properties that can contain the share-link secret.
+// `$host`/`$referring_domain` are domain-only (no path) so they are safe.
+// `$prev_pageview_pathname` only rides on pageview events (disabled here via
+// `capture_pageview: false`), but is scrubbed too as defense-in-depth in case
+// pageview capture is ever re-enabled.
+const URL_PROPERTIES = [
+  '$current_url',
+  '$pathname',
+  '$referrer',
+  '$prev_pageview_pathname',
+];
 
 /**
  * PostHog `before_send` hook: scrubs the sensitive link id from every
