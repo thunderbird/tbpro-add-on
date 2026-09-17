@@ -17,6 +17,7 @@ import indexroutes from './routes';
 import auth from './routes/auth';
 import containers from './routes/containers';
 import download from './routes/download';
+import internal from './routes/internal';
 import oidcAuth from './routes/oidc-auth';
 import sharing from './routes/sharing';
 import tags from './routes/tags';
@@ -138,6 +139,7 @@ app.use('/api/sharing', sharing);
 app.use('/api/tags', tags);
 app.use('/api/auth', auth);
 app.use('/api/auth', oidcAuth);
+app.use('/api/internal', internal);
 app.use(metricsRoute);
 app.use('/api/verify', verifyroute);
 app.use(

@@ -10,6 +10,10 @@ export interface TokenIntrospectionResponse {
   exp?: number;
   iat?: number;
   client_id?: string;
+  // Keycloak also exposes the calling client via the `azp` (authorized party)
+  // claim; some client-credentials setups populate `azp` rather than
+  // `client_id`, so the internal service-auth allowlist checks both.
+  azp?: string;
   scope?: string;
   [key: string]: unknown;
 }
