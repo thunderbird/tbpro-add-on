@@ -119,8 +119,11 @@ router.get(
         });
       }
 
-      // Compute usage the same way the user-facing path does (see auth/client.ts
-      // getStorageLimit): EPHEMERAL tier counts only non-expired uploads.
+      // Compute usage the same way the user-facing path does (the tRPC
+      // getTotalUsedStorage query in trpc/containers.ts): getUsedStorage with
+      // the tier's limited-storage flag, and getStorageLimitForTier for the
+      // limit. EPHEMERAL is the limited tier, so it counts only non-expired
+      // uploads.
       const hasLimitedStorage = user.tier === UserTier.EPHEMERAL;
       const { active } = await getUsedStorage(user.id, hasLimitedStorage);
       const limit = getStorageLimitForTier(user.tier);
