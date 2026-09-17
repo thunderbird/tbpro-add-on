@@ -80,7 +80,8 @@ export { ENVIRONMENT };
 //   auth      tightest  — pre-auth / credential paths (e.g. token refresh)
 //   read      loosest   — high-frequency GETs
 //   sensitive middle    — state-changing actions (create / delete / share)
-export type RateLimitTier = 'auth' | 'read' | 'sensitive';
+//   internal  service    — server-to-server callers, keyed by client id, not user
+export type RateLimitTier = 'auth' | 'read' | 'sensitive' | 'internal';
 
 const RATE_LIMIT_WINDOW_MS = ONE_MINUTE;
 
@@ -111,6 +112,10 @@ export const RATE_LIMITS: Record<
   auth: rateLimitFromEnv('auth', 10),
   read: rateLimitFromEnv('read', 100),
   sensitive: rateLimitFromEnv('sensitive', 30),
+  // Internal service-to-service callers (e.g. Accounts reading storage usage).
+  // Keyed by calling client id rather than per user; ~60 req/min by default,
+  // tunable via RL_INTERNAL_MAX / RL_INTERNAL_WINDOW_MS.
+  internal: rateLimitFromEnv('internal', 60),
 };
 
 export default appConfig;

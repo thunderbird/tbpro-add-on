@@ -4,6 +4,7 @@ import {
   type RequestWithServiceCaller,
 } from '@send-backend/auth/service-auth';
 import { wrapAsyncHandler } from '@send-backend/errors/routes';
+import { createRateLimiter } from '@send-backend/middleware/rate-limit';
 import { getUsedStorage } from '@send-backend/models';
 import { getUserByOIDCSubject } from '@send-backend/models/users';
 import { getStorageLimitForTier } from '@send-backend/utils/storageLimits';
@@ -90,6 +91,9 @@ function auditInternalRequest(fields: {
 router.get(
   '/users/:sub/storage',
   requireServiceAuth(),
+  // Rate limit per calling service (keyed by client id, see rate-limit.ts).
+  // Attached after requireServiceAuth so req.serviceCaller.clientId is set.
+  createRateLimiter('internal'),
   wrapAsyncHandler(async (req, res) => {
     const startedAt = Date.now();
     const { sub } = req.params;

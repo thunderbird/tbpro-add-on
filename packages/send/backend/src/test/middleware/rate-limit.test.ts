@@ -52,6 +52,7 @@ async function loadLimiterFactory() {
   vi.resetModules();
   vi.stubEnv('RL_AUTH_MAX', '3');
   vi.stubEnv('RL_READ_MAX', '3');
+  vi.stubEnv('RL_INTERNAL_MAX', '3');
   const mod = await import('../../middleware/rate-limit');
   return mod.createRateLimiter;
 }
@@ -68,6 +69,23 @@ function appWithLimiter(limiter: RequestHandler, attachUser?: string) {
       next();
     });
   }
+  app.get('/test', limiter, (_req, res) => {
+    res.status(200).json({ ok: true });
+  });
+  return app;
+}
+
+// Build an app whose upstream middleware simulates requireServiceAuth by
+// attaching a service caller with the given client id.
+function appWithServiceLimiter(limiter: RequestHandler, clientId: string) {
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (
+      req as express.Request & { serviceCaller?: { clientId: string } }
+    ).serviceCaller = { clientId };
+    next();
+  });
   app.get('/test', limiter, (_req, res) => {
     res.status(200).json({ ok: true });
   });
@@ -111,6 +129,31 @@ describe('rate-limit middleware', () => {
 
     // User B is untouched.
     await request(userB).get('/test').expect(200);
+  });
+
+  it('keys internal service callers by client id, so one service hitting the limit does not affect another', async () => {
+    const createRateLimiter = await loadLimiterFactory();
+    const serviceA = appWithServiceLimiter(
+      createRateLimiter('internal'),
+      'accounts-backend'
+    );
+    const serviceB = appWithServiceLimiter(
+      createRateLimiter('internal'),
+      'other-service'
+    );
+
+    // Exhaust service A's budget (max = 3).
+    await request(serviceA).get('/test').expect(200);
+    await request(serviceA).get('/test').expect(200);
+    await request(serviceA).get('/test').expect(200);
+    await request(serviceA).get('/test').expect(429);
+
+    // Service B has its own budget, keyed by its client id.
+    await request(serviceB).get('/test').expect(200);
+
+    // The two callers land under distinct service: keys, not an IP fallback.
+    expect(counts.has('service:accounts-backend')).toBe(true);
+    expect(counts.has('service:other-service')).toBe(true);
   });
 
   it('fails closed with 503 when Redis is configured but unavailable', async () => {
