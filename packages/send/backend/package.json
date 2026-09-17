@@ -22,7 +22,6 @@
     "dupes": "jscpd src --fail-on-empty",
     "lint:all": "pnpx eslint . --fix --ignore-pattern 'dist/*'",
     "prettier:all": "prettier --write .",
-    "qa:introspect-stub": "node --require ts-node/register scripts/introspect-stub.ts",
     "release": "./scripts/release.sh",
     "sentry:sourcemaps:inject": "sentry-cli sourcemaps inject --org thunderbird --project send-suite-backend ./dist",
     "sentry:sourcemaps:upload": "sentry-cli sourcemaps upload --org thunderbird --project send-suite-backend ./dist",
