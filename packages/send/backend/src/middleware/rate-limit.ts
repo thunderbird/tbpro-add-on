@@ -34,6 +34,17 @@ import {
 // subject, then the legacy JWT user id, and only fall back to network identity
 // for routes that run before authentication.
 function keyForRequest(req: Request): string {
+  // Populated by requireServiceAuth on internal service-to-service routes. These
+  // callers have no user; they are limited per calling service (client id) so
+  // one busy service never eats another's budget. Checked before the user keys
+  // because a service request is never also a user request.
+  const serviceClientId = (
+    req as Request & { serviceCaller?: { clientId?: string } }
+  ).serviceCaller?.clientId;
+  if (serviceClientId) {
+    return `service:${serviceClientId}`;
+  }
+
   // Populated by the OIDC auth middleware on authenticated routes.
   const oidcSub = (req as Request & { oidcUser?: { sub?: string } }).oidcUser
     ?.sub;
