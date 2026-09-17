@@ -86,6 +86,33 @@ describe('GET /api/internal/users/:sub/storage', () => {
     expect(mockedGetUsedStorage).toHaveBeenCalledWith('user-2', true);
   });
 
+  it('emits the audit line with status 500 when storage computation throws', async () => {
+    mockedGetUserByOIDCSubject.mockResolvedValue({
+      id: 'user-4',
+      tier: 'FREE',
+    });
+    mockedGetUsedStorage.mockRejectedValue(new Error('db down'));
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    const res = await request(app).get('/api/internal/users/boom-sub/storage');
+
+    expect(res.status).toBe(500);
+    const auditLine = infoSpy.mock.calls
+      .map((call) => call[0])
+      .find(
+        (line) =>
+          typeof line === 'string' && line.includes('"internal_request"')
+      );
+    expect(auditLine).toBeDefined();
+    expect(JSON.parse(auditLine as string)).toMatchObject({
+      msg: 'internal_request',
+      clientId: 'accounts-backend',
+      sub: 'boom-sub',
+      status: 500,
+    });
+    infoSpy.mockRestore();
+  });
+
   it('responds with exactly { active, limit } and no extra fields', async () => {
     mockedGetUserByOIDCSubject.mockResolvedValue({
       id: 'user-3',

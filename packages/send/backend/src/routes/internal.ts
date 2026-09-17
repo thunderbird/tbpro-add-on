@@ -107,27 +107,36 @@ router.get(
       });
     };
 
-    const user = await getUserByOIDCSubject(sub);
-    if (!user) {
-      // Unknown subject — includes legacy password-account users, who have no
-      // oidcSubject and are out of scope for this feature (#1216).
-      finish(404);
-      return res.status(404).json({
-        message: 'User not found',
-        error: 'user_not_found',
-      });
+    try {
+      const user = await getUserByOIDCSubject(sub);
+      if (!user) {
+        // Unknown subject — includes legacy password-account users, who have no
+        // oidcSubject and are out of scope for this feature (#1216).
+        finish(404);
+        return res.status(404).json({
+          message: 'User not found',
+          error: 'user_not_found',
+        });
+      }
+
+      // Compute usage the same way the user-facing path does (see auth/client.ts
+      // getStorageLimit): EPHEMERAL tier counts only non-expired uploads.
+      const hasLimitedStorage = user.tier === UserTier.EPHEMERAL;
+      const { active } = await getUsedStorage(user.id, hasLimitedStorage);
+      const limit = getStorageLimitForTier(user.tier);
+
+      finish(200);
+      // Usage numbers must never be served stale by an intermediary cache.
+      res.set('Cache-Control', 'no-store');
+      return res.status(200).json({ active, limit });
+    } catch (err) {
+      // A thrown lookup/computation still gets its audit line — the failure
+      // case is the one the audit trail most needs. The error itself is
+      // rethrown so wrapAsyncHandler -> the global error handler produces the
+      // usual 500 response.
+      finish(500);
+      throw err;
     }
-
-    // Compute usage the same way the user-facing path does (see auth/client.ts
-    // getStorageLimit): EPHEMERAL tier counts only non-expired uploads.
-    const hasLimitedStorage = user.tier === UserTier.EPHEMERAL;
-    const { active } = await getUsedStorage(user.id, hasLimitedStorage);
-    const limit = getStorageLimitForTier(user.tier);
-
-    finish(200);
-    // Usage numbers must never be served stale by an intermediary cache.
-    res.set('Cache-Control', 'no-store');
-    return res.status(200).json({ active, limit });
   })
 );
 
