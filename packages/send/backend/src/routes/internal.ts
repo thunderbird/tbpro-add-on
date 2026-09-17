@@ -1,4 +1,5 @@
 import {
+  auditInternalRequest,
   requireServiceAuth,
   type RequestWithServiceCaller,
 } from '@send-backend/auth/service-auth';
@@ -17,30 +18,6 @@ import { Router } from 'express';
  * record, the outcome status, and how long it took.
  */
 const router: Router = Router();
-
-/**
- * Emit a single structured audit line for an internal request. Deliberately
- * excludes any storage value and any key material — only the caller label, the
- * target subject, the outcome status, and the latency.
- */
-function auditInternalRequest(fields: {
-  route: string;
-  caller: string;
-  sub: string;
-  status: number;
-  latencyMs: number;
-}): void {
-  console.info(
-    JSON.stringify({
-      msg: 'internal_request',
-      route: fields.route,
-      caller: fields.caller,
-      sub: fields.sub,
-      status: fields.status,
-      latencyMs: fields.latencyMs,
-    })
-  );
-}
 
 /**
  * @openapi

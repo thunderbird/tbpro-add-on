@@ -45,6 +45,33 @@ export interface RequestWithServiceCaller extends Request {
   serviceCaller?: ServiceCaller;
 }
 
+/**
+ * Emit a single structured audit line for an internal service-to-service
+ * request. Deliberately excludes any storage value and any key material — only
+ * the caller label, the target subject, the outcome status, and the latency.
+ * Shared by the auth middleware (rejections) and the route handlers (outcomes)
+ * so every internal request — allowed or rejected — produces exactly one line
+ * of the same shape.
+ */
+export function auditInternalRequest(fields: {
+  route: string;
+  caller: string;
+  sub: string;
+  status: number;
+  latencyMs: number;
+}): void {
+  console.info(
+    JSON.stringify({
+      msg: 'internal_request',
+      route: fields.route,
+      caller: fields.caller,
+      sub: fields.sub,
+      status: fields.status,
+      latencyMs: fields.latencyMs,
+    })
+  );
+}
+
 /** A configured integration key: its rotation label and secret material. */
 interface ConfiguredKey {
   label: string;
@@ -119,6 +146,22 @@ export function requireServiceAuth(): RequestHandler {
     res: Response,
     next: NextFunction
   ): void {
+    const startedAt = Date.now();
+    // A rejected request is still a request, and auth failures are the events
+    // the audit trail most needs — emit the same structured line here as the
+    // route does on success. The caller is unknown on rejection (the key did
+    // not match), and req.params.sub is populated because this middleware is
+    // mounted per-route. Key material is never included.
+    const reject = (status: number): void => {
+      auditInternalRequest({
+        route: `${req.method} ${req.route?.path ?? req.originalUrl}`,
+        caller: 'unknown',
+        sub: req.params?.sub ?? 'unknown',
+        status,
+        latencyMs: Date.now() - startedAt,
+      });
+    };
+
     // No configured key means no security boundary — fail closed (503) rather
     // than answer. Checked first so a misconfigured deployment answers 503,
     // never 401.
@@ -127,6 +170,7 @@ export function requireServiceAuth(): RequestHandler {
       console.error(
         'Service auth: no INTERNAL_API_KEYS configured; failing closed'
       );
+      reject(503);
       res.status(503).json({
         message: 'Authentication service unavailable',
         error: 'auth_service_unavailable',
@@ -136,6 +180,7 @@ export function requireServiceAuth(): RequestHandler {
 
     const token = extractBearerToken(req.headers.authorization);
     if (!token) {
+      reject(401);
       res.status(401).json({
         message: 'Authorization token required',
         error: 'missing_token',
@@ -145,6 +190,7 @@ export function requireServiceAuth(): RequestHandler {
 
     const matched = matchKey(token, configuredKeys);
     if (!matched) {
+      reject(401);
       res.status(401).json({
         message: 'Invalid integration key',
         error: 'invalid_token',

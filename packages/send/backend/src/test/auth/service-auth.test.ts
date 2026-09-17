@@ -28,7 +28,9 @@ describe('requireServiceAuth', () => {
       headers: { authorization: `Bearer ${KEY_ACCOUNTS}` },
       method: 'GET',
       originalUrl: '/api/internal/users/abc/storage',
-    };
+      route: { path: '/users/:sub/storage' },
+      params: { sub: 'abc' },
+    } as Partial<RequestWithServiceCaller>;
     res = {
       status: vi.fn(() => res),
       json: vi.fn(() => res),
@@ -133,6 +135,51 @@ describe('requireServiceAuth', () => {
     expect((req as RequestWithServiceCaller).serviceCaller).toEqual({
       label: 'accounts',
     });
+  });
+
+  it('emits an internal_request audit line with status 503 when unconfigured', () => {
+    delete process.env.INTERNAL_API_KEYS;
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    requireServiceAuth()(req as Request, res as unknown as Response, next);
+
+    const line = infoSpy.mock.calls
+      .map((call) => call[0])
+      .find((l) => typeof l === 'string' && l.includes('"internal_request"'));
+    expect(line).toBeDefined();
+    const parsed = JSON.parse(line as string);
+    expect(parsed).toMatchObject({
+      msg: 'internal_request',
+      caller: 'unknown',
+      sub: 'abc',
+      status: 503,
+    });
+    expect(typeof parsed.latencyMs).toBe('number');
+    infoSpy.mockRestore();
+  });
+
+  it('emits an internal_request audit line with status 401 on an invalid key, without key material', () => {
+    vi.mocked(extractBearerToken).mockReturnValue('c'.repeat(43));
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    requireServiceAuth()(req as Request, res as unknown as Response, next);
+
+    const line = infoSpy.mock.calls
+      .map((call) => call[0])
+      .find((l) => typeof l === 'string' && l.includes('"internal_request"'));
+    expect(line).toBeDefined();
+    const parsed = JSON.parse(line as string);
+    expect(parsed).toMatchObject({
+      msg: 'internal_request',
+      caller: 'unknown',
+      sub: 'abc',
+      status: 401,
+    });
+    // The audit line never carries key material.
+    expect(line).not.toContain('c'.repeat(43));
+    expect(line).not.toContain(KEY_ACCOUNTS);
+    infoSpy.mockRestore();
   });
 
   it('never logs key material on a rejected request', () => {

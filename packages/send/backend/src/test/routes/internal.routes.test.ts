@@ -13,8 +13,11 @@ const {
 }));
 
 // The route is exercised directly; auth is covered by service-auth.test.ts, so
-// requireServiceAuth is stubbed to a pass-through that attaches a caller label.
-vi.mock('@send-backend/auth/service-auth', () => ({
+// only requireServiceAuth is stubbed (pass-through attaching a caller label).
+// The real auditInternalRequest is preserved so the route's audit-line
+// assertions below exercise the production log shape.
+vi.mock('@send-backend/auth/service-auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@send-backend/auth/service-auth')>()),
   requireServiceAuth: () => (req, _res, next) => {
     req.serviceCaller = { label: 'accounts' };
     next();
