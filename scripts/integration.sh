@@ -71,7 +71,7 @@ DOCKER_LOGS_PID=$!
 
 while true; do
   RESPONSE=$(curl -s "http://${DOCKER_HOST}:5173/send")
-  if [ -n "$RESPONSE" ] && [[ "$RESPONSE" == *"<title>Thunderbird Send</title>"* ]]; then
+  if [ -n "$RESPONSE" ] && [[ "$RESPONSE" == *"<title>Send – Thunderbird</title>"* ]]; then
     echo $RESPONSE
     break
   fi
