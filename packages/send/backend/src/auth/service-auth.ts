@@ -29,17 +29,13 @@ import { extractBearerToken, introspectToken } from './oidc';
  * a space-delimited scope from the introspection response. Scope is unset by
  * default because #1216 chose a client allowlist over a custom scope; a scope
  * can be layered on later as configuration without a code change here.
+ *
+ * Auditing lives here rather than in the route handlers because the rejections
+ * above never reach a route handler — a route-level audit would record only the
+ * requests that passed, leaving probes with bad or absent tokens untraced. One
+ * structured line is emitted per request from the response's `finish` event, so
+ * it reports the real final status for every outcome, authorized or not.
  */
-
-/** Identifies the authenticated calling service; attached to the request. */
-export interface ServiceCaller {
-  /** Keycloak client id of the calling service, for audit logging and keying. */
-  clientId: string;
-}
-
-export interface RequestWithServiceCaller extends Request {
-  serviceCaller?: ServiceCaller;
-}
 
 /**
  * Parse the comma-separated `INTERNAL_ALLOWED_CLIENT_IDS` allowlist. An empty
@@ -64,6 +60,42 @@ function isIntrospectionConfigured(): boolean {
 }
 
 /**
+ * One structured audit line per internal request: who called, whose record they
+ * asked for, the outcome, and how long it took. Deliberately excludes the
+ * token and any storage value — the middleware never sees the response body,
+ * so usage numbers cannot leak into logs from here.
+ *
+ * Denials decided by this middleware are emitted at warn level so a rejected
+ * caller stays visible to alerting. Every other outcome is info — including the
+ * routine 404 for a subject Send has never seen, which is an expected answer to
+ * a legitimate caller and must not look like an incident. A 500 is info here
+ * too; the global error handler already logs it at error level.
+ *
+ * Uses `console` directly rather than `utils/logger` on purpose: `logger.info`
+ * is suppressed when NODE_ENV=production, which would erase this audit trail in
+ * exactly the environment that needs it.
+ */
+function auditInternalRequest(fields: {
+  route: string;
+  clientId?: string;
+  sub?: string;
+  status: number;
+  latencyMs: number;
+  /**
+   * Response `error` code when this middleware rejected the request. Absent
+   * when the route handler decided the status instead (200/404/500).
+   */
+  reason?: string;
+}): void {
+  const line = JSON.stringify({ msg: 'internal_request', ...fields });
+  if (fields.reason) {
+    console.warn(line);
+  } else {
+    console.info(line);
+  }
+}
+
+/**
  * Express middleware factory guarding an internal service-to-service route.
  *
  * @param requiredScope Optional scope that must also be present in the token's
@@ -71,16 +103,44 @@ function isIntrospectionConfigured(): boolean {
  */
 export function requireServiceAuth(requiredScope?: string): RequestHandler {
   return async function requireServiceAuthHandler(
-    req: RequestWithServiceCaller,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> {
+    const startedAt = Date.now();
+
+    // Captured now, not inside the `finish` callback: Express restores
+    // `req.params` and `req.baseUrl` to the enclosing layer's values as the
+    // router unwinds, so on the error path both are already undefined by the
+    // time `finish` fires.
+    const route = `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`;
+    const sub = req.params.sub;
+
+    // Filled in as we learn them, then read once the response is on the wire.
+    const audit: { clientId?: string; reason?: string } = {};
+
+    res.on('finish', () => {
+      auditInternalRequest({
+        route,
+        clientId: audit.clientId,
+        sub,
+        // The response's own status, so a 500 from the global error handler is
+        // audited as accurately as a rejection decided here.
+        status: res.statusCode,
+        latencyMs: Date.now() - startedAt,
+        reason: audit.reason,
+      });
+    });
+
+    /** Reject the request and record why, for the audit line. */
+    const deny = (status: number, message: string, error: string): void => {
+      audit.reason = error;
+      res.status(status).json({ message, error });
+    };
+
     const token = extractBearerToken(req.headers.authorization);
     if (!token) {
-      res.status(401).json({
-        message: 'Authorization token required',
-        error: 'missing_token',
-      });
+      deny(401, 'Authorization token required', 'missing_token');
       return;
     }
 
@@ -88,13 +148,16 @@ export function requireServiceAuth(requiredScope?: string): RequestHandler {
     // rather than guessing. Checked before the call so a misconfigured
     // deployment answers 503, never 401/403 from a thrown config error.
     if (!isIntrospectionConfigured()) {
+      // Logged separately from the audit line: this is a deployment fault that
+      // ops needs to see, not a fact about the caller.
       console.error(
         'Service auth: token introspection is not configured; failing closed'
       );
-      res.status(503).json({
-        message: 'Authentication service unavailable',
-        error: 'auth_service_unavailable',
-      });
+      deny(
+        503,
+        'Authentication service unavailable',
+        'auth_service_unavailable'
+      );
       return;
     }
 
@@ -102,39 +165,32 @@ export function requireServiceAuth(requiredScope?: string): RequestHandler {
     try {
       introspection = await introspectToken(token);
     } catch (error) {
+      // As above: the underlying error is what makes an outage diagnosable, and
+      // it has no place in the structured per-request line.
       console.error('Service auth: token introspection unavailable:', error);
-      res.status(503).json({
-        message: 'Authentication service unavailable',
-        error: 'auth_service_unavailable',
-      });
+      deny(
+        503,
+        'Authentication service unavailable',
+        'auth_service_unavailable'
+      );
       return;
     }
 
     if (introspection.active !== true) {
-      res.status(401).json({
-        message: 'Invalid or expired token',
-        error: 'invalid_token',
-      });
+      deny(401, 'Invalid or expired token', 'invalid_token');
       return;
     }
 
     // The calling client is whatever Keycloak asserts in the introspection
     // response — never anything the caller can set on the request. Prefer
-    // `client_id`; fall back to `azp` (authorized party).
+    // `client_id`; fall back to `azp` (authorized party). Recorded before the
+    // allowlist check so a denied caller is still named in the audit line.
     const clientId = introspection.client_id ?? introspection.azp;
+    audit.clientId = clientId;
 
     const allowlist = getAllowedClientIds();
     if (!clientId || !allowlist.has(clientId)) {
-      // Audit trail for rejected callers: which client presented a live token
-      // that is not allowlisted. The token itself is never logged.
-      console.warn(
-        `Service auth: client "${clientId ?? 'unknown'}" denied for ` +
-          `${req.method} ${req.originalUrl}: not in INTERNAL_ALLOWED_CLIENT_IDS`
-      );
-      res.status(403).json({
-        message: 'Client not allowed',
-        error: 'client_not_allowed',
-      });
+      deny(403, 'Client not allowed', 'client_not_allowed');
       return;
     }
 
@@ -142,19 +198,11 @@ export function requireServiceAuth(requiredScope?: string): RequestHandler {
     if (requiredScope) {
       const scopes = (introspection.scope ?? '').split(' ').filter(Boolean);
       if (!scopes.includes(requiredScope)) {
-        console.warn(
-          `Service auth: client "${clientId}" denied for ` +
-            `${req.method} ${req.originalUrl}: missing scope "${requiredScope}"`
-        );
-        res.status(403).json({
-          message: 'Insufficient scope',
-          error: 'insufficient_scope',
-        });
+        deny(403, 'Insufficient scope', 'insufficient_scope');
         return;
       }
     }
 
-    req.serviceCaller = { clientId };
     next();
   };
 }

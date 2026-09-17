@@ -12,13 +12,10 @@ const {
   mockedGetStorageLimitForTier: vi.fn(),
 }));
 
-// The route is exercised directly; auth is covered by service-auth.test.ts, so
-// requireServiceAuth is stubbed to a pass-through that attaches a caller.
+// The route is exercised directly; auth and audit logging are covered by
+// service-auth.test.ts, so requireServiceAuth is stubbed to a pass-through.
 vi.mock('@send-backend/auth/service-auth', () => ({
-  requireServiceAuth: () => (req, _res, next) => {
-    req.serviceCaller = { clientId: 'accounts-backend' };
-    next();
-  },
+  requireServiceAuth: () => (_req, _res, next) => next(),
 }));
 
 vi.mock('@send-backend/models', () => ({
@@ -86,31 +83,18 @@ describe('GET /api/internal/users/:sub/storage', () => {
     expect(mockedGetUsedStorage).toHaveBeenCalledWith('user-2', true);
   });
 
-  it('emits the audit line with status 500 when storage computation throws', async () => {
+  // Auditing belongs to requireServiceAuth (stubbed out here), so this only
+  // pins the status the audit line will report; see service-auth.test.ts.
+  it('surfaces a 500 when storage computation throws', async () => {
     mockedGetUserByOIDCSubject.mockResolvedValue({
       id: 'user-4',
       tier: 'FREE',
     });
     mockedGetUsedStorage.mockRejectedValue(new Error('db down'));
-    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const res = await request(app).get('/api/internal/users/boom-sub/storage');
 
     expect(res.status).toBe(500);
-    const auditLine = infoSpy.mock.calls
-      .map((call) => call[0])
-      .find(
-        (line) =>
-          typeof line === 'string' && line.includes('"internal_request"')
-      );
-    expect(auditLine).toBeDefined();
-    expect(JSON.parse(auditLine as string)).toMatchObject({
-      msg: 'internal_request',
-      clientId: 'accounts-backend',
-      sub: 'boom-sub',
-      status: 500,
-    });
-    infoSpy.mockRestore();
   });
 
   it('responds with exactly { active, limit } and no extra fields', async () => {

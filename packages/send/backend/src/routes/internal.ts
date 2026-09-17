@@ -1,8 +1,5 @@
 import { UserTier } from '@prisma/client';
-import {
-  requireServiceAuth,
-  type RequestWithServiceCaller,
-} from '@send-backend/auth/service-auth';
+import { requireServiceAuth } from '@send-backend/auth/service-auth';
 import { wrapAsyncHandler } from '@send-backend/errors/routes';
 import { getUsedStorage } from '@send-backend/models';
 import { getUserByOIDCSubject } from '@send-backend/models/users';
@@ -11,35 +8,11 @@ import { Router } from 'express';
 
 /**
  * Internal service-to-service endpoints (#1216 / #1248). Not for end users:
- * every route is guarded by requireServiceAuth (see auth/service-auth.ts for
- * the allowlist security model) and emits one structured audit line per
- * request. Storage *values* are never logged, only the outcome and latency.
+ * every route is guarded by requireServiceAuth, which also emits the one
+ * structured audit line per request. See auth/service-auth.ts for the allowlist
+ * security model and what the audit line does and does not record.
  */
 const router: Router = Router();
-
-/**
- * Emit a single structured audit line for an internal request. Deliberately
- * excludes any storage value — only who called, whose record, the outcome
- * status, and how long it took.
- */
-function auditInternalRequest(fields: {
-  route: string;
-  clientId: string;
-  sub: string;
-  status: number;
-  latencyMs: number;
-}): void {
-  console.info(
-    JSON.stringify({
-      msg: 'internal_request',
-      route: fields.route,
-      clientId: fields.clientId,
-      sub: fields.sub,
-      status: fields.status,
-      latencyMs: fields.latencyMs,
-    })
-  );
-}
 
 /**
  * @openapi
@@ -91,52 +64,27 @@ router.get(
   '/users/:sub/storage',
   requireServiceAuth(),
   wrapAsyncHandler(async (req, res) => {
-    const startedAt = Date.now();
-    const { sub } = req.params;
-    const clientId =
-      (req as RequestWithServiceCaller).serviceCaller?.clientId ?? 'unknown';
-    const route = 'GET /api/internal/users/:sub/storage';
-
-    const finish = (status: number) => {
-      auditInternalRequest({
-        route,
-        clientId,
-        sub,
-        status,
-        latencyMs: Date.now() - startedAt,
+    const user = await getUserByOIDCSubject(req.params.sub);
+    if (!user) {
+      // Unknown subject — includes legacy password-account users, who have no
+      // oidcSubject and are out of scope for this feature (#1216).
+      return res.status(404).json({
+        message: 'User not found',
+        error: 'user_not_found',
       });
-    };
-
-    try {
-      const user = await getUserByOIDCSubject(sub);
-      if (!user) {
-        // Unknown subject — includes legacy password-account users, who have no
-        // oidcSubject and are out of scope for this feature (#1216).
-        finish(404);
-        return res.status(404).json({
-          message: 'User not found',
-          error: 'user_not_found',
-        });
-      }
-
-      // Compute usage the same way the user-facing path does (see auth/client.ts
-      // getStorageLimit): EPHEMERAL tier counts only non-expired uploads.
-      const hasLimitedStorage = user.tier === UserTier.EPHEMERAL;
-      const { active } = await getUsedStorage(user.id, hasLimitedStorage);
-      const limit = getStorageLimitForTier(user.tier);
-
-      finish(200);
-      // Usage numbers must never be served stale by an intermediary cache.
-      res.set('Cache-Control', 'no-store');
-      return res.status(200).json({ active, limit });
-    } catch (err) {
-      // A thrown lookup/computation still gets its audit line — the failure
-      // case is the one the audit trail most needs. The error itself is
-      // rethrown so wrapAsyncHandler -> the global error handler produces the
-      // usual 500 response.
-      finish(500);
-      throw err;
     }
+
+    // Compute usage the same way the user-facing path does (see auth/client.ts
+    // getStorageLimit): EPHEMERAL tier counts only non-expired uploads.
+    const hasLimitedStorage = user.tier === UserTier.EPHEMERAL;
+    const { active } = await getUsedStorage(user.id, hasLimitedStorage);
+
+    // Usage numbers must never be served stale by an intermediary cache.
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json({
+      active,
+      limit: getStorageLimitForTier(user.tier),
+    });
   })
 );
 
