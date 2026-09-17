@@ -42,8 +42,8 @@ const URL_PROPERTIES = [
 /**
  * PostHog `before_send` hook: scrubs the sensitive link id from every
  * URL-bearing property BEFORE the event leaves the browser. `before_send` is
- * the modern, non-deprecated hook (posthog-js >= 1.372.5 here; the older
- * `sanitize_properties` is now `@deprecated`).
+ * PostHog's current property-mutation hook, replacing the older, deprecated
+ * `sanitize_properties` option.
  */
 function scrubSensitiveUrls(captureResult) {
   if (!captureResult?.properties) {
