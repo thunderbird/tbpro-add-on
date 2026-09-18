@@ -279,6 +279,29 @@ async function openUnifiedPopup() {
   }
 }
 
+// Metadata about the last accepted OIDC_USER write, stored alongside
+// STORAGE_KEY_AUTH so the handler can tell a concurrent duplicate-login race
+// (drop, see #1025) from a genuine later token refresh for the same account
+// (accept, see #1053). Shape: { subject: string, writtenAt: number }.
+const STORAGE_KEY_AUTH_META = 'STORAGE_KEY_AUTH_META';
+
+// Two OIDC_USER writes for the SAME subject landing within this window are
+// treated as the concurrent AccountHub-vs-web login race from #1025 and the
+// second is dropped. A same-subject write arriving AFTER this window is a
+// genuine token refresh / intentional re-auth and is accepted (#1053).
+const OIDC_USER_RACE_WINDOW_MS = 10_000;
+
+// Derive a stable per-account subject from an oidc-client-ts User object.
+// Prefer the OIDC subject; fall back to the identifiers menu.ts already uses.
+function oidcSubject(user): string | undefined {
+  return (
+    user?.profile?.sub ||
+    user?.profile?.preferred_username ||
+    user?.profile?.email ||
+    undefined
+  );
+}
+
 const THUNDERMAIL_HOST = `mail.${!isProd ? 'stage-' : ''}thundermail.com`;
 const THUNDERMAIL_DISPLAY_NAME = 'Thundermail';
 
@@ -302,21 +325,58 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     //     it only has a refresh token and needs a fresh access_token.
     case OIDC_USER: {
       // Mutual exclusion: if STORAGE_KEY_AUTH already holds a session,
-      // this OIDC_USER is a concurrent login flow (e.g. an AccountHub
+      // this OIDC_USER may be a concurrent login flow (e.g. an AccountHub
       // login racing a hamburger-menu web login for the same account)
       // and silently overwriting would clobber the in-flight session.
-      // Drop the incoming write to preserve the existing session.
       // See https://github.com/thunderbird/tbpro-add-on/issues/1025.
-      const existingAuth = await browser.storage.local.get(STORAGE_KEY_AUTH);
-      if (existingAuth[STORAGE_KEY_AUTH]) {
-        console.warn(
-          '[onMessage] Dropping OIDC_USER: STORAGE_KEY_AUTH already holds a session'
-        );
-        break;
+      //
+      // However, a same-subject write arriving well AFTER the stored
+      // session (outside OIDC_USER_RACE_WINDOW_MS) is a genuine token
+      // refresh / intentional re-auth and must be accepted, or the add-on
+      // is left holding a stale token.
+      // See https://github.com/thunderbird/tbpro-add-on/issues/1053.
+      const existing = await browser.storage.local.get([
+        STORAGE_KEY_AUTH,
+        STORAGE_KEY_AUTH_META,
+      ]);
+      if (existing[STORAGE_KEY_AUTH]) {
+        const incomingSubject = oidcSubject(message.user);
+        const storedSubject =
+          existing[STORAGE_KEY_AUTH_META]?.subject ??
+          oidcSubject(existing[STORAGE_KEY_AUTH]);
+
+        if (!incomingSubject || !storedSubject) {
+          // Can't compare identities; keep the conservative #1025 behavior.
+          console.warn(
+            '[onMessage] Dropping OIDC_USER: existing session present and no subject to compare'
+          );
+          break;
+        }
+
+        if (incomingSubject !== storedSubject) {
+          console.warn(
+            '[onMessage] Dropping OIDC_USER: different subject than the in-flight session'
+          );
+          break;
+        }
+
+        const writtenAt = existing[STORAGE_KEY_AUTH_META]?.writtenAt ?? 0;
+        if (Date.now() - writtenAt < OIDC_USER_RACE_WINDOW_MS) {
+          console.warn(
+            '[onMessage] Dropping OIDC_USER: same-subject write within the race window (concurrent duplicate login)'
+          );
+          break;
+        }
+        // Same subject, outside the race window: fall through and accept
+        // the write as a genuine refresh/replacement (#1053).
       }
 
       await browser.storage.local.set({
         [STORAGE_KEY_AUTH]: message.user,
+        [STORAGE_KEY_AUTH_META]: {
+          subject: oidcSubject(message.user),
+          writtenAt: Date.now(),
+        },
       });
 
       console.log(`🎯 user auth stored in add-on context.`);
