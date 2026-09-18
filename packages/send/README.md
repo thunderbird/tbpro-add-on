@@ -57,6 +57,12 @@ ship those flags on, so it does nothing `setup` doesn't; CI still calls it.)
 
 ### Loading the TB Extension
 
+> **Out of date.** This describes the old standalone "Thunderbird Send" add-on, which is no longer
+> built or shipped — and the build that produced its `.xpi` is broken, so the file you get is missing
+> its background script. To work on the add-on, use `packages/addon` and follow
+> [its README](../addon/README.md). Removing the leftovers here is tracked in
+> [#1243](https://github.com/thunderbird/tbpro-add-on/issues/1243).
+
 Make sure you add your localhost certificate. We have an
 [In depth guide](https://github.com/thunderbird/send-suite/issues/190).
 
@@ -83,16 +89,11 @@ Note: the link will only work on your local machine, as the URL is a `localhost`
 
 ### Submitting .xpi to ATN
 
-Make sure you have a file named `.env.production` inside the frontend directory that contains the environment variables for production. Otherwise this will fail.
-
-Run
-
-```sh
-lerna run build --scope=send-frontend
-```
-
-This will create `frontend-source.zip` use it to upload to ATN when asked for source code.
-It will also move your `.xpi` to the `packages/send` directory.
+Nothing is submitted to ATN any more. The add-on ships inside Thunderbird as the built-in system
+add-on, built from `packages/addon` — see the root [README](../../README.md#deployment) for how a
+release is cut. This section and the two above it describe the old standalone "Thunderbird Send"
+add-on, which is no longer built or published; removing what is left of it is tracked in
+[#1243](https://github.com/thunderbird/tbpro-add-on/issues/1243).
 
 ### Public login
 
@@ -122,15 +123,15 @@ If this is the first time you're building the extension, you'll need to install 
 pnpm i --filter send-frontend
 ```
 
-Build the extension:
+Build the web app:
 
 ```sh
-lerna run build:dev --scope=send-frontend
+lerna run build:web --scope=send-frontend
 ```
 
-This outputs an xpi file at `packages/send`, named after the version in
-`packages/send/frontend/package.json` with the dots replaced by hyphens — at 8.0.6 that is
-`send-suite-8-0-6.xpi`.
+`build:dev` and `build` additionally run the old standalone add-on build, which is dead and broken —
+see [#1243](https://github.com/thunderbird/tbpro-add-on/issues/1243). For add-on development, build
+`packages/addon` instead.
 
 ## Sentry
 
