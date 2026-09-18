@@ -148,13 +148,6 @@ resources:
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/oidc-client-secret-6dVOrL
               - name: OIDC_TOKEN_INTROSPECTION_URL
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/oidc-token-introspection-url-ZSIjGB
-              # Secret value is generated per-environment in #1245. When the
-              # secret is created, Secrets Manager appends a random 6-char suffix
-              # to the secret name in the ARN (see the other entries here, e.g.
-              # oidc-client-secret-6dVOrL); update this valueFrom to that full
-              # suffixed ARN once the secret exists. This mirrors how the OIDC
-              # secrets were first added suffixless, then repointed to their real
-              # ARNs in a follow-up.
               - name: INTERNAL_API_KEYS
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/internal-api-keys-g2INkd
             environment:
