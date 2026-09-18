@@ -64,6 +64,7 @@ resources:
         - b2-application-key-id
         - b2-application-key
         - database-url
+        - internal-api-keys
         - jwt-access-token-secret
         - jwt-refresh-token-secret
         - posthog-api-key
@@ -147,6 +148,8 @@ resources:
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/oidc-client-secret-6dVOrL
               - name: OIDC_TOKEN_INTROSPECTION_URL
                 valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/oidc-token-introspection-url-ZSIjGB
+              - name: INTERNAL_API_KEYS
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/prod/internal-api-keys-g2INkd
             environment:
               - name: B2_BUCKET_NAME
                 value: tb-send-suite-prod-object-store-eu-central-1
