@@ -155,7 +155,7 @@ resources:
               # secrets were first added suffixless, then repointed to their real
               # ARNs in a follow-up.
               - name: INTERNAL_API_KEYS
-                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/stage/internal-api-keys
+                valueFrom: arn:aws:secretsmanager:eu-central-1:768512802988:secret:send-suite/stage/internal-api-keys-ymSmrr
             environment:
               - name: B2_BUCKET_NAME
                 value: tb-send-suite-stage-object-store-eu-central-1
