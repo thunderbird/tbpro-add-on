@@ -10,7 +10,9 @@ let initialized = false;
 // autocapture properties would otherwise leak that secret to analytics.
 // Redact the id segment by path pattern (not a hardcoded id) so query
 // strings and trailing segments are preserved but the secret is stripped.
-const SENSITIVE_URL_SEGMENT = /\/(share|locked)\/[^/?#]+/g;
+// Case-insensitive so case-variant paths (`/Share/<id>`, `/LOCKED/<id>`)
+// are redacted too.
+const SENSITIVE_URL_SEGMENT = /\/(share|locked)\/[^/?#]+/gi;
 
 /**
  * Redacts the share/locked link id from a URL-bearing string, turning

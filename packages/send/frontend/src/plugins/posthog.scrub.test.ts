@@ -77,6 +77,16 @@ describe('redactSensitiveUrl (issue #1254)', () => {
     expect(redactSensitiveUrl('/locked/abc123')).toBe('/locked/[redacted]');
   });
 
+  it('redacts case-variant paths (/Share/, /LOCKED/)', async () => {
+    const { redactSensitiveUrl } = await loadPlugin();
+    expect(redactSensitiveUrl('https://send.tb.pro/Share/secret-id')).toBe(
+      'https://send.tb.pro/Share/[redacted]'
+    );
+    expect(redactSensitiveUrl('/LOCKED/secret-id?x=1')).toBe(
+      '/LOCKED/[redacted]?x=1'
+    );
+  });
+
   it('leaves non-sensitive URLs untouched', async () => {
     const { redactSensitiveUrl } = await loadPlugin();
     for (const url of [
