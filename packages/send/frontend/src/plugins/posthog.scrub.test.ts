@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * The `/share/:linkId` and `/locked/:linkId` routes carry a bearer secret in
  * the path. PostHog's default URL/pageview/autocapture properties would leak
  * that secret to analytics, so `plugins/posthog.js`:
- *   1. redacts the id from URL-bearing properties via a `before_send` hook, and
+ *   1. redacts the id from every string in the capture payload's
+ *      `properties`, `$set`, and `$set_once` containers via a `before_send`
+ *      hook — covering session-entry props (`$session_entry_url`,
+ *      `$session_entry_pathname`) and initial person props
+ *      (`$set_once.$initial_current_url`, …), not just `$current_url`-style
+ *      event props, and
  *   2. reduces capture surface (`autocapture: false`, `capture_pageview: false`).
  *
  * This locks in both the pure redaction helper and the `posthog.init` wiring.
@@ -149,6 +154,94 @@ describe('posthog.init wiring (issue #1254)', () => {
     );
     // Non-URL property left untouched.
     expect(scrubbed.properties.keep).toBe('https://send.tb.pro/folder/42');
+  });
+
+  it('before_send scrubs session-entry props, which ride on every event of a session entered via /share/<id>', async () => {
+    const { setPosthogConsent } = await loadPlugin();
+    setPosthogConsent(true);
+    const [, options] = posthogMock.init.mock.calls[0];
+
+    // Shape per posthog-js SessionPropsManager.getSessionProps().
+    const scrubbed = options.before_send({
+      event: 'FILE_DOWNLOADED',
+      properties: {
+        $session_entry_url: 'https://send.tb.pro/share/entry-secret',
+        $session_entry_pathname: '/share/entry-secret',
+        $session_entry_referring_domain: 'send.tb.pro',
+      },
+    });
+
+    expect(scrubbed.properties.$session_entry_url).toBe(
+      'https://send.tb.pro/share/[redacted]'
+    );
+    expect(scrubbed.properties.$session_entry_pathname).toBe(
+      '/share/[redacted]'
+    );
+    expect(scrubbed.properties.$session_entry_referring_domain).toBe(
+      'send.tb.pro'
+    );
+  });
+
+  it('before_send scrubs initial person props in top-level $set/$set_once (sent with $identify)', async () => {
+    const { setPosthogConsent } = await loadPlugin();
+    setPosthogConsent(true);
+    const [, options] = posthogMock.init.mock.calls[0];
+
+    // Shape per posthog-js _calculate_set_once_properties(): initial person
+    // info is merged into the TOP-LEVEL $set_once of the capture payload,
+    // not into event properties.
+    const scrubbed = options.before_send({
+      event: '$identify',
+      properties: {},
+      $set: {
+        last_seen_url: 'https://send.tb.pro/share/set-secret',
+      },
+      $set_once: {
+        $initial_current_url: 'https://send.tb.pro/share/initial-secret?x=1',
+        $initial_pathname: '/share/initial-secret',
+        $initial_referrer: 'https://send.tb.pro/locked/ref-secret',
+        $initial_referring_domain: 'send.tb.pro',
+      },
+    });
+
+    expect(scrubbed.$set.last_seen_url).toBe(
+      'https://send.tb.pro/share/[redacted]'
+    );
+    expect(scrubbed.$set_once.$initial_current_url).toBe(
+      'https://send.tb.pro/share/[redacted]?x=1'
+    );
+    expect(scrubbed.$set_once.$initial_pathname).toBe('/share/[redacted]');
+    expect(scrubbed.$set_once.$initial_referrer).toBe(
+      'https://send.tb.pro/locked/[redacted]'
+    );
+    expect(scrubbed.$set_once.$initial_referring_domain).toBe('send.tb.pro');
+  });
+
+  it('before_send scrubs nested objects and arrays inside properties', async () => {
+    const { setPosthogConsent } = await loadPlugin();
+    setPosthogConsent(true);
+    const [, options] = posthogMock.init.mock.calls[0];
+
+    const scrubbed = options.before_send({
+      event: 'custom',
+      properties: {
+        nested: { url: 'https://send.tb.pro/share/nested-secret' },
+        list: ['/locked/list-secret', 42, null],
+      },
+    });
+
+    expect(scrubbed.properties.nested.url).toBe(
+      'https://send.tb.pro/share/[redacted]'
+    );
+    expect(scrubbed.properties.list).toEqual(['/locked/[redacted]', 42, null]);
+  });
+
+  it('before_send tolerates an event without properties', async () => {
+    const { setPosthogConsent } = await loadPlugin();
+    setPosthogConsent(true);
+    const [, options] = posthogMock.init.mock.calls[0];
+    const result = options.before_send({ event: 'bare' });
+    expect(result).toEqual({ event: 'bare' });
   });
 
   it('before_send tolerates a null capture result', async () => {
