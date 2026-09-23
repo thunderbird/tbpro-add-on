@@ -55,6 +55,19 @@ ship those flags on, so it does nothing `setup` doesn't; CI still calls it.)
 > After editing `prisma/schema.prisma`, restart the backend service, or run
 > `docker compose exec backend pnpm db:migrate`.
 
+#### Internal service-to-service endpoints
+
+The backend exposes read-only internal endpoints for other Thunderbird services
+(today: Accounts reading a user's Send storage usage via
+`GET /api/internal/users/:sub/storage`). They are authenticated with a static
+high-entropy integration key issued by Send, configured through
+`INTERNAL_API_KEYS` in `packages/send/backend/.env` as a comma-separated list of
+`label:key` pairs (e.g. `accounts:<key1>,accounts-prev:<key2>`). The label
+identifies the caller in audit logs and the multi-key form enables zero-downtime
+rotation. With no key configured the endpoints fail closed (503); an invalid or
+missing key is rejected 401. Keys must be delivered only via a secret store,
+never chat or email. See the commented entry in `backend/.env.sample`.
+
 ### Loading the TB Extension
 
 Make sure you add your localhost certificate. We have an
