@@ -143,25 +143,35 @@ We're using jwt tokens to authenticate users. Once they go through the login flo
 
 ## Releasing a new version (stage)
 
-Every time you merge to the `main` branch, a new version of the application is automatically deployed to our staging environments. This is done through GitHub Actions and you can see the workflow [here](./.github/workflows/merge.yml). To ensure that our deployments are consistent, you have to bump the version of the packages you changed in their respective `package.json` files. In the case of the addon, you also need to update the version in `packages/addon/manifest.json` file to match the version set on `package.json`.
+Every time you merge to the `main` branch, a new version of the application is automatically deployed to our staging environments. This is done through GitHub Actions and you can see the workflow [here](./.github/workflows/merge.yml). To ensure that our deployments are consistent, you have to bump the version of the packages you changed in their respective `package.json` files. In the case of the addon, you also need to update the version in `packages/addon/public/manifest.json` file to match the version set on `package.json`.
 
 ## Releasing a new version to production
 
-After validating that the changes work as expected on staging, you can create a new release on GitHub. This is currently a manual process. Creating the release will trigger the `release.yml` workflow that publishes the new version of the application to production. You can see the workflow [here](./.github/workflows/release.yml).
+After validating that the changes work as expected on staging, run the
+[`create-release`](./.github/workflows/create-release.yml) workflow from the Actions tab. It takes
+the production artifacts a `main` build already produced, attaches them to a draft GitHub release,
+and works the tag out from `packages/addon/public/manifest.json`. Publishing that draft is what
+triggers the [`release.yml`](./.github/workflows/release.yml) workflow that deploys to production, so
+it doubles as the confirmation step — unless you tick the workflow's `publish` input, which skips the
+draft and releases straight away.
 
-Before publishing the release, upload the production assets built by the merge workflow. You can find the artifacts [here](https://github.com/thunderbird/tbpro-add-on/actions/workflows/merge.yml). The release workflow currently expects these assets to be attached to the manually created GitHub release:
+It attaches whichever of these the source build produced; the frontend and backend assets are skipped
+when that part of the codebase did not change:
 
-- `ecr_tag.zip`
-- `dist-web-prod.zip`
-- `tbpro-addon-prod-*.xpi`
+- `ecr_tag.zip` — the backend image tag
+- `dist-web-prod.zip` — the Send web bundle
+- `tbpro-system-add-on-prod-*.xpi` — the system add-on
 
-Once you create the release with those assets attached, the workflow will deploy the new version to production and publish the addon to ATN.
-
-If for some reason there is an issue with the add-on release, you can manually upload the xpi file to ATN [here](https://addons.thunderbird.net/).
+The add-on is no longer published to ATN. The system add-on ships inside Thunderbird, so the
+`.xpi` on the release is the hand-off to comm-central rather than something CI uploads anywhere.
 
 ### Release versioning
 
-Although we're using semantic versioning for our packages, the release workflow is using the version set by the [send package](./packages/send/package.json). Until we have a more robust release process, we will be using the send package version as the source of truth for our releases. This means that every time we want to release a new version, we have to update the version in `packages/send/package.json` file and make sure to update the version in `packages/addon/manifest.json` file to match it.
+We use semantic versioning for the packages, but a release is tagged from a single source of truth:
+the version in [`packages/addon/public/manifest.json`](./packages/addon/public/manifest.json). That is
+the file `create-release` reads to work out the tag. So before releasing, make sure that version is
+the one you mean, and that the packages you changed have had their own `package.json` versions bumped
+to match.
 
 ## Monorepo
 

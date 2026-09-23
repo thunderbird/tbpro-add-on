@@ -104,6 +104,10 @@
       "dependsOn": [],
       "cache": true
     },
+    "build:web": {
+      "dependsOn": [],
+      "cache": true
+    },
     "build:watch": {
       "dependsOn": []
     },
