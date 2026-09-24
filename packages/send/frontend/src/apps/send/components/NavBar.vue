@@ -1,4 +1,15 @@
 <script setup lang="ts">
+import {
+  AppDrawer,
+  AppointmentIcon,
+  MailIcon,
+  SendIcon,
+  type AppDrawerApp,
+} from '@thunderbirdops/services-ui';
+import {
+  APPOINTMENT_URL,
+  THUNDERMAIL_URL,
+} from '@send-frontend/apps/common/constants';
 import SendLogo from '@send-frontend/apps/send/components/SendLogo.vue';
 import UserMenu from '@send-frontend/apps/send/components/UserMenu.vue';
 import { useAuth } from '@send-frontend/lib/auth';
@@ -13,6 +24,12 @@ const { isLoggedIn } = useAuth();
 const { user } = useUserStore();
 const { navLinkPaths } = useNavigation();
 const prefersDark = usePreferredDark();
+
+const apps: AppDrawerApp[] = [
+  { id: 'mail', name: 'Mail', icon: MailIcon, href: THUNDERMAIL_URL },
+  { id: 'send', name: 'Send', icon: SendIcon, current: true },
+  { id: 'appointment', name: 'Appointment', icon: AppointmentIcon, href: APPOINTMENT_URL },
+];
 
 const avatarUsername = computed(() => user?.thundermailEmail || user?.email);
 
@@ -62,7 +79,10 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
         </ul>
       </nav>
 
-      <user-menu :username="avatarUsername" />
+      <div class="nav-actions">
+        <app-drawer :apps="apps" />
+        <user-menu :username="avatarUsername" />
+      </div>
     </template>
   </header>
 </template>
@@ -91,6 +111,27 @@ header {
   .send-logo svg {
     height: 3rem;
     width: auto;
+  }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+
+    :deep(.app-drawer__button),
+    .user-menu {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 3rem;
+      height: 3rem;
+      padding: 0;
+    }
+
+    :deep(.app-drawer__button svg) {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
   }
 
   ul,
@@ -124,6 +165,10 @@ header {
 
 header.dark {
   background-color: #111113;
+
+  :deep(.app-drawer__button) {
+    color: #d4d4d8;
+  }
 
   a:not(.send-logo) {
     color: #d4d4d8;
