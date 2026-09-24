@@ -3,6 +3,7 @@ import SendLogo from '@send-frontend/apps/send/components/SendLogo.vue';
 import UserMenu from '@send-frontend/apps/send/components/UserMenu.vue';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useUserStore } from '@send-frontend/stores';
+import { usePreferredDark } from '@vueuse/core';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNavigation } from '../composables/useNavigation';
@@ -11,6 +12,7 @@ const { currentRoute } = useRouter();
 const { isLoggedIn } = useAuth();
 const { user } = useUserStore();
 const { navLinkPaths } = useNavigation();
+const prefersDark = usePreferredDark();
 
 const avatarUsername = computed(() => user?.thundermailEmail || user?.email);
 
@@ -35,9 +37,9 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
 </script>
 
 <template>
-  <header>
-    <router-link to="/">
-      <send-logo force-dark />
+  <header :class="{ dark: prefersDark }">
+    <router-link class="send-logo" to="/">
+      <send-logo :force-dark="prefersDark" />
     </router-link>
 
     <template v-if="isLoggedIn">
@@ -72,74 +74,75 @@ header {
   justify-content: space-between;
 
   height: 68px;
-  padding: 1rem;
-  backdrop-filter: blur(24px);
-  box-shadow: 0 0.5rem 1.5rem 0 rgba(0, 0, 0, 0.1);
-  background-image: linear-gradient(to top, #1a202c, #483623);
+  padding-inline: 1rem;
+  background-color: #f7f7f8;
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(12px);
   width: 100%;
 
   /* Without this we can't be on top of main content when we need */
   position: relative;
   z-index: 999;
 
-  &:first-child {
-    margin-right: auto;
-  }
-
-  &:last-child {
-    margin-left: auto;
-  }
-
   nav.desktop {
     display: none;
   }
 
-  .login-button-link {
-    text-decoration: none;
-
-    .brand.outline {
-      color: var(--colour-ti-base-dark);
-    }
+  .send-logo svg {
+    height: 3rem;
+    width: auto;
   }
 
-  ul {
+  ul,
+  li {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
+    height: 100%;
+  }
+
+  /* TODO: Update these colours once we source them from services-ui */
+  a:not(.send-logo) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 120px;
+    padding-inline: 1rem;
+    height: 2.25rem;
     font-family: metropolis, sans-serif;
-    font-weight: 600;
     font-size: 0.8125rem;
-    letter-spacing: 0.65px;
+    font-weight: 600;
     text-transform: uppercase;
+    text-decoration: none;
+    color: #52525b;
 
-    a {
-      color: white;
-      text-decoration: none;
-      padding: 0.75rem 1.25rem;
+    &.active {
+      color: #19518f;
+    }
+  }
+}
 
-      &.active {
-        background-color: var(--colour-neutral-lower-dark);
-        border-radius: 0.5rem;
-        box-shadow: inset 0 0.25rem 0.25rem 0 rgba(0, 0, 0, 0.15);
-      }
+header.dark {
+  background-color: #111113;
+
+  a:not(.send-logo) {
+    color: #d4d4d8;
+
+    &.active {
+      color: #5fa6e8;
     }
   }
 }
 
 @media (min-width: 768px) {
-  header {
-    nav.desktop {
-      display: block;
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-    }
+  header nav.desktop {
+    display: block;
   }
 }
 
 @media (min-width: 1024px) {
-  header > :first-child,
-  header > :last-child {
-    padding: 1rem 2rem;
+  header {
+    padding-inline: 3.5rem;
   }
 }
 </style>
