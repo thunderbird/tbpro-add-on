@@ -29,3 +29,5 @@ export const CONTACT_FORM_URL = config.contactFormUrl;
 export const SUPPORT_URL = 'https://support.tb.pro';
 export const PRIVACY_POLICY_URL = 'https://tb.pro/privacy';
 export const TERMS_OF_SERVICE_URL = 'https://tb.pro/terms';
+export const STATUS_PAGE_URL = 'https://status.tb.pro/';
+export const IDEAS_PAGE_URL = 'https://ideas.tb.pro/';
