@@ -170,6 +170,10 @@ header.dark {
     color: #d4d4d8;
   }
 
+  :deep(.avatar .initials) {
+    color: var(--colour-ti-base-dark);
+  }
+
   a:not(.send-logo) {
     color: #d4d4d8;
 
