@@ -166,6 +166,21 @@ header {
 header.dark {
   background-color: #111113;
 
+  /*
+   * services-ui only applies its dark tokens under `html.dark`, which we can't
+   * set yet without switching the whole app to dark mode and we're not ready for that yet.
+   * TODO: Remove once the app supports dark mode via html.dark.
+   */
+  --colour-neutral-raised: #262d3b;
+  --colour-neutral-subtle: #262d3b;
+  --colour-neutral-border: #303a4a;
+  --colour-primary-soft: #262c40;
+  --colour-primary-default: #58c9ff;
+  --colour-primary-hover: #32aeff;
+  --colour-primary-pressed: #1b90f5;
+  --colour-ti-secondary: #d9d9de;
+  --colour-ti-muted: #7f94ac;
+
   :deep(.app-drawer__button) {
     color: #d4d4d8;
   }
