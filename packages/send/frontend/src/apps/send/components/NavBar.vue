@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SendLogo from '@send-frontend/apps/send/components/SendLogo.vue';
 import UserMenu from '@send-frontend/apps/send/components/UserMenu.vue';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useUserStore } from '@send-frontend/stores';
@@ -36,7 +37,7 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
 <template>
   <header>
     <router-link to="/">
-      <img src="@send-frontend/apps/send/assets/send-logo.svg" alt="Send" />
+      <send-logo force-dark />
     </router-link>
 
     <template v-if="isLoggedIn">

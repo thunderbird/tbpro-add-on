@@ -103,7 +103,7 @@ const { navLinkPaths } = useNavigation();
     font-weight: 400;
     font-size: 0.6875rem;
     text-transform: none;
-    color: #d4d4d8; /* TODO: Update this once we source colours from services-ui */
+    color: #d4d4d8; /* TODO: Update this once we source colours from services-ui after 2.x */
 
     li {
       display: flex;
