@@ -24,3 +24,5 @@ config:
     secure: v1:NYWfW6ajibivFFlu:YvNF4+//tffl/bX6ayi53BQm/MAB/k+J6wFH5G5HooeCrdqbRGI6rs/xZDkgvs6t
   send-suite:oidc-token-introspection-url:
     secure: v1:HmD9ELBROcMog7G+:3U08ZEm/yZ7HOdrFTZulL4M4RLxVuYt3fOYG65+3LPyOHJe5naysKlHteInwdaxiVtpfPNVFjoPkBTsGJzAVjbrHs9H0wnKKtlbI2e2E8KBZuHMvNGli4+k=
+  send-suite:internal-api-keys:
+    secure: v1:IJ1TiO7RIJVp0vHu:35MXVAEk10Xi0Dp1bDu0a9hjiBDB9/St1BzM40UT2NIoFkj0QUADlEvvNAGsLVNSIzWmB4O9sucGJgZY65BbQArFiLeYjwnucA7f85IA6ELo14KL3ru8DwO27MDI
