@@ -250,7 +250,10 @@ Every upload is a presigned PUT from the browser straight to a bucket, so the
 backend needs one — there is no filesystem backend to fall back on.
 `STORAGE_BACKEND` is `b2` or `s3`, and anything else throws at boot. Locally
 `.env.sample` sets `s3` and points it at the MinIO service in `compose.yml`,
-which needs no account and no credentials.
+which needs no account and no credentials. That service runs
+[Silo](https://silo.pgsty.com/), the community-maintained fork of MinIO: MinIO no
+longer publishes its open-source images, and Silo speaks the same API and reads
+the same `MINIO_*` settings, so everything here still calls it MinIO.
 
 Because the browser reaches MinIO at a different address than the backend does
 (`localhost:9000` published, `minio:9000` on the compose network) and a presigned
