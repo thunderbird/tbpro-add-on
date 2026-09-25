@@ -24,10 +24,21 @@ services:
   # no filesystem fallback. It is also what the backend storage round-trip suite
   # runs against.
   minio:
+    # Silo (pgsty/silo), the community-maintained fork of MinIO. MinIO archived
+    # its open-source edition in 2026 and its public images are gone from Docker
+    # Hub and quay.io (#1268). Silo keeps the S3 wire protocol, the `MINIO_*`
+    # variables, the `/minio/health/*` routes and the bundled `mc` the
+    # healthcheck below runs, so nothing else changes.
+    # `pgsty/minio` was the fork's name until 2026-08-06 and is frozen there;
+    # only `pgsty/silo` gets releases.
+    #
     # Pinned: an unpinned tag makes CI unreproducible, and a release that
     # changes `mc ready` would break the healthcheck below with no diff to blame.
-    # compose.ci.minio.yml pins the same tag for the e2e lane; bump both together.
-    image: "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
+    # compose.ci.minio.yml pins the same tag for the e2e lane, and minio-init
+    # below pins the matching `pgsty/mc` release: the maintainers support the
+    # server and client as a matched set. Bump all of them together
+    # (`grep -n 'pgsty/.*:RELEASE' compose*.yml`).
+    image: "docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z"
     command: server /data --console-address ":9001"
     # No volume on purpose. Dev uploads and the test objects the suite cleans up
     # after itself; nothing here is worth surviving the container.
@@ -65,7 +76,8 @@ services:
   # finished one-shot does not sit in `docker ps -a` next to a running `minio`
   # looking like a crash. A failed one is left behind to read.
   minio-init:
-    image: "quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z"
+    # Silo's `mc`; the same release as the server above.
+    image: "docker.io/pgsty/mc:RELEASE.2026-09-16T00-00-00Z"
     env_file:
       - ./packages/send/backend/.env
     depends_on:
