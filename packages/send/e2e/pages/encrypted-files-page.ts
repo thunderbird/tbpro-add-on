@@ -33,7 +33,7 @@ export class EncryptedFilesPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.sendHdrLogoLink = this.page.locator('header img[alt="Send"]');
+    this.sendHdrLogoLink = this.page.locator('header').getByRole('img', { name: 'Send', exact: true });
     // The username is the header's direct-child span. Restricting this to a
     // direct child avoids matching implementation-detail spans inside adjacent
     // header controls, which causes Playwright strict-mode failures.

@@ -4,6 +4,8 @@ import {
   PRIVACY_POLICY_URL,
   TERMS_OF_SERVICE_URL,
   CONTACT_FORM_URL,
+  STATUS_PAGE_URL,
+  IDEAS_PAGE_URL,
 } from '@send-frontend/apps/common/constants';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useNavigation } from '../composables/useNavigation';
@@ -18,11 +20,9 @@ const { navLinkPaths } = useNavigation();
   >
     <template #default>
       <nav class="send-navigation">
-        <router-link to="/">
-          <img src="@send-frontend/apps/send/assets/send-logo.svg" alt="Send" />
-        </router-link>
+        <div class="top-row">
+          <img src="@send-frontend/apps/send/assets/thunderbird-logo.svg" alt="Thunderbird" />
 
-        <div>
           <ul v-if="isLoggedIn">
             <li v-for="navLink in navLinkPaths" :key="navLink.path">
               <router-link :to="navLink.path">{{ navLink.label }}</router-link>
@@ -34,11 +34,25 @@ const { navLinkPaths } = useNavigation();
               <router-link to="/login">Login</router-link>
             </li>
           </ul>
-
-          <a :href="CONTACT_FORM_URL" class="contact-support-link">
-            Need help? Visit Support
-          </a>
         </div>
+
+        <ul class="default-links">
+          <li>
+            <a :href="STATUS_PAGE_URL" target="_blank" rel="noopener noreferrer">
+              Status
+            </a>
+          </li>
+          <li>
+            <a :href="CONTACT_FORM_URL" target="_blank" rel="noopener noreferrer">
+              Need help? Visit Support
+            </a>
+          </li>
+          <li>
+            <a :href="IDEAS_PAGE_URL" target="_blank" rel="noopener noreferrer">
+              Ideas?
+            </a>
+          </li>
+        </ul>
       </nav>
     </template>
 
@@ -57,11 +71,17 @@ const { navLinkPaths } = useNavigation();
   display: flex;
   flex-direction: column;
   align-items: start;
-  justify-content: space-between;
+  gap: 1.75rem;
 
-  img {
-    align-self: start;
-    margin-block-end: 2rem;
+  .top-row {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    width: 100%;
+
+    img {
+      margin-block-end: 2rem;
+    }
   }
 
   ul {
@@ -75,33 +95,55 @@ const { navLinkPaths } = useNavigation();
     color: white;
   }
 
-  .contact-support-link {
-    display: block;
+  .default-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     font-family: Inter, sans-serif;
+    font-weight: 400;
     font-size: 0.6875rem;
-    font-weight: normal;
-    text-decoration: underline;
-    margin-block-start: 1.5rem;
-    color: white;
+    text-transform: none;
+    color: #d4d4d8; /* TODO: Update this once we source colours from services-ui after 2.x */
+
+    li {
+      display: flex;
+      align-items: center;
+
+      &:not(:last-child)::after {
+        content: '|';
+        margin-inline-start: 0.5rem;
+      }
+    }
+
+    a {
+      text-decoration: underline;
+      color: inherit;
+    }
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 48rem) {
   .send-navigation {
-    flex-direction: row;
-    align-items: center;
+    gap: 0.75rem;
 
-    img {
-      margin-block-end: 0;
+    .top-row {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      height: 61px;
+
+      img {
+        margin-block-end: 0;
+      }
+    }
+
+    .default-links {
+      width: 100%;
+      justify-content: flex-end;
     }
 
     ul {
       gap: 3rem;
-      justify-content: end;
-    }
-
-    .contact-support-link {
-      text-align: end;
     }
   }
 }

@@ -30,7 +30,7 @@ export class DashboardPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.sendHdrLogoLink = this.page.locator('header img[alt="Send"]');
+    this.sendHdrLogoLink = this.page.locator('header').getByRole('img', { name: 'Send', exact: true });
     this.sendHdrDashboardLink = this.page.getByTestId('navlink-dashboard');
     this.sendHdrEncryptedLink = this.page.getByTestId('navlink-encrypted-files');
     this.sendHdrSecurityLink = this.page.getByTestId('navlink-security-&-privacy');

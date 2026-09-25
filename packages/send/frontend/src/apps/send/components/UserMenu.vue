@@ -116,14 +116,9 @@ onBeforeUnmount(() => {
   border: none;
   cursor: pointer;
 
-  .avatar {
-    & :first-child {
-      color: var(--colour-ti-base-dark);
-    }
-  }
-
   .dropdown {
     position: absolute;
+    top: 100%;
     right: 0;
     margin-top: 0.5rem;
     background: var(--colour-ti-base-light);
