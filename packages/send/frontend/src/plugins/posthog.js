@@ -5,6 +5,117 @@ import posthog from 'posthog-js';
 
 let initialized = false;
 
+/*
+Keep PostHog's consent flag in memory, never in `window.localStorage`
+(issue #1278 / bmo#2008431).
+
+In Thunderbird every add-on page — including the background page — runs on
+the parent-process main thread, and the first synchronous `localStorage`
+access there blocks until Gecko's LocalStorage/QuotaManager machinery has
+initialized. On profiles where that initialization is slow or failing, the
+block lasts until the slow-script killer fires (~100 s) and freezes the
+whole Thunderbird UI during startup.
+
+posthog-js is the only code that puts such an access on the startup path:
+importing it schedules a consent check at `DOMContentLoaded` on its default
+instance, and its ConsentManager can persist consent only in localStorage or
+cookies — every check re-reads the store, and even the cookie mode reads
+localStorage once to migrate old values. No `posthog.init` option prevents
+that first read, so the fix is to replace the instance's consent manager
+with this in-memory equivalent (same semantics as posthog-js's
+`ConsentManager` for our non-cookieless configuration).
+
+Dropping consent persistence loses nothing: consent is re-derived on every
+startup from the Thunderbird telemetry preference / app settings (see the
+`setPosthogConsent` callers), so PostHog's own stored copy was redundant.
+
+The replacement must be in place before `DOMContentLoaded` fires; it is,
+because every bundle that uses PostHog imports this module statically.
+`posthog.consent-storage.test.ts` pins the no-localStorage invariant, so a
+posthog-js upgrade that changes these internals fails loudly instead of
+quietly reintroducing the hang.
+*/
+function memoryConsent(instance) {
+  // null = no explicit choice yet, true = opted in, false = opted out.
+  let stored = null;
+  return {
+    // ConsentStatus semantics: -1 pending, 0 denied, 1 granted.
+    get consent() {
+      return stored === null ? -1 : stored ? 1 : 0;
+    },
+    isRejected() {
+      return (
+        stored === false ||
+        (stored === null && !!instance.config?.opt_out_capturing_by_default)
+      );
+    },
+    isOptedOut() {
+      return this.isRejected();
+    },
+    isOptedIn() {
+      return !this.isOptedOut();
+    },
+    isExplicitlyOptedOut() {
+      return stored === false;
+    },
+    optInOut(isOptedIn) {
+      stored = !!isOptedIn;
+    },
+    reset() {
+      stored = null;
+    },
+  };
+}
+
+// defineProperty rather than assignment so this also shadows a
+// prototype-level accessor, should posthog-js ever define one.
+function installMemoryConsent(instance) {
+  Object.defineProperty(instance, 'consent', {
+    configurable: true,
+    writable: true,
+    value: memoryConsent(instance),
+  });
+}
+
+installMemoryConsent(posthog);
+
+/*
+`posthog.init()` itself also reads `window.localStorage` — a storage support
+probe plus a `ph_debug` lookup — with no option to turn either off, which is
+the same blocking hazard as the consent reads above. Hide localStorage from
+posthog for the synchronous duration of init(): the probe then fails cleanly,
+posthog-js caches “unsupported” for the rest of the page's lifetime (falling
+back to its inert-in-extension-pages cookie store), and with
+`persistence: 'memory'` nothing else ever asks for it. Code that assumes
+localStorage exists (posthog's survey reset, for example) gets an inert
+stand-in instead of an exception. The page's own localStorage is restored,
+untouched, before this returns.
+*/
+const inertStorage = {
+  getItem: () => null,
+  setItem: () => undefined,
+  removeItem: () => undefined,
+};
+
+function withLocalStorageHidden(fn) {
+  const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    get: () => inertStorage,
+  });
+  try {
+    return fn();
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'localStorage', original);
+    } else {
+      // The descriptor lives on Window.prototype; removing the own property
+      // exposes it again.
+      delete window.localStorage;
+    }
+  }
+}
+
 // Share/locked routes carry a bearer secret in the path
 // (`/share/:linkId`, `/locked/:linkId`). PostHog's default URL/pageview/
 // autocapture properties would otherwise leak that secret to analytics.
@@ -99,21 +210,26 @@ function initPosthog() {
   if (!config.posthogProjectKey) {
     return;
   }
-  posthog.init(config.posthogProjectKey, {
-    api_host: config.posthogHost,
-    persistence: 'memory',
-    // Redact the share-link secret from URL properties before any event is
-    // sent (issue #1254).
-    before_send: scrubSensitiveUrls,
-    // Reduce capture surface: no DOM autocapture, and no automatic pageview
-    // events. Nothing in the app depends on the auto `$pageview` event, so
-    // disabling it removes another path that would carry the raw URL.
-    autocapture: false,
-    capture_pageview: false,
-  });
+  withLocalStorageHidden(() =>
+    posthog.init(config.posthogProjectKey, {
+      api_host: config.posthogHost,
+      persistence: 'memory',
+      // Redact the share-link secret from URL properties before any event is
+      // sent (issue #1254).
+      before_send: scrubSensitiveUrls,
+      // Reduce capture surface: no DOM autocapture, and no automatic pageview
+      // events. Nothing in the app depends on the auto `$pageview` event, so
+      // disabling it removes another path that would carry the raw URL.
+      autocapture: false,
+      capture_pageview: false,
+    })
+  );
   posthog.register({
     service: 'send',
   });
+  // init() must not resurrect the storage-backed ConsentManager; the caller
+  // (setPosthogConsent) applies the opt-in right after this returns.
+  installMemoryConsent(posthog);
   initialized = true;
 }
 
@@ -131,10 +247,16 @@ function initPosthog() {
 export function setPosthogConsent(enabled) {
   if (enabled) {
     initPosthog();
-    posthog.opt_in_capturing();
+    withLocalStorageHidden(() => posthog.opt_in_capturing());
   } else if (initialized) {
-    posthog.opt_out_capturing();
-    posthog.reset();
+    // posthog.reset() clears the consent state along with the identity, so it
+    // must run before opt-out — the other way around, the opt-out is
+    // immediately erased and capture resumes. It also wipes survey state
+    // straight out of localStorage, hence the shadow.
+    withLocalStorageHidden(() => {
+      posthog.reset();
+      posthog.opt_out_capturing();
+    });
   }
 }
 
