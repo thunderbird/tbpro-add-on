@@ -18,12 +18,12 @@ whole Thunderbird UI during startup.
 
 posthog-js is the only code that puts such an access on the startup path:
 importing it schedules a consent check at `DOMContentLoaded` on its default
-instance, and its ConsentManager can persist consent only in localStorage or
-cookies — every check re-reads the store, and even the cookie mode reads
-localStorage once to migrate old values. No `posthog.init` option prevents
-that first read, so the fix is to replace the instance's consent manager
-with this in-memory equivalent (same semantics as posthog-js's
-`ConsentManager` for our non-cookieless configuration).
+instance, and its ConsentManager persists consent in a localStorage- or
+cookie-backed store — with our default `opt_out_capturing_persistence_type`
+that store is localStorage, which every consent check re-reads. No
+`posthog.init` option prevents that read, so the fix is to replace the
+instance's consent manager with this in-memory equivalent (same semantics as
+posthog-js's `ConsentManager` for our non-cookieless configuration).
 
 Dropping consent persistence loses nothing: consent is re-derived on every
 startup from the Thunderbird telemetry preference / app settings (see the
