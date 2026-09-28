@@ -1,28 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * Regression test for issue #1278 (bmo#2008431: Thunderbird startup hung for
- * ~100 s with TB Pro enabled).
- *
- * Every add-on page runs on Thunderbird's parent-process main thread, where
- * the first synchronous `window.localStorage` access blocks until Gecko's
- * LocalStorage/QuotaManager machinery has initialized — up to the ~100 s
- * slow-script timeout on profiles where that initialization is slow or
- * failing, freezing the whole UI. posthog-js schedules a consent check at
- * `DOMContentLoaded` the moment it is imported, and its ConsentManager
- * persists the opt-in/out flag in localStorage (its cookie mode still reads
- * localStorage once to migrate old values), so any consent activity touches
- * `window.localStorage`.
- *
- * `plugins/posthog.js` replaces the default instance's consent manager with
- * an in-memory one. This suite pins the invariant that matters: with the
- * REAL posthog-js loaded (mocking it would hide the regression), neither
- * importing the plugin, nor the library's own DOMContentLoaded hook, nor
- * init/opt-in/opt-out ever touch `window.localStorage`.
+ * Issue #1278: PostHog must never touch `window.localStorage` — synchronous
+ * reads on Thunderbird's parent-process main thread froze startup for ~100 s.
+ * Loads the REAL posthog-js (a mock would hide the regression) and asserts
+ * zero localStorage accesses across import, DOMContentLoaded, init, opt-in,
+ * and opt-out.
  */
 
-// A configured project key so setPosthogConsent(true) really runs
-// posthog.init(). Only the app config is mocked.
+// A real-looking project key so setPosthogConsent(true) actually runs init().
 vi.mock('@send-frontend/config', () => ({
   default: {
     posthogProjectKey: 'phc_test_key',
@@ -30,8 +16,7 @@ vi.mock('@send-frontend/config', () => ({
   },
 }));
 
-// posthog.init() fires config/flag requests in the background; keep the test
-// hermetic. The stub stays file-scoped — the jsdom env dies with the file.
+// Keep init()'s background config/flag requests hermetic.
 vi.stubGlobal(
   'fetch',
   vi.fn(async () => new Response('{}', { status: 200 }))
@@ -46,9 +31,8 @@ let localStorageTouches: string[] = [];
 
 beforeEach(() => {
   localStorageTouches = [];
-  // Any access to `window.localStorage` is the bug: in Thunderbird it can
-  // block the parent main thread for ~100 s. Record every touch (with a
-  // stack, so a failure names the culprit) and hand back an inert stub.
+  // Record every localStorage access (with a stack naming the culprit) and
+  // hand back an inert stub.
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
     get() {
@@ -72,9 +56,9 @@ afterEach(() => {
 });
 
 /**
- * Import a fresh copy of the plugin the way an add-on page does: during page
- * load (readyState 'loading', so posthog-js defers its hook), then fire
- * DOMContentLoaded — the exact moment the startup hang happened.
+ * Import a fresh plugin the way an add-on page does: during page load
+ * (readyState 'loading'), then fire DOMContentLoaded — the moment the
+ * startup hang happened.
  */
 async function loadPluginDuringPageLoad() {
   vi.resetModules();

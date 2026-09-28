@@ -6,34 +6,12 @@ import posthog from 'posthog-js';
 let initialized = false;
 
 /*
-Keep PostHog's consent flag in memory, never in `window.localStorage`
-(issue #1278 / bmo#2008431).
-
-In Thunderbird every add-on page — including the background page — runs on
-the parent-process main thread, and the first synchronous `localStorage`
-access there blocks until Gecko's LocalStorage/QuotaManager machinery has
-initialized. On profiles where that initialization is slow or failing, the
-block lasts until the slow-script killer fires (~100 s) and freezes the
-whole Thunderbird UI during startup.
-
-posthog-js is the only code that puts such an access on the startup path:
-importing it schedules a consent check at `DOMContentLoaded` on its default
-instance, and its ConsentManager persists consent in a localStorage- or
-cookie-backed store — with our default `opt_out_capturing_persistence_type`
-that store is localStorage, which every consent check re-reads. No
-`posthog.init` option prevents that read, so the fix is to replace the
-instance's consent manager with this in-memory equivalent (same semantics as
-posthog-js's `ConsentManager` for our non-cookieless configuration).
-
-Dropping consent persistence loses nothing: consent is re-derived on every
-startup from the Thunderbird telemetry preference / app settings (see the
-`setPosthogConsent` callers), so PostHog's own stored copy was redundant.
-
-The replacement must be in place before `DOMContentLoaded` fires; it is,
-because every bundle that uses PostHog imports this module statically.
-`posthog.consent-storage.test.ts` pins the no-localStorage invariant, so a
-posthog-js upgrade that changes these internals fails loudly instead of
-quietly reintroducing the hang.
+PostHog must never touch `window.localStorage`: on Thunderbird's
+parent-process main thread a synchronous localStorage read can freeze
+startup for ~100 s (issue #1278). posthog-js reads/writes consent through
+localStorage with no way to disable that, so its ConsentManager is replaced
+with this in-memory equivalent; consent is re-derived from the Thunderbird
+telemetry preference on every startup, so nothing is lost.
 */
 function memoryConsent(instance) {
   // null = no explicit choice yet, true = opted in, false = opted out.
@@ -67,8 +45,7 @@ function memoryConsent(instance) {
   };
 }
 
-// defineProperty rather than assignment so this also shadows a
-// prototype-level accessor, should posthog-js ever define one.
+// defineProperty so a prototype-level accessor would be shadowed too.
 function installMemoryConsent(instance) {
   Object.defineProperty(instance, 'consent', {
     configurable: true,
@@ -79,18 +56,9 @@ function installMemoryConsent(instance) {
 
 installMemoryConsent(posthog);
 
-/*
-`posthog.init()` itself also reads `window.localStorage` — a storage support
-probe plus a `ph_debug` lookup — with no option to turn either off, which is
-the same blocking hazard as the consent reads above. Hide localStorage from
-posthog for the synchronous duration of init(): the probe then fails cleanly,
-posthog-js caches “unsupported” for the rest of the page's lifetime (falling
-back to its inert-in-extension-pages cookie store), and with
-`persistence: 'memory'` nothing else ever asks for it. Code that assumes
-localStorage exists (posthog's survey reset, for example) gets an inert
-stand-in instead of an exception. The page's own localStorage is restored,
-untouched, before this returns.
-*/
+// posthog.init() and reset() also read localStorage directly (support
+// probe, `ph_debug`, survey state) with no way to disable it, so every
+// posthog entry point runs with localStorage hidden behind an inert stub.
 const inertStorage = {
   getItem: () => null,
   setItem: () => undefined,
@@ -109,8 +77,7 @@ function withLocalStorageHidden(fn) {
     if (original) {
       Object.defineProperty(window, 'localStorage', original);
     } else {
-      // The descriptor lives on Window.prototype; removing the own property
-      // exposes it again.
+      // Re-expose the Window.prototype accessor.
       delete window.localStorage;
     }
   }
@@ -227,8 +194,7 @@ function initPosthog() {
   posthog.register({
     service: 'send',
   });
-  // init() must not resurrect the storage-backed ConsentManager; the caller
-  // (setPosthogConsent) applies the opt-in right after this returns.
+  // init() rebuilds the ConsentManager; reinstall the in-memory one.
   installMemoryConsent(posthog);
   initialized = true;
 }
@@ -249,10 +215,7 @@ export function setPosthogConsent(enabled) {
     initPosthog();
     withLocalStorageHidden(() => posthog.opt_in_capturing());
   } else if (initialized) {
-    // posthog.reset() clears the consent state along with the identity, so it
-    // must run before opt-out — the other way around, the opt-out is
-    // immediately erased and capture resumes. It also wipes survey state
-    // straight out of localStorage, hence the shadow.
+    // reset() clears consent too, so it must run before the opt-out.
     withLocalStorageHidden(() => {
       posthog.reset();
       posthog.opt_out_capturing();
