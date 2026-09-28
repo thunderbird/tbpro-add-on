@@ -9,6 +9,11 @@ export const useNavigation = () => {
     rootFolderId ? `/send/folder/${rootFolderId}` : '/send'
   );
 
+  const settingsLink = {
+    path: '/send/security-and-privacy',
+    label: 'Security & Privacy',
+  };
+
   const navLinkPaths = [
     {
       path: isRunningInsideThunderbird.value
@@ -17,10 +22,11 @@ export const useNavigation = () => {
       label: 'Dashboard',
     },
     { path: rootFolderIdValue.value, label: 'Encrypted Files' },
-    { path: '/send/security-and-privacy', label: 'Security & Privacy' },
+    settingsLink,
   ];
 
   return {
     navLinkPaths,
+    settingsLink,
   };
 };
