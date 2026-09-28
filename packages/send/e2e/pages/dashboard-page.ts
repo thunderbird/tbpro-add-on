@@ -2,7 +2,7 @@ import { expect, type Page, type Locator } from '@playwright/test';
 
 import { TIMEOUT_1_SECOND } from '../const/const';
 import { EncryptedFilesPage } from './encrypted-files-page';
-import { SecurityPrivacyPage } from './security-privacy-page';
+import { SettingsPage } from './settings-page';
 import { expectSupportLinks } from './support-links';
 
 export class DashboardPage {
@@ -114,7 +114,7 @@ export class DashboardPage {
   async goToSecurityAndPrivacyFromDashboard() {
     await this.encryptionKeyButton.click();
     await this.page.waitForTimeout(TIMEOUT_1_SECOND);
-    await new SecurityPrivacyPage(this.page).expectManageKeysVisible();
+    await new SettingsPage(this.page).expectManageKeysVisible();
   }
 
   async goToDashboardFromHeader() {
@@ -128,8 +128,8 @@ export class DashboardPage {
     await this.deleteSendDataLink.click();
     await this.page.waitForTimeout(TIMEOUT_1_SECOND);
 
-    const securityPrivacyPage = new SecurityPrivacyPage(this.page);
-    await securityPrivacyPage.expectDeleteSendDataCardVisible();
-    await securityPrivacyPage.cancelDeleteSendData();
+    const settingsPage = new SettingsPage(this.page);
+    await settingsPage.expectDeleteSendDataCardVisible();
+    await settingsPage.cancelDeleteSendData();
   }
 }

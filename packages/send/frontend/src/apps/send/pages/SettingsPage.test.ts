@@ -2,7 +2,7 @@ import { FORCE_CLOSE_WINDOW } from '@send-frontend/lib/const';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, type Ref } from 'vue';
-import SecurityAndPrivacyPage from './SecurityAndPrivacyPage.vue';
+import SettingsPage from './SettingsPage.vue';
 
 const { state } = vi.hoisted(() => ({
   state: {
@@ -50,9 +50,9 @@ const stubs = {
   SupportBox: true,
 };
 
-const mountPage = () => mount(SecurityAndPrivacyPage, { global: { stubs } });
+const mountPage = () => mount(SettingsPage, { global: { stubs } });
 
-describe('SecurityAndPrivacyPage.vue', () => {
+describe('SettingsPage.vue', () => {
   // Components watch the shared keysInLocalStorage ref, so unmount between tests
   // to stop a prior test's watcher from firing on the next test's ref changes.
   enableAutoUnmount(afterEach);
