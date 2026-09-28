@@ -30,7 +30,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
 
   const clickAndWait = await clickAndWaitForIdleBuilder(page);
 
-  const profileButton = page.getByTestId("navlink-encrypted-files");
+  const profileButton = page.getByTestId("navlink-manage-files");
   await page.waitForSelector(folderRowSelector);
   await profileButton.click();
 
@@ -94,7 +94,7 @@ export async function share_links({ page }: PlaywrightProps) {
   } = fileLocators(page);
   const clickAndWait = await clickAndWaitForIdleBuilder(page);
 
-  const profileButton = page.getByTestId("navlink-encrypted-files");
+  const profileButton = page.getByTestId("navlink-manage-files");
   await page.waitForSelector(folderRowSelector);
   await clickAndWait(profileButton);
 

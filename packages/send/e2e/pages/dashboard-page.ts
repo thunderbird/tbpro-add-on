@@ -32,7 +32,7 @@ export class DashboardPage {
     this.page = page;
     this.sendHdrLogoLink = this.page.locator('header').getByRole('img', { name: 'Send', exact: true });
     this.sendHdrDashboardLink = this.page.getByTestId('navlink-dashboard');
-    this.sendHdrEncryptedLink = this.page.getByTestId('navlink-encrypted-files');
+    this.sendHdrEncryptedLink = this.page.getByTestId('navlink-manage-files');
     this.sendHdrSecurityLink = this.page.getByTestId('navlink-settings');
     this.userAvatar = this.page.getByTestId('avatar-default');
     this.userAvatarMenuBtn = this.page.locator('aside.avatar.regular');
@@ -41,7 +41,7 @@ export class DashboardPage {
     this.userName = this.page.locator('.content-layout .name');
     this.userEmail = this.page.locator('.content-layout .email');
     this.sendStorageHeading = this.page.getByRole('heading', { name: 'Send Storage' });
-    this.encryptedFilesHeading = this.page.getByRole('heading', { name: 'Encrypted Files' });
+    this.encryptedFilesHeading = this.page.getByRole('heading', { name: 'Manage Files' });
     this.accessYourFilesButton = this.page.getByRole('button', { name: 'Access Your Files' });
     this.securityPrivacyHeading = this.page
       .getByRole('heading', { name: 'Security & Privacy' })

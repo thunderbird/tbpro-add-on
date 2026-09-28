@@ -21,15 +21,21 @@ export const useNavigation = () => {
     label: 'Dashboard',
   };
 
+  const filesLink = {
+    path: rootFolderIdValue.value,
+    label: 'Manage Files',
+  };
+
   const navLinkPaths = [
     dashboardLink,
-    { path: rootFolderIdValue.value, label: 'Encrypted Files' },
+    filesLink,
     settingsLink,
   ];
 
   return {
     navLinkPaths,
     dashboardLink,
+    filesLink,
     settingsLink,
   };
 };

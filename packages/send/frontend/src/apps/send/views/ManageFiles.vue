@@ -8,34 +8,29 @@ import KeysTemplate from './KeysTemplate.vue';
 
 const router = useRouter();
 const { backupData } = useBackupAndRestore();
-const { navLinkPaths } = useNavigation();
-const encryptedFilesPath = computed(() => {
-  const encryptedFilesLink = navLinkPaths.find(
-    (link) => link.label === 'Encrypted Files'
-  );
-  return encryptedFilesLink ? encryptedFilesLink.path : '/send/encrypted-files';
-});
+const { filesLink } = useNavigation();
+const manageFilesPath = computed(() => filesLink.path);
 
-const canNavigateToEncryptedFiles = computed(
+const canNavigateToManageFiles = computed(
   () => backupData.value !== 'SHOULD_RESTORE_FROM_BACKUP'
 );
 
-function handleNavigateToEncryptedFiles() {
-  // Navigate to the Encrypted Files page
-  router.push(encryptedFilesPath.value);
+function handleNavigateToManageFiles() {
+  // Navigate to the Manage Files page
+  router.push(manageFilesPath.value);
 }
 </script>
 
 <template>
   <KeysTemplate
-    ><h2 class="title">Encrypted Files</h2>
+    ><h2 class="title">Manage Files</h2>
     <p class="description">
       Open or manage your encrypted file storage in one secure place.
     </p>
     <BaseButton
-      :disabled="!canNavigateToEncryptedFiles"
+      :disabled="!canNavigateToManageFiles"
       class="recover-button"
-      @click="handleNavigateToEncryptedFiles"
+      @click="handleNavigateToManageFiles"
     >
       Access Your Files
     </BaseButton>

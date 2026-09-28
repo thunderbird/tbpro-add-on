@@ -6,7 +6,7 @@ import { onMounted, ref } from 'vue';
 import { useBackupAndRestore } from '../send/composables/useBackupAndRestore';
 import AccessLocked from '../send/views/AccessLocked.vue';
 import BackupKeys from '../send/views/BackupKeys.vue';
-import EncryptedFiles from '../send/views/EncryptedFiles.vue';
+import ManageFiles from '../send/views/ManageFiles.vue';
 import ManageEncryptionKeys from '../send/views/ManageEncryptionKeys.vue';
 import SecurityAndPrivacyV2 from '../send/views/SecurityAndPrivacyV2.vue';
 import StorageBar from '../send/views/StorageBar.vue';
@@ -64,7 +64,7 @@ const {
 
     <div class="row">
       <div class="left-column column-gap">
-        <EncryptedFiles />
+        <ManageFiles />
         <!-- GOOD TO GO (user has restored keys from backup) -->
         <SecurityAndPrivacyV2
           v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
