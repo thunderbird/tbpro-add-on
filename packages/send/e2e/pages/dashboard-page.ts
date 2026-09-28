@@ -33,7 +33,7 @@ export class DashboardPage {
     this.sendHdrLogoLink = this.page.locator('header').getByRole('img', { name: 'Send', exact: true });
     this.sendHdrDashboardLink = this.page.getByTestId('navlink-dashboard');
     this.sendHdrEncryptedLink = this.page.getByTestId('navlink-encrypted-files');
-    this.sendHdrSecurityLink = this.page.getByTestId('navlink-security-&-privacy');
+    this.sendHdrSecurityLink = this.page.getByTestId('navlink-settings');
     this.userAvatar = this.page.getByTestId('avatar-default');
     this.userAvatarMenuBtn = this.page.locator('aside.avatar.regular');
     this.logoutMenuBtn = this.page.getByRole('button', { name: 'Logout', exact: true });
