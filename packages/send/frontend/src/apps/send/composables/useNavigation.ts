@@ -11,22 +11,25 @@ export const useNavigation = () => {
 
   const settingsLink = {
     path: '/send/security-and-privacy',
-    label: 'Security & Privacy',
+    label: 'Settings',
+  };
+
+  const dashboardLink = {
+    path: isRunningInsideThunderbird.value
+      ? '/send/profile?showDashboard=true'
+      : '/send/profile',
+    label: 'Dashboard',
   };
 
   const navLinkPaths = [
-    {
-      path: isRunningInsideThunderbird.value
-        ? '/send/profile?showDashboard=true'
-        : '/send/profile',
-      label: 'Dashboard',
-    },
+    dashboardLink,
     { path: rootFolderIdValue.value, label: 'Encrypted Files' },
     settingsLink,
   ];
 
   return {
     navLinkPaths,
+    dashboardLink,
     settingsLink,
   };
 };

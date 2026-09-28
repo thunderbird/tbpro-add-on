@@ -23,10 +23,12 @@ import { useNavigation } from '../composables/useNavigation';
 const { currentRoute } = useRouter();
 const { isLoggedIn } = useAuth();
 const { user } = useUserStore();
-const { navLinkPaths, settingsLink } = useNavigation();
+const { navLinkPaths, dashboardLink, settingsLink } = useNavigation();
 const prefersDark = usePreferredDark();
 
-const primaryNavLinks = navLinkPaths.filter((link) => link !== settingsLink);
+const primaryNavLinks = navLinkPaths.filter(
+  (link) => link !== dashboardLink && link !== settingsLink
+);
 const isSettingsActive = computed(() =>
   currentRoute.value.path.startsWith(settingsLink.path)
 );
@@ -61,7 +63,11 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
 
 <template>
   <header :class="{ dark: prefersDark }">
-    <router-link class="send-logo" to="/">
+    <router-link
+      class="send-logo"
+      data-testid="navlink-dashboard"
+      :to="isLoggedIn ? dashboardLink.path : '/'"
+    >
       <send-logo :force-dark="prefersDark" />
     </router-link>
 
