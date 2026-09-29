@@ -189,13 +189,14 @@ function initPosthog() {
       // disabling it removes another path that would carry the raw URL.
       autocapture: false,
       capture_pageview: false,
+      // Send reads no feature flags. This also stops the flag refreshes
+      // PostHog would otherwise keep sending, with the project token and
+      // device id, after the user opted out: one from reset() (part of
+      // opting out) and one every five minutes from its refresh timer.
+      // Remote config (web vitals, heatmaps, endpoint) is unaffected.
+      advanced_disable_feature_flags: true,
     })
   );
-  posthog.register({
-    service: 'send',
-  });
-  // init() rebuilds the ConsentManager; reinstall the in-memory one.
-  installMemoryConsent(posthog);
   initialized = true;
 }
 
@@ -213,7 +214,12 @@ function initPosthog() {
 export function setPosthogConsent(enabled) {
   if (enabled) {
     initPosthog();
-    withLocalStorageHidden(() => posthog.opt_in_capturing());
+    withLocalStorageHidden(() => {
+      // Registered on every opt-in, not once at init: reset() (part of
+      // opting out) clears registered properties.
+      posthog.register({ service: 'send' });
+      posthog.opt_in_capturing();
+    });
   } else if (initialized) {
     // reset() clears consent too, so it must run before the opt-out.
     withLocalStorageHidden(() => {

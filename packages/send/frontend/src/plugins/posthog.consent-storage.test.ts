@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * reads on Thunderbird's parent-process main thread froze startup for ~100 s.
  * Loads the REAL posthog-js (a mock would hide the regression) and asserts
  * zero localStorage accesses across import, DOMContentLoaded, init, opt-in,
- * and opt-out.
+ * and opt-out. Also pins two opt-out behaviours the plugin promises: opting
+ * out sends nothing, and opting back in restores the `service` tag.
  */
 
 // A real-looking project key so setPosthogConsent(true) actually runs init().
@@ -93,5 +94,25 @@ describe('posthog consent never touches window.localStorage (issue #1278)', () =
     expect(plugin.rest.has_opted_out_capturing()).toBe(false);
     setPosthogConsent(false);
     expect(plugin.rest.has_opted_out_capturing()).toBe(true);
+  });
+
+  it('opting out sends no request', async () => {
+    const { setPosthogConsent } = await loadPluginDuringPageLoad();
+    setPosthogConsent(true);
+    vi.mocked(fetch).mockClear();
+    setPosthogConsent(false);
+    // reset() schedules its feature-flag reload on a short timer.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('the service tag survives an opt-out/opt-in cycle', async () => {
+    const { default: plugin, setPosthogConsent } =
+      await loadPluginDuringPageLoad();
+    setPosthogConsent(true);
+    expect(plugin.rest.get_property('service')).toBe('send');
+    setPosthogConsent(false);
+    setPosthogConsent(true);
+    expect(plugin.rest.get_property('service')).toBe('send');
   });
 });
