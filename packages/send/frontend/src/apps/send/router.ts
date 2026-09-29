@@ -43,7 +43,7 @@ import ForceClose from './pages/ForceClose.vue';
 import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
 import PromptVerification from './pages/PromptVerification.vue';
-import SecurityAndPrivacyPage from './pages/SecurityAndPrivacyPage.vue';
+import SettingsPage from './pages/SettingsPage.vue';
 import VerifyPage from './pages/VerifyPage.vue';
 import WelcomePage from './pages/WelcomePage.vue';
 import { useStatusStore } from './stores/status-store';
@@ -157,7 +157,7 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'security-and-privacy',
-        component: SecurityAndPrivacyPage,
+        component: SettingsPage,
         meta: {
           [META_OPTIONS.requiresValidToken]: true,
           [META_OPTIONS.autoRestoresKeys]: true,

@@ -59,7 +59,7 @@ const closeDeleteCard = () => {
 </script>
 <template>
   <div class="container">
-    <h1 class="title top">Security & Privacy</h1>
+    <h1 class="title top">Settings</h1>
     <div class="row" :class="{ single: showDeleteCard }">
       <!-- Backup and Restore Section -->
       <section>

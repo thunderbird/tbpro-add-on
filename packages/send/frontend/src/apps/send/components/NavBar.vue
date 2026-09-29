@@ -4,6 +4,7 @@ import {
   AppointmentIcon,
   MailIcon,
   SendIcon,
+  SettingsIcon,
   type AppDrawerApp,
 } from '@thunderbirdops/services-ui';
 import {
@@ -22,8 +23,15 @@ import { useNavigation } from '../composables/useNavigation';
 const { currentRoute } = useRouter();
 const { isLoggedIn } = useAuth();
 const { user } = useUserStore();
-const { navLinkPaths } = useNavigation();
+const { navLinkPaths, dashboardLink, settingsLink } = useNavigation();
 const prefersDark = usePreferredDark();
+
+const primaryNavLinks = navLinkPaths.filter(
+  (link) => link !== dashboardLink && link !== settingsLink
+);
+const isSettingsActive = computed(() =>
+  currentRoute.value.path.startsWith(settingsLink.path)
+);
 
 const apps: AppDrawerApp[] = [
   { id: 'mail', name: 'Mail', icon: MailIcon, href: THUNDERMAIL_URL },
@@ -55,7 +63,11 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
 
 <template>
   <header :class="{ dark: prefersDark }">
-    <router-link class="send-logo" to="/">
+    <router-link
+      class="send-logo"
+      data-testid="navlink-dashboard"
+      :to="isLoggedIn ? dashboardLink.path : '/'"
+    >
       <send-logo :force-dark="prefersDark" />
     </router-link>
 
@@ -65,7 +77,7 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
         <ul>
           <li>
             <router-link
-              v-for="navLink in navLinkPaths"
+              v-for="navLink in primaryNavLinks"
               :key="navLink.path"
               :data-testid="`navlink-${navLink.label.toLowerCase().replace(/\s+/g, '-')}`"
               :to="navLink.path"
@@ -80,6 +92,15 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
       </nav>
 
       <div class="nav-actions">
+        <router-link
+          :to="settingsLink.path"
+          class="nav-settings-button"
+          data-testid="navlink-settings"
+          :class="{ active: isSettingsActive }"
+          :aria-label="settingsLink.label"
+        >
+          <settings-icon aria-hidden="true" />
+        </router-link>
         <app-drawer :apps="apps" />
         <user-menu :username="avatarUsername" />
       </div>
@@ -118,8 +139,10 @@ header {
     align-items: center;
     gap: 0.25rem;
 
+    .nav-settings-button,
     :deep(.app-drawer__button),
-    .user-menu {
+    > .user-menu {
+      box-sizing: border-box;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -128,9 +151,19 @@ header {
       padding: 0;
     }
 
-    :deep(.app-drawer__button svg) {
+    :deep(.app-drawer__button svg),
+    .nav-settings-button svg {
       width: 1.5rem;
       height: 1.5rem;
+    }
+
+    .nav-settings-button {
+      /* TODO: Update these colours once we source them from services-ui */
+      color: #18181b;
+
+      &.active {
+        color: var(--colour-ti-highlight);
+      }
     }
   }
 
@@ -143,7 +176,7 @@ header {
   }
 
   /* TODO: Update these colours once we source them from services-ui */
-  a:not(.send-logo) {
+  nav a {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -185,11 +218,19 @@ header.dark {
     color: #d4d4d8;
   }
 
+  .nav-actions .nav-settings-button {
+    color: var(--colour-ti-secondary);
+
+    &.active {
+      color: var(--colour-ti-highlight);
+    }
+  }
+
   :deep(.avatar .initials) {
     color: var(--colour-ti-base-dark);
   }
 
-  a:not(.send-logo) {
+  nav a {
     color: #d4d4d8;
 
     &.active {

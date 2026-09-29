@@ -15,7 +15,7 @@ declare global {
   }
 }
 
-export class SecurityPrivacyPage {
+export class SettingsPage {
   readonly page: Page;
   readonly recoverAccessHdr: Locator;
   readonly restoreKeyInput: Locator;
@@ -50,7 +50,7 @@ export class SecurityPrivacyPage {
     this.recoverAccessHdr = page.getByText('Recover Access with Your Encryption Key', { exact: true });
     this.restoreKeyInput = page.getByTestId('restore-key-input');
     this.restoreKeyContinueBtn = page.getByTestId('restore-keys-button');
-    this.pageHeading = page.getByRole('heading', { name: 'Security & Privacy' }).first();
+    this.pageHeading = page.getByRole('heading', { name: 'Settings' }).first();
     this.manageKeyHdr = page.getByText('Manage Encryption Key', { exact: true });
     this.resetKeyHdr = page.getByText('Reset Encryption Key', { exact: true });
     this.keyInput = page.locator('.key-input');

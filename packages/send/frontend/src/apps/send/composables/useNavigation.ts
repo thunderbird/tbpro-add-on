@@ -9,18 +9,33 @@ export const useNavigation = () => {
     rootFolderId ? `/send/folder/${rootFolderId}` : '/send'
   );
 
+  const settingsLink = {
+    path: '/send/security-and-privacy',
+    label: 'Settings',
+  };
+
+  const dashboardLink = {
+    path: isRunningInsideThunderbird.value
+      ? '/send/profile?showDashboard=true'
+      : '/send/profile',
+    label: 'Dashboard',
+  };
+
+  const filesLink = {
+    path: rootFolderIdValue.value,
+    label: 'Manage Files',
+  };
+
   const navLinkPaths = [
-    {
-      path: isRunningInsideThunderbird.value
-        ? '/send/profile?showDashboard=true'
-        : '/send/profile',
-      label: 'Dashboard',
-    },
-    { path: rootFolderIdValue.value, label: 'Encrypted Files' },
-    { path: '/send/security-and-privacy', label: 'Security & Privacy' },
+    dashboardLink,
+    filesLink,
+    settingsLink,
   ];
 
   return {
     navLinkPaths,
+    dashboardLink,
+    filesLink,
+    settingsLink,
   };
 };

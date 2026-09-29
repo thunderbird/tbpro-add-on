@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { TBAcctsPage } from "../pages/tb-accts-page";
 import { DashboardPage } from '../pages/dashboard-page';
-import { SecurityPrivacyPage } from '../pages/security-privacy-page';
+import { SettingsPage } from '../pages/settings-page';
 
 import { 
   TB_SEND_TARGET_ENV,
@@ -47,13 +47,13 @@ export const signInAndRestoreSendKey = async (page: Page) => {
   }
 
   const dashboardPage = new DashboardPage(page);
-  const securityPrivacyPage = new SecurityPrivacyPage(page);
+  const settingsPage = new SettingsPage(page);
 
   // verify we're now on the tb send dashboard, give lots of time as BrowserStack can be slow
   await expect(dashboardPage.sendHdrLogoLink).toBeVisible({ timeout: TIMEOUT_30_SECONDS });
 
   // restore the access key
-  await securityPrivacyPage.restoreAccessKey();
+  await settingsPage.restoreAccessKey();
 }
 
 /**

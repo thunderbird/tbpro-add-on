@@ -32,7 +32,7 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
   await backupKeysButtonOverlay.click();
 
   // look for folder
-  const profileButton = page.getByTestId("navlink-encrypted-files");
+  const profileButton = page.getByTestId("navlink-manage-files");
   await profileButton.click();
 
   await saveStorage(context);
@@ -99,7 +99,7 @@ export async function reset_keys({ page }: PlaywrightProps) {
 
   const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
 
-  const profileButton = page.getByTestId("navlink-encrypted-files");
+  const profileButton = page.getByTestId("navlink-manage-files");
   // Create a new folder
   await page.getByTestId("new-folder-button").click();
 

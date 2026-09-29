@@ -2,7 +2,7 @@ import { expect, type Page, type Locator } from '@playwright/test';
 
 import { TIMEOUT_1_SECOND } from '../const/const';
 import { EncryptedFilesPage } from './encrypted-files-page';
-import { SecurityPrivacyPage } from './security-privacy-page';
+import { SettingsPage } from './settings-page';
 import { expectSupportLinks } from './support-links';
 
 export class DashboardPage {
@@ -32,8 +32,8 @@ export class DashboardPage {
     this.page = page;
     this.sendHdrLogoLink = this.page.locator('header').getByRole('img', { name: 'Send', exact: true });
     this.sendHdrDashboardLink = this.page.getByTestId('navlink-dashboard');
-    this.sendHdrEncryptedLink = this.page.getByTestId('navlink-encrypted-files');
-    this.sendHdrSecurityLink = this.page.getByTestId('navlink-security-&-privacy');
+    this.sendHdrEncryptedLink = this.page.getByTestId('navlink-manage-files');
+    this.sendHdrSecurityLink = this.page.getByTestId('navlink-settings');
     this.userAvatar = this.page.getByTestId('avatar-default');
     this.userAvatarMenuBtn = this.page.locator('aside.avatar.regular');
     this.logoutMenuBtn = this.page.getByRole('button', { name: 'Logout', exact: true });
@@ -41,7 +41,7 @@ export class DashboardPage {
     this.userName = this.page.locator('.content-layout .name');
     this.userEmail = this.page.locator('.content-layout .email');
     this.sendStorageHeading = this.page.getByRole('heading', { name: 'Send Storage' });
-    this.encryptedFilesHeading = this.page.getByRole('heading', { name: 'Encrypted Files' });
+    this.encryptedFilesHeading = this.page.getByRole('heading', { name: 'Manage Files' });
     this.accessYourFilesButton = this.page.getByRole('button', { name: 'Access Your Files' });
     this.securityPrivacyHeading = this.page
       .getByRole('heading', { name: 'Security & Privacy' })
@@ -114,7 +114,7 @@ export class DashboardPage {
   async goToSecurityAndPrivacyFromDashboard() {
     await this.encryptionKeyButton.click();
     await this.page.waitForTimeout(TIMEOUT_1_SECOND);
-    await new SecurityPrivacyPage(this.page).expectManageKeysVisible();
+    await new SettingsPage(this.page).expectManageKeysVisible();
   }
 
   async goToDashboardFromHeader() {
@@ -128,8 +128,8 @@ export class DashboardPage {
     await this.deleteSendDataLink.click();
     await this.page.waitForTimeout(TIMEOUT_1_SECOND);
 
-    const securityPrivacyPage = new SecurityPrivacyPage(this.page);
-    await securityPrivacyPage.expectDeleteSendDataCardVisible();
-    await securityPrivacyPage.cancelDeleteSendData();
+    const settingsPage = new SettingsPage(this.page);
+    await settingsPage.expectDeleteSendDataCardVisible();
+    await settingsPage.cancelDeleteSendData();
   }
 }
