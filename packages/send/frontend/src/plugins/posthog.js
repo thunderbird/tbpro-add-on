@@ -5,6 +5,84 @@ import posthog from 'posthog-js';
 
 let initialized = false;
 
+/*
+PostHog must never touch `window.localStorage`: on Thunderbird's
+parent-process main thread a synchronous localStorage read can freeze
+startup for ~100 s (issue #1278). posthog-js reads/writes consent through
+localStorage with no way to disable that, so its ConsentManager is replaced
+with this in-memory equivalent; consent is re-derived from the Thunderbird
+telemetry preference on every startup, so nothing is lost.
+*/
+function memoryConsent(instance) {
+  // null = no explicit choice yet, true = opted in, false = opted out.
+  let stored = null;
+  return {
+    // ConsentStatus semantics: -1 pending, 0 denied, 1 granted.
+    get consent() {
+      return stored === null ? -1 : stored ? 1 : 0;
+    },
+    isRejected() {
+      return (
+        stored === false ||
+        (stored === null && !!instance.config?.opt_out_capturing_by_default)
+      );
+    },
+    isOptedOut() {
+      return this.isRejected();
+    },
+    isOptedIn() {
+      return !this.isOptedOut();
+    },
+    isExplicitlyOptedOut() {
+      return stored === false;
+    },
+    optInOut(isOptedIn) {
+      stored = !!isOptedIn;
+    },
+    reset() {
+      stored = null;
+    },
+  };
+}
+
+// defineProperty so a prototype-level accessor would be shadowed too.
+function installMemoryConsent(instance) {
+  Object.defineProperty(instance, 'consent', {
+    configurable: true,
+    writable: true,
+    value: memoryConsent(instance),
+  });
+}
+
+installMemoryConsent(posthog);
+
+// posthog.init() and reset() also read localStorage directly (support
+// probe, `ph_debug`, survey state) with no way to disable it, so every
+// posthog entry point runs with localStorage hidden behind an inert stub.
+const inertStorage = {
+  getItem: () => null,
+  setItem: () => undefined,
+  removeItem: () => undefined,
+};
+
+function withLocalStorageHidden(fn) {
+  const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    get: () => inertStorage,
+  });
+  try {
+    return fn();
+  } finally {
+    if (original) {
+      Object.defineProperty(window, 'localStorage', original);
+    } else {
+      // Re-expose the Window.prototype accessor.
+      delete window.localStorage;
+    }
+  }
+}
+
 // Share/locked routes carry a bearer secret in the path
 // (`/share/:linkId`, `/locked/:linkId`). PostHog's default URL/pageview/
 // autocapture properties would otherwise leak that secret to analytics.
@@ -99,21 +177,26 @@ function initPosthog() {
   if (!config.posthogProjectKey) {
     return;
   }
-  posthog.init(config.posthogProjectKey, {
-    api_host: config.posthogHost,
-    persistence: 'memory',
-    // Redact the share-link secret from URL properties before any event is
-    // sent (issue #1254).
-    before_send: scrubSensitiveUrls,
-    // Reduce capture surface: no DOM autocapture, and no automatic pageview
-    // events. Nothing in the app depends on the auto `$pageview` event, so
-    // disabling it removes another path that would carry the raw URL.
-    autocapture: false,
-    capture_pageview: false,
-  });
-  posthog.register({
-    service: 'send',
-  });
+  withLocalStorageHidden(() =>
+    posthog.init(config.posthogProjectKey, {
+      api_host: config.posthogHost,
+      persistence: 'memory',
+      // Redact the share-link secret from URL properties before any event is
+      // sent (issue #1254).
+      before_send: scrubSensitiveUrls,
+      // Reduce capture surface: no DOM autocapture, and no automatic pageview
+      // events. Nothing in the app depends on the auto `$pageview` event, so
+      // disabling it removes another path that would carry the raw URL.
+      autocapture: false,
+      capture_pageview: false,
+      // Send reads no feature flags. This also stops the flag refreshes
+      // PostHog would otherwise keep sending, with the project token and
+      // device id, after the user opted out: one from reset() (part of
+      // opting out) and one every five minutes from its refresh timer.
+      // Remote config (web vitals, heatmaps, endpoint) is unaffected.
+      advanced_disable_feature_flags: true,
+    })
+  );
   initialized = true;
 }
 
@@ -131,10 +214,18 @@ function initPosthog() {
 export function setPosthogConsent(enabled) {
   if (enabled) {
     initPosthog();
-    posthog.opt_in_capturing();
+    withLocalStorageHidden(() => {
+      // Registered on every opt-in, not once at init: reset() (part of
+      // opting out) clears registered properties.
+      posthog.register({ service: 'send' });
+      posthog.opt_in_capturing();
+    });
   } else if (initialized) {
-    posthog.opt_out_capturing();
-    posthog.reset();
+    // reset() clears consent too, so it must run before the opt-out.
+    withLocalStorageHidden(() => {
+      posthog.reset();
+      posthog.opt_out_capturing();
+    });
   }
 }
 
