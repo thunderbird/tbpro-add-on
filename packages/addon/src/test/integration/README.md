@@ -11,7 +11,7 @@ host, and drives the exact race windows described in
 ## Running
 
 ```sh
-pnpm --filter addon test:integration
+pnpm --filter thundermail test:integration
 ```
 
 (equivalent to `VITE_TESTING=true VITE_SEND_CLIENT_URL=https://send.tb.pro

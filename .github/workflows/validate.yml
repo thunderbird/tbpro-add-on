@@ -231,13 +231,13 @@ jobs:
           pnpm install --filter @thunderbird/tbpro-add-on && lerna run bootstrap
           # install packages that addon depends on
           pnpm install --filter send-frontend
-          pnpm install --filter addon
+          pnpm install --filter thundermail
 
       - name: Shared package tests and lint
         id: shared-tests
         run: |
-          lerna run ci:validate --scope=addon
-          lerna run test --scope=addon
+          lerna run ci:validate --scope=thundermail
+          lerna run test --scope=thundermail
 
       # Kept out of `ci:validate`: those scripts chain with `;`, so only the last
       # command's exit code survives and appending would mask the checks already

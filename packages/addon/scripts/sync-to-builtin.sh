@@ -11,11 +11,11 @@
 # that copy from this repo's dist/, then you rebuild + run from the comm tree:
 #
 #   export TB_COMM_SRC=/path/to/your/tb-build/source
-#   pnpm --filter addon sync:builtin            # build (system id) + sync
+#   pnpm --filter thundermail sync:builtin            # build (system id) + sync
 #   cd "$TB_COMM_SRC" && ./mach build faster    # repackage messenger.jar
 #   ./mach run --temp-profile                   # fresh profile avoids stale builtin cache
 #
-# Run `pnpm --filter addon dev:builtin` to auto-sync on every source change.
+# Run `pnpm --filter thundermail dev:builtin` to auto-sync on every source change.
 #
 # Requires TB_COMM_SRC to point at the comm-central source root (the dir that
 # contains the `comm/` subdir). No default — there can be several build trees.

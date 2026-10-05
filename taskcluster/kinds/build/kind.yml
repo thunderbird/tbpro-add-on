@@ -24,7 +24,7 @@ task-defaults:
             - /builds/worker/.cache
         env:
             XPI_BUILD_COMMANDS: >-
-                [["pnpm","install","--frozen-lockfile"],["pnpm","exec","lerna","run","build","--scope","addon"]]
+                [["pnpm","install","--frozen-lockfile"],["pnpm","exec","lerna","run","build","--scope","thundermail"]]
             ADDON_VARIANT: system
             BASE_URL: https://send.tb.pro
             XPI_OUTPUT_NAME: thundermail.xpi

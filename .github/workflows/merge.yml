@@ -422,10 +422,10 @@ jobs:
         id: addon-frontend-build
         run: |
           # install packages that addon depends on
-          pnpm install --filter addon
+          pnpm install --filter thundermail
           pnpm install --filter send-frontend
 
-          lerna run build --scope=addon
+          lerna run build --scope=thundermail
 
           cd packages/addon/
 
