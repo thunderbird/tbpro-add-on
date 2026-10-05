@@ -10,7 +10,7 @@ pnpm install
 Build the addon
 
 ```sh
-lerna run build:dev --scope=addon
+lerna run build:dev --scope=thundermail
 ```
 
 This outputs an xpi file at `packages/addon`, named after the version in `package.json` with the
@@ -76,10 +76,10 @@ that directory's `jar.mn`. These scripts refresh that copy from this repo's `dis
 export TB_COMM_SRC=/path/to/your/tb-build/source
 
 # One-shot: build with the system id + rsync into the comm tree
-pnpm --filter addon sync:builtin
+pnpm --filter thundermail sync:builtin
 
 # …or watch mode: auto re-syncs on every source change
-pnpm --filter addon dev:builtin
+pnpm --filter thundermail dev:builtin
 ```
 
 If you already have a build in `dist/` and only want to push it into the tree again, run the sync
@@ -102,13 +102,13 @@ variants:
 
 ```sh
 # One-shot: system-id build against localhost + rsync into the comm tree
-pnpm --filter addon sync:builtin:local
+pnpm --filter thundermail sync:builtin:local
 
 # …or watch mode
-pnpm --filter addon dev:builtin:local
+pnpm --filter thundermail dev:builtin:local
 
 # (or just build, without syncing)
-pnpm --filter addon build:dev:system:local
+pnpm --filter thundermail build:dev:system:local
 ```
 
 These set `ADDON_ENV=local`, which makes `scripts/build.sh` build in Vite's **development** mode
@@ -121,7 +121,7 @@ URLs into the bundle:
 
 They're exported as `VITE_*` process env vars, which Vite's `loadEnv` prioritizes over `.env`, so
 they win over the prod block your `.env` ends with. Override any of them inline if your local ports
-differ, e.g. `VITE_SEND_SERVER_URL=https://localhost:9000 pnpm --filter addon build:dev:system:local`.
+differ, e.g. `VITE_SEND_SERVER_URL=https://localhost:9000 pnpm --filter thundermail build:dev:system:local`.
 
 **CORS is already handled** — the Send backend auto-allows any `moz-extension://` origin
 (`packages/send/backend/src/origins.ts`), and the built-in/system add-on still runs under a
@@ -163,7 +163,7 @@ one of these:
   mixed-content block, and it works with `--temp-profile`:
 
   ```sh
-  VITE_SEND_SERVER_URL=http://localhost:8080 pnpm --filter addon build:dev:system:local
+  VITE_SEND_SERVER_URL=http://localhost:8080 pnpm --filter thundermail build:dev:system:local
   ```
 
 Then, in the comm tree, repackage and run:

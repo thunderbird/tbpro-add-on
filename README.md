@@ -64,14 +64,14 @@ untouched.
 The add-on has its own `.env`, which is not part of the stack and is still copied by hand:
 
 ```sh
-pnpm --filter addon run setup
+pnpm --filter thundermail run setup
 ```
 
 It prompts for a `Y` and then **overwrites** any `.env` you already have in that package, so back
 yours up first if it holds anything you care about. Two footguns, which also apply to
 `pnpm --filter send-suite run setup` (the script that *resets* the Send `.env` files):
 
-- Keep the `run`. `pnpm --filter addon setup` matches pnpm's own `setup` command and fails
+- Keep the `run`. `pnpm --filter thundermail setup` matches pnpm's own `setup` command and fails
   with `Unknown option: 'recursive'`.
 - Don't pipe the `Y` into `lerna run setup` — the prompt never reaches the script and the command
   hangs. Use the `pnpm ... run setup` form above in scripts.
@@ -97,7 +97,7 @@ pnpm install
 Build the addon
 
 ```sh
-lerna run build --scope=addon
+lerna run build --scope=thundermail
 ```
 
 That produces an xpi you can load by hand. To test the add-on the way Thunderbird ships it — as the
@@ -201,7 +201,7 @@ You can run any package's commands by running the following:
 
 For example, if I want to build the add-on, I can run
 
-`lerna run build --scope=addon`
+`lerna run build --scope=thundermail`
 
 The `lerna run ... --scope=<package>` form works from anywhere, because it runs the script inside
 that package. A bare `pnpm exec playwright`, by contrast, only resolves inside

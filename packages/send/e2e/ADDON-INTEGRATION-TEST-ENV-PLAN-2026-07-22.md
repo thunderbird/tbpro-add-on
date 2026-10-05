@@ -105,7 +105,7 @@ management: B3, B5, C1, and the live-account-effect halves of A3/B2).
      described in the finding and asserts the *current* (buggy) behavior,
      so these specs double as **regression tests once each bug is fixed** —
      they should fail today (documenting the bug) and pass after a fix.
-4. Add `pnpm --filter addon test:integration` script wired into
+4. Add `pnpm --filter thundermail test:integration` script wired into
    `ci:validate` alongside the existing unit tests.
 
 ### Effort estimate
@@ -142,7 +142,7 @@ platform actually recycle a non-persistent background page mid-upload), C1
   (`compose.yml`) exactly as-is: `pnpm dev:send` brings up postgres +
   backend + reverse-proxy (`https://localhost:8088`) + frontend
   (`http://localhost:5173`).
-- **Add-on build** — `pnpm --filter addon build:dev:system:local` (the repo
+- **Add-on build** — `pnpm --filter thundermail build:dev:system:local` (the repo
   already has this exact "system add-on wired to localhost" build path
   documented in `packages/addon/README.md`). Handles the self-signed cert
   gotcha via the documented `security.enterprise_roots.enabled=true` +
@@ -205,7 +205,7 @@ orphaned item" questions).
 2. **Vendor the add-on** — the repo already has the tooling for this:
    ```sh
    export TB_COMM_SRC=/path/to/comm-central
-   pnpm --filter addon sync:builtin:local   # or sync:builtin for prod/stage
+   pnpm --filter thundermail sync:builtin:local   # or sync:builtin for prod/stage
    cd "$TB_COMM_SRC" && ./mach build faster
    ```
 3. **Write mochitest browser tests** under a new
