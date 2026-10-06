@@ -123,10 +123,17 @@ export async function createAccessLink(
   );
 }
 
-export async function updateAccessLink(linkId: string, password: string) {
+// Only matches when `ownerId` owns the link's container, so non-owners get a
+// not-found error and the link is left untouched.
+export async function updateAccessLink(
+  linkId: string,
+  password: string,
+  ownerId: string
+) {
   return await fromPrismaV2(prisma.accessLink.update, {
     where: {
       id: linkId,
+      share: { container: { ownerId } },
     },
     data: {
       passwordHash: password,
@@ -852,10 +859,13 @@ export async function burnFolder(
   };
 }
 
-export async function deleteAccessLink(linkId: string) {
+// Only matches when `ownerId` owns the link's container, so non-owners get a
+// not-found error and the link is left untouched.
+export async function deleteAccessLink(linkId: string, ownerId: string) {
   return await prisma.accessLink.delete({
     where: {
       id: linkId,
+      share: { container: { ownerId } },
     },
     select: {
       id: true,

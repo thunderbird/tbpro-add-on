@@ -11,7 +11,12 @@ import {
 import { verificationEmitter } from '@send-backend/ws/verify';
 import { z } from 'zod';
 import { router, publicProcedure as t } from '../trpc';
-import { isAuthed } from './middlewares';
+import { TRPCError } from '@trpc/server';
+import {
+  getAuthenticatedUserId,
+  getGroupMemberPermission,
+  isAuthed,
+} from './middlewares';
 
 export const sharingRouter = router({
   /**
@@ -55,16 +60,25 @@ export const sharingRouter = router({
    */
   addPasswordToAccessLink: t
     .input(z.object({ linkId: z.string(), password: z.string() }))
-    .mutation(async ({ input }) => {
+    .use(isAuthed)
+    .use(getGroupMemberPermission)
+    .mutation(async ({ input, ctx }) => {
+      const userId = await getAuthenticatedUserId(ctx);
+      if (!userId) {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
       try {
         const { id, passwordHash } = await updateAccessLink(
           input.linkId,
-          input.password
+          input.password,
+          userId
         );
         return { input: input, id, passwordHash };
       } catch (error) {
+        // Also covers links the caller doesn't own, so we don't reveal which
+        // link ids exist.
         console.error('Error updating access link', error);
-        return { error: error.message };
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
     }),
 
@@ -200,24 +214,31 @@ export const sharingRouter = router({
    *                   description: ID of the deleted access link
    *       401:
    *         description: Unauthorized - Authentication required
+   *       404:
+   *         description: Access link not found or not owned by the caller
    *       500:
    *         description: Internal server error
    */
   deleteAccessLink: t
     .use(isAuthed)
     .input(z.object({ linkId: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const userId = await getAuthenticatedUserId(ctx);
+      if (!userId) {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
       try {
-        // Assuming there's a function to delete the access link
-        const { id } = await deleteAccessLink(input.linkId);
+        const { id } = await deleteAccessLink(input.linkId, userId);
         return {
           success: true,
           message: 'Access link deleted successfully',
           id,
         };
       } catch (error) {
+        // Also covers links the caller doesn't own, so we don't reveal which
+        // link ids exist.
         console.error('Error deleting access link', error);
-        return { success: false, message: error.message };
+        throw new TRPCError({ code: 'NOT_FOUND' });
       }
     }),
 

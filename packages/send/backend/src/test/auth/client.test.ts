@@ -21,13 +21,13 @@ import {
   registerTokens,
 } from '../../auth/client';
 
-const { mockedDecode, mockedSign } = vi.hoisted(() => ({
-  mockedDecode: vi.fn(),
+const { mockedVerify, mockedSign } = vi.hoisted(() => ({
+  mockedVerify: vi.fn(),
   mockedSign: vi.fn(),
 }));
 
 vi.mock('jsonwebtoken', () => ({
-  default: { decode: mockedDecode, sign: mockedSign },
+  default: { verify: mockedVerify, sign: mockedSign },
 }));
 
 describe('getAllowedOrigins', () => {
@@ -92,21 +92,33 @@ describe('getUserFromJWT', () => {
     vi.stubEnv('ACCESS_TOKEN_SECRET', 'your_secret');
   });
 
-  it('should return the user from the token', () => {
+  it('should return the user from a token verified with the access secret', () => {
     const mockedTokenData = { userId: '123' };
-    mockedDecode.mockReturnValue(mockedTokenData);
+    mockedVerify.mockReturnValue(mockedTokenData);
 
     const data = getUserFromJWT('valid.token.here');
     expect(data).toStrictEqual(mockedTokenData);
+    expect(mockedVerify).toHaveBeenCalledWith('valid.token.here', 'your_secret');
   });
 
-  it('should return null if token is invalid', () => {
-    mockedDecode.mockReturnValue(null);
-    // Make sure the function does not throw
-    expect(() => {
-      const data = getUserFromJWT('invalid.token');
-      expect(data).toBeNull();
-    }).not.toThrow();
+  it('should verify against the given secret when one is passed', () => {
+    mockedVerify.mockReturnValue({ userId: '123' });
+
+    getUserFromJWT('refresh.token.here', 'refresh_secret');
+    expect(mockedVerify).toHaveBeenCalledWith(
+      'refresh.token.here',
+      'refresh_secret'
+    );
+  });
+
+  it('should throw if the token fails verification', () => {
+    mockedVerify.mockImplementation(() => {
+      throw new Error('invalid signature');
+    });
+
+    expect(() => getUserFromJWT('forged.token')).toThrowError(
+      'invalid signature'
+    );
   });
 
   describe('getDataFromAuthenticatedRequest', () => {
@@ -117,7 +129,7 @@ describe('getUserFromJWT', () => {
 
     it('should return the user from the authenticated request', () => {
       const mockedTokenData = { userId: '123' };
-      mockedDecode.mockReturnValue(mockedTokenData);
+      mockedVerify.mockReturnValue(mockedTokenData);
 
       const req = {
         headers: {
@@ -144,18 +156,21 @@ describe('getUserFromJWT', () => {
       );
     });
 
-    it('should return null if token is invalid', () => {
-      mockedDecode.mockReturnValue(null);
+    it('should throw if the cookie token fails verification', () => {
+      mockedVerify.mockImplementation(() => {
+        throw new Error('invalid signature');
+      });
 
       const req = {
         headers: {
-          cookie: 'authorization=Bearer%20invalid.token',
+          cookie: 'authorization=Bearer%20forged.token',
         },
       };
 
-      // @ts-ignore
-      const user = getDataFromAuthenticatedRequest(req as Request);
-      expect(user).toBeNull();
+      expect(() => {
+        // @ts-ignore
+        getDataFromAuthenticatedRequest(req as Request);
+      }).toThrowError('invalid signature');
     });
 
     it('should return null if token format is incorrect', () => {
@@ -331,7 +346,7 @@ describe('getStorageLimit', () => {
 
   it('should return hasLimitedStorage false for non-EPHEMERAL tier', () => {
     const mockedTokenData = { tier: 'PRO' };
-    mockedDecode.mockReturnValue(mockedTokenData);
+    mockedVerify.mockReturnValue(mockedTokenData);
 
     const req = {
       headers: {
@@ -349,7 +364,7 @@ describe('getStorageLimit', () => {
 
   it('should return hasLimitedStorage true for EPHEMERAL tier', () => {
     const mockedTokenData = { tier: 'EPHEMERAL' };
-    mockedDecode.mockReturnValue(mockedTokenData);
+    mockedVerify.mockReturnValue(mockedTokenData);
 
     const req = {
       headers: {

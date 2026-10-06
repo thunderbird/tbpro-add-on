@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
 import {
@@ -34,6 +33,7 @@ import {
   requireWritePermission,
 } from '../middleware';
 import { calculateEncryptedSize } from '../utils/encryptedSize';
+import { mintOwnedUploadId } from '../utils/ownedUploadId';
 import { isAddonRequest } from '../origins';
 
 const router: Router = Router();
@@ -236,7 +236,11 @@ router.post(
   checkStorageLimit,
   addErrorHandling(UPLOAD_ERRORS.NO_BUCKET),
   wrapAsyncHandler(async (req, res) => {
-    const uploadId = uuidv4();
+    // The minted id carries an ownership tag bound to the caller, so /cleanup
+    // can attribute the storage object to its minter even when the Upload row
+    // was never created (failed/abandoned uploads).
+    const { id: requesterId } = getDataFromAuthenticatedRequest(req);
+    const uploadId = mintOwnedUploadId(requesterId);
     const { type, size } = req.body;
     // Sign the exact ciphertext content-length into the URL only when the
     // client stated a size (new clients). `size` is the plaintext size; storage
@@ -272,8 +276,10 @@ const cleanupSchema = z.object({
  *     description: >-
  *       Removes stored bytes (and any DB rows) for the given upload ids. Used by
  *       the client to clean up a multipart upload that failed partway, so no
- *       orphaned parts are left in storage. Only removes rows owned by the
- *       authenticated user; storage-only orphans (no DB row) are removed by id.
+ *       orphaned parts are left in storage. Only removes ids attributable to the
+ *       authenticated caller: Upload rows the caller owns, and row-less storage
+ *       objects whose id carries the caller's mint-time ownership tag. Anything
+ *       else is skipped.
  *     tags: [Uploads]
  *     security:
  *       - bearerAuth: []

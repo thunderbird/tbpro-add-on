@@ -49,6 +49,7 @@ vi.mock('../../middleware', async (importOriginal) => {
 
 import router from '../../routes/uploads';
 import { errorHandler } from '../../errors/routes';
+import { verifyOwnedUploadId } from '../../utils/ownedUploadId';
 
 const app = express();
 app.use(express.json());
@@ -58,6 +59,8 @@ app.use((err, req, res, _next) => errorHandler(err, req, res));
 describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The mint path HMACs the upload id to the caller (ownership tag).
+    process.env.ACCESS_TOKEN_SECRET = 'signed-routes-test-secret';
     // A generous tier so the quota gate only trips on the values we choose.
     mockCaller.mockReturnValue({ id: 'user-1', tier: 'PRO', uniqueHash: 'h' });
     mockGetUsedStorage.mockResolvedValue({ active: 0 });
@@ -109,6 +112,28 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
     expect(res.status).toBe(200);
     const [, , contentLength] = mockGetUploadBucketUrl.mock.calls[0];
     expect(contentLength).toBeGreaterThan(plaintext);
+  });
+
+  // The minted id is bound to the caller: /cleanup can later attribute the
+  // storage object to its minter even when no Upload row was ever created.
+  it("mints an id that carries the caller's ownership tag", async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 1024 })
+      .set('Content-Type', 'application/json')
+      .set('Origin', WEB_ORIGIN);
+
+    expect(res.status).toBe(200);
+    // Stays a valid uuidv4: the id is written to @db.Uuid columns on the
+    // success path (Upload.id, Item.uploadId), so the shape is load-bearing.
+    expect(res.body.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    );
+    expect(verifyOwnedUploadId(res.body.id, 'user-1')).toBe(true);
+    expect(verifyOwnedUploadId(res.body.id, 'user-2')).toBe(false);
+    // The signed storage key is the id itself.
+    const [key] = mockGetUploadBucketUrl.mock.calls[0];
+    expect(key).toBe(res.body.id);
   });
 
   // UA matching is case-insensitive: an uppercase Thunderbird token still counts

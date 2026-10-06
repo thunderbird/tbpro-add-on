@@ -27,6 +27,7 @@ import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
 import { PermissionType } from './types/custom';
 import { addExpiryToContainer } from './utils';
+import { verifyOwnedUploadId } from './utils/ownedUploadId';
 import storage from './storage';
 const prisma = new PrismaClient();
 
@@ -336,12 +337,12 @@ export async function deleteUpload(id: string) {
  * Removes the stored bytes (keyed by upload id) and, when present, the DB
  * `Upload` row.
  *
- * Trust boundary: an upload's bytes are keyed by a server-generated UUID that is
- * only ever returned to the client that requested the presigned URL, so the ids
- * are effectively unguessable. When a DB `Upload` row exists we additionally
- * require the requester to be its owner and refuse otherwise. Storage-only
- * orphans — a PUT that landed bytes but never created a row — have no owner to
- * check and are removed by id.
+ * Ownership invariant: an id is only acted on when the server can attribute
+ * it to the caller — via the `Upload` row's owner when a row exists, or via
+ * the ownership tag minted into the id itself (`mintOwnedUploadId`, POST
+ * /uploads/signed) for storage-only orphans whose row was never created. Ids
+ * the server cannot attribute to the caller — another user's row, another
+ * user's tag, or a plain pre-tag id — are skipped, never deleted.
  */
 export async function deleteUploadsByIds(ids: string[], requesterId: string) {
   const rows = await prisma.upload.findMany({
@@ -359,8 +360,27 @@ export async function deleteUploadsByIds(ids: string[], requesterId: string) {
     [...new Set(ids)].map(async (id) => {
       const owner = ownerById.get(id);
 
+      // Row-less id: a storage-only orphan (PUT landed, row never created) or
+      // an unknown id. Only the caller the id was minted for may remove the
+      // bytes; anything the server cannot attribute to the caller is skipped.
+      if (owner === undefined) {
+        if (!verifyOwnedUploadId(id, requesterId)) {
+          skipped.push(id);
+          return;
+        }
+        // Absent bytes (e.g. a part whose PUT never landed) are fine — the
+        // goal is idempotent "make sure it's gone".
+        try {
+          await storage.del(id);
+        } catch (e) {
+          console.warn(`[deleteUploadsByIds] storage.del(${id}) failed`, e);
+        }
+        deleted.push(id);
+        return;
+      }
+
       // A row exists but belongs to someone else — refuse to touch it.
-      if (owner !== undefined && owner !== requesterId) {
+      if (owner !== requesterId) {
         skipped.push(id);
         return;
       }
@@ -373,15 +393,12 @@ export async function deleteUploadsByIds(ids: string[], requesterId: string) {
         console.warn(`[deleteUploadsByIds] storage.del(${id}) failed`, e);
       }
 
-      // Only remove a DB row we actually found.
-      if (owner !== undefined) {
-        try {
-          await deleteUpload(id);
-        } catch (e) {
-          console.error(`[deleteUploadsByIds] deleteUpload(${id}) failed`, e);
-          errors.push(id);
-          return;
-        }
+      try {
+        await deleteUpload(id);
+      } catch (e) {
+        console.error(`[deleteUploadsByIds] deleteUpload(${id}) failed`, e);
+        errors.push(id);
+        return;
       }
 
       deleted.push(id);

@@ -28,8 +28,14 @@ export function getAllowedOrigins() {
     .filter(String);
 }
 
-export function getUserFromJWT(token: string) {
-  const data = jwt.decode(token);
+// Verifies the signature before trusting the payload, so a forged cookie can't
+// name another user. Throws on an invalid or unsigned token. Callers holding a
+// refresh token pass REFRESH_TOKEN_SECRET.
+export function getUserFromJWT(
+  token: string,
+  secret: string = process.env.ACCESS_TOKEN_SECRET
+) {
+  const data = jwt.verify(token, secret);
   return data as AuthResponse;
 }
 

@@ -3,7 +3,6 @@ import { Router } from 'express';
 import {
   acceptAccessLink,
   acceptInvitation,
-  burnEphemeralConversation,
   checkIfAccessLinkCanBeCreated,
   createAccessLink,
   createInvitationFromAccessLink,
@@ -12,7 +11,6 @@ import {
   getAccessLinksByUploadIdAndWrappedKey,
   getContainerForAccessLink,
   isAccessLinkValid,
-  removeAccessLink,
   resetAccessLinkRetryCount,
   updateAccessLink,
 } from '../models/sharing';
@@ -32,8 +30,10 @@ import {
 } from '@send-backend/utils';
 import { createRateLimiter } from '../middleware/rate-limit';
 import {
+  getAuthenticatedUserData,
   getGroupMemberPermissions,
   requireAdminPermission,
+  requireAuth,
   requireJWT,
   requireSharePermission,
 } from '../middleware';
@@ -297,17 +297,6 @@ router.get(
   })
 );
 
-// Remove accessLink
-router.delete(
-  '/:linkId',
-  addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_DELETED),
-  wrapAsyncHandler(async (req, res) => {
-    const { linkId } = req.params;
-    const result = await removeAccessLink(linkId);
-    res.status(200).json(result);
-  })
-);
-
 // Allow user to use an AccessLink to become a group member for a container
 router.post(
   '/:linkId/member/accept',
@@ -360,32 +349,30 @@ router.get(
   })
 );
 
-// Destroy a folder, its items, and any record of group memberships
-router.post(
-  '/burn',
-  addErrorHandling(SHARING_ERRORS.NOT_BURNED),
-  wrapAsyncHandler(async (req, res) => {
-    const { containerId } = req.body;
-    const result = await burnEphemeralConversation(containerId);
-    res.status(200).json({
-      result,
-    });
-  })
-);
-
-router.post('/:linkId/add-password', async (req, res) => {
+router.post('/:linkId/add-password', requireAuth, async (req, res) => {
   const { password } = req.body;
   const { linkId } = req.params;
 
+  const userData = getAuthenticatedUserData(req);
+  if (!userData) {
+    return res.status(403).json({ message: 'Not authorized' });
+  }
+
   try {
-    const { id, passwordHash } = await updateAccessLink(linkId, password);
+    const { id, passwordHash } = await updateAccessLink(
+      linkId,
+      password,
+      userData.id
+    );
 
     return res
       .status(200)
       .json({ input: { linkId, password }, id, passwordHash });
   } catch (error) {
+    // Also covers links the caller doesn't own, so we don't reveal which link
+    // ids exist.
     console.error('Error updating access link', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(404).json({ message: 'Access link not found' });
   }
 });
 

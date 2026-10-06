@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client';
 import { validateJWT } from '@send-backend/auth/jwt';
 import {
   extractBearerToken,
@@ -9,11 +10,16 @@ import {
   X_LOGOUT_HEADER,
   getEnvironmentName,
 } from '@send-backend/config';
+import { fromPrismaV2 } from '@send-backend/models/prisma-helper';
+import { getUserByOIDCSubject } from '@send-backend/models/users';
 import { Context } from '@send-backend/trpc';
+import { PermissionType, allPermissions } from '@send-backend/types/custom';
 import { TRPCError } from '@trpc/server';
 
+const prisma = new PrismaClient();
+
 type ContextPlugin = {
-  ctx: Context;
+  ctx: Context & { permission?: PermissionType };
 };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NextFunction = (p: ContextPlugin | void) => Promise<any>;
@@ -84,11 +90,91 @@ export async function isAuthed(opts: { ctx: Context; next: NextFunction }) {
   return isOIDCAuthed(opts);
 }
 
+/**
+ * Resolve the id of the authenticated user. When `isOIDCAuthed` set an OIDC
+ * identity, the user must exist in our database; otherwise we fall back to the
+ * legacy JWT user from the context.
+ * Note: This mirrors `getAuthenticatedUserData` from backend/src/middleware.ts
+ */
+export async function getAuthenticatedUserId(
+  ctx: Context
+): Promise<string | null> {
+  if (ctx.oidcUser?.sub) {
+    try {
+      const user = await getUserByOIDCSubject(ctx.oidcUser.sub);
+      if (user) {
+        return String(user.id);
+      }
+    } catch (error) {
+      console.warn('Could not find OIDC user in database:', error);
+    }
+    // Fail closed. `ctx.user` comes from the `authorization` cookie, which
+    // `isOIDCAuthed` never verified on this path, so it can't stand in for a
+    // missing OIDC account.
+    throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+  return ctx.user?.id ?? null;
+}
+
+/**
+ * Gets a user's permissions for a container and adds it to the context as `permission`.
+ * The container is read from the `containerId` field of the procedure input.
+ * Note: This middleware mirrors `getGroupMemberPermissions` from backend/src/middleware.ts
+ * These middlewares should be maintained in tandem to avoid unintended behavior
+ */
 export async function getGroupMemberPermission(opts: {
   ctx: Context;
   next: NextFunction;
+  getRawInput: () => Promise<unknown>;
 }) {
-  return opts.next();
+  const { ctx } = opts;
+
+  // `isOIDCAuthed` throws on every denial path, so reaching past this means auth
+  // is valid. The sentinel `next` stops it from running the rest of the chain.
+  let goodToGo = false;
+  await isOIDCAuthed({
+    ctx,
+    next: async () => {
+      goodToGo = true;
+    },
+  });
+  if (!goodToGo) {
+    throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId) {
+    console.error('No authenticated user data found');
+    throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+
+  const rawInput = await opts.getRawInput();
+  const containerId =
+    rawInput && typeof rawInput === 'object' && 'containerId' in rawInput
+      ? (rawInput.containerId as string | undefined)
+      : undefined;
+
+  // Users have full permissions to their own top-level (aka root) folder.
+  // Whenever a request doesn't contain a containerId, we assume it's a top-level folder.
+  if (!containerId) {
+    return opts.next({ ctx: { ...ctx, permission: allPermissions() } });
+  }
+
+  let permission: PermissionType;
+  try {
+    const group = await fromPrismaV2(prisma.group.findFirstOrThrow, {
+      where: { container: { id: containerId } },
+    });
+    const membership = await fromPrismaV2(prisma.membership.findUniqueOrThrow, {
+      where: { groupId_userId: { groupId: group.id, userId } },
+    });
+    permission = membership.permission;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (err) {
+    throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+
+  return opts.next({ ctx: { ...ctx, permission } });
 }
 
 /**

@@ -149,7 +149,7 @@ export async function requireAuth(
         // Add OIDC user info to request
         req.oidcUser = validation.userInfo;
 
-        // For compatibility, try to find the user in our database and add to request
+        // Resolve the OIDC subject to our user record
         try {
           const user = await getUserByOIDCSubject(validation.userInfo.sub);
           if (user) {
@@ -162,6 +162,17 @@ export async function requireAuth(
           }
         } catch (error) {
           console.warn('Could not find OIDC user in database:', error);
+        }
+
+        // Fail closed when the token is valid but the subject has no account
+        // here. Falling through would leave `authenticatedUser` unset, and
+        // `getAuthenticatedUserData` would then read the caller's identity from
+        // the `authorization` cookie, which on this path is decoded without
+        // being verified.
+        if (!req.authenticatedUser) {
+          return res
+            .status(403)
+            .json({ message: 'Not authorized: OIDC user not registered' });
         }
 
         return next();
@@ -272,7 +283,7 @@ export function renameBodyProperty(from: string, to: string) {
 /**
  * Helper function to get user data from either OIDC or JWT authentication
  */
-function getAuthenticatedUserData(
+export function getAuthenticatedUserData(
   req: AuthenticatedRequest
 ): { id: string; email: string } | null {
   // Prefer the unified authenticatedUser field

@@ -1,5 +1,4 @@
 import { Request, Router } from 'express';
-import jwt from 'jsonwebtoken';
 import {
   addErrorHandling,
   AUTH_ERRORS,
@@ -62,8 +61,10 @@ router.get(
       const jwtRefreshToken = getCookie(req?.headers?.cookie, 'refresh_token');
       const refreshToken = getJWTfromToken(jwtRefreshToken);
 
-      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-      const signedData = getUserFromJWT(refreshToken);
+      const signedData = getUserFromJWT(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET
+      );
 
       registerAuthToken(signedData, res);
 

@@ -194,7 +194,8 @@ describe('Auth Routes', () => {
   describe('GET /auth/refresh error cases', () => {
     it('should return 500 when refresh token is invalid', async () => {
       vi.spyOn(utils, 'getCookie').mockReturnValue('invalid_token');
-      vi.spyOn(jwt, 'verify').mockImplementation(() => {
+      // The route verifies the refresh token through getUserFromJWT.
+      vi.spyOn(authClient, 'getUserFromJWT').mockImplementation(() => {
         throw new Error('Invalid token');
       });
 

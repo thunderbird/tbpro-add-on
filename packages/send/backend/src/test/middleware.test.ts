@@ -481,18 +481,53 @@ describe('requireAuth', () => {
     expect(mockRequest.authenticatedUser).toMatchObject({ id: 'user-1' });
   });
 
-  it('should call next() with oidcUser only when user not found in DB', async () => {
+  it('should return 403 when the OIDC user is not found in DB', async () => {
     vi.mocked(extractBearerToken).mockReturnValue('valid.oidc.token');
     vi.mocked(validateOIDCToken).mockResolvedValue({
       isValid: true,
       userInfo: { sub: 'oidc-sub-2' },
     });
-    vi.mocked(getUserByOIDCSubject).mockRejectedValue(new Error('not found'));
+    vi.mocked(getUserByOIDCSubject).mockResolvedValue(null);
 
     await requireAuth(mockRequest as Request, mockResponse, nextFunction);
 
-    expect(nextFunction).toHaveBeenCalled();
-    expect(mockRequest.oidcUser).toEqual({ sub: 'oidc-sub-2' });
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(nextFunction).not.toHaveBeenCalled();
+    expect(mockRequest.authenticatedUser).toBeUndefined();
+  });
+
+  it('should return 403 when the OIDC user lookup fails', async () => {
+    vi.mocked(extractBearerToken).mockReturnValue('valid.oidc.token');
+    vi.mocked(validateOIDCToken).mockResolvedValue({
+      isValid: true,
+      userInfo: { sub: 'oidc-sub-2' },
+    });
+    vi.mocked(getUserByOIDCSubject).mockRejectedValue(new Error('db down'));
+
+    await requireAuth(mockRequest as Request, mockResponse, nextFunction);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(nextFunction).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to the unverified cookie identity for an unregistered OIDC user', async () => {
+    // A valid OIDC token with no matching account, plus a forged (unsigned)
+    // `authorization` cookie naming another user. The cookie must never be
+    // consulted, so the request is denied rather than acting as that user.
+    mockRequest.headers.cookie = 'authorization=Bearer forged.jwt.token';
+    vi.mocked(extractBearerToken).mockReturnValue('valid.oidc.token');
+    vi.mocked(validateOIDCToken).mockResolvedValue({
+      isValid: true,
+      userInfo: { sub: 'oidc-sub-attacker' },
+    });
+    vi.mocked(getUserByOIDCSubject).mockResolvedValue(null);
+
+    await requireAuth(mockRequest as Request, mockResponse, nextFunction);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(nextFunction).not.toHaveBeenCalled();
+    expect(mockRequest.authenticatedUser).toBeUndefined();
+    expect(validateJWT).not.toHaveBeenCalled();
   });
 
   it('should fall back to JWT when OIDC validation fails', async () => {
