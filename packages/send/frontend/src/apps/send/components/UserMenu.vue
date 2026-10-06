@@ -102,8 +102,19 @@ onBeforeUnmount(() => {
 
     <div v-if="showMenu" class="dropdown">
       <a :href="ACCOUNTS_URL">Account</a>
+
+      <!-- Accounts redirects to a freshly created Paddle customer portal session -->
+      <a
+        :href="`${ACCOUNTS_URL}/api/v1/subscription/paddle/portal/`"
+        target="_blank"
+        rel="noopener"
+        @click="showMenu = false"
+      >
+        Manage subscription
+      </a>
+
       <a :href="CONTACT_FORM_URL">Support</a>
-      <button @click.prevent="handleLogout">Logout</button>
+      <button @click.prevent="handleLogout">Sign out</button>
     </div>
   </button>
 </template>
@@ -125,8 +136,8 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 0.5rem;
     box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
-    padding: 0.5rem 0.25rem;
-    min-width: 150px;
+    padding: 0.5rem 0;
+    min-width: max-content;
 
     a,
     button {
@@ -135,12 +146,9 @@ onBeforeUnmount(() => {
       justify-content: space-between;
       color: white;
       text-decoration: none;
-      padding: 0.75rem 0.375rem;
+      padding: 1rem 1.5rem;
       font-family: metropolis;
-      font-size: 0.6875rem;
-      text-transform: uppercase;
-      font-weight: 500;
-      border-radius: 0.25rem;
+      font-size: 0.875rem;
       width: 100%;
 
       &:hover {
