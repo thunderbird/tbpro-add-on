@@ -349,6 +349,8 @@ export class EncryptedFilesPage {
         }
       )
       .toBe(true);
+    // The app shows the full URL exactly once, at creation.
+    await expect(panel.getByTestId('new-access-link-url')).toHaveValue(shareUrl);
     return shareUrl;
   }
 
@@ -358,16 +360,16 @@ export class EncryptedFilesPage {
       '[data-testid^="access-link-item-"]'
     );
     let index = -1;
-    // Input values identify links even when a refetch changes their list order.
+    // Rows carry the link id in `data-link-id` (the list renders no share
+    // URLs), which identifies links even when a refetch changes their order.
     await expect
       .poll(
         async () => {
           index = await rows.evaluateAll(
             (elements, wantedId) =>
-              elements.findIndex((element) => {
-                const input = element.querySelector('input');
-                return input?.value.split('/share/')[1] === wantedId;
-              }),
+              elements.findIndex(
+                (element) => element.getAttribute('data-link-id') === wantedId
+              ),
             linkId
           );
           return index;
@@ -381,17 +383,16 @@ export class EncryptedFilesPage {
 
     const row = rows.nth(index);
     await expect(row).toBeVisible({ timeout: TIMEOUT_30_SECONDS });
-    await expect(row.locator('input')).toHaveValue(new RegExp(`${linkId}$`));
+    await expect(row).toHaveAttribute('data-link-id', linkId);
     await row.getByTestId(/^delete-link-button-/).click();
     await expect
       .poll(
         () =>
           rows.evaluateAll(
             (elements, deletedId) =>
-              elements.some((element) => {
-                const input = element.querySelector('input');
-                return input?.value.split('/share/')[1] === deletedId;
-              }),
+              elements.some(
+                (element) => element.getAttribute('data-link-id') === deletedId
+              ),
             linkId
           ),
         {

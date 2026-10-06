@@ -102,9 +102,9 @@ model AccessLink {
   challengePlaintext  String
   permission          Int       @default(0)
   expiryDate          DateTime?
-  passwordHash        String?
   retryCount          Int       @default(0)
   locked              Boolean   @default(false)
+  hasPassword         Boolean   @default(true)
   share               Share     @relation(fields: [shareId], references: [id], onDelete: Cascade)
 }
 

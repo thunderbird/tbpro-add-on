@@ -41,10 +41,15 @@ const EXPRESS_AUTH = [requireAuth, requireJWT];
 const PUBLIC_EXPRESS_ROUTES = new Set([
   // Link recipients answer the challenge before they have an account.
   'POST /:linkId/challenge',
+  // Compatibility no-op: accepts and ignores the body, writes nothing, and
+  // echoes only the link id back.
+  'POST /:linkId/add-password',
 ]);
 const PUBLIC_TRPC_MUTATIONS = new Set([
   // Link recipients hit this while entering the link password.
   'incrementPasswordRetryCount',
+  // Compatibility no-op: performs no writes and returns only the link id.
+  'addPasswordToAccessLink',
 ]);
 
 type RouteLayer = {
@@ -84,11 +89,14 @@ describe('sharing endpoints require authentication', () => {
     expect(trpcMutations.length).toBeGreaterThan(0);
   });
 
-  it.each(
-    expressRoutes.filter(({ key }) => !PUBLIC_EXPRESS_ROUTES.has(key))
-  )('Express $key has requireAuth or requireJWT', ({ handlers }) => {
-    expect(handlers.some((h) => EXPRESS_AUTH.includes(h as never))).toBe(true);
-  });
+  it.each(expressRoutes.filter(({ key }) => !PUBLIC_EXPRESS_ROUTES.has(key)))(
+    'Express $key has requireAuth or requireJWT',
+    ({ handlers }) => {
+      expect(handlers.some((h) => EXPRESS_AUTH.includes(h as never))).toBe(
+        true
+      );
+    }
+  );
 
   it.each(trpcMutations.filter(({ key }) => !PUBLIC_TRPC_MUTATIONS.has(key)))(
     'tRPC $key uses isAuthed',

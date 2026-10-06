@@ -13,11 +13,13 @@ import { UserType } from '@send-frontend/types';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
+// Metadata only: the server never returns anything that could rebuild a
+// shareable URL. The full URL is shown to the owner once, at creation time.
 type AccessLinks = {
   id: string;
   expiryDate: Date | null;
-  passwordHash: string;
   locked: boolean;
+  hasPassword: boolean;
 }[];
 
 const useSharingStore = defineStore('sharingManager', () => {

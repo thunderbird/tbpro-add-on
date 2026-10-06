@@ -123,28 +123,6 @@ export async function createAccessLink(
   );
 }
 
-// Only matches when `ownerId` owns the link's container, so non-owners get a
-// not-found error and the link is left untouched.
-export async function updateAccessLink(
-  linkId: string,
-  password: string,
-  ownerId: string
-) {
-  return await fromPrismaV2(prisma.accessLink.update, {
-    where: {
-      id: linkId,
-      share: { container: { ownerId } },
-    },
-    data: {
-      passwordHash: password,
-    },
-    select: {
-      id: true,
-      passwordHash: true,
-    },
-  });
-}
-
 export async function incrementAccessLinkRetryCount(linkId: string) {
   const response = await prisma.accessLink.update({
     where: {
@@ -466,6 +444,9 @@ export async function removeAccessLink(linkId: string) {
     where: {
       id: linkId,
     },
+    select: {
+      id: true,
+    },
   };
 
   return await fromPrismaV2(
@@ -630,11 +611,23 @@ export async function getContainersSharedWithUser(
   return invitations.filter((i) => i.share.container.type === type);
 }
 
+// Owner-facing list queries return link metadata only. The server never holds
+// the material needed to rebuild a shareable URL: for links created without a
+// password the secret lives solely in the URL fragment the client showed at
+// creation time.
+const accessLinkListSelect = {
+  id: true,
+  expiryDate: true,
+  locked: true,
+  hasPassword: true,
+} as const;
+
 export async function getAccessLinksByUploadId(
   uploadId: string,
   ownerId: string
 ) {
   const links = await prisma.accessLink.findMany({
+    select: accessLinkListSelect,
     where: {
       share: {
         container: {
@@ -668,6 +661,7 @@ export async function getAccessLinksByUploadIdAndWrappedKey(
   ownerId: string
 ) {
   const links = await prisma.accessLink.findMany({
+    select: accessLinkListSelect,
     where: {
       share: {
         container: {

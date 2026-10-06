@@ -104,9 +104,8 @@ export const shareLinkId = (shareUrl: string) =>
  * link until it does. Polling for a link this run has not seen yet is both
  * deterministic and quicker than the fixed one-second sleep it replaces.
  *
- * The clipboard is the source of truth rather than the rendered input: the input
- * can be a beat behind on the `#` fragment that carries the decryption secret for
- * links created without a password.
+ * The clipboard is the source of truth: the app shows a link's full URL only
+ * once, at creation, and the links list below it renders link ids, not URLs.
  */
 export async function readNewShareLink(page: Page): Promise<string> {
   let link = "";
@@ -135,13 +134,14 @@ export async function saveShareLink(page: Page, key: string) {
 }
 
 /**
- * The `access-link-item-N` row that shows `shareUrl`.
+ * The `access-link-item-N` row for the link `shareUrl` points at. Rows carry the
+ * link id in `data-link-id`; the list deliberately renders no share URLs.
  *
  * Both list endpoints (`getAccessLinksForContainer` and
  * `getAccessLinksByUploadIdAndWrappedKey`) query with no `orderBy`, so the
  * rendered order does not track creation order: index 2 is not reliably "the link
  * we just made" and index 1 is not reliably "the one created with a password".
- * Picking the row by the link it shows is what keeps the suite off the wrong one.
+ * Picking the row by its link id is what keeps the suite off the wrong one.
  *
  * Getting this wrong is the #930 flake, in two shapes: deleting a link a later
  * test still needed, which surfaced three tests later as a `download-button-0`
@@ -159,10 +159,9 @@ export async function accessLinkRow(page: Page, shareUrl: string) {
       async () => {
         index = await rows.evaluateAll(
           (elements, id) =>
-            elements.findIndex((element) => {
-              const input = element.querySelector("input");
-              return input?.value.split("/share/")[1]?.split("#")[0] === id;
-            }),
+            elements.findIndex(
+              (element) => element.getAttribute("data-link-id") === id
+            ),
           wanted
         );
         return index;
@@ -175,7 +174,20 @@ export async function accessLinkRow(page: Page, shareUrl: string) {
   // The list can refetch between finding the index and using it. Fail here rather
   // than acting on whichever row slid into the slot -- picking the wrong row is
   // the bug this function exists to prevent.
-  await expect(row.locator("input")).toHaveValue(new RegExp(wanted));
+  await expect(row).toHaveAttribute("data-link-id", wanted);
+  return row;
+}
+
+/**
+ * Assert the links list has a row for `shareUrl` and that the row exposes no
+ * share URL. The app shows a link's URL only once, at creation, and the server
+ * keeps nothing that could rebuild it, so the list must never render anything
+ * that looks copyable -- with or without a password.
+ */
+export async function expectLinkNotRetrievable(page: Page, shareUrl: string) {
+  const row = await accessLinkRow(page, shareUrl);
+  await expect(row.locator("input")).toHaveCount(0);
+  await expect(row).not.toContainText("/share/");
   return row;
 }
 

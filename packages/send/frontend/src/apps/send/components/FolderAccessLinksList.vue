@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { BASE_URL } from '@send-frontend/apps/common/constants';
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import config from '@send-frontend/config';
 import { trpc } from '@send-frontend/lib/trpc';
-import {
-  getAccessLinkWithoutPasswordHash,
-  getDaysUntilDate,
-} from '@send-frontend/lib/utils';
+import { getDaysUntilDate } from '@send-frontend/lib/utils';
 import { useMutation } from '@tanstack/vue-query';
 import { ExpiryBadge, ExpiryUnitTypes } from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';
@@ -18,30 +15,30 @@ type Props = {
 
 const sharingStore = useSharingStore();
 const props = defineProps<Props>();
-const clipboard = useClipboard();
 const linkToDelete = ref<string | null>(null);
+const { copy, copied } = useClipboard({ copiedDuring: 1500 });
+const lastCopiedLinkId = ref<string | null>(null);
 
-const tooltipText = ref('Click to copy');
+function shareUrlFor(linkId: string): string {
+  return `${config.sendClientUrl}/share/${linkId}`;
+}
+
+function copyShareUrl(linkId: string) {
+  lastCopiedLinkId.value = linkId;
+  copy(shareUrlFor(linkId));
+}
 
 watchEffect(async () => {
   await sharingStore.fetchFolderAccessLinks(props.folderId);
 });
 
-function copyToClipboard(id: string) {
-  clipboard.copy(`${BASE_URL}/share/${id}`);
-  tooltipText.value = 'Copied!';
-  setTimeout(() => {
-    tooltipText.value = 'Click to copy';
-  }, 3000);
-}
-
 const { mutate } = useMutation({
   mutationFn: async () => {
-    const formattedAccessLink = getAccessLinkWithoutPasswordHash(
-      linkToDelete.value
-    );
+    if (!linkToDelete.value) {
+      return false;
+    }
     const deleteMutation = await trpc.deleteAccessLink.mutate({
-      linkId: formattedAccessLink,
+      linkId: linkToDelete.value,
     });
 
     if (deleteMutation.success) {
@@ -59,37 +56,59 @@ function handleDeleteLink(linkId: string) {
 }
 
 /*
-A note: we don't store the password.
-So, the user has the option to change the expiration
-and the user can delete the link.
-
-But, there's no way to change the password, yet.
-Theoretically, they can generate a new access link (and delete this one).
-
-TODO: implement "regeneration" of links
+The server keeps no copy of a link's secret. For a passwordless link the
+secret lives only in the URL fragment shown once at creation (see
+NewAccessLink.vue), so it can never be redisplayed here. A password-protected
+link's URL carries no secret of its own (the password is supplied separately
+by the recipient), so it's safe to reconstruct and re-copy from the link id
+at any time.
 */
 </script>
 <template>
-  <span
+  <div
     v-if="sharingStore.links.length > 0"
-    class="text-xs font-semibold text-gray-600"
-    >Existing Links</span
+    class="flex flex-col gap-1"
+    data-testid="existing-links-header"
   >
+    <span class="text-xs font-semibold text-gray-600">Existing Links</span>
+  </div>
   <section
     v-for="(link, index) in sharingStore.links"
     :key="link.id"
-    class="flex flex-col gap-3"
+    class="flex flex-col gap-1"
     :data-testid="`access-link-item-${index}`"
+    :data-link-id="link.id"
   >
-    <div class="flex gap-2">
+    <div class="flex gap-2 items-center">
       <input
-        v-tooltip="tooltipText"
-        type="text"
-        :value="`${BASE_URL}/share/${link.id}`"
+        v-if="link.hasPassword"
+        readonly
+        class="flex-1 min-w-0 font-mono text-xs text-gray-700 cursor-pointer"
+        :value="shareUrlFor(link.id)"
         :data-testid="`link-${index}`"
-        class="flex-1"
-        @click="copyToClipboard(link.id)"
+        aria-label="Share link"
+        @click="
+          ($event.target as HTMLInputElement).select();
+          copyShareUrl(link.id);
+        "
       />
+      <span
+        v-else
+        v-tooltip="
+          'Links without a password can only be viewed upon creation. You can delete this link to revoke access and create a new one anytime.'
+        "
+        class="flex-1 min-w-0 truncate font-mono text-xs text-gray-700"
+        :title="link.id"
+        :data-testid="`link-${index}`"
+      >
+        {{ link.id }}
+      </span>
+      <span
+        v-if="copied && lastCopiedLinkId === link.id"
+        class="text-xs text-gray-500"
+      >
+        Copied!
+      </span>
       <button
         v-tooltip="'Delete link'"
         class="text-red-500 hover:text-red-700 px-2"
@@ -110,7 +129,7 @@ TODO: implement "regeneration" of links
         />
       </div>
       <div
-        v-if="!link.passwordHash"
+        v-if="link.hasPassword"
         class="flex text-xs justify-center self-center"
         data-testid="link-with-password"
       >

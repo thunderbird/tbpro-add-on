@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
-import { trpc } from '@send-frontend/lib/trpc';
-import { useMutation } from '@tanstack/vue-query';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
 import DeleteConfirmation from '@send-frontend/apps/send/components/DeleteConfirmation.vue';
 import FileAccessLinksList from '@send-frontend/apps/send/components/FileAccessLinksList.vue';
+import NewAccessLink from '@send-frontend/apps/send/components/NewAccessLink.vue';
 import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import FileNameForm from '@send-frontend/apps/send/elements/FileNameForm.vue';
 import {
@@ -25,6 +24,8 @@ import {
 } from '@tabler/icons-vue';
 import { useClipboard, useDebounceFn } from '@vueuse/core';
 import { useModal, useModalSlot } from 'vue-final-modal';
+import { trpc } from '@send-frontend/lib/trpc';
+import { useMutation } from '@tanstack/vue-query';
 
 const folderStore = useFolderStore();
 const sharingStore = useSharingStore();
@@ -68,21 +69,32 @@ const customDateTime = ref('');
 const accessUrl = ref('');
 const showPassword = ref(false);
 const clipboard = useClipboard();
-const accessUrlInput = ref<HTMLInputElement | null>(null);
 const isLoading = ref(false);
 
 const canDisplay = computed(() => {
   return folderStore?.selectedFile?.upload?.reported !== true;
 });
 
+// A newly created link belongs to the file it was created for; do not keep
+// showing it once the user selects a different file.
+watch(
+  () => folderStore.selectedFile?.id,
+  () => {
+    accessUrl.value = '';
+  }
+);
+
 const { mutate } = useMutation({
-  mutationKey: ['getAccessLink'],
-  mutationFn: async () => {
-    const [url, hash] = accessUrl.value.split('share/')[1].split('#');
-    await trpc.addPasswordToAccessLink.mutate({
-      linkId: url,
-      password: hash,
+  mutationKey: ['markAccessLinkAsPasswordless'],
+  mutationFn: async ({ linkId }: { linkId: string }) => {
+    await trpc.markAccessLinkAsPasswordless.mutate({
+      linkId,
     });
+  },
+  onError: (error) => {
+    // Display-only failure: the link itself works, it just stays listed as
+    // password-protected until the flag is corrected.
+    console.error('Could not mark access link as passwordless', error);
   },
 });
 
@@ -103,17 +115,18 @@ async function shareIndividualFile() {
     return;
   }
 
-  accessUrl.value = url;
-
   if (!password.value.length) {
-    mutate();
+    // Tell the backend this link is passwordless. `url` is the full shareable
+    // URL (…/share/<id>#<secret>); the server only ever needs the bare id.
+    const linkId = url.split('/').pop()?.split('#')[0] || '';
+    mutate({ linkId });
   }
 
-  // Copy url to clipboard
+  // The full URL is shown once (see NewAccessLink) and copied to the
+  // clipboard. It is never sent to the server: for a link created without
+  // a password the secret exists only in the fragment of this URL.
+  accessUrl.value = url;
   clipboard.copy(url);
-
-  // Focus the input
-  accessUrlInput.value?.focus();
 
   await refreshAccessLinks();
   isLoading.value = false;
@@ -215,6 +228,12 @@ Note about shareOnly containers.
         <IconLink class="icon" />
       </div>
     </Btn>
+
+    <NewAccessLink
+      v-if="accessUrl"
+      :url="accessUrl"
+      :has-password="!!password"
+    />
 
     <FileAccessLinksList
       v-if="folderStore?.selectedFile?.id"

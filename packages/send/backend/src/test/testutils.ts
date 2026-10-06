@@ -1,3 +1,6 @@
+import { format } from 'node:util';
+import { vi } from 'vitest';
+
 /**
  * For suites that talk to a real bucket. A presigned round trip is a handful of
  * HTTP requests, and vitest's 5s default sits inside the noise band of a cold
@@ -29,4 +32,23 @@ export async function isMinioReachable(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Silence the console and record everything written to it, formatted the way
+ * Node would print it (so an Error or nested object is searchable too).
+ * Call `restore()` in `afterEach`.
+ */
+export function captureConsole() {
+  const spies = (['log', 'info', 'debug', 'warn', 'error'] as const).map(
+    (method) => vi.spyOn(console, method).mockImplementation(() => {})
+  );
+  return {
+    output: () =>
+      spies
+        .flatMap((spy) => spy.mock.calls)
+        .map((args) => format(...args))
+        .join('\n'),
+    restore: () => spies.forEach((spy) => spy.mockRestore()),
+  };
 }

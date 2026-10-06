@@ -142,6 +142,9 @@ export async function getDefaultContainerForOwner(ownerId: string) {
   });
 }
 
+// Returns link metadata only. The server never holds the material needed to
+// rebuild a shareable URL: for links created without a password the secret
+// lives solely in the URL fragment the client showed at creation time.
 export async function getAccessLinksForContainer(containerId: string) {
   const shares = await fromPrismaV2(prisma.share.findMany, {
     where: {
@@ -152,20 +155,31 @@ export async function getAccessLinksForContainer(containerId: string) {
         select: {
           id: true,
           expiryDate: true,
-          passwordHash: true,
           locked: true,
+          hasPassword: true,
         },
       },
     },
   });
-  return shares.flatMap((share) =>
-    share.accessLinks.map((link) => {
-      // If there password hash is present, we add it to the id so that the full shareable link can be shown to the user
-      return link.passwordHash
-        ? { ...link, id: link.id + `#${link.passwordHash}` }
-        : link;
-    })
-  );
+  return shares.flatMap((share) => share.accessLinks);
+}
+
+// Only matches when `ownerId` owns the link's container, so non-owners get a
+// not-found error and the link is left untouched (mirrors `deleteAccessLink`).
+export async function markAccessLinkAsPasswordless(
+  linkId: string,
+  ownerId: string
+) {
+  return await prisma.accessLink.update({
+    where: {
+      id: linkId,
+      share: { container: { ownerId } },
+    },
+    data: { hasPassword: false },
+    select: {
+      id: true,
+    },
+  });
 }
 
 export async function updateContainerName(containerId: string, name: string) {

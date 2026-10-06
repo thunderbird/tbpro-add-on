@@ -12,7 +12,6 @@ import {
   getContainerForAccessLink,
   isAccessLinkValid,
   resetAccessLinkRetryCount,
-  updateAccessLink,
 } from '../models/sharing';
 
 import {
@@ -24,15 +23,10 @@ import {
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { useMetrics } from '@send-backend/metrics';
 import { ANALYTICS_EVENTS } from '@send-backend/metrics/events';
-import {
-  addExpiryToContainer,
-  formatAccessLinkWithPasswordHash,
-} from '@send-backend/utils';
+import { addExpiryToContainer } from '@send-backend/utils';
 import { createRateLimiter } from '../middleware/rate-limit';
 import {
-  getAuthenticatedUserData,
   getGroupMemberPermissions,
-  requireAuth,
   requireJWT,
   requireSharePermission,
 } from '../middleware';
@@ -375,40 +369,20 @@ router.get(
         uploadId,
         ownerId
       );
-      const formattedLinks = formatAccessLinkWithPasswordHash(result);
-      return res.status(200).json(formattedLinks);
+      return res.status(200).json(result);
     }
     const result = await getAccessLinksByUploadId(uploadId, ownerId);
-    const formattedLinks = formatAccessLinkWithPasswordHash(result);
-    return res.status(200).json(formattedLinks);
+    return res.status(200).json(result);
   })
 );
 
-router.post('/:linkId/add-password', requireAuth, async (req, res) => {
-  const { password } = req.body;
+// Compatibility endpoint for clients that still call it after creating a link
+// without a password. The server does not persist, log, or echo anything from
+// the request body: the link secret lives only in the URL fragment shown to the
+// owner at creation time. The body is accepted and ignored.
+router.post('/:linkId/add-password', (req, res) => {
   const { linkId } = req.params;
-
-  const userData = getAuthenticatedUserData(req);
-  if (!userData) {
-    return res.status(403).json({ message: 'Not authorized' });
-  }
-
-  try {
-    const { id, passwordHash } = await updateAccessLink(
-      linkId,
-      password,
-      userData.id
-    );
-
-    return res
-      .status(200)
-      .json({ input: { linkId, password }, id, passwordHash });
-  } catch (error) {
-    // Also covers links the caller doesn't own, so we don't reveal which link
-    // ids exist.
-    console.error('Error updating access link', error);
-    return res.status(404).json({ message: 'Access link not found' });
-  }
+  return res.status(200).json({ id: linkId });
 });
 
 export default router;

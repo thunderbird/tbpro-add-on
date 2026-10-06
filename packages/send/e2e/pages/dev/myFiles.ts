@@ -2,12 +2,12 @@ import { expect } from "@playwright/test";
 import { fileLocators } from "./locators";
 import { PlaywrightProps } from "../../utils/dev/fixtures";
 import {
-  accessLinkRow,
   clickAndWaitForIdleBuilder,
   create_incognito_context,
   deleteAccessLink,
   downloadFirstFile,
   dragAndDropFile,
+  expectLinkNotRetrievable,
   openFolder,
   playwrightConfig,
   readNewShareLink,
@@ -59,15 +59,17 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   const shareLinkButton = page.getByTestId("create-share-link");
   await shareLinkButton.click();
 
-  await expect(page.getByTestId("link-0")).toHaveValue(/\/share\//);
+  // The full URL is shown once, at creation; the links list only shows ids.
+  await expect(page.getByTestId("new-access-link-url")).toHaveValue(/\/share\//);
   await saveShareLink(page, "file-no-password");
+  await expectLinkNotRetrievable(page, requireShareLink("file-no-password"));
 
   // Create a share link with password
   await passwordInput.fill(password);
   await clickAndWait(shareLinkButton);
 
-  await expect(page.getByTestId("link-1")).toHaveValue(/\/share\//);
   await saveShareLink(page, "file-with-password");
+  await expectLinkNotRetrievable(page, requireShareLink("file-with-password"));
 
   // Create a third share link without password
   await clickAndWait(shareLinkButton);
@@ -88,9 +90,7 @@ export async function share_links({ page }: PlaywrightProps) {
     folderRowSelector,
     firstFolderRow,
     sharelinkButton,
-    linkWithPasswordID,
     passwordInput,
-    firstLink,
   } = fileLocators(page);
   const clickAndWait = await clickAndWaitForIdleBuilder(page);
 
@@ -108,8 +108,10 @@ export async function share_links({ page }: PlaywrightProps) {
   await linksResponse;
   await page.waitForLoadState("networkidle");
 
-  await expect(firstLink).toHaveValue(/\/share\//);
+  // The full URL is shown once, at creation; the links list only shows ids.
+  await expect(page.getByTestId("new-access-link-url")).toHaveValue(/\/share\//);
   await saveShareLink(page, "folder-no-password");
+  await expectLinkNotRetrievable(page, requireShareLink("folder-no-password"));
 
   linksResponse = page.waitForResponse((response) => response.request().url().includes("/links"));
 
@@ -120,15 +122,9 @@ export async function share_links({ page }: PlaywrightProps) {
   await page.waitForLoadState("networkidle");
   await saveShareLink(page, "folder-with-password");
 
-  // Wait for the password badge to be visible and check its content. The row is
-  // found by the link it shows rather than by index -- see accessLinkRow.
-  const passwordLinkRow = await accessLinkRow(
-    page,
-    requireShareLink("folder-with-password")
-  );
-  const passwordBadge = passwordLinkRow.getByTestId(linkWithPasswordID);
-  await expect(passwordBadge).toBeVisible();
-  await expect(passwordBadge).toContainText("Password");
+  // The row is found by its link id rather than by index -- see accessLinkRow.
+  // The list shows no URL for any link, with or without a password.
+  await expectLinkNotRetrievable(page, requireShareLink("folder-with-password"));
 
   // Create a third share link without password
   await clickAndWait(sharelinkButton);

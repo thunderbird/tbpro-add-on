@@ -9,7 +9,6 @@ export const fileLocators = (page: Page) => {
   // which is an app bug none of these tests are about -- strict matching turned it
   // into a strict-mode violation that broke every test downstream of it.
   const firstFolderRow = page.getByTestId(folderRowTestID).first();
-  const linkWithPasswordID = "link-with-password";
   const fileCountID = "file-count";
   const passwordInputID = "password-input";
   const submitButtonID = "submit-button";
@@ -17,9 +16,7 @@ export const fileLocators = (page: Page) => {
   const emptyFolderIndicator = page.getByTestId("empty-folder");
   const sharelinkButton = page.getByTestId("create-share-link");
   const submitButton = page.getByTestId(submitButtonID);
-  const createdShareLink = page.getByTestId("access-link-item-0");
   const passwordInput = page.getByTestId(passwordInputID);
-  const firstLink = createdShareLink.getByTestId("link-0");
   const uploadButton = page.getByTestId("upload-button");
   const downloadButton = page.getByTestId("download-button-0");
   const confirmDownload = page.getByTestId("confirm-download");
@@ -29,14 +26,11 @@ export const fileLocators = (page: Page) => {
     folderRowSelector,
     firstFolderRow,
     sharelinkButton,
-    createdShareLink,
     passwordInput,
     passwordInputID,
-    firstLink,
     deleteFileButton,
     submitButton,
     submitButtonID,
-    linkWithPasswordID,
     uploadButton,
     downloadButton,
     tableCellID,

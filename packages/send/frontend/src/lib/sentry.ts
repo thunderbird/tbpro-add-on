@@ -16,9 +16,8 @@ const isProductionMode = !import.meta.env.DEV;
 
 /**
  * Drops the query string and fragment from a URL. Send access links carry the
- * decryption secret in the URL fragment (as split off by
- * `getAccessLinkWithoutPasswordHash` in lib/utils.ts) and query params can carry
- * tokens, so neither may reach Sentry. See issue #892 / #990.
+ * decryption secret in the URL fragment and query params can carry tokens, so
+ * neither may reach Sentry. See issue #892 / #990.
  */
 function stripUrlSecrets(url: string): string {
   return url.split(/[?#]/)[0];

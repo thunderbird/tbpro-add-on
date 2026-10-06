@@ -105,6 +105,10 @@ export async function updateAccessLinkPermissions(
     data: {
       permission,
     },
+    select: {
+      id: true,
+      permission: true,
+    },
   };
 
   return await fromPrismaV2(

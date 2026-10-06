@@ -18,40 +18,7 @@ vi.mock('../../storage', () => ({
   default: {},
 }));
 
-import { deleteAccessLink, updateAccessLink } from '../../models/sharing';
-
-describe('updateAccessLink', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('only updates a link in a container owned by the caller', async () => {
-    h.prisma.accessLink.update.mockResolvedValue({
-      id: 'link-1',
-      passwordHash: 'hash',
-    });
-
-    await updateAccessLink('link-1', 'hash', 'owner-1');
-
-    expect(h.prisma.accessLink.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          id: 'link-1',
-          share: { container: { ownerId: 'owner-1' } },
-        },
-        data: { passwordHash: 'hash' },
-      })
-    );
-  });
-
-  it('throws when the caller does not own the container', async () => {
-    h.prisma.accessLink.update.mockRejectedValue(new Error('NotFoundError'));
-
-    await expect(
-      updateAccessLink('link-1', 'hash', 'not-the-owner')
-    ).rejects.toThrow();
-  });
-});
+import { deleteAccessLink } from '../../models/sharing';
 
 describe('deleteAccessLink', () => {
   beforeEach(() => {

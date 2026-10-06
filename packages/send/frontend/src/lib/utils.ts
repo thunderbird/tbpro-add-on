@@ -521,13 +521,6 @@ export const getDaysUntilDate = (date: Date | string): number => {
   return !result || result < 0 ? 0 : result;
 };
 
-export const getAccessLinkWithoutPasswordHash = (link: string): string => {
-  if (link.includes('#')) {
-    return link.split('#')[0];
-  }
-  return link;
-};
-
 export type ExpirationOption =
   | 'never'
   | '24hours'

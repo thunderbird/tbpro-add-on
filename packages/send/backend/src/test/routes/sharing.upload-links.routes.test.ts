@@ -3,11 +3,10 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * GET /api/sharing/:uploadId/links returns the access links (including password
- * hashes) for a file. Authorization is resolved from the upload id: the model
- * queries are scoped to the caller's owned containers, so a caller only ever
- * sees links for uploads whose container they own. This suite pins that
- * behaviour:
+ * GET /api/sharing/:uploadId/links returns access-link metadata for a file.
+ * Authorization is resolved from the upload id: the model queries are scoped
+ * to the caller's owned containers, so a caller only ever sees links for
+ * uploads whose container they own. This suite pins that behaviour:
  *   - an unauthenticated request is rejected before any lookup;
  *   - an authenticated caller's own id is the scope passed to the lookups;
  *   - a caller who does not own the upload's container gets an empty list (the
@@ -119,11 +118,9 @@ describe('GET /api/sharing/:uploadId/links', () => {
 
     expect(res.status).toBe(200);
     expect(mockByUploadId).toHaveBeenCalledWith(UPLOAD_ID, OWNER_ID);
-    // Password hash is appended to the id for the owner's own link (real helper
-    // keeps the field and augments the id).
-    expect(res.body).toEqual([
-      { id: 'link-1#secret-hash', passwordHash: 'secret-hash' },
-    ]);
+    // The route returns the scoped model result as-is; nothing is appended or
+    // reformatted on the way out.
+    expect(res.body).toEqual([OWNER_LINK]);
   });
 
   it('scopes the file-type lookup to the authenticated caller', async () => {

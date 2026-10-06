@@ -2,7 +2,6 @@ import {
   deleteAccessLink,
   getAccessLinkRetryCount,
   incrementAccessLinkRetryCount,
-  updateAccessLink,
 } from '@send-backend/models/sharing';
 import {
   getEncryptedPassphrase,
@@ -12,11 +11,8 @@ import { verificationEmitter } from '@send-backend/ws/verify';
 import { z } from 'zod';
 import { router, publicProcedure as t } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import {
-  getAuthenticatedUserId,
-  getGroupMemberPermission,
-  isAuthed,
-} from './middlewares';
+import { getAuthenticatedUserId, isAuthed } from './middlewares';
+import { markAccessLinkAsPasswordless } from '../models/containers';
 
 export const sharingRouter = router({
   /**
@@ -25,8 +21,12 @@ export const sharingRouter = router({
    *   post:
    *     tags:
    *       - Sharing
-   *     summary: Add password to access link
-   *     description: Adds a password to an existing access link
+   *     summary: Acknowledge a legacy add-password call
+   *     description: >-
+   *       Compatibility endpoint for clients that still call it after creating a
+   *       link without a password. Nothing from the request is persisted, logged,
+   *       or echoed back; the link secret lives only in the URL fragment shown to
+   *       the owner at creation time.
    *     requestBody:
    *       required: true
    *       content:
@@ -39,45 +39,40 @@ export const sharingRouter = router({
    *                 description: ID of the access link
    *               password:
    *                 type: string
-   *                 description: Password to add to the access link
+   *                 description: Accepted for compatibility and ignored
    *     responses:
    *       200:
-   *         description: Access link updated successfully
+   *         description: Acknowledged
    *         content:
    *           application/json:
    *             schema:
    *               type: object
    *               properties:
-   *                 input:
-   *                   type: object
-   *                   description: Original input parameters
    *                 id:
    *                   type: string
-   *                   description: ID of the updated access link
-   *                 passwordHash:
-   *                   type: string
-   *                   description: Hash of the password
+   *                   description: ID of the access link
    */
   addPasswordToAccessLink: t
-    .input(z.object({ linkId: z.string(), password: z.string() }))
+    .input(z.object({ linkId: z.string(), password: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      return { id: input.linkId };
+    }),
+
+  markAccessLinkAsPasswordless: t
     .use(isAuthed)
-    .use(getGroupMemberPermission)
+    .input(z.object({ linkId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       const userId = await getAuthenticatedUserId(ctx);
       if (!userId) {
         throw new TRPCError({ code: 'FORBIDDEN' });
       }
       try {
-        const { id, passwordHash } = await updateAccessLink(
-          input.linkId,
-          input.password,
-          userId
-        );
-        return { input: input, id, passwordHash };
+        const { id } = await markAccessLinkAsPasswordless(input.linkId, userId);
+        return { id };
       } catch (error) {
         // Also covers links the caller doesn't own, so we don't reveal which
         // link ids exist.
-        console.error('Error updating access link', error);
+        console.error('Error marking access link as passwordless', error);
         throw new TRPCError({ code: 'NOT_FOUND' });
       }
     }),

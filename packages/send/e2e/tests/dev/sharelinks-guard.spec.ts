@@ -42,8 +42,6 @@ test.describe("share-link guards (#930)", { tag: [PLAYWRIGHT_TAG_DEV_DESKTOP] },
 
     // The clipboard carries the decryption secret in the fragment...
     expect(shareLinkId(`https://send.example/share/${id}#JTExJUMy`)).toBe(id);
-    // ...`getAccessLinksForContainer` appends the stored passwordHash instead...
-    expect(shareLinkId(`https://send.example/share/${id}#somepasswordhash`)).toBe(id);
     // ...and a link created with a password has no fragment at all.
     expect(shareLinkId(`https://send.example/share/${id}`)).toBe(id);
   });

@@ -151,7 +151,7 @@ const EXPECTED_SHARING: Record<string, string[]> = {
   ],
   'POST /:linkId/challenge': [],
   'POST /:linkId/member/accept': ['requireJWT', 'rateLimiter(sensitive)'],
-  'POST /:linkId/add-password': ['requireAuth'],
+  'POST /:linkId/add-password': [],
 };
 
 const EXPECTED_CONTAINERS: Record<string, string[]> = {
@@ -219,6 +219,8 @@ const EXPECTED_CONTAINERS: Record<string, string[]> = {
 const AUTH_EXEMPT: Record<string, string> = {
   'POST /:linkId/challenge':
     'public by design: recipients answer the link challenge before login',
+  'POST /:linkId/add-password':
+    'compatibility no-op: accepts and ignores the body, writes nothing',
   'POST /:containerId/report':
     'abuse reporting is reachable without an account',
 };
@@ -229,7 +231,7 @@ const PERMISSION_EXEMPT: Record<string, string> = {
   'POST /:linkId/challenge':
     'public by design: the challenge answer is itself the proof of access',
   'POST /:linkId/add-password':
-    'ownership is enforced in the model query (updateAccessLink filters on the container owner)',
+    'compatibility no-op: accepts and ignores the body, writes nothing',
   'POST /:linkId/member/accept':
     'proof of access (link validity + challenge response) is enforced inside the handler',
   'POST /:containerId/item': 'pre-existing: any member may add items',
