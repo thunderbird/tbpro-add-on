@@ -36,7 +36,7 @@ export class DashboardPage {
     this.sendHdrSecurityLink = this.page.getByTestId('navlink-settings');
     this.userAvatar = this.page.getByTestId('avatar-default');
     this.userAvatarMenuBtn = this.page.locator('aside.avatar.regular');
-    this.logoutMenuBtn = this.page.getByRole('button', { name: 'Logout', exact: true });
+    this.logoutMenuBtn = this.page.getByRole('button', { name: 'Sign out', exact: true });
     this.welcomeText = this.page.getByText('Welcome,', { exact: true });
     this.userName = this.page.locator('.content-layout .name');
     this.userEmail = this.page.locator('.content-layout .email');

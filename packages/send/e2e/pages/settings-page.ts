@@ -43,6 +43,7 @@ export class SettingsPage {
   readonly userAvatarMenuBtn: Locator;
   readonly userMenuButton: Locator;
   readonly accountMenuLink: Locator;
+  readonly manageSubscriptionMenuLink: Locator;
   readonly supportMenuLink: Locator;
 
   constructor(page: Page) {
@@ -77,6 +78,7 @@ export class SettingsPage {
     this.userAvatarMenuBtn = page.locator('aside.avatar.regular');
     this.userMenuButton = page.locator('button.user-menu');
     this.accountMenuLink = page.getByRole('link', { name: 'Account' });
+    this.manageSubscriptionMenuLink = page.getByRole('link', { name: 'Manage subscription' });
     this.supportMenuLink = page.getByRole('link', { name: 'Support' });
   }
 
@@ -193,6 +195,12 @@ export class SettingsPage {
   async expectUserMenuAndOpenSupport() {
     await this.openUserMenu();
     await expect(this.accountMenuLink).toBeVisible();
+    await expect(this.manageSubscriptionMenuLink).toBeVisible();
+    // The accounts host differs per environment, so only assert the portal path.
+    await expect(this.manageSubscriptionMenuLink).toHaveAttribute(
+      'href',
+      /\/api\/v1\/subscription\/paddle\/portal\/$/
+    );
     await expect(this.supportMenuLink).toBeVisible();
 
     await this.supportMenuLink.click();
