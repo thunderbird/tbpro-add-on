@@ -649,6 +649,9 @@ router.delete(
 router.post(
   '/:containerId/member',
   getGroupMemberPermissions,
+  // Expanding a folder's membership is an administrative action: only the
+  // owner/ADMIN may add members, matching the sibling admin-gated routes.
+  requireAdminPermission,
   // State-changing action: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.MEMBER_NOT_CREATED),

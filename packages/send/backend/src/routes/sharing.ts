@@ -32,7 +32,6 @@ import { createRateLimiter } from '../middleware/rate-limit';
 import {
   getAuthenticatedUserData,
   getGroupMemberPermissions,
-  requireAdminPermission,
   requireAuth,
   requireJWT,
   requireSharePermission,
@@ -301,11 +300,39 @@ router.get(
 router.post(
   '/:linkId/member/accept',
   requireJWT,
+  // State-changing action: sensitive tier, keyed per user.
+  createRateLimiter('sensitive'),
   addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_ACCEPTED),
   wrapAsyncHandler(async (req, res) => {
     const { id } = getDataFromAuthenticatedRequest(req);
 
     const { linkId } = req.params;
+    const { challengePlaintext } = req.body ?? {};
+
+    // Becoming a member requires the same proof of access as the recipient
+    // read path: the link must be unexpired, and the caller must present the
+    // link's challenge plaintext (derivable only with the link's password
+    // when one is set). Possession of the link id alone is not sufficient.
+    if (typeof challengePlaintext !== 'string' || challengePlaintext === '') {
+      res.status(403).json({ message: 'Failed access link challenge' });
+      return;
+    }
+
+    if (!(await isAccessLinkValid(linkId))) {
+      res.status(403).json({ message: 'Access link is invalid or expired' });
+      return;
+    }
+
+    // Same verification as POST /:linkId/challenge: the stored challenge
+    // plaintext must match. On mismatch, no invitation is created.
+    const verifiedLink = await acceptAccessLink(
+      linkId,
+      challengePlaintext
+    ).catch(() => null);
+    if (!verifiedLink) {
+      res.status(403).json({ message: 'Failed access link challenge' });
+      return;
+    }
 
     // We create an Invitation for two reasons:
     // - it allows us to reuse the existing `acceptInvitation()`
@@ -323,27 +350,35 @@ router.post(
   })
 );
 
-// Get all the access links for an individual file
-// identified by the upload id.
+// Get all the access links for an individual file identified by the upload id.
+//
+// This route has no containerId to feed getGroupMemberPermissions, so the
+// container-scoped permission middleware cannot gate it. Authorization is
+// resolved from the upload id instead: the model queries are scoped to the
+// caller's owned containers, so a caller only ever sees links for uploads whose
+// container they own. An id they do not own yields an empty list rather than a
+// distinguishable error, so it cannot be used as an existence oracle.
 router.get(
   '/:uploadId/links',
   requireJWT,
-  getGroupMemberPermissions,
-  requireAdminPermission,
   // Authenticated read: loosest tier, keyed per user.
   createRateLimiter('read'),
   addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_FOUND),
   wrapAsyncHandler(async (req, res) => {
     const { uploadId } = req.params;
+    const { id: ownerId } = getDataFromAuthenticatedRequest(req);
 
     const type = req.query?.type;
 
     if (type === 'file') {
-      const result = await getAccessLinksByUploadIdAndWrappedKey(uploadId);
+      const result = await getAccessLinksByUploadIdAndWrappedKey(
+        uploadId,
+        ownerId
+      );
       const formattedLinks = formatAccessLinkWithPasswordHash(result);
       return res.status(200).json(formattedLinks);
     }
-    const result = await getAccessLinksByUploadId(uploadId);
+    const result = await getAccessLinksByUploadId(uploadId, ownerId);
     const formattedLinks = formatAccessLinkWithPasswordHash(result);
     return res.status(200).json(formattedLinks);
   })

@@ -630,11 +630,18 @@ export async function getContainersSharedWithUser(
   return invitations.filter((i) => i.share.container.type === type);
 }
 
-export async function getAccessLinksByUploadId(uploadId: string) {
+export async function getAccessLinksByUploadId(
+  uploadId: string,
+  ownerId: string
+) {
   const links = await prisma.accessLink.findMany({
     where: {
       share: {
         container: {
+          // Only the owner of the container may list its access links; the
+          // query itself is scoped to the caller so an unowned upload id
+          // returns nothing rather than acting as an existence oracle.
+          ownerId,
           shareOnly: true,
           items: {
             // This is a cheat - instead of searching for containers that only
@@ -656,11 +663,18 @@ export async function getAccessLinksByUploadId(uploadId: string) {
   return links;
 }
 
-export async function getAccessLinksByUploadIdAndWrappedKey(uploadId: string) {
+export async function getAccessLinksByUploadIdAndWrappedKey(
+  uploadId: string,
+  ownerId: string
+) {
   const links = await prisma.accessLink.findMany({
     where: {
       share: {
         container: {
+          // Only the owner of the container may list its access links; the
+          // query itself is scoped to the caller so an unowned upload id
+          // returns nothing rather than acting as an existence oracle.
+          ownerId,
           shareOnly: true,
           items: {
             // This is a cheat - instead of searching for containers that only

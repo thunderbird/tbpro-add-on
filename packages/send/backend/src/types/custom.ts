@@ -38,10 +38,7 @@ export function hasRead(userPermission: PermissionType) {
 }
 
 export function hasAdmin(userPermission: PermissionType) {
-  return (
-    hasPermission(userPermission, PermissionType.READ) ||
-    hasPermission(userPermission, PermissionType.ADMIN)
-  );
+  return hasPermission(userPermission, PermissionType.ADMIN);
 }
 
 export function hasShare(userPermission: PermissionType) {
