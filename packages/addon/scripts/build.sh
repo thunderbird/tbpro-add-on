@@ -62,6 +62,7 @@ fi
 
 # Get version from package.json and replace dots with hyphens
 VERSION=$(jq -r .version < package.json | sed 's/\./-/g')
+XPI_OUTPUT_NAME="${XPI_OUTPUT_NAME:-tbpro-addon-${VERSION}.xpi}"
 
 # Remove old builds
 rm -rf dist
@@ -208,6 +209,6 @@ fi
 
 cd dist
 # Create xpi with version number
-zip -r -FS ../tbpro-addon-${VERSION}.xpi *
+zip -r -FS "../${XPI_OUTPUT_NAME}" *
 
 echo 'Add-on build complete 🎉'
