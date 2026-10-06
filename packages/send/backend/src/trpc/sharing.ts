@@ -61,7 +61,6 @@ export const sharingRouter = router({
           input.linkId,
           input.password
         );
-        console.log('Access link updated', id, passwordHash);
         return { input: input, id, passwordHash };
       } catch (error) {
         console.error('Error updating access link', error);

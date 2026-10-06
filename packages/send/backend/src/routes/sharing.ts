@@ -379,7 +379,6 @@ router.post('/:linkId/add-password', async (req, res) => {
 
   try {
     const { id, passwordHash } = await updateAccessLink(linkId, password);
-    console.log('Access link updated', id, passwordHash);
 
     return res
       .status(200)
