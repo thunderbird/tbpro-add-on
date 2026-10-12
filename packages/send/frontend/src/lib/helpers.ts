@@ -10,6 +10,7 @@ import config from '@send-frontend/config';
 import { RouteLocationNormalized } from 'vue-router';
 import { encryptStream } from './ece';
 import { Keychain } from './keychain';
+import { randomIntBelow } from './secureRandom';
 
 type DownloadOptions = {
   url: string;
@@ -179,10 +180,12 @@ export const UPLOAD_HTTP_RETRY_BASE_DELAY_MS: number =
 
 /**
  * Exponential backoff with jitter for the upload PUT retry schedule:
- *   delay = base * 2^attempt * (0.5 + Math.random() / 2)
- * The jitter factor is in [0.5, 1.0), so with the default 1000ms base the
- * per-attempt delays grow roughly ~1s, ~2s, ~4s while staying de-synchronized
- * across clients (avoids a thundering herd when B2 recovers).
+ *   delay = half + randomIntBelow(exponential - half), half = floor(exp / 2)
+ * which lands uniformly in [base*2^attempt*0.5, base*2^attempt). With the
+ * default 1000ms base the per-attempt delays grow roughly ~1s, ~2s, ~4s while
+ * staying de-synchronized across clients (avoids a thundering herd when B2
+ * recovers). The floor on the lower half keeps each attempt's range strictly
+ * below the next attempt's floor, so successive delays never collide.
  *
  * @param attempt - zero-based index of the attempt that just failed
  * @param baseDelayMs - base delay; defaults to UPLOAD_HTTP_RETRY_BASE_DELAY_MS
@@ -192,15 +195,8 @@ export function getUploadRetryDelayMs(
   baseDelayMs: number = UPLOAD_HTTP_RETRY_BASE_DELAY_MS
 ): number {
   const exponential = baseDelayMs * 2 ** attempt;
-  // Math.random() is intentional: jitter only spreads retries out in time and
-  // gains an attacker nothing if predicted, so a CSPRNG buys no security here
-  // and CodeQL flags dividing/rounding a CSPRNG value as biased
-  // (js/biased-cryptographic-random). SonarCloud S2245 on this line is a
-  // triage item, not a defect.
-  const jitter = 0.5 + Math.random() / 2; // [0.5, 1.0)
-  // floor (not round) keeps each attempt's range strictly below the next's
-  // floor: [base*2^a*0.5, base*2^a), so successive delays never collide.
-  return Math.floor(exponential * jitter);
+  const half = Math.floor(exponential / 2);
+  return half + randomIntBelow(exponential - half);
 }
 
 export const uploadWithTracker = ({

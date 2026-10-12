@@ -5,6 +5,7 @@ import {
   Locator,
   Page,
 } from "@playwright/test";
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "fs";
 
 import { fileLocators } from "../../pages/dev/locators";
@@ -18,8 +19,28 @@ const sharelinks = {
   "folder-with-password": null,
 } as Record<string, string | null>;
 
+/**
+ * Password for the throwaway account each e2e run registers. Generated once per
+ * process from the CSPRNG (stable for the run, like `email` below), so no real
+ * secret lives in the repo. It must satisfy the app's rules in
+ * lib/validations.ts validatePassword(): at least 12 characters, one digit and
+ * one special character from the set it accepts. The digit and the special
+ * character are picked from 8-element sets so the single-byte draw stays
+ * unbiased (a power-of-two modulus).
+ */
+export function generateRunPassword(): string {
+  const DIGITS = "01234567";
+  const SPECIALS = "!@#$%^&*";
+  const [digitByte, specialByte] = randomBytes(2);
+  return (
+    randomBytes(12).toString("base64url") +
+    DIGITS[digitByte % DIGITS.length] +
+    SPECIALS[specialByte % SPECIALS.length]
+  );
+}
+
 export const playwrightConfig = {
-  password: `qghp392784rq3rgqp329r@$`,
+  password: generateRunPassword(),
   email: `myemail${Date.now()}@tb.pro`,
   shareLinks: sharelinks,
   passphrase: "" as string,

@@ -35,6 +35,22 @@ function toWebSocketUrl(url) {
 }
 
 /**
+ * Dev-only origin of the backend as seen from the Vite dev server. Inside the
+ * compose stack the backend container is reachable by its service name, and the
+ * dev server talks to it over the Docker network, so plain http is fine there
+ * (it never leaves the host and never reaches a production build; see
+ * getEnvironmentConfig, which only adds it in development and strips it in
+ * production). Override with VITE_DEV_BACKEND_URL when the dev server runs
+ * somewhere else, e.g. against a backend on another host or port.
+ * @param {Object} env - Environment variables object
+ * @returns {string} - Backend origin for development
+ */
+export const DEV_BACKEND_HOST = 'backend:8080';
+export function getDevBackendUrl(env = {}) {
+  return env.VITE_DEV_BACKEND_URL || `http://${DEV_BACKEND_HOST}`;
+}
+
+/**
  * Helper function to return Sentry domain if DSN is provided
  * @param {string} dsn - Sentry DSN
  * @returns {string[]} - Array containing Sentry domain or empty array
@@ -143,7 +159,7 @@ export function getEnvironmentConfig(mode = 'development', env = {}) {
       // Development might need additional localhost sources
       'connect-src': [
         ...baseConfig['connect-src'],
-        'http://backend:8080', // Docker backend service (fallback)
+        getDevBackendUrl(env), // Docker backend service (fallback)
         'http://localhost:*', // Allow any localhost port in development
         'https://localhost:*', // Allow any localhost port in development
         'ws://localhost:*', // Allow WebSocket connections to any localhost port
@@ -163,7 +179,11 @@ export function getEnvironmentConfig(mode = 'development', env = {}) {
           return true;
         }
         // Filter out localhost and docker backend sources
-        return !src.includes('localhost:') && !src.includes('backend:8080');
+        return (
+          !src.includes('localhost:') &&
+          !src.includes(DEV_BACKEND_HOST) &&
+          src !== getDevBackendUrl(env)
+        );
       }),
     };
   }
