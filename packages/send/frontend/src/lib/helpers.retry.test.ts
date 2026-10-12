@@ -24,13 +24,6 @@ import {
   UPLOAD_HTTP_RETRY_LIMIT,
   uploadWithTracker,
 } from './helpers';
-import { randomUnitInterval } from './secureRandom';
-
-// getUploadRetryDelayMs draws its jitter from the CSPRNG wrapper; mock it so
-// the schedule assertions below are deterministic.
-vi.mock('./secureRandom', () => ({
-  randomUnitInterval: vi.fn(() => 0),
-}));
 
 const TEST_URL = 'http://test.local/api/upload';
 
@@ -269,8 +262,8 @@ describe('getUploadRetryDelayMs', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('grows exponentially with the attempt index (jitter floor)', () => {
-    // randomUnitInterval() === 0 => jitter factor 0.5
-    vi.mocked(randomUnitInterval).mockReturnValue(0);
+    // Math.random() === 0 => jitter factor 0.5
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     expect(getUploadRetryDelayMs(0, 1000)).toBe(500);
     expect(getUploadRetryDelayMs(1, 1000)).toBe(1000);
     expect(getUploadRetryDelayMs(2, 1000)).toBe(2000);
@@ -279,21 +272,14 @@ describe('getUploadRetryDelayMs', () => {
   it('keeps each delay within [base*2^attempt*0.5, base*2^attempt)', () => {
     const base = 1000;
     for (const r of [0, 0.25, 0.5, 0.75, 0.999]) {
-      vi.mocked(randomUnitInterval).mockReturnValue(r);
+      vi.spyOn(Math, 'random').mockReturnValue(r);
       for (let attempt = 0; attempt < 4; attempt++) {
         const exp = base * 2 ** attempt;
         const delay = getUploadRetryDelayMs(attempt, base);
         expect(delay).toBeGreaterThanOrEqual(exp * 0.5);
         expect(delay).toBeLessThan(exp);
       }
+      vi.restoreAllMocks();
     }
-  });
-
-  it('draws its jitter from the CSPRNG wrapper, never Math.random (S2245)', () => {
-    const mathRandom = vi.spyOn(Math, 'random');
-    vi.mocked(randomUnitInterval).mockReturnValue(0.5);
-    getUploadRetryDelayMs(0, 1000);
-    expect(randomUnitInterval).toHaveBeenCalled();
-    expect(mathRandom).not.toHaveBeenCalled();
   });
 });

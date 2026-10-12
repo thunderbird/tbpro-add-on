@@ -19,8 +19,17 @@ describe('sanitizeForLog', () => {
 
   it('stringifies non-string input', () => {
     expect(sanitizeForLog(404)).toBe('404');
+    expect(sanitizeForLog(true)).toBe('true');
     expect(sanitizeForLog(undefined)).toBe('');
     expect(sanitizeForLog(null)).toBe('');
+  });
+
+  it('serializes objects as JSON instead of "[object Object]"', () => {
+    // JSON escapes the newline itself, so the log line stays intact.
+    expect(sanitizeForLog({ a: 1, b: 'x\ny' })).toBe('{"a":1,"b":"x\\ny"}');
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    expect(sanitizeForLog(cyclic)).toBe('[unserializable object]');
   });
 
   it('caps the length to keep a hostile URL from flooding the log', () => {
@@ -28,6 +37,6 @@ describe('sanitizeForLog', () => {
     const out = sanitizeForLog(long);
     expect(out.startsWith('x'.repeat(MAX_LOG_VALUE_LENGTH))).toBe(true);
     expect(out.endsWith('...[truncated]')).toBe(true);
-    expect(out.length).toBe(MAX_LOG_VALUE_LENGTH + '...[truncated]'.length);
+    expect(out).toHaveLength(MAX_LOG_VALUE_LENGTH + '...[truncated]'.length);
   });
 });

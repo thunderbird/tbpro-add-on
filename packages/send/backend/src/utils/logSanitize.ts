@@ -12,12 +12,36 @@ export const MAX_LOG_VALUE_LENGTH = 1024;
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g;
 
+function toText(value: unknown): string {
+  switch (typeof value) {
+    case 'string':
+      return value;
+    case 'number':
+    case 'boolean':
+    case 'bigint':
+      return value.toString();
+    case 'undefined':
+      return '';
+    case 'object':
+      if (value === null) {
+        return '';
+      }
+      try {
+        return JSON.stringify(value) ?? '';
+      } catch {
+        return '[unserializable object]';
+      }
+    default:
+      // symbol, function
+      return Object.prototype.toString.call(value);
+  }
+}
+
 export function sanitizeForLog(
   value: unknown,
   maxLength: number = MAX_LOG_VALUE_LENGTH
 ): string {
-  const text = typeof value === 'string' ? value : String(value ?? '');
-  const cleaned = text.replace(CONTROL_CHARS, ' ');
+  const cleaned = toText(value).replace(CONTROL_CHARS, ' ');
   return cleaned.length > maxLength
     ? `${cleaned.slice(0, maxLength)}...[truncated]`
     : cleaned;

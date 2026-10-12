@@ -10,7 +10,6 @@ import config from '@send-frontend/config';
 import { RouteLocationNormalized } from 'vue-router';
 import { encryptStream } from './ece';
 import { Keychain } from './keychain';
-import { randomUnitInterval } from './secureRandom';
 
 type DownloadOptions = {
   url: string;
@@ -180,7 +179,7 @@ export const UPLOAD_HTTP_RETRY_BASE_DELAY_MS: number =
 
 /**
  * Exponential backoff with jitter for the upload PUT retry schedule:
- *   delay = base * 2^attempt * (0.5 + random / 2), random in [0, 1)
+ *   delay = base * 2^attempt * (0.5 + Math.random() / 2)
  * The jitter factor is in [0.5, 1.0), so with the default 1000ms base the
  * per-attempt delays grow roughly ~1s, ~2s, ~4s while staying de-synchronized
  * across clients (avoids a thundering herd when B2 recovers).
@@ -193,7 +192,12 @@ export function getUploadRetryDelayMs(
   baseDelayMs: number = UPLOAD_HTTP_RETRY_BASE_DELAY_MS
 ): number {
   const exponential = baseDelayMs * 2 ** attempt;
-  const jitter = 0.5 + randomUnitInterval() / 2; // [0.5, 1.0)
+  // Math.random() is intentional: jitter only spreads retries out in time and
+  // gains an attacker nothing if predicted, so a CSPRNG buys no security here
+  // and CodeQL flags dividing/rounding a CSPRNG value as biased
+  // (js/biased-cryptographic-random). SonarCloud S2245 on this line is a
+  // triage item, not a defect.
+  const jitter = 0.5 + Math.random() / 2; // [0.5, 1.0)
   // floor (not round) keeps each attempt's range strictly below the next's
   // floor: [base*2^a*0.5, base*2^a), so successive delays never collide.
   return Math.floor(exponential * jitter);
