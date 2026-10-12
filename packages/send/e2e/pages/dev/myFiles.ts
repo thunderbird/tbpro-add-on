@@ -8,6 +8,7 @@ import {
   downloadFirstFile,
   dragAndDropFile,
   expectLinkNotRetrievable,
+  expectPasswordLinkReshareable,
   openFolder,
   playwrightConfig,
   readNewShareLink,
@@ -69,7 +70,7 @@ export async function upload_workflow({ page }: PlaywrightProps) {
   await clickAndWait(shareLinkButton);
 
   await saveShareLink(page, "file-with-password");
-  await expectLinkNotRetrievable(page, requireShareLink("file-with-password"));
+  await expectPasswordLinkReshareable(page, requireShareLink("file-with-password"));
 
   // Create a third share link without password
   await clickAndWait(shareLinkButton);
@@ -123,8 +124,8 @@ export async function share_links({ page }: PlaywrightProps) {
   await saveShareLink(page, "folder-with-password");
 
   // The row is found by its link id rather than by index -- see accessLinkRow.
-  // The list shows no URL for any link, with or without a password.
-  await expectLinkNotRetrievable(page, requireShareLink("folder-with-password"));
+  // A password-protected link's URL carries no secret, so the list may re-show it.
+  await expectPasswordLinkReshareable(page, requireShareLink("folder-with-password"));
 
   // Create a third share link without password
   await clickAndWait(sharelinkButton);
