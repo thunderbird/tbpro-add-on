@@ -92,7 +92,7 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@types/websocket": "npm:@types/ws@^8.18.1",
     "@typescript-eslint/parser": "^8.59.1",
-    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.5.0",
@@ -109,7 +109,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.1",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=22.11.0"

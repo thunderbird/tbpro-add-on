@@ -56,9 +56,19 @@ async function loadLimiterFactory() {
   return mod.createRateLimiter;
 }
 
-function appWithLimiter(limiter: RequestHandler, attachUser?: string) {
+function appWithLimiter(
+  limiter: RequestHandler,
+  attachUser?: string,
+  options: { trustProxy?: boolean } = {},
+) {
   const app = express();
   app.use(express.json());
+  if (options.trustProxy) {
+    // Mirrors the production setting in src/index.ts so req.ip is derived from
+    // X-Forwarded-For through proxy-addr, exactly as it is behind the load
+    // balancer.
+    app.set('trust proxy', 1);
+  }
   if (attachUser) {
     // Simulate an upstream auth middleware populating the OIDC user.
     app.use((req, _res, next) => {
@@ -180,5 +190,75 @@ describe('rate-limit middleware', () => {
     // the limit was not counted separately per instance.
     await request(replicaB).get('/test').expect(429);
     await request(replicaA).get('/test').expect(429);
+  });
+
+  // Pre-auth routes key on req.ip. In production the app sits behind one
+  // proxy and sets `trust proxy` to 1, so req.ip comes from X-Forwarded-For via
+  // express's proxy-addr dependency.
+  describe('behind a trusted proxy', () => {
+    it('keys anonymous callers by the forwarded client IP, not the proxy IP', async () => {
+      const createRateLimiter = await loadLimiterFactory();
+      const app = appWithLimiter(createRateLimiter('auth'), undefined, {
+        trustProxy: true,
+      });
+
+      // Two clients share the same proxy (same socket address in supertest)
+      // but present different X-Forwarded-For values.
+      for (let i = 0; i < 3; i++) {
+        await request(app)
+          .get('/test')
+          .set('X-Forwarded-For', '203.0.113.10')
+          .expect(200);
+      }
+      await request(app)
+        .get('/test')
+        .set('X-Forwarded-For', '203.0.113.10')
+        .expect(429);
+
+      // A different forwarded client still has its full budget.
+      await request(app)
+        .get('/test')
+        .set('X-Forwarded-For', '203.0.113.20')
+        .expect(200);
+    });
+
+    it('only trusts one hop, so a client cannot spoof its way out of a bucket by prepending addresses', async () => {
+      const createRateLimiter = await loadLimiterFactory();
+      const app = appWithLimiter(createRateLimiter('auth'), undefined, {
+        trustProxy: true,
+      });
+
+      // With trust proxy = 1, req.ip is the right-most forwarded address (the
+      // one the trusted proxy appended). Any addresses the client itself put
+      // first are ignored, so varying them must not create a new bucket.
+      for (let i = 0; i < 3; i++) {
+        await request(app)
+          .get('/test')
+          .set('X-Forwarded-For', `198.51.100.${i}, 203.0.113.30`)
+          .expect(200);
+      }
+      await request(app)
+        .get('/test')
+        .set('X-Forwarded-For', '198.51.100.99, 203.0.113.30')
+        .expect(429);
+    });
+
+    it('ignores X-Forwarded-For entirely when trust proxy is not set', async () => {
+      const createRateLimiter = await loadLimiterFactory();
+      const app = appWithLimiter(createRateLimiter('auth'));
+
+      // Without trust proxy, every request comes from the same socket address
+      // regardless of the header, so they all land in one bucket.
+      for (let i = 0; i < 3; i++) {
+        await request(app)
+          .get('/test')
+          .set('X-Forwarded-For', `203.0.113.${i}`)
+          .expect(200);
+      }
+      await request(app)
+        .get('/test')
+        .set('X-Forwarded-For', '203.0.113.200')
+        .expect(429);
+    });
   });
 });
