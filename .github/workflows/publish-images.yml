@@ -47,13 +47,12 @@ on:
       - .github/workflows/build-multiarch-image.yml
   workflow_dispatch:
 
-# MUST stay at workflow scope and MUST include packages: write. A reusable
-# workflow can only DOWNGRADE the caller's GITHUB_TOKEN permissions, so dropping
-# packages: write here would break the GHCR push inside
-# build-multiarch-image.yml no matter what that file declares.
+# Read-only by default. A reusable workflow can only DOWNGRADE the caller's
+# GITHUB_TOKEN permissions, so the backend/frontend jobs that call
+# build-multiarch-image.yml MUST grant packages: write themselves, or the GHCR
+# push inside it fails no matter what that file declares.
 permissions:
   contents: read
-  packages: write
 
 jobs:
   # Read the version once. lerna.json is `independent` and the root package.json
@@ -68,7 +67,7 @@ jobs:
     outputs:
       value: ${{ steps.read-version.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Read version from packages/send/frontend/package.json
         id: read-version
@@ -100,6 +99,10 @@ jobs:
   # Moving tags (:latest, :v<version>) are published only from the main branch.
   backend:
     needs: version
+    # packages: write is required for the GHCR push in the reusable workflow.
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/build-multiarch-image.yml
     with:
       image: ghcr.io/thunderbird/thunderbird-send
@@ -122,6 +125,10 @@ jobs:
 
   frontend:
     needs: version
+    # packages: write is required for the GHCR push in the reusable workflow.
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/build-multiarch-image.yml
     with:
       image: ghcr.io/thunderbird/thunderbird-send-frontend
@@ -149,7 +156,7 @@ jobs:
       packages: read
     steps:
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

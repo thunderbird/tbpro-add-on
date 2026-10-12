@@ -36,8 +36,8 @@ jobs:
       iac-changed: ${{ steps.check.outputs.iac-changed }}
       frontend-changed: ${{ steps.check.outputs.frontend-changed }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: check
         with:
           filters: |
@@ -57,7 +57,7 @@ jobs:
     env:
       IS_CI_AUTOMATION: "yes"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Set up environments and install dependencies
         id: setup-and-install-dependencies
         run: |
