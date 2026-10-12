@@ -119,12 +119,12 @@ STACK_START=$(date +%s)
 DEV_TLS_CERT="$(mktemp)"
 trap 'rm -f "$DEV_TLS_CERT"' EXIT
 RESOLVE_ARGS=()
-[ "$DOCKER_HOST" != "localhost" ] && RESOLVE_ARGS=(--resolve "localhost:8088:${DOCKER_HOST}")
+[[ "$DOCKER_HOST" != "localhost" ]] && RESOLVE_ARGS=(--resolve "localhost:8088:${DOCKER_HOST}")
 https_ready() {
   docker compose "${COMPOSE_FILES[@]}" cp \
     reverse-proxy:/etc/nginx/tls/localhost.crt "$DEV_TLS_CERT" >/dev/null 2>&1 || return 1
-  [ "$(curl -s --cacert "$DEV_TLS_CERT" "${RESOLVE_ARGS[@]}" -o /dev/null \
-        -w '%{http_code}' --max-time 5 "https://localhost:8088/")" = 200 ]
+  [[ "$(curl -s --cacert "$DEV_TLS_CERT" "${RESOLVE_ARGS[@]}" -o /dev/null \
+        -w '%{http_code}' --max-time 5 "https://localhost:8088/")" = 200 ]]
 }
 
 frontend_ready() {

@@ -31,11 +31,11 @@ trap cleanup INT TERM
 # only: copy it out of the container (trust comes from the local docker daemon,
 # not the network) and pin localhost to DOCKER_HOST instead of using -k.
 COMPOSE_ARGS=()
-[ "$IS_CI_AUTOMATION" = "yes" ] && COMPOSE_ARGS=(-f "$REPO_ROOT/compose.ci.yml")
+[[ "$IS_CI_AUTOMATION" = "yes" ]] && COMPOSE_ARGS=(-f "$REPO_ROOT/compose.ci.yml")
 DEV_TLS_CERT="$(mktemp)"
 trap 'rm -f "$DEV_TLS_CERT"' EXIT
 RESOLVE_ARGS=()
-[ "$DOCKER_HOST" != "localhost" ] && RESOLVE_ARGS=(--resolve "localhost:8088:${DOCKER_HOST}")
+[[ "$DOCKER_HOST" != "localhost" ]] && RESOLVE_ARGS=(--resolve "localhost:8088:${DOCKER_HOST}")
 
 # Wait for servers to be ready
 echo "Waiting for HTTPS server..."
