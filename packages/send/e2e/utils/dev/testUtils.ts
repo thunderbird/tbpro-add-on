@@ -202,13 +202,12 @@ export async function expectPasswordLinkReshareable(
   shareUrl: string
 ) {
   const row = await accessLinkRow(page, shareUrl);
-  // accessLinkRow has already matched the row on this id.
+  // accessLinkRow has already matched the row on this id. Link ids are UUIDs
+  // (hex and hyphens), so they need no escaping inside the pattern.
   const id = shareLinkId(shareUrl) ?? "";
   const input = row.locator("input");
   await expect(input).toHaveCount(1);
-  await expect(input).toHaveValue(
-    new RegExp(`/share/${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
-  );
+  await expect(input).toHaveValue(new RegExp(`/share/${id}$`));
   return row;
 }
 
