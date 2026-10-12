@@ -1,12 +1,14 @@
-// Configure sentry
-import * as trpcExpress from '@trpc/server/adapters/express';
-import * as t from './trpc';
+// Sentry first: it instruments express/http/pg/ioredis by hooking `require`,
+// so it has to be initialized before any of those modules are loaded (see
+// src/sentry.ts). Keep this the first import in the file.
+import './sentry';
 // We need to import this before importing any other modules that use BigInt
 import './utils/bigint';
 
+import * as trpcExpress from '@trpc/server/adapters/express';
+import * as t from './trpc';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import swaggerUi from 'swagger-ui-express';
-import './sentry';
 
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
