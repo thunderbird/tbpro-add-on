@@ -131,6 +131,10 @@ services:
       context: ./packages/send/backend/tls-dev-proxy/
     ports:
       - "8088:12345"
+    volumes:
+      # Keeps the generated self-signed cert across recreates, so a browser
+      # exception or a trusted copy stays valid (see tls-dev-proxy/docker-entrypoint.d).
+      - dev-tls-certs:/etc/nginx/tls
     depends_on:
       - backend
 
@@ -151,3 +155,4 @@ volumes:
   postgres-data:
   backend-node-modules: # do not create on host
   frontend-node-modules: # do not create on host
+  dev-tls-certs:
