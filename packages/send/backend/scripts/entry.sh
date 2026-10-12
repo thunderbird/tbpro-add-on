@@ -9,10 +9,10 @@ set -e
 
 # CI-only: the e2e harness drives this image and needs workspace deps installed
 # at boot. Normal images already have deps baked in by the Dockerfile.
-# Non-fatal on purpose: `--frozen-lockfile` cannot succeed against the lockfile
-# baked into this image (the Dockerfile installs with --no-lockfile for the
-# reason described in scripts/build.sh), and under `set -e` a hard failure here
-# would mean the container never starts.
+# Non-fatal on purpose: it can still fail (no network, a bind-mounted tree
+# without the image's lockfile, pnpm refusing to purge a node_modules built by
+# another user), and under `set -e` a hard failure here would mean the
+# container never starts.
 if [ "$IS_CI_AUTOMATION" = "yes" ]; then
     echo 'CI automation: installing backend deps'
     pnpm install --frozen-lockfile ||

@@ -82,6 +82,7 @@ jobs:
         if: contains(github.event.release.assets.*.name, 'ecr_tag.zip')
         env:
           PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
+          PULUMI_CONFIG_PASSPHRASE: "${{ secrets.PULUMI_PASSPHRASE_PROD }}"
         run: |
           # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
           # to do with the GHA workflow "env" settings.
@@ -104,7 +105,7 @@ jobs:
 
           # Use yq to merge the stump into the main config
           yq -i '. *= load("newimage.yaml")' config.prod.yaml
-          export PULUMI_CONFIG_PASSPHRASE='${{ secrets.PULUMI_PASSPHRASE_PROD }}'
+          # (PULUMI_CONFIG_PASSPHRASE comes from the step env above)
 
           # update the service
           pulumi login

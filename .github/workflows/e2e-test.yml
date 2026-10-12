@@ -108,7 +108,7 @@ jobs:
             --exclude=.pnpm-store \
             packages/send/backend/ \
             packages/send/backend/.docker-build/
-          cp pnpm-lock.yaml packages/send/backend/.docker-build/
+          cp pnpm-lock.yaml pnpm-workspace.yaml packages/send/backend/.docker-build/
           echo "node_modules/" > packages/send/backend/.docker-build/.dockerignore
 
       - name: Build backend image

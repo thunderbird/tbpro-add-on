@@ -8,20 +8,23 @@ WORKDIR /app
 
 # Copy dependency manifests first; defer frontend source until after install so
 # source-only changes don't bust the pnpm install layer cache.
-ADD package.json \
+COPY package.json \
     pnpm-lock.yaml \
     pnpm-workspace.yaml \
     nx.json \
     lerna.json \
     ./
-ADD packages/send/frontend/package.json ./packages/send/frontend/package.json
+COPY packages/send/frontend/package.json ./packages/send/frontend/package.json
 
-# Install dependencies
-RUN npm install -g pnpm@10
-RUN pnpm install
+# Install dependencies. Exact pnpm version (matches the nightly e2e workflows);
+# the pnpm package has no install scripts. --frozen-lockfile installs exactly the
+# locked versions; lifecycle scripts stay limited to the workspace's
+# onlyBuiltDependencies allowlist (pnpm 10 blocks the rest by default).
+RUN npm install -g --ignore-scripts pnpm@10.34.7
+RUN pnpm install --frozen-lockfile
 
 # Copy frontend source after install
-ADD packages/send/frontend ./packages/send/frontend
+COPY packages/send/frontend ./packages/send/frontend
 
 # runtime production
 FROM base AS runtime_production
