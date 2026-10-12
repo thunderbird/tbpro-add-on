@@ -27,10 +27,10 @@ on:
     branches:
       - main
 
+# Read-only by default; the jobs that assume the AWS role add id-token: write.
 permissions:
   packages: read
   contents: read
-  id-token: write
 
 jobs:
   detect-changes:
@@ -43,8 +43,8 @@ jobs:
       frontend-changed: ${{ steps.check.outputs.frontend-changed == 'true' || github.event.inputs.force_frontend == 'true' }}
       addon-changed: ${{ steps.check.outputs.addon-changed }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: check
         with:
           filters: |
@@ -64,6 +64,11 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      # OIDC token for aws-actions/configure-aws-credentials.
+      id-token: write
     outputs:
       backend-image: ${{ steps.build-backend.outputs.backend-image }}
     container:
@@ -78,7 +83,7 @@ jobs:
           echo "Building backend with changes: ${{ needs.detect-changes.outputs.backend-changed }} and iac changes: ${{ needs.detect-changes.outputs.iac-changed }}"
           date
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Install pnpm and build package
         # if: needs.detect-changes.outputs.backend-changed == 'true'
@@ -90,7 +95,7 @@ jobs:
 
       - name: Configure AWS credentials
         # if: needs.detect-changes.outputs.backend-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           aws-region: us-east-1
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -98,7 +103,7 @@ jobs:
       - name: Login to Amazon ECR
         # if: needs.detect-changes.outputs.backend-changed == 'true'
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
         with:
           mask-password: "true"
 
@@ -117,7 +122,7 @@ jobs:
       - name: Archive the ECR tag
         # if: needs.detect-changes.outputs.backend-changed == 'true'
         id: tag-archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ecr_tag
           path: ecr_tag.txt
@@ -126,6 +131,11 @@ jobs:
     needs: ["backend-build-stage", "detect-changes"]
     if: needs.detect-changes.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      # OIDC token for aws-actions/configure-aws-credentials.
+      id-token: write
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
@@ -135,7 +145,7 @@ jobs:
     outputs:
       ecs_deployed: ${{ steps.wait-deployment.outputs.ecs_deployed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: "Test echo"
         run: |
@@ -144,7 +154,7 @@ jobs:
 
       - name: Configure AWS credentials
         # if: needs.detect-changes.outputs.backend-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           aws-region: eu-central-1
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -218,7 +228,7 @@ jobs:
           echo "Building frontend for environment ${{ matrix.env }} with base URL ${{ matrix.base_url }}"
           date
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Install pnpm and build package
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
@@ -278,7 +288,7 @@ jobs:
       - name: Archive the ${{ matrix.env }} frontend build
         if: needs.detect-changes.outputs.frontend-changed == 'true'
         id: frontend-archive-stage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dist-web-${{ matrix.env }}
           path: packages/send/dist-web-${{ matrix.env }}
@@ -288,6 +298,11 @@ jobs:
     needs: ["frontend-build", "detect-changes"]
     if: needs.detect-changes.outputs.frontend-changed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      # OIDC token for aws-actions/configure-aws-credentials.
+      id-token: write
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     environment:
@@ -295,7 +310,7 @@ jobs:
     outputs:
       s3_deployed: ${{ steps.frontend-deploy.outputs.s3_deployed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Test echo
         run: |
@@ -304,14 +319,14 @@ jobs:
 
       - name: Download frontend-archive-stage artifact
         if: needs.detect-changes.outputs.frontend-changed == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: dist-web-stage
           path: frontend-source
 
       - name: Configure AWS credentials
         if: needs.detect-changes.outputs.frontend-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           aws-region: eu-central-1
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -328,6 +343,11 @@ jobs:
     needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
     if: ${{ always() && needs.detect-changes.outputs.frontend-changed == 'true' && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      # OIDC token for aws-actions/configure-aws-credentials.
+      id-token: write
     environment:
       name: send-stage
     steps:
@@ -338,7 +358,7 @@ jobs:
 
       - name: Configure AWS credentials
         # if: needs.detect-changes.outputs.frontend-changed == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           aws-region: eu-central-1
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -368,7 +388,7 @@ jobs:
     environment:
       name: send-stage
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: (send frontend) Create .env file from secrets
         env:
@@ -477,7 +497,7 @@ jobs:
 
       - name: Archive the system-add-on XPI
         id: xpi-archive-system-addon
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: system-add-on-prod
           path: ${{ steps.system-addon-build.outputs.system_xpi_file_path }}
