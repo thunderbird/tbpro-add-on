@@ -30,6 +30,7 @@ awk -v importer="  $importer:" '
   keep { print }
   END { if (!found) exit 1 }
 ' pnpm-lock.yaml > pnpm-lock.yaml.tmp || {
+  rm -f pnpm-lock.yaml.tmp
   echo "standalone-lockfile: no '$importer' importer in pnpm-lock.yaml" >&2
   exit 1
 }
