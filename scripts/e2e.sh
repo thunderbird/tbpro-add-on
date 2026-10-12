@@ -117,6 +117,7 @@ STACK_START=$(date +%s)
 # container (trust comes from the local docker daemon, not the network) and pin
 # localhost to DOCKER_HOST rather than skipping verification.
 DEV_TLS_CERT="$(mktemp)"
+trap 'rm -f "$DEV_TLS_CERT"' EXIT
 RESOLVE_ARGS=()
 [ "$DOCKER_HOST" != "localhost" ] && RESOLVE_ARGS=(--resolve "localhost:8088:${DOCKER_HOST}")
 https_ready() {

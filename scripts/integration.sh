@@ -33,6 +33,7 @@ trap cleanup INT TERM
 COMPOSE_ARGS=()
 [ "$IS_CI_AUTOMATION" = "yes" ] && COMPOSE_ARGS=(-f "$REPO_ROOT/compose.ci.yml")
 DEV_TLS_CERT="$(mktemp)"
+trap 'rm -f "$DEV_TLS_CERT"' EXIT
 RESOLVE_ARGS=()
 [ "$DOCKER_HOST" != "localhost" ] && RESOLVE_ARGS=(--resolve "localhost:8088:${DOCKER_HOST}")
 
