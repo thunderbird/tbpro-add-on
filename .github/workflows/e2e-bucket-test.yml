@@ -180,14 +180,14 @@ jobs:
           echo "VITE_OIDC_ROOT_URL=${{ secrets.VITE_OIDC_ROOT_URL }}" >> .env
 
       - name: Restore Playwright browsers cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0restore
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         id: playwright-cache
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
           key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
 
       - name: Restore apt packages cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0restore
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         id: apt-cache
         with:
           path: /var/cache/apt/archives
@@ -238,14 +238,14 @@ jobs:
       # cache that poisons future runs with "Executable doesn't exist".
       - name: Save Playwright browsers cache
         if: always() && steps.playwright-cache.outputs.cache-hit != 'true' && steps.install-playwright-browsers.outcome == 'success'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0save
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
           key: playwright-${{ runner.os }}-${{ hashFiles('packages/send/e2e/package.json') }}
 
       - name: Save apt packages cache
         if: always()
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0save
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: /var/cache/apt/archives
           key: ${{ steps.apt-cache.outputs.cache-primary-key }}
