@@ -142,6 +142,21 @@ describe('CSP Configuration', () => {
       expect(prodSrc).not.toContain('http://backend:8080');
     });
 
+    it('keeps the production backend even when the dev override points at the same URL', () => {
+      const sameHost = {
+        ...testEnv,
+        VITE_DEV_BACKEND_URL: testEnv.VITE_SEND_SERVER_URL,
+      };
+      const prodSrc = getEnvironmentConfig('production', sameHost)[
+        'connect-src'
+      ];
+      expect(prodSrc).toContain('https://api.example.com');
+      expect(prodSrc).toContain('wss://api.example.com');
+      expect(getCSPForEnvironment('production', sameHost)).toBe(
+        getCSPForEnvironment('production', testEnv)
+      );
+    });
+
     it('filters localhost sources in production', () => {
       const config = getEnvironmentConfig('production', testEnv);
       const localhostSources = config['connect-src'].filter(

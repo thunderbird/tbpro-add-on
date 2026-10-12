@@ -178,12 +178,11 @@ export function getEnvironmentConfig(mode = 'development', env = {}) {
         if (src.startsWith('wss://') || src.startsWith('ws://')) {
           return true;
         }
-        // Filter out localhost and docker backend sources
-        return (
-          !src.includes('localhost:') &&
-          !src.includes(DEV_BACKEND_HOST) &&
-          src !== getDevBackendUrl(env)
-        );
+        // Filter out localhost and docker backend sources. The dev-only origin
+        // (getDevBackendUrl) is never part of baseConfig, so there is nothing
+        // of it to strip here; comparing against it would wrongly remove a
+        // production backend that happens to share the dev override's URL.
+        return !src.includes('localhost:') && !src.includes(DEV_BACKEND_HOST);
       }),
     };
   }
