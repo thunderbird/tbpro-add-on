@@ -22,6 +22,18 @@ interface TokenCacheEntry {
 // Simple in-memory cache for token introspection results
 const tokenCache = new Map<string, TokenCacheEntry>();
 
+// Expired entries are swept from tokenCache once every this many cache
+// insertions. A fixed cadence keeps the sweep cheap and amortized without
+// involving a random number generator (SonarCloud S2245 flagged the previous
+// `Math.random() < 0.1`, which was never a security value, only a frequency).
+export const CACHE_SWEEP_EVERY_N_INSERTS = 10;
+let insertsSinceSweep = 0;
+
+/** Number of entries currently held in the introspection cache (for tests). */
+export function getIntrospectionCacheSize(): number {
+  return tokenCache.size;
+}
+
 // How long an introspection result is trusted before we ask Keycloak again.
 // Short enough that a revoked session loses access promptly (#960), long
 // enough that a burst of requests (e.g. a multipart upload) isn't one
@@ -91,8 +103,9 @@ export async function introspectToken(
     });
 
     // Clean up expired cache entries periodically
-    if (Math.random() < 0.1) {
-      // 10% chance to cleanup on each introspection
+    insertsSinceSweep += 1;
+    if (insertsSinceSweep >= CACHE_SWEEP_EVERY_N_INSERTS) {
+      insertsSinceSweep = 0;
       const now = Date.now();
       for (const [cachedToken, entry] of tokenCache.entries()) {
         if (entry.expires <= now) {

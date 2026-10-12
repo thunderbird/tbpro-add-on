@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { isAccessTokenRevoked } from '../../auth/oidc';
+import {
+  CACHE_SWEEP_EVERY_N_INSERTS,
+  getIntrospectionCacheSize,
+  introspectToken,
+  isAccessTokenRevoked,
+} from '../../auth/oidc';
 
 vi.mock('axios', () => ({
   default: { post: vi.fn() },
@@ -58,5 +63,50 @@ describe('isAccessTokenRevoked (#960 exp-gated introspection)', () => {
     const token = tokenWithExp(nowSec() + 300, 'error');
 
     expect(await isAccessTokenRevoked(token)).toBe(false);
+  });
+});
+
+describe('introspection cache sweep (deterministic cadence, S2245)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.OIDC_TOKEN_INTROSPECTION_URL = 'https://kc.test/introspect';
+    process.env.OIDC_CLIENT_ID = 'client';
+    process.env.OIDC_CLIENT_SECRET = 'secret';
+  });
+
+  it('drops expired entries every N inserts without consulting Math.random', async () => {
+    const mathRandom = vi.spyOn(Math, 'random');
+    // Each result's `exp` is already in the past, so every entry is expired
+    // the moment it is cached and is eligible for the next sweep.
+    mockedPost.mockResolvedValue({
+      data: { active: true, exp: nowSec() - 1 },
+    });
+
+    // A still-valid entry must survive the sweep.
+    const live = `opaque-live-${Date.now()}`;
+    mockedPost.mockResolvedValueOnce({
+      data: { active: true, exp: nowSec() + 300 },
+    });
+    await introspectToken(live);
+    const before = getIntrospectionCacheSize();
+
+    // Twice the cadence guarantees at least one sweep inside the loop, no
+    // matter where the module-level counter stood when this test started.
+    const inserts = 2 * CACHE_SWEEP_EVERY_N_INSERTS;
+    for (let i = 0; i < inserts; i++) {
+      await introspectToken(`opaque-sweep-${Date.now()}-${i}`);
+    }
+
+    // Without sweeping the cache would have grown by `inserts`; at most N-1
+    // expired entries (those added after the last sweep) may remain.
+    expect(getIntrospectionCacheSize()).toBeLessThanOrEqual(
+      before + CACHE_SWEEP_EVERY_N_INSERTS - 1
+    );
+    // The live entry is still served from cache (no extra introspection call).
+    const calls = mockedPost.mock.calls.length;
+    await introspectToken(live);
+    expect(mockedPost).toHaveBeenCalledTimes(calls);
+    expect(mathRandom).not.toHaveBeenCalled();
+    mathRandom.mockRestore();
   });
 });

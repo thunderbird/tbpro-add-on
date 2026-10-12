@@ -1,4 +1,5 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
+import { sanitizeForLog } from '../utils/logSanitize';
 
 type ErrorRespInfo = {
   statusCode: number;
@@ -271,13 +272,19 @@ export function errorHandler(err: Error, req: Request, res: Response) {
     message: message,
   });
 
+  // Method, URL, client IP and the message (which may echo request data) are
+  // all client-influenced: strip control characters so a request cannot forge
+  // or break log lines (S5145).
+  const line = [
+    status,
+    `${sanitizeForLog(req.method)} ${sanitizeForLog(req.originalUrl)}`,
+    sanitizeForLog(req.ip),
+    sanitizeForLog(message),
+  ].join(' - ');
+
   if (status === 500) {
-    console.error(
-      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `
-    );
+    console.error(line);
   } else {
-    console.warn(
-      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `
-    );
+    console.warn(line);
   }
 }

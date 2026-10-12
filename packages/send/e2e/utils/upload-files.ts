@@ -1,4 +1,5 @@
 import { type Page, type TestInfo } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -16,7 +17,7 @@ export function createUniquePngUploadFixture(
   // Keep the tracked test.png fixture immutable. Each upload uses a runtime
   // copy with a unique name so assertions never depend on pre-existing files.
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
-  const randomId = Math.random().toString(36).slice(2, 8);
+  const randomId = randomUUID().slice(0, 8);
   const fileName = `e2e-test-${uploadMethod}-${timestamp}-${randomId}.png`;
   const filePath = testInfo.outputPath('upload-fixtures', fileName);
 

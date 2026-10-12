@@ -21,6 +21,7 @@
  * APIs, hence the `@ts-ignore` accesses below (matching extension-store.ts).
  */
 
+import { onBridgeMessage } from './bridgeMessage';
 import {
   GET_TELEMETRY_STATE,
   TELEMETRY_STATE_CHANGED,
@@ -72,12 +73,13 @@ function requestTelemetryStateViaBridge(): Promise<boolean> {
       resolve(false);
     }, BRIDGE_TIMEOUT_MS);
 
-    const handler = (event: MessageEvent) => {
+    // Only the bridge (same window, same origin) may answer; see bridgeMessage.ts.
+    const handler = onBridgeMessage((event) => {
       if (event.data?.type === TELEMETRY_STATE_RESPONSE) {
         cleanup();
         resolve(Boolean(event.data.enabled));
       }
-    };
+    });
 
     window.addEventListener('message', handler);
     window.postMessage({ type: GET_TELEMETRY_STATE }, window.location.origin);
@@ -114,9 +116,7 @@ export async function isTelemetryAllowed(): Promise<boolean> {
  * receives the new boolean value. Returns an unsubscribe function; a no-op when
  * the experiment API is unavailable (e.g. on the public website).
  */
-export function onTelemetryChanged(
-  cb: (enabled: boolean) => void
-): () => void {
+export function onTelemetryChanged(cb: (enabled: boolean) => void): () => void {
   const api = getTelemetryApi();
   if (api?.onChanged?.addListener) {
     // moz-extension add-on page: observe the pref directly.
@@ -135,11 +135,11 @@ export function onTelemetryChanged(
   // Inside Thunderbird without the direct API (the hosted Send dashboard): the
   // background pushes pref changes through the token-bridge as window messages.
   if (isInsideThunderbird() && typeof window !== 'undefined') {
-    const handler = (event: MessageEvent) => {
+    const handler = onBridgeMessage((event) => {
       if (event.data?.type === TELEMETRY_STATE_CHANGED) {
         cb(Boolean(event.data.enabled));
       }
-    };
+    });
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }

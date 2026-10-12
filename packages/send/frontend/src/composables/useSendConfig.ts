@@ -2,6 +2,7 @@ import {
   GET_LOGIN_STATE,
   LOGIN_STATE_RESPONSE,
 } from '@send-frontend/lib/const';
+import { onBridgeMessage } from '@send-frontend/lib/bridgeMessage';
 import { pullBridgedPassphrase } from '@send-frontend/lib/bridgePassphrase';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import init from '@send-frontend/lib/init';
@@ -165,7 +166,9 @@ export function useSendConfig() {
         reject(new Error('Timed out waiting for addon login state'));
       }, 5000);
 
-      const messageHandler = (event: MessageEvent) => {
+      // Only the bridge (same window, same origin) may answer; a message from
+      // a frame or another origin must not be able to tell us we're signed in.
+      const messageHandler = onBridgeMessage((event) => {
         if (event.data?.type === LOGIN_STATE_RESPONSE) {
           cleanup();
           resolve({
@@ -174,7 +177,7 @@ export function useSendConfig() {
             storageUnavailable: event.data.storageUnavailable ?? false,
           });
         }
-      };
+      });
 
       const cleanup = () => {
         clearTimeout(timeout);
