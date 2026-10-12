@@ -258,28 +258,50 @@ describe('uploadWithTracker — HTTP-level retry', () => {
   });
 });
 
+/**
+ * Feed crypto.getRandomValues a fixed sequence of 32-bit words (cycled), so the
+ * rejection-sampling path can be driven deterministically.
+ */
+function feedRandomWords(words: number[]) {
+  let i = 0;
+  return vi.spyOn(crypto, 'getRandomValues').mockImplementation((array) => {
+    (array as Uint32Array)[0] = words[i % words.length] >>> 0;
+    i += 1;
+    return array;
+  });
+}
+
 describe('getUploadRetryDelayMs', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('grows exponentially with the attempt index (jitter floor)', () => {
-    // Math.random() === 0 => jitter factor 0.5
-    vi.spyOn(Math, 'random').mockReturnValue(0);
+    // A zero draw lands on the floor of each attempt's range.
+    feedRandomWords([0]);
     expect(getUploadRetryDelayMs(0, 1000)).toBe(500);
     expect(getUploadRetryDelayMs(1, 1000)).toBe(1000);
     expect(getUploadRetryDelayMs(2, 1000)).toBe(2000);
   });
 
-  it('keeps each delay within [base*2^attempt*0.5, base*2^attempt)', () => {
+  it('tops out one below the next attempt floor (jitter ceiling)', () => {
+    // max = 500/1000/2000 => the largest accepted candidate is max - 1.
+    feedRandomWords([499]);
+    expect(getUploadRetryDelayMs(0, 1000)).toBe(999);
+    feedRandomWords([999]);
+    expect(getUploadRetryDelayMs(1, 1000)).toBe(1999);
+    feedRandomWords([1999]);
+    expect(getUploadRetryDelayMs(2, 1000)).toBe(3999);
+  });
+
+  it('keeps each delay within [base*2^attempt*0.5, base*2^attempt) with real randomness', () => {
     const base = 1000;
-    for (const r of [0, 0.25, 0.5, 0.75, 0.999]) {
-      vi.spyOn(Math, 'random').mockReturnValue(r);
-      for (let attempt = 0; attempt < 4; attempt++) {
-        const exp = base * 2 ** attempt;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const exp = base * 2 ** attempt;
+      for (let i = 0; i < 200; i++) {
         const delay = getUploadRetryDelayMs(attempt, base);
         expect(delay).toBeGreaterThanOrEqual(exp * 0.5);
         expect(delay).toBeLessThan(exp);
+        expect(Number.isInteger(delay)).toBe(true);
       }
-      vi.restoreAllMocks();
     }
   });
 });

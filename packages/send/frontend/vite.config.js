@@ -2,7 +2,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
-import { getHeadersForEnvironment } from './csp.config.js';
+import { getDevBackendUrl, getHeadersForEnvironment } from './csp.config.js';
 import {
   packageJson,
   sharedViteConfig,
@@ -15,8 +15,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
 
   const SERVER_BASE_URLS = {
-    // backend is the docker network name by default
-    development: 'http://backend:8080',
+    // Dev server only: the backend's compose service name over the Docker
+    // network (plain http never leaves the host). Same origin the dev CSP
+    // allows; override with VITE_DEV_BACKEND_URL. See csp.config.js.
+    development: getDevBackendUrl(env),
     production: env.VITE_SEND_SERVER_URL,
   };
 
