@@ -135,7 +135,7 @@ export async function saveShareLink(page: Page, key: string) {
 
 /**
  * The `access-link-item-N` row for the link `shareUrl` points at. Rows carry the
- * link id in `data-link-id`; the list deliberately renders no share URLs.
+ * link id in `data-link-id`; only password-protected rows render a share URL.
  *
  * Both list endpoints (`getAccessLinksForContainer` and
  * `getAccessLinksByUploadIdAndWrappedKey`) query with no `orderBy`, so the
@@ -179,15 +179,35 @@ export async function accessLinkRow(page: Page, shareUrl: string) {
 }
 
 /**
- * Assert the links list has a row for `shareUrl` and that the row exposes no
- * share URL. The app shows a link's URL only once, at creation, and the server
- * keeps nothing that could rebuild it, so the list must never render anything
- * that looks copyable -- with or without a password.
+ * Assert the links list has a row for the passwordless link `shareUrl` and that
+ * the row exposes no share URL. A passwordless link's secret lives only in the
+ * URL fragment shown once at creation, and the server keeps nothing that could
+ * rebuild it, so the list must never render anything that looks copyable.
  */
 export async function expectLinkNotRetrievable(page: Page, shareUrl: string) {
   const row = await accessLinkRow(page, shareUrl);
   await expect(row.locator("input")).toHaveCount(0);
   await expect(row).not.toContainText("/share/");
+  return row;
+}
+
+/**
+ * Assert the links list re-shows the password-protected link `shareUrl` as
+ * exactly `.../share/<id>`. That URL carries no secret (the recipient supplies
+ * the password), so the list may offer it for copying -- but it must never
+ * carry a `#` fragment, which is where a passwordless link's secret would go.
+ */
+export async function expectPasswordLinkReshareable(
+  page: Page,
+  shareUrl: string
+) {
+  const row = await accessLinkRow(page, shareUrl);
+  // accessLinkRow has already matched the row on this id. Link ids are UUIDs
+  // (hex and hyphens), so they need no escaping inside the pattern.
+  const id = shareLinkId(shareUrl) ?? "";
+  const input = row.locator("input");
+  await expect(input).toHaveCount(1);
+  await expect(input).toHaveValue(new RegExp(`/share/${id}$`));
   return row;
 }
 
