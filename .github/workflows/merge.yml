@@ -164,6 +164,7 @@ jobs:
         env:
           ECR_TAG: "${{ needs.backend-build-stage.outputs.backend-image }}"
           PULUMI_ACCESS_TOKEN: "${{ secrets.PULUMI_ACCESS_TOKEN }}"
+          PULUMI_CONFIG_PASSPHRASE: "${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
         run: |
           # Update the PATH to include the right version of Pulumi; this is non-trivial or impossible
           # to do with the GHA workflow "env" settings above.
@@ -186,7 +187,7 @@ jobs:
           yq -i '. *= load("newimage.yaml")' config.stage.yaml
 
           # Set up the Pulumi environment and update the service
-          export PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_PASSPHRASE_STAGE }}"
+          # (PULUMI_CONFIG_PASSPHRASE comes from the step env above)
           pulumi login
           pulumi stack select stage
           pulumi up -y --diff --target \

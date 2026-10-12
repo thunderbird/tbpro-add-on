@@ -2,46 +2,44 @@
 # We use these to add contitional build differences.
 ARG BUILD_ENV=production
 
-FROM node:22.14.0 AS base
+FROM node:22.14.0 AS build_app
 
 # Update packages
 RUN apt update -y && apt upgrade -y
+
+# Exact pnpm version (matches the nightly e2e workflows). The pnpm package has
+# no install scripts, so --ignore-scripts changes nothing but keeps it that way.
+RUN npm install -g --ignore-scripts pnpm@10.34.7
 
 WORKDIR /app
 
 # Copy only dependency manifests first so the install layer is only
 # invalidated when deps change, not when source changes.
-ADD package.json \
+# pnpm-lock.yaml and pnpm-workspace.yaml are the monorepo root's, copied into
+# the build context by scripts/build.sh; standalone-lockfile.sh rewrites them
+# into a single-project workspace rooted at /app (see that script for why).
+COPY package.json \
     tsconfig.json \
     tsconfig.build.json \
+    pnpm-lock.yaml \
+    pnpm-workspace.yaml \
     ./
-
-# build production — lockfile copied here via ONBUILD, then install runs
-FROM base AS build_lockfile_production
-ONBUILD RUN echo "Add pnpm-lock.yaml"
-ONBUILD ADD pnpm-lock.yaml ./
-
-# build development — no lockfile (resolved at workspace root)
-FROM base AS build_lockfile_development
-ONBUILD RUN echo "Don't add pnpm-lock.yaml"
-
-FROM build_lockfile_${BUILD_ENV} AS build_app
-RUN npm install -g pnpm@10
-# Create workspace config to allow build scripts (pnpm 9+ security requirement).
-# Without this, pnpm blocks postinstall scripts for prisma, sentry, etc.
-RUN printf 'packages:\n  - "."\nonlyBuiltDependencies:\n  - "@prisma/client"\n  - "@prisma/engines"\n  - "@scarf/scarf"\n  - "@sentry/cli"\n  - "@sentry/profiling-node"\n  - prisma\n' > pnpm-workspace.yaml
-# prisma must be present before install: prisma's postinstall runs `prisma generate`
-ADD prisma ./prisma
-# Use --no-lockfile: the pnpm-lock.yaml (whether from pnpm deploy or the workspace root)
-# contains workspace-qualified peer-dep specs that pnpm cannot resolve in a
-# standalone container context. Install from package.json alone.
-RUN pnpm install --no-lockfile
+COPY scripts/standalone-lockfile.sh ./scripts/
+RUN sh scripts/standalone-lockfile.sh
+# prisma must be present before install: @prisma/client's postinstall runs
+# `prisma generate`
+COPY prisma ./prisma
+# --frozen-lockfile: install exactly the versions in the root lockfile, and fail
+# the build if package.json has drifted from it. Lifecycle scripts are blocked by
+# default in pnpm 10; only the root workspace's onlyBuiltDependencies allowlist
+# (prisma, sentry, ...) may run them, as in every other install in this repo.
+RUN pnpm install --frozen-lockfile
 
 # Remaining source copied AFTER install so source changes don't bust the dep layer cache.
-ADD public ./public
-ADD scripts ./scripts
-ADD src ./src
-ADD vitest.integration.config.js ./
+COPY public ./public
+COPY scripts ./scripts
+COPY src ./src
+COPY vitest.integration.config.js ./
 
 # Build the runtime artifact (dist/) at IMAGE BUILD time, not at container start.
 # WHY: the runtime image must run pre-built `dist` (node dist/index.js). The old

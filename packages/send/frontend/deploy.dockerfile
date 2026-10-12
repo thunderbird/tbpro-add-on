@@ -20,7 +20,9 @@
 FROM node:22.14.0 AS build
 
 WORKDIR /app
-RUN npm install -g pnpm@10
+# Exact pnpm version (matches the nightly e2e workflows); the pnpm package has no
+# install scripts.
+RUN npm install -g --ignore-scripts pnpm@10.34.7
 
 # Dependency manifests first so a source-only change does not bust the install
 # layer. Every workspace member's package.json is needed: --frozen-lockfile
