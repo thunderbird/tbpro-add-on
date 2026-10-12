@@ -25,18 +25,16 @@ const sharelinks = {
  * secret lives in the repo. It must satisfy the app's rules in
  * lib/validations.ts validatePassword(): at least 12 characters, one digit and
  * one special character from the set it accepts. The digit and the special
- * character are picked from 8-element sets so the single-byte draw stays
- * unbiased (a power-of-two modulus).
+ * character are picked from 8-element sets with a 3-bit mask, so the
+ * single-byte draw stays uniform (no modulo or division of the random value;
+ * CodeQL js/biased-cryptographic-random).
  */
 export function generateRunPassword(): string {
   const DIGITS = "01234567";
   const SPECIALS = "!@#$%^&*";
   const [digitByte, specialByte] = randomBytes(2);
-  return (
-    randomBytes(12).toString("base64url") +
-    DIGITS[digitByte % DIGITS.length] +
-    SPECIALS[specialByte % SPECIALS.length]
-  );
+  const body = randomBytes(12).toString("base64url");
+  return `${body}${DIGITS[digitByte & 7]}${SPECIALS[specialByte & 7]}`;
 }
 
 export const playwrightConfig = {
