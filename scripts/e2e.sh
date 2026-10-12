@@ -112,10 +112,18 @@ trap cleanup INT TERM
 STACK_MAX_WAIT=180
 STACK_START=$(date +%s)
 
-# nginx reverse-proxy, on the port the browser reaches over TLS.
+# nginx reverse-proxy, on the port the browser reaches over TLS. Its self-signed
+# cert is generated at container start for localhost only, so copy it out of the
+# container (trust comes from the local docker daemon, not the network) and pin
+# localhost to DOCKER_HOST rather than skipping verification.
+DEV_TLS_CERT="$(mktemp)"
+RESOLVE_ARGS=()
+[ "$DOCKER_HOST" != "localhost" ] && RESOLVE_ARGS=(--resolve "localhost:8088:${DOCKER_HOST}")
 https_ready() {
-  [ "$(curl -s -k -o /dev/null -w '%{http_code}' --max-time 5 \
-        "https://${DOCKER_HOST}:8088/")" = 200 ]
+  docker compose "${COMPOSE_FILES[@]}" cp \
+    reverse-proxy:/etc/nginx/tls/localhost.crt "$DEV_TLS_CERT" >/dev/null 2>&1 || return 1
+  [ "$(curl -s --cacert "$DEV_TLS_CERT" "${RESOLVE_ARGS[@]}" -o /dev/null \
+        -w '%{http_code}' --max-time 5 "https://localhost:8088/")" = 200 ]
 }
 
 frontend_ready() {
