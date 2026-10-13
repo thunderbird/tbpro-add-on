@@ -77,9 +77,10 @@ export class SettingsPage {
     this.userAvatar = page.getByTestId('avatar-default');
     this.userAvatarMenuBtn = page.locator('aside.avatar.regular');
     this.userMenuButton = page.locator('button.user-menu');
-    this.accountMenuLink = page.getByRole('link', { name: 'Account' });
-    this.manageSubscriptionMenuLink = page.getByRole('link', { name: 'Manage subscription' });
-    this.supportMenuLink = page.getByRole('link', { name: 'Support' });
+    const userMenuDropdown = this.page.getByRole('banner').locator('.user-menu .dropdown');
+    this.accountMenuLink = userMenuDropdown.getByRole('link', { name: 'Account', exact: true });
+    this.manageSubscriptionMenuLink = userMenuDropdown.getByRole('link', { name: 'Manage subscription', exact: true });
+    this.supportMenuLink = userMenuDropdown.getByRole('link', { name: 'Support', exact: true });
   }
 
   /**

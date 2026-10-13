@@ -51,7 +51,7 @@ export class DashboardPage {
       'Files access is locked. Restore or reset your encryption key to access file storage.'
     );
     this.needSupportHeading = this.page.getByRole('heading', { name: 'Need Support?' });
-    this.getAddonButton = this.page.getByRole('button', { name: 'Get add-on' });
+    this.getAddonButton = this.page.getByRole('button', { name: 'Download' });
     this.deleteSendDataSection = this.page.getByText('Delete Send Data', { exact: true });
     this.deleteSendDataLink = this.page.getByRole('link', { name: 'Delete Send data' });
   }
