@@ -12,39 +12,54 @@ import { defineComponent, h, ref } from 'vue';
  *
  * To keep prompting the user to SAVE their freshly generated recovery key, the
  * reset flow must instead:
- *   - generate the new keypair INTO the live keychain (so local keys match the
- *     new server blob),
+ *   - build the new keypair + blob on a scratch keychain (live keychain
+ *     untouched until the server confirms),
  *   - swap it in on the server via trpc.resetKeys,
- *   - adopt the new passphrase locally,
+ *   - only then adopt the new keypair + passphrase into the live keychain,
  *   - flip `justReset` and surface the new passphrase in `words`,
- *   - stay in-session (NO logout / reload) and land on /send so the overlay
- *     shows.
+ *   - stay in-session (NO logout / reload) and land on the dashboard so the
+ *     overlay shows.
  *
  * These tests pin that behavior so the overlay-based e2e can't silently regress
  * again.
  */
 
-const { state } = vi.hoisted(() => ({
-  state: {
-    locked: false,
+const { state } = vi.hoisted(() => {
+  const state = {
     routerPush: vi.fn(),
     // backup-store spies
     setWords: vi.fn(),
     setJustReset: vi.fn(),
     setShouldReset: vi.fn(),
+    setErrorMessage: vi.fn(),
     words: [] as string[],
-    // keychain spies
+    // live keychain (shared instance so tests can inspect it afterwards)
     storePassPhrase: vi.fn(),
     keychainStore: vi.fn(),
     storedPassphrase: null as string | null,
+    keychain: {
+      locked: false,
+      keys: {} as Record<string, string>,
+      rsa: {
+        setPrivateKeyFromJwk: vi.fn(),
+        setPublicKeyFromJwk: vi.fn(),
+      },
+      getPassphraseValue: () => state.storedPassphrase,
+      storePassPhrase: (p: string) => {
+        state.storedPassphrase = p;
+        return state.storePassPhrase(p);
+      },
+      store: () => state.keychainStore(),
+    },
     // keychain lib
     generateResetKeyBlob: vi.fn(),
     // trpc
     resetKeysMutate: vi.fn(),
     // refetch
     refetch: vi.fn(),
-  },
-}));
+  };
+  return { state };
+});
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: state.routerPush }),
@@ -58,24 +73,14 @@ vi.mock('@send-frontend/apps/send/stores/extension-store', () => ({
 }));
 
 vi.mock('@send-frontend/stores/keychain-store', () => ({
-  default: () => ({
-    keychain: {
-      locked: state.locked,
-      getPassphraseValue: () => state.storedPassphrase,
-      storePassPhrase: (p: string) => {
-        state.storedPassphrase = p;
-        return state.storePassPhrase(p);
-      },
-      store: state.keychainStore,
-    },
-  }),
+  default: () => ({ keychain: state.keychain }),
 }));
 
 vi.mock('@send-frontend/stores/backup-store', () => ({
   default: () => ({
     setWords: state.setWords,
     setBackupCompleted: vi.fn(),
-    setErrorMessage: vi.fn(),
+    setErrorMessage: state.setErrorMessage,
     setJustReset: state.setJustReset,
     setShouldReset: state.setShouldReset,
     words: ref(state.words),
@@ -134,7 +139,7 @@ vi.mock('@send-frontend/lib/trpc', () => ({
 }));
 
 // Use a light but REAL useMutation so we exercise the actual mutationFn +
-// onSuccess wiring (that's the code under test). useQuery is stubbed.
+// onSuccess/onError wiring (that's the code under test). useQuery is stubbed.
 vi.mock('@tanstack/vue-query', () => ({
   useQuery: () => ({
     isLoading: ref(false),
@@ -144,10 +149,16 @@ vi.mock('@tanstack/vue-query', () => ({
   useMutation: (opts: {
     mutationFn: (v?: unknown) => Promise<unknown>;
     onSuccess?: (d: unknown) => Promise<void> | void;
+    onError?: (e: unknown) => Promise<void> | void;
   }) => ({
     mutate: async (vars?: unknown) => {
-      const data = await opts.mutationFn(vars);
-      if (opts.onSuccess) await opts.onSuccess(data);
+      try {
+        const data = await opts.mutationFn(vars);
+        if (opts.onSuccess) await opts.onSuccess(data);
+      } catch (e) {
+        if (opts.onError) await opts.onError(e);
+        else throw e;
+      }
     },
     isSuccess: ref(false),
     isError: ref(false),
@@ -166,17 +177,25 @@ const Host = defineComponent({
   },
 });
 
+const BLOB = {
+  publicKey: 'pk',
+  backupKeypair: 'kp',
+  backupKeystring: 'ks',
+  backupSalt: 'salt',
+  backupContainerKeys: '{}',
+};
+const KEYPAIR = { publicKey: 'pk', privateKey: 'sk' };
+const OLD_KEYS = { 'old-container': 'wrapped-with-old-key' };
+
 describe('useBackupAndRestore -> safe reset shows the backup overlay (#1116)', () => {
   beforeEach(() => {
-    state.locked = false;
     state.words = [];
     state.storedPassphrase = null;
+    state.keychain.locked = true; // a locked-out user is the common reset case
+    state.keychain.keys = { ...OLD_KEYS };
     state.generateResetKeyBlob.mockResolvedValue({
-      publicKey: 'pk',
-      backupKeypair: 'kp',
-      backupKeystring: 'ks',
-      backupSalt: 'salt',
-      backupContainerKeys: '{}',
+      blob: BLOB,
+      keypair: KEYPAIR,
     });
     state.resetKeysMutate.mockResolvedValue({ success: true });
     mount(Host);
@@ -186,30 +205,53 @@ describe('useBackupAndRestore -> safe reset shows the backup overlay (#1116)', (
     vi.clearAllMocks();
   });
 
-  it('generates the new keypair into the LIVE keychain (not a scratch one)', async () => {
+  it('builds the replacement on a scratch keychain, not the live one', async () => {
     await composable.resetKeys();
-    // Called with (passphrase, keychain) — the second arg must be the live
-    // keychain so local keys match the new server blob.
+    // Called with the passphrase only — no live keychain handed in to mutate.
     expect(state.generateResetKeyBlob).toHaveBeenCalledTimes(1);
-    expect(state.generateResetKeyBlob.mock.calls[0].length).toBe(2);
-    expect(state.generateResetKeyBlob.mock.calls[0][1]).toBeTruthy();
+    expect(state.generateResetKeyBlob.mock.calls[0]).toEqual([
+      'new reset phrase',
+    ]);
   });
 
-  it('swaps the new blob in on the server before touching local state', async () => {
+  it('sends the server exactly the blob (not the keypair)', async () => {
     await composable.resetKeys();
     expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
-    expect(state.resetKeysMutate.mock.calls[0][0]).toMatchObject({
-      publicKey: 'pk',
-      backupKeypair: 'kp',
-      backupKeystring: 'ks',
-      backupSalt: 'salt',
-    });
+    expect(state.resetKeysMutate.mock.calls[0][0]).toEqual(BLOB);
   });
 
-  it('adopts the new passphrase locally and persists the keychain', async () => {
+  it('adopts the new keypair + passphrase into the live keychain after the swap', async () => {
     await composable.resetKeys();
+    expect(state.keychain.rsa.setPrivateKeyFromJwk).toHaveBeenCalledWith('sk');
+    expect(state.keychain.rsa.setPublicKeyFromJwk).toHaveBeenCalledWith('pk');
+    // Old wrapped container keys can't be opened by the new keypair.
+    expect(state.keychain.keys).toEqual({});
+    expect(state.keychain.locked).toBe(false);
     expect(state.storePassPhrase).toHaveBeenCalledWith('new reset phrase');
     expect(state.keychainStore).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the live keychain untouched when the server rejects the swap', async () => {
+    state.resetKeysMutate.mockRejectedValueOnce(new Error('422'));
+
+    await composable.resetKeys();
+
+    expect(state.keychain.rsa.setPrivateKeyFromJwk).not.toHaveBeenCalled();
+    expect(state.keychain.rsa.setPublicKeyFromJwk).not.toHaveBeenCalled();
+    expect(state.keychain.keys).toEqual(OLD_KEYS);
+    expect(state.keychain.locked).toBe(true);
+    expect(state.storePassPhrase).not.toHaveBeenCalled();
+    expect(state.keychainStore).not.toHaveBeenCalled();
+    expect(state.setJustReset).not.toHaveBeenCalled();
+    // (A locked keychain redirects to /passphrase-changed on mount; that is
+    // unrelated to reset. Only the post-reset dashboard route must be absent.)
+    expect(state.routerPush).not.toHaveBeenCalledWith(
+      '/send/profile?showDashboard=true'
+    );
+    // ...and the user is told, rather than failing silently.
+    expect(state.setErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Could not reset')
+    );
   });
 
   it('flips justReset and surfaces the new passphrase so the overlay appears', async () => {

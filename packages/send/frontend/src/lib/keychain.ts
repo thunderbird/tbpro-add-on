@@ -1030,33 +1030,32 @@ export type ResetKeyBlob = {
  *
  * A new key starts with no container keys, so the container-key map is empty.
  *
- * By default the blob is built on a throwaway scratch keychain so that a failure
- * to persist it on the server never leaves the caller's live keychain
- * half-scrubbed.
- *
- * When a `targetKeychain` is supplied, the fresh keypair is generated INTO that
- * live keychain instead. The reset flow needs this: the local keychain must end
- * up holding the exact same keypair the server backup blob wraps, or the user
- * would be unable to decrypt/restore with the new passphrase after reset
- * (issue #1116 — a scratch-only keypair left the local keychain on the OLD keys
- * while the server held a NEW blob, a silent mismatch). Callers should adopt the
- * returned passphrase locally only after the server swap succeeds.
+ * The blob is built on a throwaway scratch keychain, so nothing about the
+ * caller's live keychain changes until the server has confirmed the swap. The
+ * scratch keypair is returned alongside the blob so the caller can adopt it
+ * into the live keychain at that point (`Keychain.rsa.setPrivateKeyFromJwk` /
+ * `setPublicKeyFromJwk`). Adopting it earlier would leave the live keychain
+ * holding a keypair that can't open the existing containers if the request
+ * fails; never adopting it leaves local keys that don't match the new server
+ * blob. Both are #1116-class lockouts.
  */
+export type ResetKeyMaterial = {
+  blob: ResetKeyBlob;
+  keypair: JwkKeyPair;
+};
+
 export async function generateResetKeyBlob(
-  passphrase: string,
-  targetKeychain?: Keychain
-): Promise<ResetKeyBlob> {
+  passphrase: string
+): Promise<ResetKeyMaterial> {
   if (!passphrase) {
     throw new Error('A passphrase is required to reset the encryption key');
   }
 
-  // Use the caller's live keychain when provided (so local keys match the new
-  // server blob), otherwise a throwaway scratch keychain. A brand-new key has
-  // no container keys.
-  const target = targetKeychain ?? new Keychain();
-  await target.rsa.generateKeyPair();
-  const { publicKey, privateKey } = await target.exportKeypair();
+  const scratch = new Keychain();
+  await scratch.rsa.generateKeyPair();
+  const keypair = await scratch.exportKeypair();
 
+  // A brand-new key has no container keys.
   const emptyContainerKeys: Record<string, string> = {};
   const {
     protectedContainerKeysStr,
@@ -1064,19 +1063,22 @@ export async function generateResetKeyBlob(
     passwordWrappedKeyStr,
     saltStr,
   } = await encryptAll(
-    publicKey,
-    privateKey,
+    keypair.publicKey,
+    keypair.privateKey,
     emptyContainerKeys,
     passphrase,
-    target
+    scratch
   );
 
   return {
-    publicKey,
-    backupKeypair: protectedKeypairStr,
-    backupKeystring: passwordWrappedKeyStr,
-    backupSalt: saltStr,
-    backupContainerKeys: protectedContainerKeysStr,
+    blob: {
+      publicKey: keypair.publicKey,
+      backupKeypair: protectedKeypairStr,
+      backupKeystring: passwordWrappedKeyStr,
+      backupSalt: saltStr,
+      backupContainerKeys: protectedContainerKeysStr,
+    },
+    keypair,
   };
 }
 

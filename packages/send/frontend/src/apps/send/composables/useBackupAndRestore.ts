@@ -111,20 +111,21 @@ export const useBackupAndRestore = () => {
   /**
    * Mutation to reset all user keys (issue #1116).
    * This will:
-   * 1. Generate a brand-new encryption keypair INTO the live keychain and build
+   * 1. Generate a brand-new encryption keypair on a scratch keychain and build
    *    its encrypted backup blob (write-new), using a freshly generated
-   *    passphrase. Generating into the live keychain (not a scratch one) is
-   *    essential: the local keys must match the new server blob, otherwise the
-   *    new passphrase could not decrypt/restore anything after reset.
-   * 2. Ask the server to atomically swap that blob in and burn the old,
+   *    passphrase. The live keychain is untouched at this point, so a failed
+   *    request leaves the user exactly where they were.
+   * 2. Ask the server to atomically swap that blob in and delete the old,
    *    unreachable containers (then-swap) — the server never nulls the recovery
    *    material before the replacement exists, so an interruption can no longer
    *    permanently lock the account out.
-   * 3. Adopt the new passphrase locally and flip `justReset` so the BackupKeys
-   *    overlay appears, prompting the user to SAVE their new recovery key —
-   *    exactly the first-time-backup UX. (Because the safe reset now leaves a
-   *    valid server backup, the old "no server backup" signal that used to show
-   *    the overlay no longer fires, so we drive it explicitly.)
+   * 3. Only once the server confirms: adopt the new keypair and passphrase into
+   *    the live keychain (so local keys match the new server blob) and flip
+   *    `justReset` so the BackupKeys overlay appears, prompting the user to SAVE
+   *    their new recovery key — exactly the first-time-backup UX. (Because the
+   *    safe reset now leaves a valid server backup, the old "no server backup"
+   *    signal that used to show the overlay no longer fires, so we drive it
+   *    explicitly.)
    *
    * We intentionally do NOT log out / reload here: doing so would drop the user
    * into the "restore from backup" screen for a key they were never shown, and
@@ -134,18 +135,31 @@ export const useBackupAndRestore = () => {
   const { mutate: resetKeys } = useMutation({
     mutationKey: ['resetKeys'],
     mutationFn: async () => {
-      // Write-new: regenerate the keypair on the LIVE keychain and build the
-      // full replacement blob from it (empty container keys for a fresh key).
+      // Write-new: build the full replacement blob on a scratch keychain
+      // (empty container keys for a fresh key). Nothing local changes yet.
       const newPassphrase = generatePassphrase(PHRASE_SIZE).join(' ');
-      const replacement = await generateResetKeyBlob(newPassphrase, keychain);
+      const { blob, keypair } = await generateResetKeyBlob(newPassphrase);
       // Then-swap: server installs the new blob atomically, then removes the old
       // containers. Only after this resolves do we mutate any local state.
-      const result = await trpc.resetKeys.mutate(replacement);
-      // The swap is confirmed: adopt the new passphrase + keys locally so the
-      // local keychain and the server backup are in lockstep.
+      const result = await trpc.resetKeys.mutate(blob);
+      // The swap is confirmed: adopt the new keypair + passphrase locally so the
+      // live keychain and the server backup are in lockstep. The old wrapped
+      // container keys are useless under the new keypair (and the server blob
+      // has none), so drop them too.
+      await keychain.rsa.setPrivateKeyFromJwk(keypair.privateKey);
+      await keychain.rsa.setPublicKeyFromJwk(keypair.publicKey);
+      keychain.keys = {};
+      keychain.locked = false;
       await keychain.storePassPhrase(newPassphrase);
       await keychain.store();
       return result;
+    },
+    onError: (e) => {
+      // Nothing local was touched, so the user is exactly where they started;
+      // tell them rather than failing silently.
+      backupStore.setErrorMessage(
+        `Could not reset your encryption key: ${String(e)}`
+      );
     },
     onSuccess: async () => {
       // Surface the freshly generated recovery key in the backup overlay so the
