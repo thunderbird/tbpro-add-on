@@ -141,33 +141,47 @@ export const useBackupAndRestore = () => {
       const { blob, keypair } = await generateResetKeyBlob(newPassphrase);
       // Then-swap: server installs the new blob atomically, then removes the old
       // containers. Only after this resolves do we mutate any local state.
-      const result = await trpc.resetKeys.mutate(blob);
-      // The swap is confirmed: adopt the new keypair + passphrase locally so the
-      // live keychain and the server backup are in lockstep. The old wrapped
-      // container keys are useless under the new keypair (and the server blob
-      // has none), so drop them too.
-      await keychain.rsa.setPrivateKeyFromJwk(keypair.privateKey);
-      await keychain.rsa.setPublicKeyFromJwk(keypair.publicKey);
-      keychain.keys = {};
-      keychain.locked = false;
-      await keychain.storePassPhrase(newPassphrase);
-      await keychain.store();
-      return result;
+      await trpc.resetKeys.mutate(blob);
+      // The swap is confirmed. From here on nothing may reject: a rejection
+      // would route to onError and the user would never see the only phrase
+      // that opens the new server blob. Hand the material to onSuccess.
+      return { newPassphrase, keypair };
     },
     onError: (e) => {
-      // Nothing local was touched, so the user is exactly where they started;
-      // tell them rather than failing silently.
+      // Only reachable before the server swap, so nothing local was touched
+      // and the user is exactly where they started; tell them rather than
+      // failing silently.
       backupStore.setErrorMessage(
         `Could not reset your encryption key: ${String(e)}`
       );
     },
-    onSuccess: async () => {
-      // Surface the freshly generated recovery key in the backup overlay so the
-      // user is prompted to save it (they have not seen it yet).
-      const newPassphrase = keychain.getPassphraseValue();
-      backupStore.setWords(newPassphrase ? newPassphrase.split(' ') : []);
+    onSuccess: async ({ newPassphrase, keypair }) => {
+      // Surface the freshly generated recovery key FIRST, before anything that
+      // can throw, so the overlay prompts the user to save it no matter what
+      // happens to local persistence below.
+      backupStore.setWords(newPassphrase.split(' '));
       backupStore.setJustReset(true);
       backupStore.setShouldReset(false);
+      try {
+        // Adopt the new keypair + passphrase locally so the live keychain and
+        // the server backup are in lockstep. The old wrapped container keys
+        // are useless under the new keypair (and the server blob has none),
+        // so drop them too.
+        await keychain.rsa.setPrivateKeyFromJwk(keypair.privateKey);
+        await keychain.rsa.setPublicKeyFromJwk(keypair.publicKey);
+        keychain.keys = {};
+        keychain.locked = false;
+        await keychain.storePassPhrase(newPassphrase);
+        await keychain.store();
+      } catch (e) {
+        // Browser storage full / unavailable. The server swap already
+        // happened, so the phrase on screen is now the only way back in.
+        backupStore.setErrorMessage(
+          `Your encryption key was reset, but it could not be saved on this ` +
+            `device (${String(e)}). Write down the recovery phrase shown and ` +
+            `use it to restore access.`
+        );
+      }
       // Re-evaluate backup state and land on the profile dashboard
       // (ProfileView -> UserDashboard), which renders the BackupKeys overlay
       // while `justReset` is set. `/send` routes to the folder view, which does

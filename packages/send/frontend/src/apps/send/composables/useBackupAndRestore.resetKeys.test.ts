@@ -254,6 +254,30 @@ describe('useBackupAndRestore -> safe reset shows the backup overlay (#1116)', (
     );
   });
 
+  it('still shows the new passphrase when saving it locally fails after the swap', async () => {
+    // Browser storage full / unavailable. The server has already replaced the
+    // keys, so the phrase on screen is the only way back in; it must appear
+    // even though local persistence failed.
+    state.storePassPhrase.mockImplementationOnce(() => {
+      throw new Error('QuotaExceededError');
+    });
+
+    await composable.resetKeys();
+
+    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+    expect(state.setWords).toHaveBeenLastCalledWith(['new', 'reset', 'phrase']);
+    expect(state.setJustReset).toHaveBeenCalledWith(true);
+    expect(state.routerPush).toHaveBeenCalledWith(
+      '/send/profile?showDashboard=true'
+    );
+    // The in-memory keychain was still adopted, so this session keeps working.
+    expect(state.keychain.rsa.setPrivateKeyFromJwk).toHaveBeenCalledWith('sk');
+    // ...and the user is told the phrase was not saved on this device.
+    expect(state.setErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('could not be saved on this device')
+    );
+  });
+
   it('flips justReset and surfaces the new passphrase so the overlay appears', async () => {
     await composable.resetKeys();
     expect(state.setJustReset).toHaveBeenCalledWith(true);
