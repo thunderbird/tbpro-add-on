@@ -9,9 +9,12 @@ import useKeychainStore from '@send-frontend/stores/keychain-store';
 import { PHRASE_SIZE } from '@send-frontend/apps/common/constants';
 import { useExtensionStore } from '@send-frontend/apps/send/stores/extension-store';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import { useAuth } from '@send-frontend/lib/auth';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
-import { backupKeys, restoreKeys } from '@send-frontend/lib/keychain';
+import {
+  backupKeys,
+  generateResetKeyBlob,
+  restoreKeys,
+} from '@send-frontend/lib/keychain';
 import { generatePassphrase } from '@send-frontend/lib/passphrase';
 import {
   downloadPassPhrase,
@@ -40,15 +43,19 @@ export const useBackupAndRestore = () => {
   const userStore = useUserStore();
   const folderStore = useFolderStore();
   const backupStore = useBackupStore();
-  const { words, errorMessage, shouldUnlock, shouldReset, passphraseString } =
-    storeToRefs(backupStore);
-  const { logOutAuth } = useAuth();
+  const {
+    words,
+    errorMessage,
+    shouldUnlock,
+    shouldReset,
+    justReset,
+    passphraseString,
+  } = storeToRefs(backupStore);
   const { sendMessageToBridge, configureExtension } = useExtensionStore();
   const { api } = useApiStore();
   const {
     getBackup,
     user: { email },
-    clearUserFromStorage,
   } = useUserStore();
   const { keychain } = useKeychainStore();
   const { metrics } = useMetricsStore();
@@ -102,23 +109,85 @@ export const useBackupAndRestore = () => {
   });
 
   /**
-   * Mutation to reset all user keys.
+   * Mutation to reset all user keys (issue #1116).
    * This will:
-   * 1. Delete keys from the server
-   * 2. Clear local storage
-   * 3. Log out the user
-   * 4. Reload the page
+   * 1. Generate a brand-new encryption keypair on a scratch keychain and build
+   *    its encrypted backup blob (write-new), using a freshly generated
+   *    passphrase. The live keychain is untouched at this point, so a failed
+   *    request leaves the user exactly where they were.
+   * 2. Ask the server to atomically swap that blob in and delete the old,
+   *    unreachable containers (then-swap) — the server never nulls the recovery
+   *    material before the replacement exists, so an interruption can no longer
+   *    permanently lock the account out.
+   * 3. Only once the server confirms: adopt the new keypair and passphrase into
+   *    the live keychain (so local keys match the new server blob) and flip
+   *    `justReset` so the BackupKeys overlay appears, prompting the user to SAVE
+   *    their new recovery key — exactly the first-time-backup UX. (Because the
+   *    safe reset now leaves a valid server backup, the old "no server backup"
+   *    signal that used to show the overlay no longer fires, so we drive it
+   *    explicitly.)
+   *
+   * We intentionally do NOT log out / reload here: doing so would drop the user
+   * into the "restore from backup" screen for a key they were never shown, and
+   * they would have no way to save it. Keeping them in-session lets the overlay
+   * present the new recovery key first.
    */
   const { mutate: resetKeys } = useMutation({
     mutationKey: ['resetKeys'],
     mutationFn: async () => {
-      return await trpc.resetKeys.mutate();
+      // Write-new: build the full replacement blob on a scratch keychain
+      // (empty container keys for a fresh key). Nothing local changes yet.
+      const newPassphrase = generatePassphrase(PHRASE_SIZE).join(' ');
+      const { blob, keypair } = await generateResetKeyBlob(newPassphrase);
+      // Then-swap: server installs the new blob atomically, then removes the old
+      // containers. Only after this resolves do we mutate any local state.
+      await trpc.resetKeys.mutate(blob);
+      // The swap is confirmed. From here on nothing may reject: a rejection
+      // would route to onError and the user would never see the only phrase
+      // that opens the new server blob. Hand the material to onSuccess.
+      return { newPassphrase, keypair };
     },
-    onSuccess: async () => {
-      // We should clear local storage first and then handle logout
-      await clearUserFromStorage();
-      await logOutAuth();
-      window.location.reload();
+    onError: (e) => {
+      // Only reachable before the server swap, so nothing local was touched
+      // and the user is exactly where they started; tell them rather than
+      // failing silently.
+      backupStore.setErrorMessage(
+        `Could not reset your encryption key: ${String(e)}`
+      );
+    },
+    onSuccess: async ({ newPassphrase, keypair }) => {
+      // Surface the freshly generated recovery key FIRST, before anything that
+      // can throw, so the overlay prompts the user to save it no matter what
+      // happens to local persistence below.
+      backupStore.setWords(newPassphrase.split(' '));
+      backupStore.setJustReset(true);
+      backupStore.setShouldReset(false);
+      try {
+        // Adopt the new keypair + passphrase locally so the live keychain and
+        // the server backup are in lockstep. The old wrapped container keys
+        // are useless under the new keypair (and the server blob has none),
+        // so drop them too.
+        await keychain.rsa.setPrivateKeyFromJwk(keypair.privateKey);
+        await keychain.rsa.setPublicKeyFromJwk(keypair.publicKey);
+        keychain.keys = {};
+        keychain.locked = false;
+        await keychain.storePassPhrase(newPassphrase);
+        await keychain.store();
+      } catch (e) {
+        // Browser storage full / unavailable. The server swap already
+        // happened, so the phrase on screen is now the only way back in.
+        backupStore.setErrorMessage(
+          `Your encryption key was reset, but it could not be saved on this ` +
+            `device (${String(e)}). Write down the recovery phrase shown and ` +
+            `use it to restore access.`
+        );
+      }
+      // Re-evaluate backup state and land on the profile dashboard
+      // (ProfileView -> UserDashboard), which renders the BackupKeys overlay
+      // while `justReset` is set. `/send` routes to the folder view, which does
+      // NOT host the overlay, so we must target the dashboard explicitly.
+      await refetch();
+      router.push('/send/profile?showDashboard=true');
     },
   });
 
@@ -208,6 +277,9 @@ export const useBackupAndRestore = () => {
       sendMessageToBridge(passphraseString.value);
       await downloadPassPhrase(passphraseString.value, email);
       await dbUserSetup(userStore, keychain, folderStore);
+      // The user has now saved their (possibly post-reset) recovery key, so the
+      // forced overlay can stand down (issue #1116).
+      backupStore.setJustReset(false);
     } catch (e) {
       console.error('Error backing up keys', e);
     } finally {
@@ -255,6 +327,7 @@ export const useBackupAndRestore = () => {
     errorMessage,
     shouldUnlock,
     shouldReset,
+    justReset,
     keysInLocalStorage,
     // Human readable backup state for conditional rendering
 

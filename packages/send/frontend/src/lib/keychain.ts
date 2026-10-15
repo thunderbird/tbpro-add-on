@@ -1002,6 +1002,86 @@ export async function backupKeys(
   console.log('🔒 Backup complete');
 }
 
+/**
+ * The confirmed replacement key material the "Reset Access → Create new
+ * encryption key" flow hands to the server (issue #1116).
+ *
+ * Field names match the backend `resetKeys` input so the server can perform a
+ * single atomic write-new-then-swap. `backupContainerKeys` is the (empty)
+ * serialized container-key map for a brand-new key.
+ */
+export type ResetKeyBlob = {
+  publicKey: string;
+  backupKeypair: string;
+  backupKeystring: string;
+  backupSalt: string;
+  backupContainerKeys: string;
+};
+
+/**
+ * Generate a fresh encryption key and its encrypted backup blob for a safe
+ * "reset access" (issue #1116).
+ *
+ * The old reset asked the server to null the recovery material and relied on a
+ * subsequent login to re-provision — a window in which any interruption left the
+ * account permanently locked out. Instead we build the ENTIRE replacement blob
+ * client-side first; the caller then swaps it in on the server atomically before
+ * anything old is destroyed.
+ *
+ * A new key starts with no container keys, so the container-key map is empty.
+ *
+ * The blob is built on a throwaway scratch keychain, so nothing about the
+ * caller's live keychain changes until the server has confirmed the swap. The
+ * scratch keypair is returned alongside the blob so the caller can adopt it
+ * into the live keychain at that point (`Keychain.rsa.setPrivateKeyFromJwk` /
+ * `setPublicKeyFromJwk`). Adopting it earlier would leave the live keychain
+ * holding a keypair that can't open the existing containers if the request
+ * fails; never adopting it leaves local keys that don't match the new server
+ * blob. Both are #1116-class lockouts.
+ */
+export type ResetKeyMaterial = {
+  blob: ResetKeyBlob;
+  keypair: JwkKeyPair;
+};
+
+export async function generateResetKeyBlob(
+  passphrase: string
+): Promise<ResetKeyMaterial> {
+  if (!passphrase) {
+    throw new Error('A passphrase is required to reset the encryption key');
+  }
+
+  const scratch = new Keychain();
+  await scratch.rsa.generateKeyPair();
+  const keypair = await scratch.exportKeypair();
+
+  // A brand-new key has no container keys.
+  const emptyContainerKeys: Record<string, string> = {};
+  const {
+    protectedContainerKeysStr,
+    protectedKeypairStr,
+    passwordWrappedKeyStr,
+    saltStr,
+  } = await encryptAll(
+    keypair.publicKey,
+    keypair.privateKey,
+    emptyContainerKeys,
+    passphrase,
+    scratch
+  );
+
+  return {
+    blob: {
+      publicKey: keypair.publicKey,
+      backupKeypair: protectedKeypairStr,
+      backupKeystring: passwordWrappedKeyStr,
+      backupSalt: saltStr,
+      backupContainerKeys: protectedContainerKeysStr,
+    },
+    keypair,
+  };
+}
+
 export const getUUID = (): string => {
   if (typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();

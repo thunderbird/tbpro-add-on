@@ -28,6 +28,19 @@ import {
 import { router, publicProcedure as trpc } from '../trpc';
 import { isAuthed, requirePublicLogin, useEnvironment } from './middlewares';
 
+/**
+ * Delete every container and upload row the user owns. Containers go first so
+ * their items (which cascade) release the uploads they reference. This removes
+ * database rows only; it does not touch the stored objects (`storage.del`),
+ * unlike `burnFolder` in models/sharing.ts.
+ */
+async function deleteUserContent(userId: string) {
+  const containers = await getContainersOwnedByUser(userId);
+  const uploads = await getUploadsOwnedByUser(userId);
+  await Promise.all(containers.map(({ id }) => deleteContainer(id)));
+  await Promise.all(uploads.map(({ id }) => deleteUpload(id)));
+}
+
 export const usersRouter = router({
   /**
    * @openapi
@@ -268,27 +281,48 @@ export const usersRouter = router({
    *                   type: boolean
    *                   description: Whether the reset was successful
    */
-  resetKeys: trpc.use(isAuthed).mutation(async ({ ctx }) => {
-    const id = ctx.user.id;
-    try {
-      await resetKeys(id);
-      const containers = await getContainersOwnedByUser(id);
-      const uploads = await getUploadsOwnedByUser(id);
+  resetKeys: trpc
+    .use(isAuthed)
+    // The client must generate and hand us a fresh, already-encrypted key blob
+    // so we can swap it in atomically instead of nulling the recovery material
+    // and hoping setup completes before the user closes the tab (issue #1116).
+    .input(
+      z.object({
+        publicKey: z.string().min(1),
+        backupKeypair: z.string().min(1),
+        backupKeystring: z.string().min(1),
+        backupSalt: z.string().min(1),
+        backupContainerKeys: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const id = ctx.user.id;
+      try {
+        // 1. Write-new-then-swap: install the confirmed replacement blob FIRST.
+        //    Only once this succeeds is it safe to abandon the old containers.
+        await resetKeys(id, input);
+      } catch (e) {
+        console.error(e);
+        throw new TRPCError({
+          message: 'Could not reset keys',
+          code: 'UNPROCESSABLE_CONTENT',
+        });
+      }
 
-      // Burn containers
-      await Promise.all(containers.map(({ id }) => deleteContainer(id)));
-      // Burn uploads
-      await Promise.all(uploads.map(({ id }) => deleteUpload(id)));
+      // 2. Delete the old containers/uploads. Their keys only existed in the
+      //    blob we just replaced, so they are unreachable either way. A failure
+      //    here must NOT surface as a failed reset: the client would then never
+      //    adopt or show the new passphrase, leaving a server blob nobody can
+      //    open (the exact lockout #1116 exists to prevent). Log and move on;
+      //    anything left behind can be cleaned up later.
+      try {
+        await deleteUserContent(id);
+      } catch (e) {
+        console.error('resetKeys: key swap succeeded but cleanup failed', e);
+      }
 
       return { success: true };
-    } catch (e) {
-      console.error(e);
-      throw new TRPCError({
-        message: 'Could not reset keys',
-        code: 'UNPROCESSABLE_CONTENT',
-      });
-    }
-  }),
+    }),
 
   /**
    * @openapi
@@ -315,14 +349,7 @@ export const usersRouter = router({
   deleteFiles: trpc.use(isAuthed).mutation(async ({ ctx }) => {
     const id = ctx.user.id;
     try {
-      const containers = await getContainersOwnedByUser(id);
-      const uploads = await getUploadsOwnedByUser(id);
-
-      // Burn containers
-      await Promise.all(containers.map(({ id }) => deleteContainer(id)));
-      // Burn uploads
-      await Promise.all(uploads.map(({ id }) => deleteUpload(id)));
-
+      await deleteUserContent(id);
       return { success: true };
     } catch (e) {
       console.error(e);

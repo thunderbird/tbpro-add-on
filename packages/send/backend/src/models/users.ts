@@ -28,14 +28,59 @@ export async function getUserById(id: string) {
   return await prisma.user.findUnique({ where: { id } });
 }
 
-export async function resetKeys(id: string) {
+/**
+ * The confirmed replacement key material required to safely reset access.
+ *
+ * Issue #1116: the old reset nulled `publicKey`/`backupKeypair`/`backupKeystring`
+ * /`backupSalt`/`backupContainerKeys` BEFORE any replacement existed. If setup
+ * did not complete immediately afterwards, the account was left with no recovery
+ * blob at all — a permanent, unrecoverable lockout. To make reset safe we never
+ * destroy the recovery blob until a replacement is in hand, then swap it in a
+ * single atomic update ("write-new-then-swap"), instead of a destructive wipe.
+ */
+export type ResetKeysReplacement = {
+  publicKey?: string;
+  backupKeypair?: string;
+  backupKeystring?: string;
+  backupSalt?: string;
+  // A fresh reset starts with no container keys; callers may still send the
+  // (empty) serialized map their client produced.
+  backupContainerKeys?: string;
+};
+
+/**
+ * Reset a user's encryption keys by swapping in a fresh, already-persisted
+ * replacement blob.
+ *
+ * This is intentionally fail-closed: without a `replacement` we refuse to touch
+ * the row rather than nulling the only recovery material (see #1116). The swap
+ * is a single `update`, so the old blob is never observable-as-gone before the
+ * new one lands, and `updatedAt` is bumped so the change is visible to anything
+ * auditing on it (the old wipe left `updatedAt` unchanged).
+ */
+export async function resetKeys(
+  id: string,
+  replacement?: ResetKeysReplacement
+) {
+  if (
+    !replacement ||
+    !replacement.publicKey ||
+    !replacement.backupKeypair ||
+    !replacement.backupKeystring ||
+    !replacement.backupSalt
+  ) {
+    // Refuse to destroy the recovery blob without a confirmed replacement.
+    throw new Error(USER_NOT_UPDATED);
+  }
+
   return await prisma.user.update({
     data: {
-      publicKey: null,
-      backupKeypair: null,
-      backupContainerKeys: null,
-      backupKeystring: null,
-      backupSalt: null,
+      publicKey: replacement.publicKey,
+      backupKeypair: replacement.backupKeypair,
+      backupKeystring: replacement.backupKeystring,
+      backupSalt: replacement.backupSalt,
+      backupContainerKeys: replacement.backupContainerKeys ?? null,
+      updatedAt: new Date(),
     },
     where: {
       id,
