@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { isAccessTokenRevoked } from '../../auth/oidc';
+import { isAccessTokenRevoked, validateOIDCToken } from '../../auth/oidc';
 
 vi.mock('axios', () => ({
   default: { post: vi.fn() },
@@ -58,5 +58,104 @@ describe('isAccessTokenRevoked (#960 exp-gated introspection)', () => {
     const token = tokenWithExp(nowSec() + 300, 'error');
 
     expect(await isAccessTokenRevoked(token)).toBe(false);
+  });
+});
+
+describe('validateOIDCToken client allowlist (OIDC_ALLOWED_CLIENT_IDS)', () => {
+  // introspectToken caches by token string, so every case uses its own token.
+  let n = 0;
+  const freshToken = () => tokenWithExp(nowSec() + 300, `allowlist-${n++}`);
+
+  const introspect = (fields: Record<string, unknown>) =>
+    mockedPost.mockResolvedValue({
+      data: { active: true, sub: 'sub-1', ...fields },
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.OIDC_TOKEN_INTROSPECTION_URL = 'https://kc.test/introspect';
+    process.env.OIDC_CLIENT_ID = 'send-backend';
+    process.env.OIDC_CLIENT_SECRET = 'secret';
+    delete process.env.OIDC_ALLOWED_CLIENT_IDS;
+  });
+
+  it('accepts a token from any client when the allowlist is unset', async () => {
+    introspect({ client_id: 'some-other-app' });
+
+    const result = await validateOIDCToken(freshToken());
+
+    expect(result.isValid).toBe(true);
+    expect(result.userInfo?.sub).toBe('sub-1');
+  });
+
+  it('treats a blank allowlist as unset', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = '  ';
+    introspect({ client_id: 'some-other-app' });
+
+    expect((await validateOIDCToken(freshToken())).isValid).toBe(true);
+  });
+
+  it('accepts a token whose client_id is allowed', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = 'send-frontend,tbpro-addon';
+    introspect({ client_id: 'tbpro-addon' });
+
+    expect((await validateOIDCToken(freshToken())).isValid).toBe(true);
+  });
+
+  it('accepts a token whose azp is allowed', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = 'send-frontend';
+    introspect({ azp: 'send-frontend' });
+
+    expect((await validateOIDCToken(freshToken())).isValid).toBe(true);
+  });
+
+  it('accepts a token whose aud includes an allowed client', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = 'send-backend';
+    introspect({
+      client_id: 'send-frontend',
+      aud: ['account', 'send-backend'],
+    });
+
+    expect((await validateOIDCToken(freshToken())).isValid).toBe(true);
+  });
+
+  it('accepts a string aud that is an allowed client', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = 'send-backend';
+    introspect({ aud: 'send-backend' });
+
+    expect((await validateOIDCToken(freshToken())).isValid).toBe(true);
+  });
+
+  it('ignores whitespace and empty entries in the allowlist', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = ' send-frontend , ,tbpro-addon, ';
+    introspect({ client_id: 'send-frontend' });
+
+    expect((await validateOIDCToken(freshToken())).isValid).toBe(true);
+  });
+
+  it('rejects an active token issued to a client that is not allowed', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = 'send-frontend,tbpro-addon';
+    introspect({ client_id: 'appointment-frontend', aud: ['account'] });
+
+    const result = await validateOIDCToken(freshToken());
+
+    expect(result.isValid).toBe(false);
+    expect(result.userInfo).toBeUndefined();
+  });
+
+  it('rejects an active token that names no client at all', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = 'send-frontend';
+    introspect({});
+
+    expect((await validateOIDCToken(freshToken())).isValid).toBe(false);
+  });
+
+  it('does not let an allowed client_id rescue an inactive token', async () => {
+    process.env.OIDC_ALLOWED_CLIENT_IDS = 'send-frontend';
+    mockedPost.mockResolvedValue({
+      data: { active: false, client_id: 'send-frontend' },
+    });
+
+    expect((await validateOIDCToken(freshToken())).isValid).toBe(false);
   });
 });

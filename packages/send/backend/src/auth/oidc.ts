@@ -10,6 +10,8 @@ export interface TokenIntrospectionResponse {
   exp?: number;
   iat?: number;
   client_id?: string;
+  azp?: string;
+  aud?: string | string[];
   scope?: string;
   [key: string]: unknown;
 }
@@ -171,6 +173,58 @@ export async function isAccessTokenRevoked(token: string): Promise<boolean> {
 }
 
 /**
+ * Client ids whose tokens this backend accepts, from OIDC_ALLOWED_CLIENT_IDS
+ * (comma-separated). Returns null when unset, which disables the check.
+ */
+export function getAllowedClientIds(): Set<string> | null {
+  const raw = process.env.OIDC_ALLOWED_CLIENT_IDS;
+  if (raw === undefined || raw.trim() === '') {
+    return null;
+  }
+  return new Set(
+    raw
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean)
+  );
+}
+
+let warnedNoClientAllowlist = false;
+
+/**
+ * True when the token was issued to one of the allowed clients.
+ *
+ * Introspection only proves a token is live somewhere in the realm. Other
+ * applications share that realm, so without this check a token issued to one
+ * of them would be accepted here too. Keycloak reports the requesting client
+ * as `client_id` (and `azp`); `aud` is also checked for realms with audience
+ * mappers.
+ */
+export function isTokenForAllowedClient(
+  result: TokenIntrospectionResponse
+): boolean {
+  const allowed = getAllowedClientIds();
+  if (!allowed) {
+    if (!warnedNoClientAllowlist) {
+      warnedNoClientAllowlist = true;
+      console.warn(
+        'OIDC_ALLOWED_CLIENT_IDS is not set; accepting tokens issued to any client in the realm'
+      );
+    }
+    return true;
+  }
+
+  const aud = Array.isArray(result.aud)
+    ? result.aud
+    : result.aud
+      ? [result.aud]
+      : [];
+  return [result.client_id, result.azp, ...aud].some(
+    (id) => typeof id === 'string' && allowed.has(id)
+  );
+}
+
+/**
  * Validates an OIDC token and returns user information if valid
  * @param token The access token to validate
  * @returns Promise<{isValid: boolean, userInfo?: any}>
@@ -191,6 +245,15 @@ export async function validateOIDCToken(token: string): Promise<{
     // `active` already reflects expiry and revocation, so it is the single
     // source of truth — an expired or revoked token comes back active:false.
     if (!introspectionResult.active) {
+      return { isValid: false };
+    }
+
+    if (!isTokenForAllowedClient(introspectionResult)) {
+      console.warn(
+        'OIDC token rejected: issued to client',
+        introspectionResult.client_id ?? introspectionResult.azp ?? '(unknown)',
+        'which is not in OIDC_ALLOWED_CLIENT_IDS'
+      );
       return { isValid: false };
     }
 
