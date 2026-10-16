@@ -10,6 +10,7 @@ allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': true
   '@sentry/cli': true
+  '@sentry/node-cpu-profiler': true
   '@sentry/profiling-node': true
   aws-sdk: true
   core-js: true
@@ -30,6 +31,7 @@ onlyBuiltDependencies:
   - '@prisma/engines'
   - '@scarf/scarf'
   - '@sentry/cli'
+  - '@sentry/node-cpu-profiler'
   - '@sentry/profiling-node'
   - aws-sdk
   - core-js

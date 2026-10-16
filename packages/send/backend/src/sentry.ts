@@ -1,4 +1,8 @@
-// Import with `import * as Sentry from "@sentry/node"` if you are using ESM
+// Sentry Node SDK v10 (OpenTelemetry 2.x). This module must be the FIRST thing
+// src/index.ts imports: the SDK instruments express, http, pg, ioredis, etc. by
+// hooking their `require`, so anything required before Sentry.init() runs is
+// invisible to tracing. Compiled as CommonJS, so plain import order is enough
+// (no `--import ./instrument.js` needed).
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import 'dotenv/config';
@@ -34,7 +38,8 @@ Sentry.init({
   // Performance Monitoring
   environment: process.env.NODE_ENV || 'development',
   beforeSendTransaction: (event) => {
-    if (hasExcludedUserAgent(event.request.headers)) {
+    // Root spans that did not come from an HTTP request carry no `request`.
+    if (hasExcludedUserAgent(event.request?.headers ?? {})) {
       return null;
     }
     return event;
@@ -48,8 +53,12 @@ Sentry.init({
     return shouldTrace;
   },
 
-  // Set sampling rate for profiling - this is relative to tracesSampleRate
-  profilesSampleRate: 1.0,
+  // Profiling. v10 deprecates the transaction-based `profilesSampleRate` in
+  // favour of profile sessions; `profileLifecycle: 'trace'` profiles whenever a
+  // sampled root span is active, so with a session rate of 1.0 every sampled
+  // trace is profiled, which is what `profilesSampleRate: 1.0` did before.
+  profileSessionSampleRate: 1.0,
+  profileLifecycle: 'trace',
   release: VERSION,
 });
 
