@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { UserAvatar } from '@thunderbirdops/services-ui';
 import { OIDC_USER, SIGN_OUT } from '@send-frontend/lib/const';
+import { onBridgeMessage } from '@send-frontend/lib/bridgeMessage';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useStatusStore, useUserStore } from '@send-frontend/stores';
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
@@ -64,9 +65,7 @@ const handleLogout = async () => {
 // bridge forwards it to us as a window.postMessage -- re-running the local
 // logout path keeps the page's "signed in" UI in sync without a reload.
 // See https://github.com/thunderbird/tbpro-add-on/issues/1024.
-const handleInboundMessage = async (event: MessageEvent) => {
-  if (event.source !== window) return;
-  if (event.origin !== window.location.origin) return;
+const handleInboundMessage = onBridgeMessage(async (event) => {
   const type = event.data?.type;
   if (type === SIGN_OUT) {
     try {
@@ -83,7 +82,7 @@ const handleInboundMessage = async (event: MessageEvent) => {
       console.error('Error handling inbound OIDC_USER in UserMenu:', error);
     }
   }
-};
+});
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);

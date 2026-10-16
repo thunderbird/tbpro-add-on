@@ -15,6 +15,7 @@ import {
   SIGN_OUT,
   STORAGE_KEY_AUTH,
 } from '@send-frontend/lib/const';
+import { onBridgeMessage } from '@send-frontend/lib/bridgeMessage';
 import {
   acquireRefreshLock,
   releaseRefreshLock,
@@ -310,14 +311,14 @@ export const useAuthStore = defineStore('auth', () => {
       currentUser.value = user;
 
       // Step 6a — Ping the bridge to confirm the content script is active.
-      window.addEventListener('message', (e) => {
-        if (
-          e.origin === window.location.origin &&
-          e.data?.type === BRIDGE_READY
-        ) {
-          console.log('[web app] bridge says: ready');
-        }
-      });
+      window.addEventListener(
+        'message',
+        onBridgeMessage((e) => {
+          if (e.data?.type === BRIDGE_READY) {
+            console.log('[web app] bridge says: ready');
+          }
+        })
+      );
 
       // Send one tiny ping to the bridge.
       window.postMessage(
@@ -627,16 +628,15 @@ export const useAuthStore = defineStore('auth', () => {
         reject(new Error('Timed out waiting for pending addon token'));
       }, 5000);
 
-      function handler(e: MessageEvent) {
-        if (
-          e.origin === window.location.origin &&
-          e.data?.type === PENDING_ADDON_TOKEN_RESPONSE
-        ) {
+      // Only the bridge (same window, same origin) may hand us a token set;
+      // see bridgeMessage.ts.
+      const handler = onBridgeMessage((e) => {
+        if (e.data?.type === PENDING_ADDON_TOKEN_RESPONSE) {
           clearTimeout(timeout);
           window.removeEventListener('message', handler);
           resolve(e.data.tokenSet ?? null);
         }
-      }
+      });
 
       window.addEventListener('message', handler);
       window.postMessage(
