@@ -158,20 +158,6 @@ const useUserStore = defineStore('user', () => {
   }
 
   // TODO: shift the userId from frontend argument to backend session
-  async function createBackup(userId, keys, keypair, keystring, salt) {
-    return await api.call(
-      `users/${userId}/backup`,
-      {
-        keys,
-        keypair,
-        keystring,
-        salt,
-      },
-      'POST'
-    );
-  }
-
-  // TODO: shift the userId from frontend argument to backend session
   async function getBackup() {
     return await api.call<Backup>(`users/backup`);
   }
@@ -198,7 +184,6 @@ const useUserStore = defineStore('user', () => {
     populateFromBackend,
     getPublicKey,
     updatePublicKey,
-    createBackup,
     getBackup,
     clearUserFromStorage,
   };
