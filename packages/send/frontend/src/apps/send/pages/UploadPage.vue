@@ -89,6 +89,13 @@ const dummyFile = ref<File | null>(null);
 // Check if running in extension or web
 const isExtension = isThunderbirdHost;
 
+function createDummyFile(): File {
+  const dummyContent =
+    'This is a test file created for demonstration purposes.\n'.repeat(100);
+  const blob = new Blob([dummyContent], { type: 'text/plain' });
+  return new File([blob], 'test-document.txt', { type: 'text/plain' });
+}
+
 function handleNext() {
   currentStep.value = 'expiration';
 }
@@ -142,12 +149,7 @@ async function handleCreateLink() {
       }));
     } else if (!dummyFile.value) {
       // Create dummy file first so we know the name
-      const dummyContent =
-        'This is a test file created for demonstration purposes.\n'.repeat(100);
-      const blob = new Blob([dummyContent], { type: 'text/plain' });
-      dummyFile.value = new File([blob], 'test-document.txt', {
-        type: 'text/plain',
-      });
+      dummyFile.value = createDummyFile();
       fileUploadStatuses.value = [
         { name: 'test-document.txt', status: 'pending' as const },
       ];
@@ -199,16 +201,7 @@ async function handleCreateLink() {
       }
     } else {
       // Create and upload dummy file only if no files provided
-      if (!dummyFile.value) {
-        const dummyContent =
-          'This is a test file created for demonstration purposes.\n'.repeat(
-            100
-          );
-        const blob = new Blob([dummyContent], { type: 'text/plain' });
-        dummyFile.value = new File([blob], 'test-document.txt', {
-          type: 'text/plain',
-        });
-      }
+      dummyFile.value ??= createDummyFile();
       fileUploadStatuses.value[0].status = 'uploading';
       const items = await folderStore.uploadItem(
         dummyFile.value,

@@ -50,22 +50,6 @@ const { open: openDeleteModal, close: closeDeleteModal } = useModal({
   },
 });
 
-// const { currentFolder } = inject('folderManager');
-// const { sharedByMe } = inject('sharingManager');
-
-// const recipients = computed(() => {
-//   const contacts = {};
-//   sharedByMe.value
-//     .filter((share) => share.containerId === folderStore.selectedFolder.value.id)
-//     .forEach((share) => {
-//       console.log(`have a share`);
-//       share.invitations.forEach((invitation) => {
-//         contacts[invitation.recipientId] = invitation.recipient;
-//       });
-//     });
-//   return Object.values(contacts);
-// });
-
 const showForm = ref(false);
 
 // watchEffect(() => {

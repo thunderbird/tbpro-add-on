@@ -116,20 +116,7 @@ To "move" an Item:
 - Repeat the steps involved in copying an Item
 - Delete the original Item
 
-To give access to another User, the Client must:
-
-- have access to the KEK for the Container
-- request the other User's public key from the backend
-- wrap the KEK with the other User's public key
-- send a POST to the backend API with the wrapped KEK and Container ID, creating an Invitation for the other User
-
-To accept an Invitation to access a Container the Client:
-
-- retrieves the Invitation details (Container ID and Wrapped Key) from the backend API
-- retrieves the local User's private key from client storage
-- extract the KEK by decrypting the Wrapped Key with their private key
-- send a POST to the backend API to accept the Invitation
-  - at which point the backend creates the corresponding Membership and Group associations
+Containers are not shared with other Users directly: there is no way to add another User as a member of a Container. Access to Content is granted only through Access Links (see below).
 
 # Data Flow Diagrams
 
@@ -212,18 +199,9 @@ Client ->> Client: Store plaintext Content to filesystem
 - Client decrypts Content using CEK
 - Client stores decrypted file to User's filesystem
 
-## Sharing Folder Access with another Paid User
+## Sharing Folder Access
 
-A Paid User can give another Paid User access to a Container in two ways:
-
-- Create and send an Invitation within the application
-- Generate an AccessLink and send through another means of communication (e.g., via email)
-
-### Invitations
-
-A Paid User directly invites another Paid User to a Container. The Invitation appears in the UI of the application.
-
-The Recipient can choose to accept the Invitation. Should they accept, the shared Container is now available to that User.
+Folder access is shared by generating an Access Link and sending it through another means of communication (e.g., via email). Users cannot invite other Users to become members of their folders.
 
 ### Access Links
 
@@ -234,9 +212,7 @@ Optionally, an Access Link can be created with:
 - a password that must be entered before it can be used
 - an expiration date/time, after which it is no longer valid
 
-If a Paid User uses an Access Link, that Container is available to them as if they were sent an Invitation.
-
-If an Anonymous User uses an Access Link, that Container is visible to them in a restricted version of the Client UI.
+Using an Access Link never makes the User a member of the Container. Whether or not they are signed in, the Container is visible to them in a restricted version of the Client UI.
 
 #### Password protection
 

@@ -62,61 +62,6 @@ export default class Sharer {
     return await this.requestAccessLink(containerId, password, expiration);
   }
 
-  // Creates Invitation
-  async shareContainerWithInvitation(containerId: string, email: string) {
-    const user = await this.api.call(`users/lookup/${email}/`);
-
-    if (user) {
-      let publicKey = user.publicKey;
-      const recipientId = user.id;
-      if (!publicKey) {
-        console.log(`Could not find public key for user ${email}`);
-      }
-
-      console.warn('SOMETHING WEIRD IS HAPPENING WITH PUBLIC KEYS ON SERVER');
-
-      // TODO: make sure we're not double-escaping before storing on server
-      while (typeof publicKey !== 'object') {
-        publicKey = JSON.parse(publicKey);
-      }
-
-      const importedPublicKey = await crypto.subtle.importKey(
-        'jwk',
-        publicKey,
-        {
-          name: 'RSA-OAEP',
-          hash: { name: 'SHA-256' },
-        },
-        true,
-        ['wrapKey']
-      );
-
-      const key = await this.keychain.get(containerId);
-      const wrappedKey = await this.keychain.rsa.wrapContainerKey(
-        key,
-        importedPublicKey
-      );
-
-      if (!wrappedKey) {
-        console.log(`no wrapped key for the invitation`);
-        return null;
-      }
-
-      const resp = await this.api.call(
-        `containers/${containerId}/member/invite`,
-        {
-          wrappedKey,
-          recipientId,
-          senderId: this.user.id,
-        },
-        'POST'
-      );
-      console.log(`Invitation creation response:`);
-      console.log(resp);
-      return resp;
-    }
-  }
-
   async createShareOnlyContainer(
     items = [],
     containerId = null
