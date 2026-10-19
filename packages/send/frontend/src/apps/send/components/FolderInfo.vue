@@ -50,22 +50,6 @@ const { open: openDeleteModal, close: closeDeleteModal } = useModal({
   },
 });
 
-// const { currentFolder } = inject('folderManager');
-// const { sharedByMe } = inject('sharingManager');
-
-// const recipients = computed(() => {
-//   const contacts = {};
-//   sharedByMe.value
-//     .filter((share) => share.containerId === folderStore.selectedFolder.value.id)
-//     .forEach((share) => {
-//       console.log(`have a share`);
-//       share.invitations.forEach((invitation) => {
-//         contacts[invitation.recipientId] = invitation.recipient;
-//       });
-//     });
-//   return Object.values(contacts);
-// });
-
 const showForm = ref(false);
 
 // watchEffect(() => {
@@ -120,15 +104,6 @@ const showForm = ref(false);
         v-if="folderStore?.selectedFolder?.id"
         :folder-id="folderStore.selectedFolder.id"
       />
-      <!-- people -->
-      <!-- <section class="flex flex-col gap-2">
-      <div class="font-semibold text-gray-600">Shared With</div>
-      <div class="flex flex-wrap gap-1">
-        <Avatar v-for="recipient in recipients" :key="recipient.id">
-          {{ recipient.email.substring(0, 1) }}
-        </Avatar>
-      </div>
-    </section> -->
       <!-- tags -->
       <!-- <section class="flex flex-col gap-2">
       <div class="font-semibold text-gray-600">Tags</div>
