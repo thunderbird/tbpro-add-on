@@ -134,19 +134,6 @@ const useSharingStore = defineStore('sharingManager', () => {
     return await api.call<FolderResponse>(`sharing/${hash}/`);
   }
 
-  async function updateAccessLinkPermissions(
-    containerId: number,
-    userId: number,
-    accessLinkId: string,
-    permission: number
-  ) {
-    return await api.call(
-      `containers/${containerId}/shares/accessLink/update`,
-      { userId, accessLinkId, permission },
-      'POST'
-    );
-  }
-
   return {
     // Getters ==================================
     links,
@@ -159,7 +146,6 @@ const useSharingStore = defineStore('sharingManager', () => {
     fetchFileAccessLinks,
     shareItems,
     getSharedFolder,
-    updateAccessLinkPermissions,
   };
 });
 
