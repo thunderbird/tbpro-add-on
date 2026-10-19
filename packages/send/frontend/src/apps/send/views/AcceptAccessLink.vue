@@ -10,7 +10,6 @@ import DownloadTemplate from './DownloadTemplate.vue';
 const emit = defineEmits(['acceptAccessLinkComplete']);
 
 const password = ref('');
-const message = ref('');
 const error = ref('');
 const passwordInput = ref<HTMLInputElement | null>(null);
 const isLocked = ref(false);
@@ -35,19 +34,6 @@ async function accept() {
   try {
     const success = await sharingStore.acceptAccessLink(linkId, password.value);
     if (success) {
-      message.value = `and this is where we add the container to the group and then redirect`;
-
-      /*
-      This functionality has been disabled until we test it
-      We want users to be able to download files without adding them to their folers
-       */
-      // if (user.id) {
-      //   // Users will go to send home
-      //   router.push(`/send`);
-      // } else {
-      //   // Non-users stay at this route
-      //   emit('acceptAccessLinkComplete');
-      // }
       emit('acceptAccessLinkComplete');
     } else {
       error.value = 'This password is incorrect';
@@ -90,8 +76,6 @@ onMounted(() => {
         />
       </label>
       <p class="prompt">Enter the password provided by the sender</p>
-
-      <div v-if="message">{{ message }}</div>
 
       <div v-if="error" class="error-message" style="color: red">
         {{ error }}
