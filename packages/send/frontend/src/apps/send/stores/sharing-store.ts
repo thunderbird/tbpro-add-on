@@ -80,8 +80,8 @@ const useSharingStore = defineStore('sharingManager', () => {
       return false;
     }
 
-    // Check for existence of link.
     const { unwrappedKey, containerId } = containerKey;
+    // keychain.add() needs an RSA keypair to wrap the container key.
     await keychain.rsa.generateKeyPair();
 
     await keychain.add(containerId, unwrappedKey);
