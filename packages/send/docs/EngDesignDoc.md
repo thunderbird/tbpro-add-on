@@ -116,7 +116,7 @@ To "move" an Item:
 - Repeat the steps involved in copying an Item
 - Delete the original Item
 
-Containers are not shared with other Users directly: there is no way to add another User as a member of a Container. Access to Content is granted only through Access Links (see below).
+The Client does not share Containers with other Users directly: it has no way to add another User as a member of a Container. It shares Content only through Access Links (see below).
 
 # Data Flow Diagrams
 
@@ -212,7 +212,7 @@ Optionally, an Access Link can be created with:
 - a password that must be entered before it can be used
 - an expiration date/time, after which it is no longer valid
 
-Using an Access Link never makes the User a member of the Container. Whether or not they are signed in, the Container is visible to them in a restricted version of the Client UI.
+The Client does not make the User a member of the Container when they use an Access Link. Whether or not they are signed in, the Container is visible to them in a restricted version of the Client UI.
 
 #### Password protection
 
