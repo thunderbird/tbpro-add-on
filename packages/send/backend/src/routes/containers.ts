@@ -1,19 +1,12 @@
 import { ContainerType } from '@prisma/client';
 import { Router } from 'express';
 import {
-  addGroupMember,
   createItem,
   deleteItem,
   getContainerInfo,
   getContainerWithDescendants,
-  getContainerWithMembers,
-  getSharesForContainer,
   getWrappedKeyFromId,
-  removeGroupMember,
-  removeInvitationAndGroup,
   reportUpload,
-  updateAccessLinkPermissions,
-  updateInvitationPermissions,
   updateItemName,
 } from '../models';
 
@@ -23,7 +16,6 @@ import {
   requireAdminPermission,
   requireJWT,
   requireReadPermission,
-  requireSharePermission,
   requireWritePermission,
 } from '../middleware';
 import { createRateLimiter } from '../middleware/rate-limit';
@@ -34,7 +26,7 @@ import {
   wrapAsyncHandler,
 } from '../errors/routes';
 
-import { burnFolder, createInvitation } from '../models/sharing';
+import { burnFolder } from '../models/sharing';
 
 import {
   createContainer,
@@ -520,225 +512,6 @@ router.post(
 
 /**
  * @openapi
- * /api/containers/{containerId}/member/invite:
- *   post:
- *     summary: Invite a member to a container
- *     tags: [Containers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               senderId:
- *                 type: integer
- *               recipientId:
- *                 type: integer
- *               wrappedKey:
- *                 type: string
- *               permission:
- *                 type: string
- *     responses:
- *       200:
- *         description: Member invited successfully
- *       400:
- *         description: Failed to invite member
- */
-// Invite a member to a container
-router.post(
-  '/:containerId/member/invite',
-  getGroupMemberPermissions,
-  // State-changing action: sensitive tier, keyed per user.
-  createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.INVITATION_NOT_CREATED),
-  wrapAsyncHandler(async (req, res) => {
-    const { containerId } = req.params;
-    const { senderId, recipientId, wrappedKey } = req.body;
-    let permission = '0';
-    if (req.body.permission) {
-      permission = req.body.permission;
-    }
-    const invitation = await createInvitation(
-      containerId,
-      wrappedKey,
-      senderId,
-      recipientId,
-      parseInt(permission)
-    );
-    res.status(200).json(invitation);
-  })
-);
-
-/**
- * @openapi
- * /api/containers/{containerId}/member/remove/{invitationId}:
- *   delete:
- *     summary: Remove invitation and group membership
- *     tags: [Containers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: path
- *         name: invitationId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Invitation and group membership removed successfully
- *       400:
- *         description: Failed to remove invitation and group membership
- */
-// Remove invitation and group membership
-router.delete(
-  '/:containerId/member/remove/:invitationId',
-  getGroupMemberPermissions,
-  requireSharePermission,
-  addErrorHandling(CONTAINER_ERRORS.INVITATION_NOT_DELETED),
-  wrapAsyncHandler(async (req, res) => {
-    const { invitationId } = req.params;
-    const result = await removeInvitationAndGroup(parseInt(invitationId));
-    res.status(200).json(result);
-  })
-);
-
-/**
- * @openapi
- * /api/containers/{containerId}/member:
- *   post:
- *     summary: Add a member to access group for container
- *     tags: [Containers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               userId:
- *                 type: integer
- *     responses:
- *       200:
- *         description: Member added successfully
- *       400:
- *         description: Failed to add member
- */
-// Add member to access group for container
-router.post(
-  '/:containerId/member',
-  getGroupMemberPermissions,
-  // Expanding a folder's membership is an administrative action: only the
-  // owner/ADMIN may add members, matching the sibling admin-gated routes.
-  requireAdminPermission,
-  // State-changing action: sensitive tier, keyed per user.
-  createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.MEMBER_NOT_CREATED),
-  wrapAsyncHandler(async (req, res) => {
-    const { containerId } = req.params;
-    const { userId } = req.body;
-    const container = await addGroupMember(containerId, userId);
-    res.status(200).json(container);
-  })
-);
-
-/**
- * @openapi
- * /api/containers/{containerId}/member/{userId}:
- *   delete:
- *     summary: Remove a member from access group for container
- *     tags: [Containers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Member removed successfully
- *       404:
- *         description: Member or container not found
- */
-// Remove member from access group for container
-router.delete(
-  '/:containerId/member/:userId',
-  getGroupMemberPermissions,
-  // State-changing action: sensitive tier, keyed per user.
-  createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.MEMBER_NOT_DELETED),
-  wrapAsyncHandler(async (req, res) => {
-    const { containerId, userId } = req.params;
-    const container = await removeGroupMember(containerId, userId);
-    res.status(200).json(container);
-  })
-);
-
-/**
- * @openapi
- * /api/containers/{containerId}/members:
- *   get:
- *     summary: Get all members for a container
- *     tags: [Containers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Members retrieved successfully
- *       404:
- *         description: Members not found
- */
-// Get all members for a container
-router.get(
-  '/:containerId/members',
-  getGroupMemberPermissions,
-  // Authenticated read: loosest tier, keyed per user.
-  createRateLimiter('read'),
-  addErrorHandling(CONTAINER_ERRORS.MEMBERS_NOT_FOUND),
-  wrapAsyncHandler(async (req, res) => {
-    // getContainerWithMembers
-    const { containerId } = req.params;
-    const { group } = await getContainerWithMembers(containerId);
-    res.status(200).json(group.members);
-  })
-);
-
-/**
- * @openapi
  * /api/containers/{containerId}/info:
  *   get:
  *     summary: Get container info
@@ -768,153 +541,6 @@ router.get(
     const { containerId } = req.params;
     const container = await getContainerInfo(containerId);
     res.status(200).json(container);
-  })
-);
-
-/**
- * @openapi
- * /api/containers/{containerId}/shares:
- *   get:
- *     summary: Get all shares for a container
- *     tags: [Containers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Shares retrieved successfully
- *       404:
- *         description: Shares not found
- */
-// Get all shares for a container
-router.get(
-  '/:containerId/shares',
-  getGroupMemberPermissions,
-  // Authenticated read: loosest tier, keyed per user.
-  createRateLimiter('read'),
-  addErrorHandling(CONTAINER_ERRORS.SHARES_NOT_FOUND),
-  wrapAsyncHandler(async (req, res) => {
-    const { containerId } = req.params;
-    const result = await getSharesForContainer(containerId);
-    res.status(200).json({
-      result,
-    });
-  })
-);
-
-/**
- * @openapi
- * /api/containers/{containerId}/shares/invitation/update:
- *   post:
- *     summary: Update invitation permissions for a container
- *     tags: [Containers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               userId:
- *                 type: integer
- *               invitationId:
- *                 type: integer
- *               permission:
- *                 type: integer
- *     responses:
- *       200:
- *         description: Invitation permissions updated successfully
- *       400:
- *         description: Failed to update invitation permissions
- */
-// Update invitation permissions for a container
-router.post(
-  '/:containerId/shares/invitation/update',
-  getGroupMemberPermissions,
-  // State-changing action: sensitive tier, keyed per user.
-  createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.PERMISSIONS_NOT_UPDATED),
-  wrapAsyncHandler(async (req, res) => {
-    const { containerId } = req.params;
-    const { userId, invitationId, permission } = req.body; // TODO: get from session
-
-    const result = await updateInvitationPermissions(
-      containerId,
-      parseInt(invitationId),
-      userId,
-      parseInt(permission)
-    );
-    res.status(200).json({
-      result,
-    });
-  })
-);
-
-/**
- * @openapi
- * /api/containers/{containerId}/shares/accessLink/update:
- *   post:
- *     summary: Update access link permissions for a container
- *     tags: [Containers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               userId:
- *                 type: integer
- *               accessLinkId:
- *                 type: integer
- *               permission:
- *                 type: integer
- *     responses:
- *       200:
- *         description: Access link permissions updated successfully
- *       400:
- *         description: Failed to update access link permissions
- */
-// Update access link permissions for a container
-router.post(
-  '/:containerId/shares/accessLink/update',
-  getGroupMemberPermissions,
-  // State-changing action: sensitive tier, keyed per user.
-  createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.PERMISSIONS_NOT_UPDATED),
-  wrapAsyncHandler(async (req, res) => {
-    const { containerId } = req.params;
-    const { userId, accessLinkId, permission } = req.body; // TODO: get from session
-    const result = await updateAccessLinkPermissions(
-      containerId,
-      accessLinkId,
-      userId,
-      parseInt(permission)
-    );
-    res.status(200).json({
-      result,
-    });
   })
 );
 

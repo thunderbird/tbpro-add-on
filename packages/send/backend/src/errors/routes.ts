@@ -65,41 +65,9 @@ export const CONTAINER_ERRORS = {
     statusCode: 500,
     message: 'Could not report item.',
   },
-  INVITATION_NOT_CREATED: {
-    statusCode: 500,
-    message: 'Could not invite member.',
-  },
-  INVITATION_NOT_DELETED: {
-    statusCode: 500,
-    message: 'Could not remove invitation.',
-  },
-  MEMBER_NOT_CREATED: {
-    statusCode: 500,
-    message: 'Could not add group member.',
-  },
-  MEMBER_NOT_DELETED: {
-    statusCode: 500,
-    message: 'Could not remove group member.',
-  },
-  MEMBERS_NOT_FOUND: {
-    statusCode: 404,
-    message: 'Could not get members.',
-  },
-  PERMISSIONS_NOT_UPDATED: {
-    statusCode: 500,
-    message: 'Could not update permissions.',
-  },
-  SHARES_NOT_FOUND: {
-    statusCode: 404,
-    message: 'Could not get shares for container.',
-  },
 };
 
 export const SHARING_ERRORS = {
-  ACCESS_LINK_NOT_ACCEPTED: {
-    statusCode: 500,
-    message: 'Could not accept access link.',
-  },
   ACCESS_LINK_NOT_CREATED: {
     statusCode: 500,
     message: 'Could not create access link.',
@@ -185,14 +153,6 @@ export const USER_ERRORS = {
     statusCode: 500,
     message: 'Could not perform dev-only login.',
   },
-  HISTORY_NOT_FOUND: {
-    statusCode: 404,
-    message: 'Could not get user history.',
-  },
-  INVITATIONS_NOT_FOUND: {
-    statusCode: 404,
-    message: 'Could not get user invitations.',
-  },
   FOLDERS_NOT_FOUND: {
     statusCode: 404,
     message: 'Could not get user folders.',
@@ -205,14 +165,6 @@ export const USER_ERRORS = {
     statusCode: 404,
     message: 'Could not get public key.',
   },
-  RECEIVED_FOLDERS_NOT_FOUND: {
-    statusCode: 404,
-    message: 'Could not get received folders.',
-  },
-  SHARED_FOLDERS_NOT_FOUND: {
-    statusCode: 404,
-    message: 'Could not get shared folders.',
-  },
   SESSION_NOT_FOUND: {
     statusCode: 500,
     message: 'Could not get user session.',
@@ -224,10 +176,6 @@ export const USER_ERRORS = {
   USER_NOT_DELETED: {
     statusCode: 500,
     message: 'Could not delete user data.',
-  },
-  USER_NOT_FOUND: {
-    statusCode: 404,
-    message: 'Could not find user.',
   },
 };
 

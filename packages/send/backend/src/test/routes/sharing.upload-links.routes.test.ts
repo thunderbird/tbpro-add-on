@@ -20,11 +20,9 @@ const { mockByUploadId, mockByUploadIdAndWrappedKey } = vi.hoisted(() => ({
 
 vi.mock('../../models/sharing', () => ({
   acceptAccessLink: vi.fn(),
-  acceptInvitation: vi.fn(),
   burnEphemeralConversation: vi.fn(),
   checkIfAccessLinkCanBeCreated: vi.fn(),
   createAccessLink: vi.fn(),
-  createInvitationFromAccessLink: vi.fn(),
   getAccessLinkChallenge: vi.fn(),
   getAccessLinksByUploadId: mockByUploadId,
   getAccessLinksByUploadIdAndWrappedKey: mockByUploadIdAndWrappedKey,

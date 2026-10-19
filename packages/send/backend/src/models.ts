@@ -1,18 +1,11 @@
 import { ContainerType, ItemType, PrismaClient } from '@prisma/client';
 import {
-  ACCESSLINK_NOT_UPDATED,
-  BaseError,
   CONTAINER_NOT_FOUND,
   CONTAINER_NOT_UPDATED,
-  INVITATION_NOT_DELETED,
-  INVITATION_NOT_FOUND,
-  INVITATION_NOT_UPDATED,
   ITEM_NOT_CREATED,
   ITEM_NOT_DELETED,
   ITEM_NOT_FOUND,
   ITEM_NOT_UPDATED,
-  MEMBERSHIP_NOT_CREATED,
-  MEMBERSHIP_NOT_DELETED,
   SESSION_NOT_CREATED,
   SESSION_NOT_DELETED,
   SESSION_NOT_FOUND,
@@ -25,36 +18,10 @@ import {
 } from './errors/models';
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
-import { PermissionType } from './types/custom';
 import { addExpiryToContainer } from './utils';
 import { verifyOwnedUploadId } from './utils/ownedUploadId';
 import storage from './storage';
 const prisma = new PrismaClient();
-
-export async function getSharesForContainer(containerId: string) {
-  const query = {
-    where: {
-      containerId,
-    },
-    include: {
-      invitations: {
-        include: {
-          recipient: {
-            select: {
-              email: true,
-            },
-          },
-        },
-      },
-      accessLinks: {
-        select: {
-          id: true,
-        },
-      },
-    },
-  };
-  return await fromPrismaV2(prisma.share.findMany, query);
-}
 
 export async function updateItemName(itemId: number, name: string) {
   const query = {
@@ -68,80 +35,6 @@ export async function updateItemName(itemId: number, name: string) {
   };
 
   return await fromPrismaV2(prisma.item.update, query, ITEM_NOT_UPDATED);
-}
-
-export async function updateInvitationPermissions(
-  containerId: string,
-  invitationId: number,
-  userId: string,
-  permission: PermissionType
-) {
-  const query = {
-    where: {
-      id: invitationId,
-    },
-    data: {
-      permission,
-    },
-  };
-
-  return await fromPrismaV2(
-    prisma.invitation.update,
-    query,
-    INVITATION_NOT_UPDATED
-  );
-}
-
-export async function updateAccessLinkPermissions(
-  containerId: string,
-  accessLinkId: string,
-  userId: string,
-  permission: PermissionType
-) {
-  const query = {
-    where: {
-      id: accessLinkId,
-    },
-    data: {
-      permission,
-    },
-    select: {
-      id: true,
-      permission: true,
-    },
-  };
-
-  return await fromPrismaV2(
-    prisma.accessLink.update,
-    query,
-    ACCESSLINK_NOT_UPDATED
-  );
-}
-
-export async function getContainerWithMembers(containerId: string) {
-  const query = {
-    where: {
-      id: containerId,
-    },
-    select: {
-      group: {
-        select: {
-          id: true,
-          members: {
-            select: {
-              user: true,
-            },
-          },
-        },
-      },
-    },
-  };
-
-  return await fromPrismaV2(
-    prisma.container.findUniqueOrThrow,
-    query,
-    CONTAINER_NOT_FOUND
-  );
 }
 
 export async function reportUpload(uploadId: string) {
@@ -452,132 +345,6 @@ export async function getContainerWithDescendants(id: string) {
   }
 
   return container;
-}
-
-export async function addGroupMember(containerId: string, userId: string) {
-  const findContainerQuery = {
-    where: {
-      id: containerId,
-    },
-    select: {
-      group: {
-        select: {
-          id: true,
-        },
-      },
-    },
-  };
-
-  const container = await fromPrismaV2(
-    prisma.container.findUniqueOrThrow,
-    findContainerQuery,
-    CONTAINER_NOT_FOUND
-  );
-
-  const { group } = container ?? {};
-  if (!group.id) {
-    throw new BaseError(MEMBERSHIP_NOT_CREATED);
-  }
-
-  // Returns `null` if no record found.
-  // Do not try/catch.
-  const findMembershipQuery = {
-    where: {
-      groupId: group.id,
-      userId,
-    },
-  };
-  const membership = await fromPrismaV2(
-    prisma.membership.findFirst,
-    findMembershipQuery
-  );
-  if (membership) {
-    return membership;
-  }
-
-  const createMembershipQuery = {
-    data: {
-      groupId: group.id,
-      userId,
-      permission: PermissionType.READ, // Lowest permissions, by default
-    },
-  };
-
-  return await fromPrismaV2(
-    prisma.membership.create,
-    createMembershipQuery,
-    MEMBERSHIP_NOT_CREATED
-  );
-}
-
-export async function removeInvitationAndGroup(invitationId: number) {
-  const findInvitationQuery = {
-    where: {
-      id: invitationId,
-    },
-    include: {
-      share: true,
-      recipient: true,
-    },
-  };
-
-  const invitation = await fromPrismaV2(
-    prisma.invitation.findUniqueOrThrow,
-    findInvitationQuery,
-    INVITATION_NOT_FOUND
-  );
-
-  // remove membership, if any
-  await removeGroupMember(
-    invitation.share.containerId,
-    invitation.recipient.id
-  );
-
-  const deleteInvitationQuery = {
-    where: {
-      id: invitationId,
-    },
-  };
-
-  return await fromPrismaV2(
-    prisma.invitation.delete,
-    deleteInvitationQuery,
-    INVITATION_NOT_DELETED
-  );
-}
-
-export async function removeGroupMember(containerId: string, userId: string) {
-  const container = await fromPrismaV2(
-    prisma.container.findUniqueOrThrow,
-    {
-      where: { id: containerId },
-      select: { groupId: true, ownerId: true },
-    },
-    CONTAINER_NOT_FOUND
-  );
-
-  // The owner's ADMIN membership shares the (groupId, userId) composite key with
-  // any invitee row for that same user, so removing an invitation whose recipient
-  // is the owner would otherwise delete the owner's real ownership row and
-  // permanently lock them out of their own container. Never remove the owner's
-  // membership through this path; return the untouched row instead. See #1004.
-  if (userId === container.ownerId) {
-    return await fromPrismaV2(prisma.membership.findFirst, {
-      where: { groupId: container.groupId, userId },
-    });
-  }
-
-  const deleteMembershipQuery = {
-    where: {
-      groupId_userId: { groupId: container.groupId, userId },
-    },
-  };
-
-  return await fromPrismaV2(
-    prisma.membership.delete,
-    deleteMembershipQuery,
-    MEMBERSHIP_NOT_DELETED
-  );
 }
 
 // Create a tag for an item

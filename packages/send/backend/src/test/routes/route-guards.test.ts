@@ -44,31 +44,21 @@ vi.mock('../../middleware/rate-limit', () => ({
 
 // The routers only need their imports to resolve; no handler is invoked.
 vi.mock('../../models', () => ({
-  removeInvitationAndGroup: vi.fn(),
   reportUpload: vi.fn(),
-  addGroupMember: vi.fn(),
   createItem: vi.fn(),
   deleteItem: vi.fn(),
   getContainerInfo: vi.fn(),
   getContainerWithDescendants: vi.fn(),
-  getContainerWithMembers: vi.fn(),
-  getSharesForContainer: vi.fn(),
   getWrappedKeyFromId: vi.fn(),
-  removeGroupMember: vi.fn(),
-  updateAccessLinkPermissions: vi.fn(),
-  updateInvitationPermissions: vi.fn(),
   updateItemName: vi.fn(),
 }));
 
 vi.mock('../../models/sharing', () => ({
   acceptAccessLink: vi.fn(),
-  acceptInvitation: vi.fn(),
   burnEphemeralConversation: vi.fn(),
   burnFolder: vi.fn(),
   checkIfAccessLinkCanBeCreated: vi.fn(),
   createAccessLink: vi.fn(),
-  createInvitation: vi.fn(),
-  createInvitationFromAccessLink: vi.fn(),
   getAccessLinkChallenge: vi.fn(),
   getAccessLinksByUploadId: vi.fn(),
   getAccessLinksByUploadIdAndWrappedKey: vi.fn(),
@@ -150,7 +140,6 @@ const EXPECTED_SHARING: Record<string, string[]> = {
     'rateLimiter(sensitive)',
   ],
   'POST /:linkId/challenge': [],
-  'POST /:linkId/member/accept': ['requireJWT', 'rateLimiter(sensitive)'],
   'POST /:linkId/add-password': [],
 };
 
@@ -179,23 +168,6 @@ const EXPECTED_CONTAINERS: Record<string, string[]> = {
     'getGroupMemberPermissions',
     'rateLimiter(sensitive)',
   ],
-  'POST /:containerId/member': [
-    'getGroupMemberPermissions',
-    'requireAdminPermission',
-    'rateLimiter(sensitive)',
-  ],
-  'POST /:containerId/member/invite': [
-    'getGroupMemberPermissions',
-    'rateLimiter(sensitive)',
-  ],
-  'DELETE /:containerId/member/:userId': [
-    'getGroupMemberPermissions',
-    'rateLimiter(sensitive)',
-  ],
-  'DELETE /:containerId/member/remove/:invitationId': [
-    'getGroupMemberPermissions',
-    'requireSharePermission',
-  ],
   'POST /:containerId/rename': [
     'requireJWT',
     'getGroupMemberPermissions',
@@ -203,14 +175,6 @@ const EXPECTED_CONTAINERS: Record<string, string[]> = {
     'rateLimiter(sensitive)',
   ],
   'POST /:containerId/report': [],
-  'POST /:containerId/shares/accessLink/update': [
-    'getGroupMemberPermissions',
-    'rateLimiter(sensitive)',
-  ],
-  'POST /:containerId/shares/invitation/update': [
-    'getGroupMemberPermissions',
-    'rateLimiter(sensitive)',
-  ],
 };
 
 // Routes intentionally or historically without an authentication guard.
@@ -232,23 +196,13 @@ const PERMISSION_EXEMPT: Record<string, string> = {
     'public by design: the challenge answer is itself the proof of access',
   'POST /:linkId/add-password':
     'compatibility no-op: accepts and ignores the body, writes nothing',
-  'POST /:linkId/member/accept':
-    'proof of access (link validity + challenge response) is enforced inside the handler',
   'POST /:containerId/item': 'pre-existing: any member may add items',
   'DELETE /:containerId/item/:itemId':
     'pre-existing: any member may delete items',
   'POST /:containerId/item/:itemId/rename':
     'pre-existing: any member may rename items',
-  'POST /:containerId/member/invite':
-    'pre-existing: membership-gated only; consider an admin gate',
-  'DELETE /:containerId/member/:userId':
-    'pre-existing: membership-gated only; consider an admin gate',
   'POST /:containerId/report':
     'abuse reporting is reachable without an account',
-  'POST /:containerId/shares/accessLink/update':
-    'pre-existing: membership-gated only; consider an admin gate',
-  'POST /:containerId/shares/invitation/update':
-    'pre-existing: membership-gated only; consider an admin gate',
 };
 
 describe('mutating route guards', () => {

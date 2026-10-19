@@ -21,7 +21,6 @@ vi.mock('@prisma/client', () => ({
   // Enum values referenced by the imported modules at runtime.
   ContainerType: { CONVERSATION: 'CONVERSATION', FOLDER: 'FOLDER' },
   ItemType: { FILE: 'FILE', MESSAGE: 'MESSAGE' },
-  InvitationStatus: { PENDING: 'PENDING', ACCEPTED: 'ACCEPTED' },
   UserTier: { FREE: 'FREE', PRO: 'PRO', EPHEMERAL: 'EPHEMERAL' },
 }));
 
@@ -30,7 +29,6 @@ vi.mock('../../storage', () => ({
   default: {},
 }));
 
-import { updateAccessLinkPermissions } from '../../models';
 import {
   getAccessLinksForContainer,
   markAccessLinkAsPasswordless,
@@ -40,7 +38,6 @@ import {
   getAccessLinksByUploadIdAndWrappedKey,
   removeAccessLink,
 } from '../../models/sharing';
-import { PermissionType } from '../../types/custom';
 
 // `hasPassword` is a non-secret boolean flag; the secret material itself
 // (password, hash, or URL fragment) must never appear here.
@@ -93,18 +90,5 @@ describe('access-link queries select only non-secret fields', () => {
   it('removeAccessLink', async () => {
     await removeAccessLink('link-1');
     expect(selectOf(h.prisma.accessLink.delete)).toEqual({ id: true });
-  });
-
-  it('updateAccessLinkPermissions', async () => {
-    await updateAccessLinkPermissions(
-      'container-1',
-      'link-1',
-      'user-1',
-      PermissionType.READ
-    );
-    expect(selectOf(h.prisma.accessLink.update)).toEqual({
-      id: true,
-      permission: true,
-    });
   });
 });

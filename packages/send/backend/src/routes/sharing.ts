@@ -2,10 +2,8 @@ import { Router } from 'express';
 
 import {
   acceptAccessLink,
-  acceptInvitation,
   checkIfAccessLinkCanBeCreated,
   createAccessLink,
-  createInvitationFromAccessLink,
   getAccessLinkChallenge,
   getAccessLinksByUploadId,
   getAccessLinksByUploadIdAndWrappedKey,
@@ -34,33 +32,6 @@ import {
 const router: Router = Router();
 const Metrics = useMetrics();
 
-/**
- * @openapi
- * /api/sharing/invite:
- *   post:
- *     summary: Invite users to share a container
- *     tags: [Sharing]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               containerName:
- *                 type: string
- *               invitedUsers:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: Invitations sent successfully
- *       400:
- *         description: Failed to send invitations
- */
 // Request a new hash for a shared container
 router.post(
   '/',
@@ -155,24 +126,6 @@ router.get(
   })
 );
 
-/**
- * @openapi
- * /api/sharing/accept/{invitationId}:
- *   post:
- *     summary: Accept a sharing invitation
- *     tags: [Sharing]
- *     parameters:
- *       - in: path
- *         name: invitationId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Invitation accepted successfully
- *       404:
- *         description: Invitation not found
- */
 // Get the challenge for this hash
 router.get(
   '/:linkId/challenge',
@@ -194,24 +147,6 @@ router.get(
   })
 );
 
-/**
- * @openapi
- * /api/sharing/reject/{invitationId}:
- *   post:
- *     summary: Reject a sharing invitation
- *     tags: [Sharing]
- *     parameters:
- *       - in: path
- *         name: invitationId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Invitation rejected successfully
- *       404:
- *         description: Invitation not found
- */
 // Respond to the challenge.
 // If plaintext matches, we respond with wrapped key
 // associated salt
@@ -233,24 +168,6 @@ router.post(
   })
 );
 
-/**
- * @openapi
- * /api/sharing/leave/{containerId}:
- *   post:
- *     summary: Leave a shared container
- *     tags: [Sharing]
- *     parameters:
- *       - in: path
- *         name: containerId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Successfully left the container
- *       404:
- *         description: Container not found
- */
 // Get an AccessLink's container and items
 router.get(
   '/exists/:linkId',
@@ -287,60 +204,6 @@ router.get(
     await resetAccessLinkRetryCount(linkId);
 
     res.status(200).json(itemsWithExpiry);
-  })
-);
-
-// Allow user to use an AccessLink to become a group member for a container
-router.post(
-  '/:linkId/member/accept',
-  requireJWT,
-  // State-changing action: sensitive tier, keyed per user.
-  createRateLimiter('sensitive'),
-  addErrorHandling(SHARING_ERRORS.ACCESS_LINK_NOT_ACCEPTED),
-  wrapAsyncHandler(async (req, res) => {
-    const { id } = getDataFromAuthenticatedRequest(req);
-
-    const { linkId } = req.params;
-    const { challengePlaintext } = req.body ?? {};
-
-    // Becoming a member requires the same proof of access as the recipient
-    // read path: the link must be unexpired, and the caller must present the
-    // link's challenge plaintext (derivable only with the link's password
-    // when one is set). Possession of the link id alone is not sufficient.
-    if (typeof challengePlaintext !== 'string' || challengePlaintext === '') {
-      res.status(403).json({ message: 'Failed access link challenge' });
-      return;
-    }
-
-    if (!(await isAccessLinkValid(linkId))) {
-      res.status(403).json({ message: 'Access link is invalid or expired' });
-      return;
-    }
-
-    // Same verification as POST /:linkId/challenge: the stored challenge
-    // plaintext must match. On mismatch, no invitation is created.
-    const verifiedLink = await acceptAccessLink(
-      linkId,
-      challengePlaintext
-    ).catch(() => null);
-    if (!verifiedLink) {
-      res.status(403).json({ message: 'Failed access link challenge' });
-      return;
-    }
-
-    // We create an Invitation for two reasons:
-    // - it allows us to reuse the existing `acceptInvitation()`
-    // - it serves as record-keeping (e.g., we can prevent someone
-    // from re-joining after their access has been revoked)
-    const newInvitation = await createInvitationFromAccessLink(linkId, id);
-    // The container owner accepting their own access link already has full
-    // access, so there is no invitation to accept — return success as a no-op.
-    if (!newInvitation) {
-      res.status(200).json({ success: true });
-      return;
-    }
-    const result = await acceptInvitation(newInvitation.id);
-    res.status(200).json(result);
   })
 );
 

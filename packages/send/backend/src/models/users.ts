@@ -5,7 +5,7 @@ import {
   USER_NOT_FOUND,
   USER_NOT_UPDATED,
 } from '../errors/models';
-import { fromPrisma, fromPrismaV2, itemsIncludeOptions } from './prisma-helper';
+import { fromPrismaV2, itemsIncludeOptions } from './prisma-helper';
 const prisma = new PrismaClient();
 
 export async function createUser(
@@ -350,45 +350,6 @@ export async function getAllUserGroupContainers(
   return await fromPrismaV2(prisma.container.findMany, query);
 }
 
-export async function getRecentActivity(
-  userId: string,
-  type: ContainerType | null
-) {
-  // Get all containers
-  const containerWhere = await _whereContainer(userId, type);
-  const query = {
-    take: 10,
-    where: containerWhere,
-    orderBy: [
-      {
-        updatedAt: 'desc',
-      },
-      {
-        name: 'asc',
-      },
-    ],
-    select: {
-      id: true,
-      name: true,
-      createdAt: true,
-      updatedAt: true,
-      type: true,
-      shareOnly: true,
-      items: {
-        select: {
-          id: true,
-          name: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      },
-    },
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return await fromPrisma(prisma.container.findMany as any, query);
-}
-
 export async function getBackup(id: string) {
   return await fromPrismaV2(
     prisma.user.findUnique,
@@ -564,17 +525,14 @@ export async function deleteUser(id: string) {
     // 1. Remove memberships the user holds in other users' groups
     await tx.membership.deleteMany({ where: { userId: id } });
 
-    // 2. Remove invitations where the user is the recipient
-    await tx.invitation.deleteMany({ where: { recipientId: id } });
-
-    // 3. Delete containers owned by the user.
-    //    Cascade: items → (upload refs dropped), shares → invitations sent by user, access links
+    // 2. Delete containers owned by the user.
+    //    Cascade: items → (upload refs dropped), shares → access links
     await tx.container.deleteMany({ where: { ownerId: id } });
 
-    // 4. Delete uploads owned by the user
+    // 3. Delete uploads owned by the user
     await tx.upload.deleteMany({ where: { ownerId: id } });
 
-    // 5. Delete the user record itself (cascade: profile)
+    // 4. Delete the user record itself (cascade: profile)
     return tx.user.delete({ where: { id } });
   });
 }

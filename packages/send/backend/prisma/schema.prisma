@@ -36,7 +36,6 @@ model User {
   backupKeystring     String?
   backupSalt          String?
   containers          Container[]
-  invitations         Invitation[] @relation("Recipient")
   groups              Membership[]
   profile             Profile?
   shares              Share[]      @relation("Sender")
@@ -75,20 +74,8 @@ model Share {
   containerId String       @db.Uuid
   senderId    String       @db.Uuid
   accessLinks AccessLink[]
-  invitations Invitation[]
   container   Container    @relation("SharedFolder", fields: [containerId], references: [id], onDelete: Cascade)
   sender      User         @relation("Sender", fields: [senderId], references: [id])
-}
-
-model Invitation {
-  id          Int              @id @default(autoincrement())
-  shareId     Int
-  wrappedKey  String
-  recipientId String           @db.Uuid
-  status      InvitationStatus @default(PENDING)
-  permission  Int              @default(0)
-  recipient   User             @relation("Recipient", fields: [recipientId], references: [id])
-  share       Share            @relation(fields: [shareId], references: [id], onDelete: Cascade)
 }
 
 model AccessLink {
@@ -196,13 +183,6 @@ enum UserTier {
   PRO
   EPHEMERAL
   FREE
-}
-
-enum InvitationStatus {
-  PENDING
-  ACCEPTED
-  REVOKED
-  DECLINED
 }
 
 enum ContainerType {

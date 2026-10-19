@@ -8,11 +8,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const { sharingModel } = vi.hoisted(() => ({
   sharingModel: {
     acceptAccessLink: vi.fn(),
-    acceptInvitation: vi.fn(),
     burnEphemeralConversation: vi.fn(),
     checkIfAccessLinkCanBeCreated: vi.fn(),
     createAccessLink: vi.fn(),
-    createInvitationFromAccessLink: vi.fn(),
     getAccessLinkChallenge: vi.fn(),
     getAccessLinksByUploadId: vi.fn(),
     getAccessLinksByUploadIdAndWrappedKey: vi.fn(),

@@ -10,7 +10,6 @@ vi.mock('@prisma/client', () => ({
   }),
   ContainerType: { CONVERSATION: 'CONVERSATION', FOLDER: 'FOLDER' },
   ItemType: { FILE: 'FILE', MESSAGE: 'MESSAGE' },
-  InvitationStatus: { PENDING: 'PENDING', ACCEPTED: 'ACCEPTED' },
   UserTier: { FREE: 'FREE', PRO: 'PRO', EPHEMERAL: 'EPHEMERAL' },
 }));
 
