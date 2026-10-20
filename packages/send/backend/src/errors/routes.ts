@@ -1,4 +1,5 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
+import { STATUS_CODES } from 'http';
 
 type ErrorRespInfo = {
   statusCode: number;
@@ -187,14 +188,13 @@ export function wrapAsyncHandler(fn: RequestHandler) {
 type HttpError = Error & {
   status?: number;
   statusCode?: number;
-  expose?: boolean;
 };
 
 // Global error handler middleware. Express only routes errors to middleware
 // with four parameters, so `next` must stay in the signature.
 // Uses the status code and message added by `addErrorHandling`. Otherwise,
-// like Express's default handler: honors an http-error status (e.g. 400/413
-// from the body parser) and only exposes messages flagged `expose`.
+// like Express's default handler in production: honors an http-error status
+// (e.g. 400/413 from the body parser) and answers with its reason phrase.
 export function errorHandler(
   err: HttpError,
   req: Request,
@@ -210,23 +210,14 @@ export function errorHandler(
   const isHttpStatus =
     typeof errStatus === 'number' && errStatus >= 400 && errStatus < 600;
   const status = req[REQ_VAR_STATUS_CODE] ?? (isHttpStatus ? errStatus : 500);
-  const message =
-    req[REQ_VAR_USER_MESSAGE] ??
-    (err.expose && err.message ? err.message : 'Internal Server Error');
+  const message = req[REQ_VAR_USER_MESSAGE] ?? STATUS_CODES[status];
 
   res.status(status).json({
     status: 'error',
     statusCode: status,
-    message: message,
+    message,
   });
 
-  if (status === 500) {
-    console.error(
-      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `
-    );
-  } else {
-    console.warn(
-      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `
-    );
-  }
+  const log = status >= 500 ? console.error : console.warn;
+  log(`${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `);
 }

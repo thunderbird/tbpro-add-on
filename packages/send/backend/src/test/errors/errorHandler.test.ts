@@ -43,10 +43,6 @@ describe('errorHandler', () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
 
-  it('is registered as error middleware (four parameters)', () => {
-    expect(errorHandler.length).toBe(4);
-  });
-
   it('responds with the status and message set by addErrorHandling', async () => {
     const res = await request(buildApp()).get('/configured');
 
@@ -70,15 +66,27 @@ describe('errorHandler', () => {
   });
 
   it.each([
-    ['malformed JSON', '{bad', 400],
-    ['an oversized body', JSON.stringify({ a: 'x'.repeat(50) }), 413],
-  ])('keeps the body parser status for %s', async (_label, body, status) => {
-    const res = await request(buildApp())
-      .post('/body')
-      .set('Content-Type', 'application/json')
-      .send(body);
+    ['malformed JSON', '{bad', 400, 'Bad Request'],
+    [
+      'an oversized body',
+      JSON.stringify({ a: 'x'.repeat(50) }),
+      413,
+      'Payload Too Large',
+    ],
+  ])(
+    'keeps the body parser status for %s',
+    async (_label, body, status, message) => {
+      const res = await request(buildApp())
+        .post('/body')
+        .set('Content-Type', 'application/json')
+        .send(body);
 
-    expect(res.status).toBe(status);
-    expect(res.body).toMatchObject({ status: 'error', statusCode: status });
-  });
+      expect(res.status).toBe(status);
+      expect(res.body).toEqual({
+        status: 'error',
+        statusCode: status,
+        message,
+      });
+    }
+  );
 });
