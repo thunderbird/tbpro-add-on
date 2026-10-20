@@ -295,12 +295,20 @@ router.post(
       if (!reserved) {
         return res.status(403).json({ message: STORAGE_LIMIT_EXCEEDED });
       }
-      const url = await storage.getUploadBucketUrl(
-        uploadId,
-        type,
-        contentLength
-      );
-      return res.json({ id: uploadId, url });
+      try {
+        const url = await storage.getUploadBucketUrl(
+          uploadId,
+          type,
+          contentLength
+        );
+        return res.json({ id: uploadId, url });
+      } catch (error) {
+        // No URL was handed out, so nothing can land under this id.
+        await clearPendingUploads(requesterId, [uploadId]).catch((e) =>
+          console.error('Could not clear pending upload:', e)
+        );
+        throw error;
+      }
     } catch (error) {
       console.error('Error generating pre-signed URL:', error);
       return res.status(500).json(UPLOAD_ERRORS.NO_BUCKET);
