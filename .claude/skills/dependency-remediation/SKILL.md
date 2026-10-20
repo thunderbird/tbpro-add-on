@@ -146,8 +146,13 @@ Then proceed with the upgrade. The new test and what it proves go in the QA Log.
 4. Prune `minimumReleaseAgeExclude`: remove every entry whose version is now 7 days old or
    older. The list should be empty unless a high-risk bypass from step 3 is still within its week.
 5. `node scripts/override-drift.js --json > /tmp/drift-after.json`. Delete overrides reported
-   `dead`, `redundant`, or `ineffective`; collapse `shadowed` duplicates. Repeat until every
-   remaining override is `needed`, or `forcing` with a justification in the PR.
+   `dead` or `redundant`; collapse `shadowed` duplicates. Do not delete an `ineffective`
+   override: it usually means the lockfile has not picked up the target yet (e.g. an override
+   to `^3.1.8` while `3.1.7` is locked), and deleting it drops the fix. Re-resolve the package
+   as in item 2 and re-run the report. If the target now resolves, judge the override by its
+   new status. If pnpm cannot resolve it because of the cooling period, keep the override and
+   list it under "Cooling period" in the PR. Repeat until every remaining override is `needed`,
+   or `forcing` with a justification in the PR.
 6. `pnpm install --frozen-lockfile` must succeed on the result.
 7. `node scripts/bump-versions.js` (repo convention: dependency changes bump the patch version in
    the six version files so CI validates them).
