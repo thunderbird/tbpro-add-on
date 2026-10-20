@@ -31,6 +31,7 @@ vi.mock('../../storage', () => ({
   default: { del: h.storageDel },
 }));
 
+import { ITEM_NOT_DELETED } from '../../errors/models';
 import { deleteItem } from '../../models';
 
 const CONTAINER = 'container-a';
@@ -93,5 +94,45 @@ describe('deleteItem container scoping', () => {
       where: { id: { in: [] } },
     });
     expect(h.storageDel).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleteItem transaction and storage boundary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    seed({ stillReferenced: false });
+  });
+
+  it('fails without touching storage when the transaction fails', async () => {
+    h.tx.container.update.mockRejectedValue(new Error('db down'));
+    await expect(deleteItem(1, CONTAINER, OWNER, true)).rejects.toThrow(
+      ITEM_NOT_DELETED
+    );
+    expect(h.storageDel).not.toHaveBeenCalled();
+  });
+
+  it('deletes stored bytes only after the transaction commits', async () => {
+    let commit: (() => void) | undefined;
+    h.prisma.$transaction.mockImplementationOnce(async (fn) => {
+      const result = await fn(h.tx);
+      await new Promise<void>((resolve) => (commit = resolve));
+      return result;
+    });
+    const pending = deleteItem(1, CONTAINER, OWNER, true);
+    await vi.waitFor(() => expect(commit).toBeTypeOf('function'));
+    expect(h.storageDel).not.toHaveBeenCalled();
+    commit?.();
+    await expect(pending).resolves.toEqual({ wrappedKey: 'wk' });
+    expect(h.storageDel).toHaveBeenCalledWith(UPLOAD);
+  });
+
+  it('still resolves when storage deletion fails after commit', async () => {
+    h.storageDel.mockRejectedValue(new Error('bucket down'));
+    await expect(deleteItem(1, CONTAINER, OWNER, true)).resolves.toEqual({
+      wrappedKey: 'wk',
+    });
+    expect(h.storageDel).toHaveBeenCalledWith(UPLOAD);
+    expect(console.error).toHaveBeenCalled();
   });
 });
