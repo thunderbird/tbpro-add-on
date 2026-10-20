@@ -57,7 +57,7 @@ publish any.
 | Status | Meaning | Action |
 |---|---|---|
 | `dead` | matches no parent in the lockfile | delete |
-| `ineffective` | a matched parent still resolves outside the override's target | fix or delete |
+| `ineffective` | a matched parent still resolves outside the override's target | re-resolve the target; never delete for this alone |
 | `redundant` | parents would resolve to a fixed version on their own | delete |
 | `needed` | in range for every parent; the override is what holds the fixed version | keep, log |
 | `forcing` | a parent runs a version outside its declared range (`worstJump` says how far) | justify in the log or replace with a parent upgrade |
