@@ -158,6 +158,73 @@ describe('requireJWT', () => {
     expect(nextFunction).toHaveBeenCalled();
   });
 
+  it('sets authenticatedUser (requireAuth shape) from the verified JWT on success', async () => {
+    mockRequest.headers.cookie = `authorization=Bearer%20valid.token`;
+    vi.mocked(validateJWT).mockReturnValue('valid');
+    vi.mocked(getDataFromAuthenticatedRequest).mockReturnValue({
+      id: 'jwt-user',
+      email: 'jwt@test.com',
+      uniqueHash: 'hash-jwt',
+      tier: 'FREE',
+      // Extra JWT claims must not leak into authenticatedUser.
+      exp: 123,
+    } as ReturnType<typeof getDataFromAuthenticatedRequest>);
+
+    await requireJWT(
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction
+    );
+
+    expect(nextFunction).toHaveBeenCalled();
+    expect(
+      (mockRequest as { authenticatedUser?: unknown }).authenticatedUser
+    ).toEqual({
+      id: 'jwt-user',
+      email: 'jwt@test.com',
+      uniqueHash: 'hash-jwt',
+      tier: 'FREE',
+    });
+  });
+
+  it('still calls next() when a valid JWT cannot be decoded into user data', async () => {
+    mockRequest.headers.cookie = `refresh_token=Bearer%20valid.refresh`;
+    vi.mocked(validateJWT).mockReturnValue('valid');
+    vi.mocked(getDataFromAuthenticatedRequest).mockImplementation(() => {
+      throw new Error('no token');
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await requireJWT(
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction
+    );
+
+    expect(nextFunction).toHaveBeenCalled();
+    expect(mockResponse.status).not.toHaveBeenCalled();
+    expect(
+      (mockRequest as { authenticatedUser?: unknown }).authenticatedUser
+    ).toBeUndefined();
+    errorSpy.mockRestore();
+  });
+
+  it('does not set authenticatedUser when the token needs a refresh', async () => {
+    vi.mocked(validateJWT).mockReturnValue('shouldRefresh');
+
+    await requireJWT(
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(401);
+    expect(getDataFromAuthenticatedRequest).not.toHaveBeenCalled();
+    expect(
+      (mockRequest as { authenticatedUser?: unknown }).authenticatedUser
+    ).toBeUndefined();
+  });
+
   it('should reject with a status 403 if both token and refresh token are empty', async () => {
     mockRequest.headers.cookie = '';
 
@@ -528,6 +595,23 @@ describe('requireAuth', () => {
     expect(nextFunction).not.toHaveBeenCalled();
     expect(mockRequest.authenticatedUser).toBeUndefined();
     expect(validateJWT).not.toHaveBeenCalled();
+  });
+
+  it('still denies an unregistered OIDC user when an earlier requireJWT set authenticatedUser', async () => {
+    // requireJWT runs before getGroupMemberPermissions -> requireAuth on many
+    // routes; its cookie identity must not satisfy the OIDC registration check.
+    mockRequest.authenticatedUser = { id: 'cookie-user' };
+    vi.mocked(extractBearerToken).mockReturnValue('valid.oidc.token');
+    vi.mocked(validateOIDCToken).mockResolvedValue({
+      isValid: true,
+      userInfo: { sub: 'oidc-sub-unregistered' },
+    });
+    vi.mocked(getUserByOIDCSubject).mockResolvedValue(null);
+
+    await requireAuth(mockRequest as Request, mockResponse, nextFunction);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(nextFunction).not.toHaveBeenCalled();
   });
 
   it('should fall back to JWT when OIDC validation fails', async () => {
