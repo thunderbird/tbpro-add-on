@@ -16,8 +16,9 @@ unnecessary churn. This means:
 
 For each advisory group, take the first rule that applies:
 
-1. **In range.** The fixed version already satisfies every parent's declared range. Just
-   `pnpm update <pkg>`.
+1. **In range.** The fixed version already satisfies every parent's declared range. Re-resolve
+   it using step 4 of `.claude/skills/dependency-remediation/SKILL.md` (`pnpm update` only
+   moves direct dependencies; transitive ones need the lockfile re-resolution in item 2).
 2. **Parent upgrade.** A newer direct dependency pins or allows the fix. Bump it (patch/minor
    freely; major only after the changelog and coverage checks below).
 3. **Minimal override.** The parent pins an exact version and the fix is a patch within the same
