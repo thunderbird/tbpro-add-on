@@ -217,12 +217,19 @@ export function errorHandler(
     err instanceof BaseError
       ? req[REQ_VAR_OVERRIDES]?.[err.message]
       : undefined;
-  const status = override?.statusCode ?? req[REQ_VAR_STATUS_CODE] ?? 500;
+  // Without route information, keep a client error's own status (body
+  // parser, http-errors) and never echo a server error's message.
+  const errStatus = (err as { status?: number }).status;
+  const fallbackStatus =
+    errStatus !== undefined && errStatus >= 400 && errStatus < 500
+      ? errStatus
+      : 500;
+  const status =
+    override?.statusCode ?? req[REQ_VAR_STATUS_CODE] ?? fallbackStatus;
   const message =
     override?.message ??
     req[REQ_VAR_USER_MESSAGE] ??
-    err.message ??
-    'Internal Server Error';
+    (status < 500 ? err.message : 'Internal Server Error');
 
   res.status(status).json({
     status: 'error',
@@ -230,9 +237,10 @@ export function errorHandler(
     message: message,
   });
 
-  if (status === 500) {
+  // The log keeps the original error message; the response may not.
+  if (status >= 500) {
     console.error(
-      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `
+      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${err.message} `
     );
   } else {
     console.warn(
