@@ -5,7 +5,6 @@ import {
   deleteItem,
   getContainerInfo,
   getContainerWithDescendants,
-  getWrappedKeyFromId,
   isUploadOwnedBy,
   reportUpload,
   updateItemName,
@@ -443,13 +442,12 @@ router.delete(
     // Force req.body.shouldDeleteUpload to a boolean
     const shouldDeleteUpload =
       req?.body?.shouldDeleteUpload === false ? false : true;
-    const wrappedKey = await getWrappedKeyFromId(
+    const { wrappedKey } = await deleteItem(
       parseInt(itemId),
       containerId,
-      userId
+      userId,
+      shouldDeleteUpload
     );
-    // We don't await the deleteItem promise because we want to return a response immediately after initiating the delete.
-    deleteItem(parseInt(itemId), containerId, userId, shouldDeleteUpload);
     return res.status(202).json({ wrappedKey });
   })
 );

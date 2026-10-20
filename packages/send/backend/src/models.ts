@@ -2,7 +2,6 @@ import { ContainerType, ItemType, Prisma, PrismaClient } from '@prisma/client';
 import {
   BaseError,
   CONTAINER_NOT_FOUND,
-  CONTAINER_NOT_UPDATED,
   ITEM_NOT_CREATED,
   ITEM_NOT_DELETED,
   ITEM_NOT_FOUND,
@@ -10,8 +9,6 @@ import {
   SESSION_NOT_CREATED,
   SESSION_NOT_DELETED,
   SESSION_NOT_FOUND,
-  UPLOAD_NOT_DELETED,
-  UPLOAD_NOT_DELETED_FROM_STORAGE,
   UPLOAD_NOT_REPORTED,
 } from './errors/models';
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
@@ -123,133 +120,88 @@ export async function isUploadOwnedBy(uploadId: string, ownerId: string) {
   return upload !== null;
 }
 
-export async function getWrappedKeyFromId(
-  itemId: number,
-  containerId: string,
-  ownerId: string
-) {
-  const query = {
-    where: ownedItemInContainer(itemId, containerId, ownerId),
-    select: {
-      wrappedKey: true,
-    },
-  };
-
-  const item = await fromPrismaV2(
-    prisma.item.findFirstOrThrow,
-    query,
-    ITEM_NOT_FOUND
-  );
-  return item.wrappedKey;
-}
-
 export async function deleteItem(
   id: number,
   containerId: string,
   ownerId: string,
   shouldDeleteUpload = false
 ) {
-  const findItemQuery = {
-    where: ownedItemInContainer(id, containerId, ownerId),
-    select: {
-      containerId: true,
-      uploadId: true,
-      multipart: true,
-      wrappedKey: true,
-    },
-  };
+  const { wrappedKey, uploadIds } = await prisma
+    .$transaction(async (tx) => {
+      const item = await tx.item.findFirst({
+        where: ownedItemInContainer(id, containerId, ownerId),
+        select: { wrappedKey: true },
+      });
+      if (!item) {
+        throw new BaseError(ITEM_NOT_FOUND);
+      }
 
-  const item = await fromPrismaV2(
-    prisma.item.findFirstOrThrow,
-    findItemQuery,
-    ITEM_NOT_FOUND
-  );
+      // find related parts (multipart siblings share a wrappedKey), limited
+      // to the same container and to uploads the caller owns
+      const siblings = await tx.item.findMany({
+        where: {
+          wrappedKey: item.wrappedKey,
+          containerId,
+          upload: { ownerId },
+        },
+        select: { id: true, uploadId: true },
+      });
+      await tx.item.deleteMany({
+        where: { id: { in: siblings.map(({ id }) => id) } },
+      });
 
-  // find related parts (multipart siblings share a wrappedKey), limited to the
-  // same container and to uploads the caller owns
-  const uploadIds = await prisma.item.findMany({
-    where: {
-      wrappedKey: item.wrappedKey,
-      containerId,
-      upload: { ownerId },
-    },
-    select: {
-      uploadId: true,
-    },
-  });
+      // An upload is removed only once no item references it any more;
+      // other items (e.g. share-only copies) may still point at it.
+      const orphaned = await tx.upload.findMany({
+        where: {
+          id: { in: siblings.map(({ uploadId }) => uploadId) },
+          items: { none: {} },
+        },
+        select: { id: true },
+      });
+      const uploadIds = orphaned.map(({ id }) => id);
+      await tx.upload.deleteMany({ where: { id: { in: uploadIds } } });
 
-  const uploadIdsToDelete = uploadIds.map(({ uploadId }) => uploadId);
+      // touch the container's `updatedAt` date
+      await tx.container.update({
+        where: { id: containerId },
+        data: { updatedAt: new Date() },
+      });
 
-  // delete only this container's items for those uploads
-  try {
-    await prisma.item.deleteMany({
-      where: {
-        uploadId: { in: uploadIdsToDelete },
-        containerId,
-      },
+      return { wrappedKey: item.wrappedKey, uploadIds };
+    })
+    .catch((error) => {
+      if (error instanceof BaseError) {
+        throw error;
+      }
+      console.error('Error deleting items and uploads:', error);
+      throw new BaseError(ITEM_NOT_DELETED);
     });
-  } catch (error) {
-    console.error('Error deleting items associated with uploads:', error);
-    throw new Error(ITEM_NOT_DELETED);
-  }
 
-  // an upload still referenced from another container stays
-  const stillReferenced = await prisma.item.findMany({
-    where: { uploadId: { in: uploadIdsToDelete } },
-    select: { uploadId: true },
-    distinct: ['uploadId'],
-  });
-  const referenced = new Set(stillReferenced.map(({ uploadId }) => uploadId));
-  const unreferencedUploadIds = uploadIdsToDelete.filter(
-    (uploadId) => !referenced.has(uploadId)
-  );
-
-  // delete uploads
-  try {
-    await prisma.upload.deleteMany({
-      where: {
-        id: { in: unreferencedUploadIds },
-      },
-    });
-  } catch (error) {
-    console.error('Error deleting uploads associated with items:', error);
-    throw new Error(UPLOAD_NOT_DELETED);
-  }
-
+  // Storage is external, so it is only touched once the rows are committed.
+  // The rows are the source of truth: a storage failure is logged, not
+  // reported, so the client sees the same result as the database.
   if (shouldDeleteUpload) {
-    const deletePromises = unreferencedUploadIds.map((id) => storage.del(id));
-    try {
-      await Promise.all(deletePromises);
-    } catch (error) {
-      console.error('Error deleting files from storage:', error);
-      throw new Error(UPLOAD_NOT_DELETED_FROM_STORAGE);
-    }
-  }
-
-  console.log(
-    `Deleted items with upload IDs: ${uploadIdsToDelete.join(', ')} and shouldDeleteUpload is ${shouldDeleteUpload}`
-  );
-
-  if (item?.containerId) {
-    // touch the container's `updatedAt` date
-    const updateContainerQuery = {
-      where: {
-        id: item.containerId,
-      },
-      data: {
-        updatedAt: new Date(),
-      },
-    };
-
-    await fromPrismaV2(
-      prisma.container.update,
-      updateContainerQuery,
-      CONTAINER_NOT_UPDATED
+    await Promise.all(
+      uploadIds.map(async (uploadId) => {
+        try {
+          await storage.del(uploadId);
+        } catch (error) {
+          console.error(
+            `Error deleting upload ${uploadId} from storage:`,
+            error
+          );
+        }
+      })
     );
   }
 
+  console.log(
+    `Deleted uploads with IDs: ${uploadIds.join(', ')} and shouldDeleteUpload is ${shouldDeleteUpload}`
+  );
+
   // We only need to return the wrappedKey of the deleted item so that the frontend can remove it from its state
-  return { wrappedKey: item.wrappedKey };
+  return { wrappedKey };
 }
 
 export async function getContainerInfo(id: string) {

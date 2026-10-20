@@ -5,14 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   mockCreateItem,
   mockDeleteItem,
-  mockGetWrappedKeyFromId,
   mockIsUploadOwnedBy,
   mockUpdateItemName,
   mockGetAuthenticatedUserData,
 } = vi.hoisted(() => ({
   mockCreateItem: vi.fn(),
   mockDeleteItem: vi.fn(),
-  mockGetWrappedKeyFromId: vi.fn(),
   mockIsUploadOwnedBy: vi.fn(),
   mockUpdateItemName: vi.fn(),
   mockGetAuthenticatedUserData: vi.fn(),
@@ -25,7 +23,6 @@ vi.mock('@send-backend/models', () => ({
   deleteItem: mockDeleteItem,
   getContainerInfo: vi.fn(),
   getContainerWithDescendants: vi.fn(),
-  getWrappedKeyFromId: mockGetWrappedKeyFromId,
   isUploadOwnedBy: mockIsUploadOwnedBy,
   reportUpload: vi.fn(),
   updateItemName: mockUpdateItemName,
@@ -126,9 +123,8 @@ describe('container item routes', () => {
   });
 
   describe('DELETE /:containerId/item/:itemId', () => {
-    it('scopes the lookup and the delete to the container and caller', async () => {
-      mockGetWrappedKeyFromId.mockResolvedValue('wk');
-      mockDeleteItem.mockResolvedValue(undefined);
+    it('scopes the delete to the container and caller', async () => {
+      mockDeleteItem.mockResolvedValue({ wrappedKey: 'wk' });
 
       const res = await request(app)
         .delete(`/api/containers/${CONTAINER}/item/42`)
@@ -136,12 +132,36 @@ describe('container item routes', () => {
 
       expect(res.status).toBe(202);
       expect(res.body).toEqual({ wrappedKey: 'wk' });
-      expect(mockGetWrappedKeyFromId).toHaveBeenCalledWith(42, CONTAINER, USER);
       expect(mockDeleteItem).toHaveBeenCalledWith(42, CONTAINER, USER, false);
     });
 
-    it('answers 404 and does not delete when the scoped lookup matches nothing', async () => {
-      mockGetWrappedKeyFromId.mockRejectedValue(new BaseError(ITEM_NOT_FOUND));
+    it('responds only after the delete has finished', async () => {
+      let finish: (v: { wrappedKey: string }) => void = () => {};
+      mockDeleteItem.mockReturnValue(
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+      );
+      let responded = false;
+      const pending = request(app)
+        .delete(`/api/containers/${CONTAINER}/item/42`)
+        .then((res) => {
+          responded = true;
+          return res;
+        });
+
+      await vi.waitFor(() => expect(mockDeleteItem).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 20));
+      expect(responded).toBe(false);
+
+      finish({ wrappedKey: 'wk' });
+      const res = await pending;
+      expect(res.status).toBe(202);
+      expect(res.body).toEqual({ wrappedKey: 'wk' });
+    });
+
+    it('answers 404 when no item matches in the container', async () => {
+      mockDeleteItem.mockRejectedValue(new BaseError(ITEM_NOT_FOUND));
 
       const res = await request(app).delete(
         `/api/containers/${CONTAINER}/item/42`
@@ -149,11 +169,10 @@ describe('container item routes', () => {
 
       expect(res.status).toBe(404);
       expect(res.body).toEqual(NOT_FOUND_BODY);
-      expect(mockDeleteItem).not.toHaveBeenCalled();
     });
 
-    it('answers 500 for any other lookup failure', async () => {
-      mockGetWrappedKeyFromId.mockRejectedValue(new Error('db down'));
+    it('answers an error, not 202, when the delete fails', async () => {
+      mockDeleteItem.mockRejectedValue(new Error('storage down'));
 
       const res = await request(app).delete(
         `/api/containers/${CONTAINER}/item/42`
@@ -165,7 +184,6 @@ describe('container item routes', () => {
         statusCode: 500,
         message: 'Could not delete item.',
       });
-      expect(mockDeleteItem).not.toHaveBeenCalled();
     });
 
     it('refuses when no authenticated user is resolved', async () => {
@@ -176,7 +194,6 @@ describe('container item routes', () => {
       );
 
       expect(res.status).toBe(403);
-      expect(mockGetWrappedKeyFromId).not.toHaveBeenCalled();
       expect(mockDeleteItem).not.toHaveBeenCalled();
     });
   });
