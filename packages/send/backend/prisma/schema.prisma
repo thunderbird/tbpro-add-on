@@ -182,6 +182,7 @@ model EncryptedPassphrase {
   owner                User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([ownerId, createdAt])
+  @@index([createdAt])
 }
 
 enum UserTier {

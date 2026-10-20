@@ -274,13 +274,13 @@ export const sharingRouter = router({
       const { encryptedPassphrase, wrappedEncryptionKey, salt, codeSalt } =
         input;
 
-      await cleanupExpiredEncryptedPassphrases();
       if (
         (await countRecentEncryptedPassphrases(userId)) >=
         MAX_ENCRYPTED_PASSPHRASES_PER_WINDOW
       ) {
         throw new TRPCError({ code: 'TOO_MANY_REQUESTS' });
       }
+      await cleanupExpiredEncryptedPassphrases();
 
       // Store the encrypted passphrase data in the database
       const result = await storeEncryptedPassphrase(
