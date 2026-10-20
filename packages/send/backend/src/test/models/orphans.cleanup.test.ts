@@ -15,20 +15,19 @@ const h = vi.hoisted(() => {
       create: vi.fn(),
       findMany: vi.fn(),
       deleteMany: vi.fn(),
-      upsert: vi.fn(),
+      updateMany: vi.fn(),
+      createMany: vi.fn(),
       aggregate: vi.fn(),
     },
   };
   return { prisma, storageDel: vi.fn() };
 });
 
-vi.mock('@prisma/client', () => ({
+vi.mock('@prisma/client', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   PrismaClient: vi.fn(function () {
     return h.prisma;
   }),
-  ContainerType: { CONVERSATION: 'CONVERSATION', FOLDER: 'FOLDER' },
-  ItemType: { FILE: 'FILE', MESSAGE: 'MESSAGE' },
-  UserTier: { FREE: 'FREE', PRO: 'PRO', EPHEMERAL: 'EPHEMERAL' },
 }));
 
 vi.mock('../../storage', () => ({
@@ -58,7 +57,8 @@ beforeEach(() => {
   h.prisma.upload.aggregate.mockResolvedValue({ _sum: { size: null } });
   h.prisma.pendingUpload.findMany.mockResolvedValue([]);
   h.prisma.pendingUpload.deleteMany.mockResolvedValue({ count: 1 });
-  h.prisma.pendingUpload.upsert.mockResolvedValue({});
+  h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+  h.prisma.pendingUpload.createMany.mockResolvedValue({ count: 1 });
   h.prisma.pendingUpload.aggregate.mockResolvedValue({ _sum: { size: null } });
 });
 
@@ -180,11 +180,10 @@ describe('deleteOrphans', () => {
     const result = await deleteOrphans();
 
     expect(result.deletedUploadIds).toEqual(['a']);
-    const { where, create, update } =
-      h.prisma.pendingUpload.upsert.mock.calls[0][0];
-    expect(where).toEqual({ id: 'a' });
-    expect(create).toMatchObject({ id: 'a', ownerId: 'o' });
-    expect(update.expiresAt.getTime()).toBe(0);
+    const { data, skipDuplicates } =
+      h.prisma.pendingUpload.createMany.mock.calls[0][0];
+    expect(skipDuplicates).toBe(true);
+    expect(data).toEqual([{ id: 'a', ownerId: 'o', expiresAt: new Date(0) }]);
   });
 
   it('reports a row it could not delete and leaves its bytes', async () => {

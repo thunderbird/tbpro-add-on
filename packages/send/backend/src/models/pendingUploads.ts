@@ -76,14 +76,16 @@ export async function getReservedBytes(
  * deletes any bytes left without an Upload row (e.g. after a failed delete).
  */
 export async function expirePendingUploads(ownerId: string, ids: string[]) {
+  if (ids.length === 0) return;
   const expiresAt = new Date(0);
-  for (const id of ids) {
-    await prisma.pendingUpload.upsert({
-      where: { id },
-      create: { id, ownerId, expiresAt },
-      update: { expiresAt },
-    });
-  }
+  await prisma.pendingUpload.updateMany({
+    where: { ownerId, id: { in: ids } },
+    data: { expiresAt },
+  });
+  await prisma.pendingUpload.createMany({
+    data: ids.map((id) => ({ id, ownerId, expiresAt })),
+    skipDuplicates: true,
+  });
 }
 
 /**

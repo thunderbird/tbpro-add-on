@@ -33,15 +33,6 @@ vi.mock('../../middleware/rate-limit', () => ({
   createRateLimiter: () => named('rateLimiter'),
 }));
 
-// Reservation bookkeeping and the cleanup job hit the database; stub them.
-vi.mock('@send-backend/models/pendingUploads', () => ({
-  reservePendingUpload: vi.fn(),
-  clearPendingUploads: vi.fn(() => Promise.resolve()),
-}));
-vi.mock('@send-backend/jobs/orphanCleanup', () => ({
-  runOrphanCleanup: vi.fn(),
-}));
-
 vi.mock('@send-backend/storage', () => ({
   default: { getUploadBucketUrl: vi.fn(), del: vi.fn() },
 }));

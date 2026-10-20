@@ -153,7 +153,10 @@ describe('findOrphans', () => {
     uploads.push(upload1);
     uploads.push(upload2);
     const result = await findOrphans();
-    expect(result.uploadIds.sort()).toEqual([upload1.id, upload2.id].sort());
+    expect(result.uploadIds).toHaveLength(2);
+    expect(result.uploadIds).toEqual(
+      expect.arrayContaining([upload1.id, upload2.id])
+    );
   });
 
   it('should return an empty array when no orphans exist', async () => {

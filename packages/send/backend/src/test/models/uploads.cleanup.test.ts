@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => {
   const prisma = {
     upload: { findMany: vi.fn(), delete: vi.fn() },
-    pendingUpload: { upsert: vi.fn() },
+    pendingUpload: { updateMany: vi.fn(), createMany: vi.fn() },
   };
   const storageDel = vi.fn();
   return { prisma, storageDel };
@@ -48,7 +48,8 @@ describe('deleteUploadsByIds ownership binding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.prisma.upload.delete.mockResolvedValue({});
-    h.prisma.pendingUpload.upsert.mockResolvedValue({});
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+    h.prisma.pendingUpload.createMany.mockResolvedValue({ count: 0 });
     h.storageDel.mockResolvedValue(undefined);
   });
 
@@ -188,15 +189,17 @@ describe('deleteUploadsByIds ownership binding', () => {
 
     await deleteUploadsByIds(['own', id, 'theirs'], REQUESTER);
 
-    const upserted = h.prisma.pendingUpload.upsert.mock.calls.map(
-      ([arg]) => arg
+    const { data } = h.prisma.pendingUpload.createMany.mock.calls[0][0];
+    expect(data).toHaveLength(2);
+    expect(data).toEqual(
+      expect.arrayContaining([
+        { id: 'own', ownerId: REQUESTER, expiresAt: new Date(0) },
+        { id, ownerId: REQUESTER, expiresAt: new Date(0) },
+      ])
     );
-    expect(upserted.map(({ where }) => where.id).sort()).toEqual(
-      ['own', id].sort()
-    );
-    for (const { create, update } of upserted) {
-      expect(create.ownerId).toBe(REQUESTER);
-      expect(update.expiresAt.getTime()).toBe(0);
-    }
+    expect(h.prisma.pendingUpload.updateMany).toHaveBeenCalledWith({
+      where: { ownerId: REQUESTER, id: { in: data.map((row) => row.id) } },
+      data: { expiresAt: new Date(0) },
+    });
   });
 });
