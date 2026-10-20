@@ -31,17 +31,13 @@ afterEach(() => {
 });
 
 describe('gateSentryOnTelemetry', () => {
-  it('starts Sentry (without an app) when telemetry is enabled', async () => {
+  it.each([
+    ['without an app (background)', undefined],
+    ['with the page app', { name: 'popup' } as never],
+  ])('starts Sentry %s when telemetry is enabled', async (_label, app) => {
     stubTelemetry(async () => true);
-    await gateSentryOnTelemetry();
-    expect(sentry.initSentry).toHaveBeenCalledOnce();
-    expect(sentry.initSentry).toHaveBeenCalledWith(undefined);
-  });
-
-  it('passes the app through for pages', async () => {
-    stubTelemetry(async () => true);
-    const app = { name: 'popup' } as never;
     await gateSentryOnTelemetry(app);
+    expect(sentry.initSentry).toHaveBeenCalledOnce();
     expect(sentry.initSentry).toHaveBeenCalledWith(app);
   });
 
