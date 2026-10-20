@@ -1,5 +1,5 @@
 ---
-name: dependency-audit
+name: dependency-remediation
 description: Careful remediation of Dependabot / pnpm audit findings. Prefers parent upgrades over overrides, reads changelogs, checks reachability and test coverage, mitigates high-risk findings instead of deferring them, and produces a PR with a QA Log. Run manually from a laptop.
 ---
 
@@ -17,7 +17,8 @@ reason and comment for every alert we dismiss, and the PR body holds every other
 
 - Clean checkout of `main` on a new branch, e.g. `dependency-audit-YYYY-MM-DD`.
 - `HUSKY=0` exported (the pre-commit hook needs `pnpm` and `bun` on PATH, which laptops may lack).
-- pnpm available (`npx -y pnpm@10 ...` works when pnpm is not installed globally).
+- pnpm 10.16 or newer (`npx -y pnpm@10 ...` works when pnpm is not installed globally); the
+  7-day cooling period in `pnpm-workspace.yaml` needs it (see step 3).
 - `gh auth status` succeeds; the token can read and dismiss Dependabot alerts.
 - Fresh install so `node_modules/.pnpm` matches the lockfile: `pnpm install --frozen-lockfile`.
 - Test environments: backend needs `packages/send/backend/.env` from `.env.sample` plus
@@ -54,6 +55,21 @@ hits them, and add tests that exercise the vulnerable path before and after. Fla
 group in its own PR section (see step 6).
 
 ## 3. Decide, one group at a time
+
+**Cooling period first.** `pnpm-workspace.yaml` sets `minimumReleaseAge: 10080` (7 days,
+strict), so pnpm will not resolve a version published less than a week ago and fails with a
+resolution error instead of falling back. Check the fix version's age before deciding:
+
+```sh
+npm view <pkg>@<version> time.<version>
+```
+
+If it is younger than 7 days and the group is **normal** risk, defer the group to the next
+pass: leave the alert open and list it under "Deferred for cooling period" in the PR. If the
+group is **high** risk, bypass for that one version only by adding `name@version` to
+`minimumReleaseAgeExclude` (never a bare package name, which exempts every future release),
+justify it in the PR, and note the date it ages out. On every pass, delete exclusions whose
+version is now at least 7 days old.
 
 Walk this list in order and stop at the first rule that applies.
 
@@ -127,13 +143,15 @@ Then proceed with the upgrade. The new test and what it proves go in the QA Log.
 3. Check for new duplicate copies: compare the set of packages with more than one version
    against `main`. A second copy of a runtime library (vue, vue-i18n, pinia) is a regression;
    fix it with an in-range pin or by restoring the previous version before moving on.
-4. `node scripts/override-drift.js --json > /tmp/drift-after.json`. Delete overrides reported
+4. Prune `minimumReleaseAgeExclude`: remove every entry whose version is now 7 days old or
+   older. The list should be empty unless a high-risk bypass from step 3 is still within its week.
+5. `node scripts/override-drift.js --json > /tmp/drift-after.json`. Delete overrides reported
    `dead`, `redundant`, or `ineffective`; collapse `shadowed` duplicates. Repeat until every
    remaining override is `needed`, or `forcing` with a justification in the PR.
-5. `pnpm install --frozen-lockfile` must succeed on the result.
-6. `node scripts/bump-versions.js` (repo convention: dependency changes bump the patch version in
+6. `pnpm install --frozen-lockfile` must succeed on the result.
+7. `node scripts/bump-versions.js` (repo convention: dependency changes bump the patch version in
    the six version files so CI validates them).
-7. Before committing, revert files touched only by formatters: `ci:validate` runs `eslint --fix`
+8. Before committing, revert files touched only by formatters: `ci:validate` runs `eslint --fix`
    and `prettier --write` and reformats committed files, and the frontend build writes into
    `packages/send/backend/public/`.
 
@@ -149,7 +167,8 @@ Then proceed with the upgrade. The new test and what it proves go in the QA Log.
   or show the vulnerable behaviour) and against the new version (it passes). Both results go in
   the QA Log.
 - `gh api ".../dependabot/alerts?state=dismissed"` shows the new dismissals with their comments.
-- `git diff main -- pnpm-workspace.yaml` shows only removals plus the justified additions.
+- `git diff main -- pnpm-workspace.yaml` shows only removals plus the justified additions, and
+  `minimumReleaseAge` / `minimumReleaseAgeStrict` are untouched.
 
 ## 6. Commit and open the PR
 
@@ -180,6 +199,10 @@ Alert numbers, package, one-line rationale each (the 280-char API comment points
 
 ## Accepted / no upstream fix
 Package, why it is low risk, re-check condition.
+
+## Cooling period
+Deferred: package, fix version, publish date, eligible date. Bypassed (high risk only): the
+`minimumReleaseAgeExclude` entry added, why it could not wait, date to remove it.
 
 ## QA Log
 - bulleted list of every verification step actually run, with the command and the result

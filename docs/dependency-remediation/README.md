@@ -31,6 +31,25 @@ For each advisory group, take the first rule that applies:
 Every bump gets its release notes read. Every runtime bump gets a **test-coverage check**.
 If the case is not covered, add coverage and proceed.
 
+## Cooling period
+
+`pnpm-workspace.yaml` sets `minimumReleaseAge: 10080` (7 days) with `minimumReleaseAgeStrict: true`.
+pnpm refuses to resolve any version, direct or transitive, published less than a week ago, and
+fails rather than silently falling back to a newer one. Malicious releases are typically pulled
+from the registry within hours to a few days, so a week keeps nearly all of them out of the
+lockfile at the cost of fixes landing a week late.
+
+Two rules follow:
+
+- A fix version younger than 7 days is **deferred to the next pass** unless the group is
+  high risk. The Dependabot alert stays open as the reminder.
+- A high-risk group may bypass the cooldown with a version-pinned entry in
+  `minimumReleaseAgeExclude` (`name@version`, never a bare name), justified in the PR and
+  removed on the next pass once the version is a week old.
+
+The only workspace-wide exception allowed is a pattern for our own packages, should we ever
+publish any.
+
 ## Tooling
 
 `node scripts/override-drift.js` classifies every override in `pnpm-workspace.yaml`:
