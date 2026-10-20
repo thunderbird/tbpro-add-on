@@ -6,7 +6,6 @@ import { gateSentryOnTelemetry } from '../sentryGate';
 const app = createApp(Extension);
 
 // Sentry must be initialized (or not) before mount so it can hook the app.
-gateSentryOnTelemetry(app).then(() => {
-  setupApp(app);
-  mountApp(app, '#extension-page');
-});
+await gateSentryOnTelemetry(app);
+setupApp(app);
+mountApp(app, '#extension-page');
