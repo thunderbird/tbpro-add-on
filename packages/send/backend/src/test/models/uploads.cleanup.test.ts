@@ -181,25 +181,23 @@ describe('deleteUploadsByIds ownership binding', () => {
     expect(result.errors.length + result.deleted.length).toBe(2);
   });
 
-  // Cleaned-up ids stop reserving quota and are handed to the expired-upload
-  // sweep, which retries any storage delete that failed here.
-  it('expires the reservation of every deleted id, and only those', async () => {
+  // Cleaned-up ids stop reserving quota but keep a sweep record, so bytes a
+  // late PUT stores under them are still removed.
+  it('releases the reservation of every deleted id, and only those', async () => {
     const id = mintOwnedUploadId(REQUESTER);
     seed({ ownedRows: ['own'], foreignRows: ['theirs'] });
 
     await deleteUploadsByIds(['own', id, 'theirs'], REQUESTER);
 
     const { data } = h.prisma.pendingUpload.createMany.mock.calls[0][0];
-    expect(data).toHaveLength(2);
-    expect(data).toEqual(
-      expect.arrayContaining([
-        { id: 'own', ownerId: REQUESTER, expiresAt: new Date(0) },
-        { id, ownerId: REQUESTER, expiresAt: new Date(0) },
-      ])
-    );
+    expect(data.map((row) => row.id).sort()).toEqual(['own', id].sort());
+    for (const row of data) {
+      expect(row.ownerId).toBe(REQUESTER);
+      expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    }
     expect(h.prisma.pendingUpload.updateMany).toHaveBeenCalledWith({
       where: { ownerId: REQUESTER, id: { in: data.map((row) => row.id) } },
-      data: { expiresAt: new Date(0) },
+      data: { size: null },
     });
   });
 });

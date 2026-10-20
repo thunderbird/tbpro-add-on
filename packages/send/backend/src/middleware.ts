@@ -464,6 +464,9 @@ function getCallerOrReject(req: Request, res: Response) {
   }
 }
 
+export const STORAGE_LIMIT_EXCEEDED =
+  'Storage limit exceeded. Please remove files to continue uploading.';
+
 // Wrapped rather than exported bare: `getUsedStorage` and `getAdminStatus` reach
 // the database, and a rejection there is the same unhandled-rejection process
 // kill as above. `wrapAsyncHandler` routes it to `next` instead.
@@ -489,9 +492,7 @@ export const checkStorageLimit: RequestHandler = wrapAsyncHandler(
     );
 
     if (active + size >= limit) {
-      return res.status(403).json({
-        message: `Storage limit exceeded. Please remove files to continue uploading.`,
-      });
+      return res.status(403).json({ message: STORAGE_LIMIT_EXCEEDED });
     }
 
     return next();

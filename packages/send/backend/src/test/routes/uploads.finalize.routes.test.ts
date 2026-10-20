@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
   createUpload: vi.fn(),
   getUsedStorage: vi.fn(),
   clearPendingUploads: vi.fn(),
+  holdPendingUpload: vi.fn(),
   runOrphanCleanup: vi.fn(),
   caller: vi.fn(),
 }));
@@ -28,6 +29,7 @@ vi.mock('../../models', () => ({
 vi.mock('@send-backend/models/pendingUploads', () => ({
   reservePendingUpload: vi.fn(),
   clearPendingUploads: h.clearPendingUploads,
+  holdPendingUpload: h.holdPendingUpload,
 }));
 vi.mock('@send-backend/jobs/orphanCleanup', () => ({
   runOrphanCleanup: h.runOrphanCleanup,
@@ -79,6 +81,25 @@ describe('POST /api/uploads (finalize)', () => {
     h.getUsedStorage.mockResolvedValue({ active: 0 });
     h.createUpload.mockResolvedValue({ id: ID });
     h.clearPendingUploads.mockResolvedValue({ count: 1 });
+    h.holdPendingUpload.mockResolvedValue(true);
+  });
+
+  it('holds the reservation before checking the stored object', async () => {
+    await request(app).post('/api/uploads').send(BODY);
+
+    expect(h.holdPendingUpload).toHaveBeenCalledWith(ID);
+    expect(h.holdPendingUpload.mock.invocationCallOrder[0]).toBeLessThan(
+      h.createUpload.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('answers 409 when cleanup already claimed the upload', async () => {
+    h.holdPendingUpload.mockResolvedValue(false);
+
+    const res = await request(app).post('/api/uploads').send(BODY);
+
+    expect(res.status).toBe(409);
+    expect(h.createUpload).not.toHaveBeenCalled();
   });
 
   it('leaves the upload own reservation out of the quota check', async () => {

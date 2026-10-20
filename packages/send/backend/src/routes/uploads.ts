@@ -24,8 +24,10 @@ import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { deleteUploadsByIds, reportUpload } from '@send-backend/models';
 import {
   clearPendingUploads,
+  holdPendingUpload,
   reservePendingUpload,
 } from '@send-backend/models/pendingUploads';
+import { getStorageLimitForTier } from '@send-backend/utils/storageLimits';
 import { runOrphanCleanup } from '@send-backend/jobs/orphanCleanup';
 import storage from '@send-backend/storage';
 import { createRateLimiter } from '../middleware/rate-limit';
@@ -37,6 +39,7 @@ import {
   requireAdminPermisions,
   requireJWT,
   requireWritePermission,
+  STORAGE_LIMIT_EXCEEDED,
 } from '../middleware';
 import { calculateEncryptedSize } from '../utils/encryptedSize';
 import { mintOwnedUploadId } from '../utils/ownedUploadId';
@@ -120,6 +123,12 @@ router.post(
         getDataFromAuthenticatedRequest(req);
 
       const distinctId = uniqueHash;
+
+      // Keeps cleanup off this upload's bytes while it is finalized; refused
+      // when cleanup already claimed them.
+      if (!(await holdPendingUpload(id))) {
+        return res.status(409).json({ message: 'Upload expired' });
+      }
 
       const upload = await createUpload(
         id,
@@ -264,7 +273,7 @@ router.post(
     // The minted id carries an ownership tag bound to the caller, so /cleanup
     // can attribute the storage object to its minter even when the Upload row
     // was never created (failed/abandoned uploads).
-    const { id: requesterId } = getDataFromAuthenticatedRequest(req);
+    const { id: requesterId, tier } = getDataFromAuthenticatedRequest(req);
     const uploadId = mintOwnedUploadId(requesterId);
     const { type, size } = req.body;
     // Sign the exact ciphertext content-length into the URL only when the
@@ -275,14 +284,22 @@ router.post(
     const contentLength =
       typeof size === 'number' ? calculateEncryptedSize(size) : undefined;
     try {
+      // Reserve quota until finalized, and leave a record so cleanup can
+      // remove the bytes if it never is. No URL is handed out without one.
+      const reserved = await reservePendingUpload(
+        uploadId,
+        requesterId,
+        size,
+        getStorageLimitForTier(tier)
+      );
+      if (!reserved) {
+        return res.status(403).json({ message: STORAGE_LIMIT_EXCEEDED });
+      }
       const url = await storage.getUploadBucketUrl(
         uploadId,
         type,
         contentLength
       );
-      // Reserve quota until finalized, and leave a record so cleanup can
-      // remove the bytes if it never is. No URL is handed out without one.
-      await reservePendingUpload(uploadId, requesterId, size);
       return res.json({ id: uploadId, url });
     } catch (error) {
       console.error('Error generating pre-signed URL:', error);

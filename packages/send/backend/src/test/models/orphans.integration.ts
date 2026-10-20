@@ -19,7 +19,11 @@ import {
   Upload,
 } from '@prisma/client';
 import { createItem, deleteOrphans, findOrphans } from '../../models';
-import { sweepExpiredPendingUploads } from '../../models/pendingUploads';
+import {
+  holdPendingUpload,
+  reservePendingUpload,
+  sweepExpiredPendingUploads,
+} from '../../models/pendingUploads';
 
 // Storage is mocked so the test runs without a bucket; the calls show which
 // objects the cleanup removed.
@@ -292,5 +296,38 @@ describe('findOrphans', () => {
     expect(
       await prisma.pendingUpload.findUnique({ where: { id: pending.id } })
     ).toBeNull();
+  });
+
+  it('admits parallel reservations only up to the limit', async () => {
+    const ids = [1, 2, 3].map((n) => `00000000-0000-4000-8000-00000000000${n}`);
+    const admitted = await Promise.all(
+      ids.map((id) => reservePendingUpload(id, user.id, 600, 1500))
+    );
+
+    expect(admitted.filter(Boolean)).toHaveLength(2);
+  });
+
+  it('a held reservation is not swept; a claimed one cannot be held', async () => {
+    storageDel.mockResolvedValue(true);
+    const held = '00000000-0000-4000-8000-0000000000b1';
+    const swept = '00000000-0000-4000-8000-0000000000b2';
+    await prisma.pendingUpload.createMany({
+      data: [held, swept].map((id) => ({
+        id,
+        ownerId: user.id,
+        expiresAt: OLD,
+      })),
+    });
+
+    expect(await holdPendingUpload(held)).toBe(true);
+    const result = await sweepExpiredPendingUploads(24);
+
+    expect(result.deletedIds).toEqual([swept]);
+    expect(storageDel).not.toHaveBeenCalledWith(held);
+    // A claim that failed to delete the bytes keeps blocking finalize.
+    await prisma.pendingUpload.create({
+      data: { id: swept, ownerId: user.id, expiresAt: OLD, sweptAt: OLD },
+    });
+    expect(await holdPendingUpload(swept)).toBe(false);
   });
 });

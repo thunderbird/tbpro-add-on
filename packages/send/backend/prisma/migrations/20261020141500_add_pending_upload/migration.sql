@@ -6,6 +6,7 @@ CREATE TABLE "PendingUpload" (
     "size" BIGINT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "expiresAt" TIMESTAMP(3) NOT NULL,
+    "sweptAt" TIMESTAMP(3),
 
     CONSTRAINT "PendingUpload_pkey" PRIMARY KEY ("id")
 );

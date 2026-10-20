@@ -149,11 +149,12 @@ model Upload {
 // No relation to User on purpose: the row must outlive its owner so the sweep
 // can still remove the object.
 model PendingUpload {
-  id        String   @id @db.Uuid
-  ownerId   String   @db.Uuid
+  id        String    @id @db.Uuid
+  ownerId   String    @db.Uuid
   size      BigInt?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   expiresAt DateTime
+  sweptAt   DateTime?
 
   @@index([ownerId, expiresAt])
   @@index([expiresAt])

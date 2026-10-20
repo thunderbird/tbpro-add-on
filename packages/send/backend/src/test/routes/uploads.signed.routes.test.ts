@@ -13,6 +13,7 @@ const { mockGetUploadBucketUrl, mockGetUsedStorage, mockCaller, mockReserve } =
 vi.mock('@send-backend/models/pendingUploads', () => ({
   reservePendingUpload: mockReserve,
   clearPendingUploads: vi.fn(() => Promise.resolve()),
+  holdPendingUpload: vi.fn(() => Promise.resolve(true)),
 }));
 vi.mock('@send-backend/jobs/orphanCleanup', () => ({
   runOrphanCleanup: vi.fn(),
@@ -73,7 +74,7 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
     mockCaller.mockReturnValue({ id: 'user-1', tier: 'PRO', uniqueHash: 'h' });
     mockGetUsedStorage.mockResolvedValue({ active: 0 });
     mockGetUploadBucketUrl.mockResolvedValue('https://bucket/signed-url');
-    mockReserve.mockResolvedValue({});
+    mockReserve.mockResolvedValue(true);
   });
 
   const EXT_ORIGIN = 'moz-extension://abcd-1234';
@@ -266,7 +267,12 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
       .set('Content-Type', 'application/json');
 
     expect(res.status).toBe(200);
-    expect(mockReserve).toHaveBeenCalledWith(res.body.id, 'user-1', 1024);
+    expect(mockReserve).toHaveBeenCalledWith(
+      res.body.id,
+      'user-1',
+      1024,
+      expect.any(Number)
+    );
   });
 
   it('records a size-less reservation for a legacy add-on request', async () => {
@@ -277,7 +283,12 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
       .set('User-Agent', TB_UA);
 
     expect(res.status).toBe(200);
-    expect(mockReserve).toHaveBeenCalledWith(res.body.id, 'user-1', undefined);
+    expect(mockReserve).toHaveBeenCalledWith(
+      res.body.id,
+      'user-1',
+      undefined,
+      expect.any(Number)
+    );
   });
 
   it('does not hand out a URL when the reservation cannot be recorded', async () => {
@@ -290,5 +301,19 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
 
     expect(res.status).toBe(500);
     expect(res.body.url).toBeUndefined();
+  });
+
+  // The locked check inside the reservation is the authoritative one: it sees
+  // parallel requests that the middleware check could not.
+  it('answers 403 without a URL when the reservation would exceed the limit', async () => {
+    mockReserve.mockResolvedValue(false);
+
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 1024 })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(403);
+    expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
   });
 });

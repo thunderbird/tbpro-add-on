@@ -15,10 +15,11 @@ import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
 import {
   CLEANUP_BATCH_SIZE,
-  expirePendingUploads,
+  clearPendingUploads,
   getOrphanMinAgeHours,
   getReservedBytes,
   hoursAgo,
+  releasePendingUploads,
 } from './models/pendingUploads';
 import { addExpiryToContainer } from './utils';
 import { verifyOwnedUploadId } from './utils/ownedUploadId';
@@ -318,11 +319,12 @@ export async function deleteUploadsByIds(ids: string[], requesterId: string) {
     })
   );
 
-  // A cleaned-up upload stops reserving quota; the sweep retries its delete.
+  // A cleaned-up upload stops reserving quota; the sweep still removes any
+  // bytes a late PUT stores under its id.
   try {
-    await expirePendingUploads(requesterId, deleted);
+    await releasePendingUploads(requesterId, deleted);
   } catch (e) {
-    console.error('[deleteUploadsByIds] expirePendingUploads failed', e);
+    console.error('[deleteUploadsByIds] releasePendingUploads failed', e);
   }
 
   return { deleted, skipped, errors };
@@ -429,30 +431,35 @@ export async function deleteOrphans(
   const errorUploadIds: string[] = [];
 
   for (const { id, ownerId } of await findOrphanRows(hoursSinceCreation)) {
+    let claimed: boolean;
     try {
-      // Conditional, so an upload that gained an item since the scan is kept.
-      const { count } = await prisma.upload.deleteMany({
-        where: { id, items: { none: {} } },
+      // The row goes together with a sweep record for its bytes, so they stay
+      // reachable if the delete below fails or the process stops. Conditional,
+      // so an upload that gained an item since the scan is kept.
+      claimed = await prisma.$transaction(async (tx) => {
+        const { count } = await tx.upload.deleteMany({
+          where: { id, items: { none: {} } },
+        });
+        if (count === 0) return false;
+        await tx.pendingUpload.createMany({
+          data: [{ id, ownerId, expiresAt: new Date(0) }],
+          skipDuplicates: true,
+        });
+        return true;
       });
-      if (count === 0) continue;
     } catch (e) {
       console.error(`[deleteOrphans] Could not delete upload ${id}`, e);
       errorUploadIds.push(id);
       continue;
     }
+    if (!claimed) continue;
 
     try {
       await storage.del(id);
+      await clearPendingUploads(ownerId, [id]);
     } catch (e) {
-      // The row is gone, so hand the bytes to the pending-upload sweep.
-      console.error(`[deleteOrphans] storage.del(${id}) failed`, e);
-      try {
-        await expirePendingUploads(ownerId, [id]);
-      } catch (queueError) {
-        console.error(`[deleteOrphans] Could not queue ${id}`, queueError);
-        errorUploadIds.push(id);
-        continue;
-      }
+      // The sweep record stays; the next sweep retries.
+      console.error(`[deleteOrphans] storage cleanup of ${id} failed`, e);
     }
     deletedUploadIds.push(id);
   }

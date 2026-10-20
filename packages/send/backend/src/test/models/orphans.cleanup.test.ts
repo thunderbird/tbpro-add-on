@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Orphan reconciliation (#117): reservations count toward quota, item-less
-// uploads older than the age guard lose their row and bytes, and expired
-// never-finalized reservations lose their bytes. Prisma and storage are mocked.
+// Orphan reconciliation (#117): reservations count toward quota and are taken
+// under a per-owner lock, item-less uploads older than the age guard lose
+// their row and bytes, and expired never-finalized reservations lose their
+// bytes unless a finalize holds them. Prisma and storage are mocked.
 
 const h = vi.hoisted(() => {
   const prisma = {
+    $transaction: vi.fn(),
+    $executeRaw: vi.fn(),
     upload: {
       findMany: vi.fn(),
       deleteMany: vi.fn(),
       aggregate: vi.fn(),
+      count: vi.fn(),
     },
     pendingUpload: {
       create: vi.fn(),
@@ -18,6 +22,7 @@ const h = vi.hoisted(() => {
       updateMany: vi.fn(),
       createMany: vi.fn(),
       aggregate: vi.fn(),
+      count: vi.fn(),
     },
   };
   return { prisma, storageDel: vi.fn() };
@@ -37,12 +42,15 @@ vi.mock('../../storage', () => ({
 import { deleteOrphans, findOrphans, getUsedStorage } from '../../models';
 import {
   getReservedBytes,
+  holdPendingUpload,
+  releasePendingUploads,
   reservePendingUpload,
   sweepExpiredPendingUploads,
 } from '../../models/pendingUploads';
 import { UPLOAD_URL_TTL_SECONDS } from '../../storage/s3b2';
 
 const HOUR_MS = 60 * 60 * 1000;
+const LIMIT = 10_000;
 
 function cutoffOf(where: { OR?: { createdAt: { lt: Date } | null }[] }) {
   return (where.OR?.[0]?.createdAt as { lt: Date }).lt.getTime();
@@ -51,34 +59,113 @@ function cutoffOf(where: { OR?: { createdAt: { lt: Date } | null }[] }) {
 beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.ORPHAN_MIN_AGE_HOURS;
+  h.prisma.$transaction.mockImplementation((fn) => fn(h.prisma));
+  h.prisma.$executeRaw.mockResolvedValue(1);
   h.storageDel.mockResolvedValue(true);
   h.prisma.upload.findMany.mockResolvedValue([]);
   h.prisma.upload.deleteMany.mockResolvedValue({ count: 1 });
   h.prisma.upload.aggregate.mockResolvedValue({ _sum: { size: null } });
+  h.prisma.upload.count.mockResolvedValue(0);
   h.prisma.pendingUpload.findMany.mockResolvedValue([]);
   h.prisma.pendingUpload.deleteMany.mockResolvedValue({ count: 1 });
-  h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+  h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 1 });
   h.prisma.pendingUpload.createMany.mockResolvedValue({ count: 1 });
   h.prisma.pendingUpload.aggregate.mockResolvedValue({ _sum: { size: null } });
+  h.prisma.pendingUpload.count.mockResolvedValue(0);
 });
 
 describe('reservePendingUpload', () => {
   it('reserves the stated size until the presigned URL expires', async () => {
     const before = Date.now();
-    await reservePendingUpload('id-1', 'owner-1', 2048);
+    expect(await reservePendingUpload('id-1', 'owner-1', 2048, LIMIT)).toBe(
+      true
+    );
 
     const { data } = h.prisma.pendingUpload.create.mock.calls[0][0];
     expect(data).toMatchObject({ id: 'id-1', ownerId: 'owner-1', size: 2048 });
-    const ttl = data.expiresAt.getTime() - data.createdAt.getTime();
-    expect(ttl).toBe(UPLOAD_URL_TTL_SECONDS * 1000);
-    expect(data.createdAt.getTime()).toBeGreaterThanOrEqual(before);
+    expect(data.expiresAt.getTime()).toBeGreaterThanOrEqual(
+      before + UPLOAD_URL_TTL_SECONDS * 1000
+    );
   });
 
-  it('stores a null size for a request that sent none', async () => {
-    await reservePendingUpload('id-1', 'owner-1');
+  it('checks and inserts under a per-owner lock', async () => {
+    await reservePendingUpload('id-1', 'owner-1', 2048, LIMIT);
 
+    expect(h.prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(h.prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    const [sql, owner] = h.prisma.$executeRaw.mock.calls[0];
+    expect(sql.join('?')).toContain('pg_advisory_xact_lock');
+    expect(owner).toBe('owner-1');
+    expect(h.prisma.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      h.prisma.pendingUpload.aggregate.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('refuses, reserving nothing, when stored plus reserved bytes would reach the limit', async () => {
+    h.prisma.upload.aggregate.mockResolvedValue({ _sum: { size: 6000n } });
+    h.prisma.pendingUpload.aggregate.mockResolvedValue({
+      _sum: { size: 3000n },
+    });
+
+    expect(await reservePendingUpload('id-1', 'owner-1', 1000, LIMIT)).toBe(
+      false
+    );
+    expect(h.prisma.pendingUpload.create).not.toHaveBeenCalled();
+  });
+
+  it('records a size-less reservation for a request that sent none', async () => {
+    h.prisma.upload.aggregate.mockResolvedValue({ _sum: { size: 99999n } });
+
+    expect(
+      await reservePendingUpload('id-1', 'owner-1', undefined, LIMIT)
+    ).toBe(true);
     const { data } = h.prisma.pendingUpload.create.mock.calls[0][0];
     expect(data.size).toBeNull();
+  });
+});
+
+describe('holdPendingUpload', () => {
+  it('pushes the expiry of an unclaimed reservation out', async () => {
+    expect(await holdPendingUpload('id-1')).toBe(true);
+    const { where, data } = h.prisma.pendingUpload.updateMany.mock.calls[0][0];
+    expect(where).toEqual({ id: 'id-1', sweptAt: null });
+    expect(data.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it('refuses when cleanup already claimed the reservation', async () => {
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+    h.prisma.pendingUpload.count.mockResolvedValue(1);
+
+    expect(await holdPendingUpload('id-1')).toBe(false);
+  });
+
+  it('allows an id with no reservation (minted before reservations)', async () => {
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+
+    expect(await holdPendingUpload('id-1')).toBe(true);
+  });
+});
+
+describe('releasePendingUploads', () => {
+  it('frees the bytes but keeps a record until the URL expires', async () => {
+    await releasePendingUploads('owner-1', ['a', 'b']);
+
+    expect(h.prisma.pendingUpload.updateMany).toHaveBeenCalledWith({
+      where: { ownerId: 'owner-1', id: { in: ['a', 'b'] } },
+      data: { size: null },
+    });
+    const { data, skipDuplicates } =
+      h.prisma.pendingUpload.createMany.mock.calls[0][0];
+    expect(skipDuplicates).toBe(true);
+    expect(data.map(({ id }) => id)).toEqual(['a', 'b']);
+    for (const row of data) {
+      expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    }
+  });
+
+  it('does nothing for an empty list', async () => {
+    await releasePendingUploads('owner-1', []);
+    expect(h.prisma.pendingUpload.updateMany).not.toHaveBeenCalled();
   });
 });
 
@@ -163,6 +250,25 @@ describe('deleteOrphans', () => {
     expect(h.storageDel).toHaveBeenCalledWith('b');
   });
 
+  it('records the bytes for the sweep in the same transaction as the row delete', async () => {
+    h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
+
+    await deleteOrphans();
+
+    expect(h.prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(h.prisma.pendingUpload.createMany).toHaveBeenCalledWith({
+      data: [{ id: 'a', ownerId: 'o', expiresAt: new Date(0) }],
+      skipDuplicates: true,
+    });
+    expect(
+      h.prisma.pendingUpload.createMany.mock.invocationCallOrder[0]
+    ).toBeLessThan(h.storageDel.mock.invocationCallOrder[0]);
+    // Bytes gone: the sweep record is dropped again.
+    expect(h.prisma.pendingUpload.deleteMany).toHaveBeenCalledWith({
+      where: { ownerId: 'o', id: { in: ['a'] } },
+    });
+  });
+
   it('keeps an upload that gained an item after the scan', async () => {
     h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
     h.prisma.upload.deleteMany.mockResolvedValue({ count: 0 });
@@ -170,25 +276,24 @@ describe('deleteOrphans', () => {
     const result = await deleteOrphans();
 
     expect(result.deletedUploadIds).toEqual([]);
+    expect(h.prisma.pendingUpload.createMany).not.toHaveBeenCalled();
     expect(h.storageDel).not.toHaveBeenCalled();
   });
 
-  it('hands bytes it could not delete to the pending-upload sweep', async () => {
+  it('leaves the sweep record in place when the bytes cannot be deleted', async () => {
     h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
     h.storageDel.mockRejectedValue(new Error('bucket down'));
 
     const result = await deleteOrphans();
 
     expect(result.deletedUploadIds).toEqual(['a']);
-    const { data, skipDuplicates } =
-      h.prisma.pendingUpload.createMany.mock.calls[0][0];
-    expect(skipDuplicates).toBe(true);
-    expect(data).toEqual([{ id: 'a', ownerId: 'o', expiresAt: new Date(0) }]);
+    expect(h.prisma.pendingUpload.createMany).toHaveBeenCalled();
+    expect(h.prisma.pendingUpload.deleteMany).not.toHaveBeenCalled();
   });
 
   it('reports a row it could not delete and leaves its bytes', async () => {
     h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
-    h.prisma.upload.deleteMany.mockRejectedValue(new Error('db down'));
+    h.prisma.$transaction.mockRejectedValue(new Error('db down'));
 
     const result = await deleteOrphans();
 
@@ -198,7 +303,7 @@ describe('deleteOrphans', () => {
 });
 
 describe('sweepExpiredPendingUploads', () => {
-  it('deletes the bytes and reservation of expired, never-finalized uploads', async () => {
+  it('claims, then deletes the bytes and record of a never-finalized upload', async () => {
     h.prisma.pendingUpload.findMany.mockResolvedValue([
       { id: 'gone', ownerId: 'o' },
     ]);
@@ -206,21 +311,40 @@ describe('sweepExpiredPendingUploads', () => {
     const result = await sweepExpiredPendingUploads(24);
 
     expect(result).toEqual({ deletedIds: ['gone'], errorIds: [] });
+    const claim = h.prisma.pendingUpload.updateMany.mock.calls[0][0];
+    expect(claim.where.id).toBe('gone');
+    expect(claim.data.sweptAt).toBeInstanceOf(Date);
+    expect(
+      Date.now() - claim.where.expiresAt.lt.getTime()
+    ).toBeGreaterThanOrEqual(24 * HOUR_MS);
+    // The Upload-row check happens after the claim.
+    expect(
+      h.prisma.pendingUpload.updateMany.mock.invocationCallOrder[0]
+    ).toBeLessThan(h.prisma.upload.count.mock.invocationCallOrder[0]);
     expect(h.storageDel).toHaveBeenCalledWith('gone');
     expect(h.prisma.pendingUpload.deleteMany).toHaveBeenCalledWith({
       where: { ownerId: 'o', id: { in: ['gone'] } },
     });
-    const { where } = h.prisma.pendingUpload.findMany.mock.calls[0][0];
-    expect(Date.now() - where.expiresAt.lt.getTime()).toBeGreaterThanOrEqual(
-      24 * HOUR_MS
-    );
+  });
+
+  it('skips a reservation a finalize held since the scan', async () => {
+    h.prisma.pendingUpload.findMany.mockResolvedValue([
+      { id: 'held', ownerId: 'o' },
+    ]);
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+
+    const result = await sweepExpiredPendingUploads(24);
+
+    expect(result.deletedIds).toEqual([]);
+    expect(h.storageDel).not.toHaveBeenCalled();
+    expect(h.prisma.pendingUpload.deleteMany).not.toHaveBeenCalled();
   });
 
   it('keeps the bytes of a reservation whose upload was finalized', async () => {
     h.prisma.pendingUpload.findMany.mockResolvedValue([
       { id: 'kept', ownerId: 'o' },
     ]);
-    h.prisma.upload.findMany.mockResolvedValue([{ id: 'kept' }]);
+    h.prisma.upload.count.mockResolvedValue(1);
 
     const result = await sweepExpiredPendingUploads(24);
 
@@ -229,7 +353,7 @@ describe('sweepExpiredPendingUploads', () => {
     expect(h.prisma.pendingUpload.deleteMany).toHaveBeenCalled();
   });
 
-  it('keeps the reservation for a retry when the delete fails', async () => {
+  it('keeps the record for a retry when the delete fails', async () => {
     h.prisma.pendingUpload.findMany.mockResolvedValue([
       { id: 'retry', ownerId: 'o' },
     ]);
@@ -245,6 +369,6 @@ describe('sweepExpiredPendingUploads', () => {
     const result = await sweepExpiredPendingUploads(24);
 
     expect(result).toEqual({ deletedIds: [], errorIds: [] });
-    expect(h.prisma.upload.findMany).not.toHaveBeenCalled();
+    expect(h.prisma.pendingUpload.updateMany).not.toHaveBeenCalled();
   });
 });
