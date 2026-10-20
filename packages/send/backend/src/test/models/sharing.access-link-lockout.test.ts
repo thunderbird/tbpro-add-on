@@ -188,9 +188,10 @@ describe('access-link lockout and validity', () => {
       expect(updateManyCalls()).toHaveLength(0);
     });
 
-    describe('overlapping correct and wrong attempts', () => {
-      // An in-memory row that honours the where clauses, with the correct
-      // request's final write held back until the wrong request has finished.
+    describe('write guards', () => {
+      // Each guard on its own; the database-backed overlap test lives in
+      // access-link-lockout.integration.ts. The second request's last write
+      // is held back until the first request has finished.
       type Where = {
         locked?: boolean;
         retryCount?: { gte: number };
@@ -217,7 +218,7 @@ describe('access-link lockout and validity', () => {
         },
       });
 
-      const overlap = async (correctWritesLast: boolean) => {
+      const run = async (correctWritesLast: boolean) => {
         row = { retryCount: MAX_ACCESS_LINK_RETRIES - 2, locked: false };
         let releaseLate!: () => void;
         const late = new Promise<void>((r) => (releaseLate = r));
@@ -238,8 +239,8 @@ describe('access-link lockout and validity', () => {
         return { results, row };
       };
 
-      it('a reset after a concurrent lock is refused and leaves the lock consistent', async () => {
-        const { results, row } = await overlap(true);
+      it('skips the reset once the link is locked, so the lock stays consistent', async () => {
+        const { results, row } = await run(true);
 
         expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected']);
         expect(row).toEqual({
@@ -248,8 +249,8 @@ describe('access-link lockout and validity', () => {
         });
       });
 
-      it('a lock after a concurrent reset is skipped and the correct answer succeeds', async () => {
-        const { results, row } = await overlap(false);
+      it('skips the lock once the count was reset below the limit', async () => {
+        const { results, row } = await run(false);
 
         expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected']);
         expect(row).toEqual({ locked: false, retryCount: 0 });
