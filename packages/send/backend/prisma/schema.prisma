@@ -19,29 +19,30 @@ datasource db {
 }
 
 model User {
-  id                  String       @id @unique @default(uuid()) @db.Uuid
-  email               String?
-  thundermailEmail    String?      @unique
-  name                String?
-  publicKey           String?
-  tier                UserTier
-  createdAt           DateTime?
-  updatedAt           DateTime?
-  activatedAt         DateTime?
-  uniqueHash          String?
-  hashedPassword      String?
-  oidcSubject         String?      @unique
-  backupKeypair       String?
-  backupContainerKeys String?
-  backupKeystring     String?
-  backupSalt          String?
-  containers          Container[]
-  groups              Membership[]
-  profile             Profile?
-  shares              Share[]      @relation("Sender")
-  uploads             Upload[]
-  isFTUEComplete      Boolean      @default(false)
-  isAdmin             Boolean      @default(false)
+  id                   String                @id @unique @default(uuid()) @db.Uuid
+  email                String?
+  thundermailEmail     String?               @unique
+  name                 String?
+  publicKey            String?
+  tier                 UserTier
+  createdAt            DateTime?
+  updatedAt            DateTime?
+  activatedAt          DateTime?
+  uniqueHash           String?
+  hashedPassword       String?
+  oidcSubject          String?               @unique
+  backupKeypair        String?
+  backupContainerKeys  String?
+  backupKeystring      String?
+  backupSalt           String?
+  containers           Container[]
+  groups               Membership[]
+  profile              Profile?
+  shares               Share[]               @relation("Sender")
+  uploads              Upload[]
+  isFTUEComplete       Boolean               @default(false)
+  isAdmin              Boolean               @default(false)
+  encryptedPassphrases EncryptedPassphrase[]
 }
 
 model Profile {
@@ -177,6 +178,10 @@ model EncryptedPassphrase {
   wrappedEncryptionKey String
   salt                 String
   codeSalt             String
+  ownerId              String?  @db.Uuid
+  owner                User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, createdAt])
 }
 
 enum UserTier {

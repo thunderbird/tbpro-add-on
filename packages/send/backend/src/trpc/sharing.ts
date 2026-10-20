@@ -4,7 +4,10 @@ import {
   incrementAccessLinkRetryCount,
 } from '@send-backend/models/sharing';
 import {
+  cleanupExpiredEncryptedPassphrases,
+  countRecentEncryptedPassphrases,
   getEncryptedPassphrase,
+  MAX_ENCRYPTED_PASSPHRASES_PER_WINDOW,
   storeEncryptedPassphrase,
 } from '@send-backend/models/verification';
 import { verificationEmitter } from '@send-backend/ws/verify';
@@ -13,6 +16,24 @@ import { router, publicProcedure as t } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { getAuthenticatedUserId, isAuthed } from './middlewares';
 import { markAccessLinkAsPasswordless } from '../models/containers';
+
+// The client sends base64 of AES-GCM/AES-KW output: a 6-word passphrase is
+// <=552 chars, the wrapped key <=320 and each 16-byte salt <=128.
+const base64 = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .regex(/^[A-Za-z0-9+/]*={0,2}$/);
+
+async function requireUserId(
+  ctx: Parameters<typeof getAuthenticatedUserId>[0]
+) {
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId) {
+    throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+  return userId;
+}
 
 export const sharingRouter = router({
   /**
@@ -242,23 +263,35 @@ export const sharingRouter = router({
     .use(isAuthed)
     .input(
       z.object({
-        encryptedPassphrase: z.string(),
-        wrappedEncryptionKey: z.string(),
-        salt: z.string(),
-        codeSalt: z.string(),
+        encryptedPassphrase: base64(4096),
+        wrappedEncryptionKey: base64(2048),
+        salt: base64(512),
+        codeSalt: base64(512),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const userId = await requireUserId(ctx);
       const { encryptedPassphrase, wrappedEncryptionKey, salt, codeSalt } =
         input;
 
+      await cleanupExpiredEncryptedPassphrases();
+      if (
+        (await countRecentEncryptedPassphrases(userId)) >=
+        MAX_ENCRYPTED_PASSPHRASES_PER_WINDOW
+      ) {
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS' });
+      }
+
       // Store the encrypted passphrase data in the database
-      const result = await storeEncryptedPassphrase({
-        encryptedPassphrase,
-        wrappedEncryptionKey,
-        salt,
-        codeSalt,
-      });
+      const result = await storeEncryptedPassphrase(
+        {
+          encryptedPassphrase,
+          wrappedEncryptionKey,
+          salt,
+          codeSalt,
+        },
+        userId
+      );
 
       if (result.id) {
         // Notify any listeners waiting for the passphrase
@@ -269,12 +302,12 @@ export const sharingRouter = router({
       }
     }),
 
-  // Gets encrypted passphrase data using its ID
+  // Gets encrypted passphrase data using its ID, for the user who stored it.
   getEncryptedPassphrase: t
     .use(isAuthed)
     .input(z.string())
-    .query(async ({ input }) => {
-      const result = await getEncryptedPassphrase(input);
-      return result;
+    .query(async ({ input, ctx }) => {
+      const userId = await requireUserId(ctx);
+      return getEncryptedPassphrase(input, userId);
     }),
 });
