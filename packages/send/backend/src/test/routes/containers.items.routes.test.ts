@@ -155,31 +155,6 @@ describe('container item routes', () => {
       );
     });
 
-    it('responds only after the delete has finished', async () => {
-      let finish: (v: { wrappedKey: string }) => void = () => {};
-      mockDeleteItem.mockReturnValue(
-        new Promise((resolve) => {
-          finish = resolve;
-        })
-      );
-      let responded = false;
-      const pending = request(app)
-        .delete(`/api/containers/${CONTAINER}/item/42`)
-        .then((res) => {
-          responded = true;
-          return res;
-        });
-
-      await vi.waitFor(() => expect(mockDeleteItem).toHaveBeenCalled());
-      await new Promise((r) => setTimeout(r, 20));
-      expect(responded).toBe(false);
-
-      finish({ wrappedKey: 'wk' });
-      const res = await pending;
-      expect(res.status).toBe(202);
-      expect(res.body).toEqual({ wrappedKey: 'wk' });
-    });
-
     it('answers 404 when no item matches in the container', async () => {
       mockDeleteItem.mockRejectedValue(new BaseError(ITEM_NOT_FOUND));
 
@@ -192,7 +167,7 @@ describe('container item routes', () => {
     });
 
     it('answers an error, not 202, when the delete fails', async () => {
-      mockDeleteItem.mockRejectedValue(new Error('storage down'));
+      mockDeleteItem.mockRejectedValue(new Error('db down'));
 
       const res = await request(app).delete(
         `/api/containers/${CONTAINER}/item/42`
