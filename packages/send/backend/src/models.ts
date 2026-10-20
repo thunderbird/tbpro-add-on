@@ -13,6 +13,13 @@ import {
 } from './errors/models';
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
+import {
+  CLEANUP_BATCH_SIZE,
+  expirePendingUploads,
+  getOrphanMinAgeHours,
+  getReservedBytes,
+  hoursAgo,
+} from './models/pendingUploads';
 import { addExpiryToContainer } from './utils';
 import { verifyOwnedUploadId } from './utils/ownedUploadId';
 import storage from './storage';
@@ -311,6 +318,13 @@ export async function deleteUploadsByIds(ids: string[], requesterId: string) {
     })
   );
 
+  // A cleaned-up upload stops reserving quota; the sweep retries its delete.
+  try {
+    await expirePendingUploads(requesterId, deleted);
+  } catch (e) {
+    console.error('[deleteUploadsByIds] expirePendingUploads failed', e);
+  }
+
   return { deleted, skipped, errors };
 }
 
@@ -383,42 +397,67 @@ export const deleteSession = async (id: string) =>
     SESSION_NOT_DELETED
   );
 
-export async function findOrphans(): Promise<{ uploadIds: string[] }> {
-  // An orphan is an Upload with no associated Item
-
-  const uploadsWithoutItem = await prisma.upload.findMany({
+// An orphan is an Upload with no Item, older than `hoursSinceCreation` so an
+// in-flight upload (items are created after every part is stored) is never
+// matched (#117). Rows without a createdAt predate it being set and count as old.
+function findOrphanRows(hoursSinceCreation: number) {
+  return prisma.upload.findMany({
     where: {
-      items: {
-        none: {},
-      },
+      items: { none: {} },
+      OR: [
+        { createdAt: { lt: hoursAgo(hoursSinceCreation) } },
+        { createdAt: null },
+      ],
     },
-    select: {
-      id: true,
-    },
+    select: { id: true, ownerId: true },
+    take: CLEANUP_BATCH_SIZE,
   });
-
-  return {
-    uploadIds: [...uploadsWithoutItem.map(({ id }) => id)],
-  };
 }
 
-export async function deleteOrphans() {
-  const { uploadIds } = await findOrphans();
-  const errorUploadIds = [];
+export async function findOrphans(
+  hoursSinceCreation = getOrphanMinAgeHours()
+): Promise<{ uploadIds: string[] }> {
+  const rows = await findOrphanRows(hoursSinceCreation);
+  return { uploadIds: rows.map(({ id }) => id) };
+}
 
-  for (const id of uploadIds) {
+/** Deletes orphaned Upload rows and their stored bytes. */
+export async function deleteOrphans(
+  hoursSinceCreation = getOrphanMinAgeHours()
+) {
+  const deletedUploadIds: string[] = [];
+  const errorUploadIds: string[] = [];
+
+  for (const { id, ownerId } of await findOrphanRows(hoursSinceCreation)) {
     try {
-      await deleteUpload(id);
+      // Conditional, so an upload that gained an item since the scan is kept.
+      const { count } = await prisma.upload.deleteMany({
+        where: { id, items: { none: {} } },
+      });
+      if (count === 0) continue;
     } catch (e) {
-      console.error(`[deleteOrphans] Could not delete upload ${id}`);
-      console.error(e);
+      console.error(`[deleteOrphans] Could not delete upload ${id}`, e);
       errorUploadIds.push(id);
+      continue;
     }
+
+    try {
+      await storage.del(id);
+    } catch (e) {
+      // The row is gone, so hand the bytes to the pending-upload sweep.
+      console.error(`[deleteOrphans] storage.del(${id}) failed`, e);
+      try {
+        await expirePendingUploads(ownerId, [id]);
+      } catch (queueError) {
+        console.error(`[deleteOrphans] Could not queue ${id}`, queueError);
+        errorUploadIds.push(id);
+        continue;
+      }
+    }
+    deletedUploadIds.push(id);
   }
 
-  return {
-    errorUploadIds,
-  };
+  return { deletedUploadIds, errorUploadIds };
 }
 
 const getUploadSizesForUser = async (userId: string) => {
@@ -429,13 +468,18 @@ const getUploadSizesForUser = async (userId: string) => {
   return Number(result._sum.size ?? 0);
 };
 
+// `active` includes bytes reserved by unfinished presigned uploads, so
+// repeatedly requesting URLs without finalizing cannot exceed the limit.
+// `finalizingId` is the upload being finalized; its reservation is not counted.
 export const getUsedStorage = async (
   userId: string,
-  hasLimitedStorage = false
+  hasLimitedStorage = false,
+  finalizingId?: string
 ) => {
+  const reserved = await getReservedBytes(userId, finalizingId);
   if (!hasLimitedStorage) {
     const uploads = await getUploadSizesForUser(userId);
-    return { active: uploads, expired: 0 };
+    return { active: uploads + reserved, expired: 0 };
   }
 
   const folders = await getAllUserGroupContainers(userId, ContainerType.FOLDER);
@@ -469,7 +513,7 @@ export const getUsedStorage = async (
       // Make a sum of all the sizes that haven't expired
       .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
     return {
-      active,
+      active: active + reserved,
       expired,
     };
   }

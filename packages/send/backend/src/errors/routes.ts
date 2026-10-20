@@ -124,6 +124,10 @@ export const UPLOAD_ERRORS = {
     statusCode: 400,
     message: 'A valid file size is required.',
   },
+  RECONCILE_FAILED: {
+    statusCode: 500,
+    message: 'Could not clean up orphaned uploads.',
+  },
 };
 
 export const USER_ERRORS = {

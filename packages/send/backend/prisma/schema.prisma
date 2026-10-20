@@ -144,6 +144,21 @@ model Upload {
   owner      User      @relation(fields: [ownerId], references: [id])
 }
 
+// A presigned upload URL that has not been finalized into an Upload row yet.
+// Counts toward quota until expiresAt; expired rows are swept with their bytes.
+// No relation to User on purpose: the row must outlive its owner so the sweep
+// can still remove the object.
+model PendingUpload {
+  id        String   @id @db.Uuid
+  ownerId   String   @db.Uuid
+  size      BigInt?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([ownerId, expiresAt])
+  @@index([expiresAt])
+}
+
 model SuspiciousFile {
   id       String @id @unique @default(uuid()) @db.Uuid
   fileHash String @unique

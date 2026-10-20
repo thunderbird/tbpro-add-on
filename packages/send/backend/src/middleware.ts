@@ -482,7 +482,11 @@ export const checkStorageLimit: RequestHandler = wrapAsyncHandler(
     const { tier, id } = caller;
     const limit = getStorageLimitForTier(tier);
 
-    const { active } = await getUsedStorage(id);
+    const { active } = await getUsedStorage(
+      id,
+      false,
+      res.locals?.finalizingUploadId
+    );
 
     if (active + size >= limit) {
       return res.status(403).json({

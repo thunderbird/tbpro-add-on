@@ -2,13 +2,21 @@ import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockGetUploadBucketUrl, mockGetUsedStorage, mockCaller } = vi.hoisted(
-  () => ({
+const { mockGetUploadBucketUrl, mockGetUsedStorage, mockCaller, mockReserve } =
+  vi.hoisted(() => ({
     mockGetUploadBucketUrl: vi.fn(),
     mockGetUsedStorage: vi.fn(),
     mockCaller: vi.fn(),
-  })
-);
+    mockReserve: vi.fn(),
+  }));
+
+vi.mock('@send-backend/models/pendingUploads', () => ({
+  reservePendingUpload: mockReserve,
+  clearPendingUploads: vi.fn(() => Promise.resolve()),
+}));
+vi.mock('@send-backend/jobs/orphanCleanup', () => ({
+  runOrphanCleanup: vi.fn(),
+}));
 
 // Storage: only the presigned-url call matters here.
 vi.mock('@send-backend/storage', () => ({
@@ -65,6 +73,7 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
     mockCaller.mockReturnValue({ id: 'user-1', tier: 'PRO', uniqueHash: 'h' });
     mockGetUsedStorage.mockResolvedValue({ active: 0 });
     mockGetUploadBucketUrl.mockResolvedValue('https://bucket/signed-url');
+    mockReserve.mockResolvedValue({});
   });
 
   const EXT_ORIGIN = 'moz-extension://abcd-1234';
@@ -247,5 +256,39 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
 
     expect(res.status).toBe(403);
     expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
+  });
+
+  // Every minted URL reserves its stated size until finalized or expired.
+  it('records a reservation for the minted id with the stated size', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 1024 })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(200);
+    expect(mockReserve).toHaveBeenCalledWith(res.body.id, 'user-1', 1024);
+  });
+
+  it('records a size-less reservation for a legacy add-on request', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream' })
+      .set('Content-Type', 'application/json')
+      .set('User-Agent', TB_UA);
+
+    expect(res.status).toBe(200);
+    expect(mockReserve).toHaveBeenCalledWith(res.body.id, 'user-1', undefined);
+  });
+
+  it('does not hand out a URL when the reservation cannot be recorded', async () => {
+    mockReserve.mockRejectedValue(new Error('db down'));
+
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 1024 })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(500);
+    expect(res.body.url).toBeUndefined();
   });
 });

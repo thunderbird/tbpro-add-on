@@ -14,6 +14,15 @@ vi.mock('@send-backend/models', () => ({
   reportUpload: vi.fn(),
 }));
 
+// Reservation bookkeeping and the cleanup job hit the database; stub them.
+vi.mock('@send-backend/models/pendingUploads', () => ({
+  reservePendingUpload: vi.fn(),
+  clearPendingUploads: vi.fn(() => Promise.resolve()),
+}));
+vi.mock('@send-backend/jobs/orphanCleanup', () => ({
+  runOrphanCleanup: vi.fn(),
+}));
+
 // Avoid the real storage client (Backblaze token timer + AWS SDK) at import.
 vi.mock('@send-backend/storage', () => ({
   default: { del: vi.fn() },
@@ -31,6 +40,7 @@ vi.mock('../../middleware', () => {
     checkStorageLimit: passthrough,
     getGroupMemberPermissions: passthrough,
     requireWritePermission: passthrough,
+    requireAdminPermisions: passthrough,
   };
 });
 

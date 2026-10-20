@@ -34,6 +34,9 @@ export type S3Settings = {
   forcePathStyle?: boolean;
 };
 
+/** How long a presigned upload URL stays valid. */
+export const UPLOAD_URL_TTL_SECONDS = 3600;
+
 export function createS3Client(settings: S3Settings): S3Client {
   return new S3Client({
     // Undefined is the SDK's "resolve an endpoint from the region" signal, which
@@ -91,9 +94,8 @@ export async function getSignedUrl(
   const signableHeaders =
     ContentLength !== undefined ? new Set(['content-length']) : undefined;
 
-  // Generate the presigned URL (expires in 3600 seconds / 1 hour by default)
   const signedUrl = await getSignedUrlCommand(s3Client, command, {
-    expiresIn: 3600,
+    expiresIn: UPLOAD_URL_TTL_SECONDS,
     ...(signableHeaders ? { signableHeaders } : {}),
   });
   return signedUrl;

@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => {
   const prisma = {
     upload: { findMany: vi.fn(), delete: vi.fn() },
+    pendingUpload: { upsert: vi.fn() },
   };
   const storageDel = vi.fn();
   return { prisma, storageDel };
@@ -47,6 +48,7 @@ describe('deleteUploadsByIds ownership binding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.prisma.upload.delete.mockResolvedValue({});
+    h.prisma.pendingUpload.upsert.mockResolvedValue({});
     h.storageDel.mockResolvedValue(undefined);
   });
 
@@ -176,5 +178,25 @@ describe('deleteUploadsByIds ownership binding', () => {
     const result = await deleteUploadsByIds(['own', 'own2'], REQUESTER);
 
     expect(result.errors.length + result.deleted.length).toBe(2);
+  });
+
+  // Cleaned-up ids stop reserving quota and are handed to the expired-upload
+  // sweep, which retries any storage delete that failed here.
+  it('expires the reservation of every deleted id, and only those', async () => {
+    const id = mintOwnedUploadId(REQUESTER);
+    seed({ ownedRows: ['own'], foreignRows: ['theirs'] });
+
+    await deleteUploadsByIds(['own', id, 'theirs'], REQUESTER);
+
+    const upserted = h.prisma.pendingUpload.upsert.mock.calls.map(
+      ([arg]) => arg
+    );
+    expect(upserted.map(({ where }) => where.id).sort()).toEqual(
+      ['own', id].sort()
+    );
+    for (const { create, update } of upserted) {
+      expect(create.ownerId).toBe(REQUESTER);
+      expect(update.expiresAt.getTime()).toBe(0);
+    }
   });
 });

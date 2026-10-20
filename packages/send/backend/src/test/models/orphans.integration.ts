@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeEach, beforeAll, afterEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  beforeAll,
+  afterEach,
+  vi,
+} from 'vitest';
 import {
   PrismaClient,
   Container,
@@ -10,7 +18,16 @@ import {
   Item,
   Upload,
 } from '@prisma/client';
-import { createItem, findOrphans } from '../../models';
+import { createItem, deleteOrphans, findOrphans } from '../../models';
+import { sweepExpiredPendingUploads } from '../../models/pendingUploads';
+
+// Storage is mocked so the test runs without a bucket; the calls show which
+// objects the cleanup removed.
+const { storageDel } = vi.hoisted(() => ({ storageDel: vi.fn() }));
+vi.mock('../../storage', () => ({ default: { del: storageDel } }));
+
+// Older than the default 24h age guard.
+const OLD = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
 describe('findOrphans', () => {
   let user: User;
@@ -22,7 +39,7 @@ describe('findOrphans', () => {
 
   async function cleanUp() {
     const uploadPromises = uploads.map((upload) => {
-      return prisma.upload.delete({
+      return prisma.upload.deleteMany({
         where: {
           id: upload.id,
         },
@@ -30,7 +47,7 @@ describe('findOrphans', () => {
     });
 
     const itemPromises = items.map((item) => {
-      return prisma.item.delete({
+      return prisma.item.deleteMany({
         where: {
           id: item.id,
         },
@@ -39,6 +56,7 @@ describe('findOrphans', () => {
 
     await Promise.all(itemPromises);
     await Promise.all(uploadPromises);
+    await prisma.pendingUpload.deleteMany({ where: { ownerId: user.id } });
 
     try {
       await prisma.group.delete({
@@ -120,7 +138,7 @@ describe('findOrphans', () => {
       data: {
         size: 1000,
         ownerId: user.id,
-        createdAt: new Date(),
+        createdAt: OLD,
         type: 'application/octet-stream',
       },
     });
@@ -128,14 +146,14 @@ describe('findOrphans', () => {
       data: {
         size: 1000,
         ownerId: user.id,
-        createdAt: new Date(),
+        createdAt: OLD,
         type: 'application/octet-stream',
       },
     });
     uploads.push(upload1);
     uploads.push(upload2);
     const result = await findOrphans();
-    expect(result.uploadIds).toEqual([upload1.id, upload2.id]);
+    expect(result.uploadIds.sort()).toEqual([upload1.id, upload2.id].sort());
   });
 
   it('should return an empty array when no orphans exist', async () => {
@@ -149,7 +167,7 @@ describe('findOrphans', () => {
       data: {
         size: 1000,
         ownerId: user.id,
-        createdAt: new Date(),
+        createdAt: OLD,
         type: 'application/octet-stream',
       },
     });
@@ -157,7 +175,7 @@ describe('findOrphans', () => {
       data: {
         size: 1000,
         ownerId: user.id,
-        createdAt: new Date(),
+        createdAt: OLD,
         type: 'application/octet-stream',
       },
     });
@@ -165,7 +183,7 @@ describe('findOrphans', () => {
       data: {
         size: 1000,
         ownerId: user.id,
-        createdAt: new Date(),
+        createdAt: OLD,
         type: 'application/octet-stream',
       },
     });
@@ -196,5 +214,80 @@ describe('findOrphans', () => {
 
     const result = await findOrphans();
     expect(result.uploadIds).toEqual([orphanedUpload.id]);
+  });
+
+  it('ignores item-less uploads younger than hoursSinceCreation', async () => {
+    const fresh = await prisma.upload.create({
+      data: {
+        size: 1000,
+        ownerId: user.id,
+        createdAt: new Date(),
+        type: 'application/octet-stream',
+      },
+    });
+    uploads.push(fresh);
+
+    expect((await findOrphans(24)).uploadIds).toEqual([]);
+    expect((await findOrphans(0)).uploadIds).toEqual([fresh.id]);
+  });
+
+  it('deleteOrphans removes rows and bytes of uploads left by a deleted folder', async () => {
+    storageDel.mockResolvedValue(true);
+    const kept = await prisma.upload.create({
+      data: { size: 1000, ownerId: user.id, createdAt: OLD, type: 'x' },
+    });
+    const orphaned = await prisma.upload.create({
+      data: { size: 1000, ownerId: user.id, createdAt: OLD, type: 'x' },
+    });
+    uploads.push(kept, orphaned);
+    items.push(
+      await createItem('kept', container.id, kept.id, ItemType.FILE, 'k1')
+    );
+
+    // Deleting a folder cascades to its items but leaves their uploads.
+    const doomed = await prisma.container.create({
+      data: {
+        name: 'doomed',
+        ownerId: user.id,
+        groupId: (await prisma.group.create({ data: {} })).id,
+        type: ContainerType.FOLDER,
+        createdAt: OLD,
+        updatedAt: OLD,
+      },
+    });
+    await createItem('gone', doomed.id, orphaned.id, ItemType.FILE, 'k2');
+    await prisma.group.delete({ where: { id: doomed.groupId } });
+
+    const result = await deleteOrphans();
+
+    expect(result.deletedUploadIds).toEqual([orphaned.id]);
+    expect(storageDel).toHaveBeenCalledWith(orphaned.id);
+    expect(storageDel).not.toHaveBeenCalledWith(kept.id);
+    expect(
+      await prisma.upload.findUnique({ where: { id: orphaned.id } })
+    ).toBeNull();
+    expect(
+      await prisma.upload.findUnique({ where: { id: kept.id } })
+    ).not.toBeNull();
+  });
+
+  it('sweeps the bytes of an expired reservation that was never finalized', async () => {
+    storageDel.mockResolvedValue(true);
+    const pending = await prisma.pendingUpload.create({
+      data: {
+        id: '00000000-0000-4000-8000-0000000000aa',
+        ownerId: user.id,
+        size: 1000,
+        expiresAt: OLD,
+      },
+    });
+
+    const result = await sweepExpiredPendingUploads(24);
+
+    expect(result.deletedIds).toEqual([pending.id]);
+    expect(storageDel).toHaveBeenCalledWith(pending.id);
+    expect(
+      await prisma.pendingUpload.findUnique({ where: { id: pending.id } })
+    ).toBeNull();
   });
 });
