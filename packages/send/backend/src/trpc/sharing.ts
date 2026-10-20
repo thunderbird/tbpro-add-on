@@ -1,13 +1,23 @@
 import {
   deleteAccessLink,
   getAccessLinkRetryCount,
-  incrementAccessLinkRetryCount,
 } from '@send-backend/models/sharing';
 import { z } from 'zod';
 import { router, publicProcedure as t } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { getAuthenticatedUserId, isAuthed } from './middlewares';
 import { markAccessLinkAsPasswordless } from '../models/containers';
+
+async function readPasswordRetryCount(id: string) {
+  let retryCount = 0;
+  try {
+    const res = await getAccessLinkRetryCount(id);
+    retryCount = res.retryCount;
+  } catch (error) {
+    console.error('Error getting password retry count', error);
+  }
+  return { id, retryCount };
+}
 
 export const sharingRouter = router({
   /**
@@ -78,8 +88,11 @@ export const sharingRouter = router({
    *   post:
    *     tags:
    *       - Sharing
-   *     summary: Increment password retry count
-   *     description: Increments the retry count for password attempts on an access link
+   *     summary: Get password retry count (legacy)
+   *     description: >-
+   *       Kept for older clients. Failed attempts are now counted by the
+   *       challenge endpoint, so this no longer changes anything and only
+   *       returns the current retry count.
    *     requestBody:
    *       required: true
    *       content:
@@ -92,7 +105,7 @@ export const sharingRouter = router({
    *                 description: ID of the access link
    *     responses:
    *       200:
-   *         description: Retry count incremented successfully
+   *         description: Current retry count
    *         content:
    *           application/json:
    *             schema:
@@ -103,21 +116,12 @@ export const sharingRouter = router({
    *                   description: ID of the access link
    *                 retryCount:
    *                   type: number
-   *                   description: Updated retry count
+   *                   description: Current retry count
    */
+  // Server-side counting happens in POST /api/sharing/:linkId/challenge (#1006).
   incrementPasswordRetryCount: t
     .input(z.object({ linkId: z.string() }))
-    .mutation(async ({ input }) => {
-      const id = input.linkId;
-      let retryCount = 0;
-      try {
-        const res = await incrementAccessLinkRetryCount(input.linkId);
-        retryCount = res.retryCount;
-      } catch (error) {
-        console.error('Error incrementing password retry count', error);
-      }
-      return { id, retryCount };
-    }),
+    .mutation(async ({ input }) => readPasswordRetryCount(input.linkId)),
 
   /**
    * @openapi
@@ -153,17 +157,7 @@ export const sharingRouter = router({
    */
   getPasswordRetryCount: t
     .input(z.object({ linkId: z.string() }))
-    .query(async ({ input }) => {
-      const id = input.linkId;
-      let retryCount = 0;
-      try {
-        const res = await getAccessLinkRetryCount(input.linkId);
-        retryCount = res.retryCount;
-      } catch (error) {
-        console.error('Error getting password retry count', error);
-      }
-      return { id, retryCount };
-    }),
+    .query(async ({ input }) => readPasswordRetryCount(input.linkId)),
 
   /**
    * @openapi

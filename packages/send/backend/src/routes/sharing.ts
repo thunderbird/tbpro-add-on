@@ -9,7 +9,6 @@ import {
   getAccessLinksByUploadIdAndWrappedKey,
   getContainerForAccessLink,
   isAccessLinkValid,
-  resetAccessLinkRetryCount,
 } from '../models/sharing';
 
 import {
@@ -199,9 +198,6 @@ router.get(
         upload: addExpiryToContainer(item.upload),
       })),
     };
-
-    // We reset the password attempt count on successful retrieval
-    await resetAccessLinkRetryCount(linkId);
 
     res.status(200).json(itemsWithExpiry);
   })

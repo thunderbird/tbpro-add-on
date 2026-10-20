@@ -29,7 +29,6 @@ vi.mock('../../models/sharing', () => ({
   getContainerForAccessLink: vi.fn(),
   isAccessLinkValid: vi.fn(),
   removeAccessLink: vi.fn(),
-  resetAccessLinkRetryCount: vi.fn(),
   updateAccessLink: vi.fn(),
 }));
 
