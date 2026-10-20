@@ -98,25 +98,6 @@ export const SHARING_ERRORS = {
   },
 };
 
-export const TAG_ERRORS = {
-  NOT_CREATED: {
-    statusCode: 500,
-    message: 'Could not create tag.',
-  },
-  NOT_DELETED: {
-    statusCode: 500,
-    message: 'Could not delete tag.',
-  },
-  NOT_FOUND: {
-    statusCode: 404,
-    message: 'Could not find tag.',
-  },
-  NOT_RENAMED: {
-    statusCode: 500,
-    message: 'Could not rename tag.',
-  },
-};
-
 export const UPLOAD_ERRORS = {
   FILE_NOT_FOUND: {
     statusCode: 404,

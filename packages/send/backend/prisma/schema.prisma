@@ -113,7 +113,6 @@ model Container {
   children   Container[]   @relation("Nesting")
   items      Item[]
   shares     Share[]       @relation("SharedFolder")
-  tags       Tag[]         @relation("ContainerToTag")
 }
 
 model Item {
@@ -129,7 +128,6 @@ model Item {
   updatedAt   DateTime?
   container   Container @relation(fields: [containerId], references: [id], onDelete: Cascade)
   upload      Upload    @relation(fields: [uploadId], references: [id])
-  tags        Tag[]     @relation("ItemToTag")
 }
 
 model Upload {
@@ -149,14 +147,6 @@ model Upload {
 model SuspiciousFile {
   id       String @id @unique @default(uuid()) @db.Uuid
   fileHash String @unique
-}
-
-model Tag {
-  id         Int         @id @default(autoincrement())
-  name       String      @unique
-  color      String
-  containers Container[] @relation("ContainerToTag")
-  items      Item[]      @relation("ItemToTag")
 }
 
 model Login {
