@@ -23,6 +23,7 @@ import {
 } from '../middleware';
 import { createRateLimiter } from '../middleware/rate-limit';
 
+import { ITEM_NOT_FOUND } from '../errors/models';
 import {
   addErrorHandling,
   CONTAINER_ERRORS,
@@ -46,6 +47,10 @@ import {
 import { addExpiryToContainer } from '@send-backend/utils';
 
 const router: Router = Router();
+
+// An item lookup that matches nothing in the container (missing, or in another
+// container) answers 404, with the same body either way.
+const itemNotFound = { [ITEM_NOT_FOUND]: CONTAINER_ERRORS.ITEM_NOT_FOUND };
 
 export interface TreeNode {
   id: string;
@@ -428,7 +433,7 @@ router.delete(
   requireWritePermission,
   // State-changing action: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_DELETED),
+  addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_DELETED, itemNotFound),
   wrapAsyncHandler(async (req, res) => {
     const { containerId, itemId } = req.params;
     const userId = getAuthenticatedUserData(req)?.id;
@@ -482,6 +487,8 @@ router.delete(
  *         description: Item renamed successfully
  *       400:
  *         description: Failed to rename item
+ *       404:
+ *         description: Item not found in this container
  */
 // Rename an item in a container
 router.post(
@@ -490,7 +497,7 @@ router.post(
   requireWritePermission,
   // State-changing action: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_RENAMED),
+  addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_RENAMED, itemNotFound),
   wrapAsyncHandler(async (req, res) => {
     const { containerId, itemId } = req.params;
     const { name } = req.body;

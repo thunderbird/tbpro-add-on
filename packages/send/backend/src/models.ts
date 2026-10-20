@@ -1,5 +1,6 @@
-import { ContainerType, ItemType, PrismaClient } from '@prisma/client';
+import { ContainerType, ItemType, Prisma, PrismaClient } from '@prisma/client';
 import {
+  BaseError,
   CONTAINER_NOT_FOUND,
   CONTAINER_NOT_UPDATED,
   ITEM_NOT_CREATED,
@@ -38,7 +39,19 @@ export async function updateItemName(
     },
   };
 
-  return await fromPrismaV2(prisma.item.update, query, ITEM_NOT_UPDATED);
+  try {
+    return await prisma.item.update(query);
+  } catch (error) {
+    console.error(error);
+    // P2025: no item with this id in this container.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      throw new BaseError(ITEM_NOT_FOUND);
+    }
+    throw new BaseError(ITEM_NOT_UPDATED);
+  }
 }
 
 export async function reportUpload(uploadId: string) {
