@@ -184,15 +184,35 @@ export function wrapAsyncHandler(fn: RequestHandler) {
   } as RequestHandler;
 }
 
-// Global error handler middleware.
-// Uses the error status code and message
-// if added by `onError`.
-// Falls back to a generic status 500 and the
-// message from the `err` object.
-export function errorHandler(err: Error, req: Request, res: Response) {
-  const status = req[REQ_VAR_STATUS_CODE] ?? 500;
+type HttpError = Error & {
+  status?: number;
+  statusCode?: number;
+  expose?: boolean;
+};
+
+// Global error handler middleware. Express only routes errors to middleware
+// with four parameters, so `next` must stay in the signature.
+// Uses the status code and message added by `addErrorHandling`. Otherwise,
+// like Express's default handler: honors an http-error status (e.g. 400/413
+// from the body parser) and only exposes messages flagged `expose`.
+export function errorHandler(
+  err: HttpError,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (res.headersSent) {
+    // Let Express's default handler close the connection.
+    return next(err);
+  }
+
+  const errStatus = err.status ?? err.statusCode;
+  const isHttpStatus =
+    typeof errStatus === 'number' && errStatus >= 400 && errStatus < 600;
+  const status = req[REQ_VAR_STATUS_CODE] ?? (isHttpStatus ? errStatus : 500);
   const message =
-    req[REQ_VAR_USER_MESSAGE] ?? err.message ?? 'Internal Server Error';
+    req[REQ_VAR_USER_MESSAGE] ??
+    (err.expose && err.message ? err.message : 'Internal Server Error');
 
   res.status(status).json({
     status: 'error',
