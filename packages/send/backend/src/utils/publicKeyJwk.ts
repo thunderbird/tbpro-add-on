@@ -1,3 +1,4 @@
+import { createPublicKey } from 'crypto';
 import { z } from 'zod';
 
 const base64url = (max: number) =>
@@ -18,6 +19,23 @@ const rsaPublicJwk = z.object({
 });
 
 const MAX_JWK_JSON_LENGTH = 8192;
+// Clients generate RSA-OAEP 2048-bit keys.
+const MIN_MODULUS_BITS = 2048;
+
+function isUsableRsaKey({ n, e }: { n?: string; e?: string }): boolean {
+  const exponent = BigInt(
+    '0x' + (Buffer.from(e ?? '', 'base64url').toString('hex') || '0')
+  );
+  if (exponent < BigInt(3) || exponent % BigInt(2) === BigInt(0)) {
+    return false;
+  }
+  try {
+    const key = createPublicKey({ key: { kty: 'RSA', n, e }, format: 'jwk' });
+    return (key.asymmetricKeyDetails?.modulusLength ?? 0) >= MIN_MODULUS_BITS;
+  } catch {
+    return false;
+  }
+}
 
 function fromJsonString(value: unknown): unknown {
   if (typeof value !== 'string' || value.length > MAX_JWK_JSON_LENGTH) {
@@ -34,15 +52,16 @@ function fromJsonString(value: unknown): unknown {
 // and outputs its JSON once, keeping only public members in the order received.
 export const publicKeyJwkSchema = z.unknown().transform((value, ctx) => {
   const raw = fromJsonString(value);
-  if (!rsaPublicJwk.safeParse(raw).success) {
+  const parsed = rsaPublicJwk.safeParse(raw);
+  if (!parsed.success || !isUsableRsaKey(parsed.data)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'publicKey must be an RSA public key JWK',
     });
     return z.NEVER;
   }
-  const members = Object.keys(raw as object).filter(
-    (key) => key in rsaPublicJwk.shape
+  const members = Object.keys(raw as object).filter((key) =>
+    Object.prototype.hasOwnProperty.call(rsaPublicJwk.shape, key)
   );
   return JSON.stringify(raw, members);
 });
