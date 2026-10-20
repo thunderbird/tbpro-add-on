@@ -135,6 +135,26 @@ describe('container item routes', () => {
       expect(mockDeleteItem).toHaveBeenCalledWith(42, CONTAINER, USER, false);
     });
 
+    it.each([
+      [{}, true],
+      [{ shouldDeleteContent: true }, true],
+      [{ shouldDeleteUpload: false }, false],
+      [{ shouldDeleteContent: false }, false],
+    ])('reads the delete flag from %j as %s', async (body, expected) => {
+      mockDeleteItem.mockResolvedValue({ wrappedKey: 'wk' });
+
+      await request(app)
+        .delete(`/api/containers/${CONTAINER}/item/42`)
+        .send(body);
+
+      expect(mockDeleteItem).toHaveBeenCalledWith(
+        42,
+        CONTAINER,
+        USER,
+        expected
+      );
+    });
+
     it('responds only after the delete has finished', async () => {
       let finish: (v: { wrappedKey: string }) => void = () => {};
       mockDeleteItem.mockReturnValue(

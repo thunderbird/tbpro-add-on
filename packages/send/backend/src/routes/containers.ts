@@ -439,9 +439,10 @@ router.delete(
     if (!userId) {
       return reject(res);
     }
-    // Force req.body.shouldDeleteUpload to a boolean
+    // Defaults to true; either spelling of the flag can turn it off.
     const shouldDeleteUpload =
-      req?.body?.shouldDeleteUpload === false ? false : true;
+      req?.body?.shouldDeleteUpload !== false &&
+      req?.body?.shouldDeleteContent !== false;
     const { wrappedKey } = await deleteItem(
       parseInt(itemId),
       containerId,
