@@ -186,10 +186,21 @@ export function wrapAsyncHandler(fn: RequestHandler) {
 
 // Global error handler middleware.
 // Uses the error status code and message
-// if added by `onError`.
+// if added by `addErrorHandling`.
 // Falls back to a generic status 500 and the
 // message from the `err` object.
-export function errorHandler(err: Error, req: Request, res: Response) {
+// Express only treats a middleware as an error handler when it declares four
+// parameters.
+export function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  // A response is already on its way; let Express close the connection.
+  if (res.headersSent) {
+    return next(err);
+  }
   const status = req[REQ_VAR_STATUS_CODE] ?? 500;
   const message =
     req[REQ_VAR_USER_MESSAGE] ?? err.message ?? 'Internal Server Error';

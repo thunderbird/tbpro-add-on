@@ -47,11 +47,7 @@ import { errorHandler } from '../../errors/routes';
 const app = express();
 app.use(express.json());
 app.use('/api/uploads', router);
-// `errorHandler` has a 3-arg signature, so Express would register it as normal
-// middleware and skip it for errors (in prod, Sentry's 4-arg handler runs
-// first). Wrap it in the 4-arg error-middleware shape so the route's async
-// boundary is exercised end to end here.
-app.use((err, req, res, _next) => errorHandler(err, req, res));
+app.use(errorHandler);
 
 describe('POST /api/uploads/report', () => {
   beforeEach(() => {
