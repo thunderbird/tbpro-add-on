@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
         org: 'thunderbird',
         project: 'send-suite-frontend',
         authToken: env.VITE_SENTRY_AUTH_TOKEN,
-        release: packageJson.version,
+        release: { name: packageJson.version },
         moduleMetadata: {
           version: packageJson.version,
           appHost: 'management',

@@ -1,6 +1,7 @@
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig } from 'vite';
+import { sharedViteConfig } from './sharedViteConfig';
 import viteConfig from './vite.config';
 
 export default defineConfig({
@@ -21,6 +22,8 @@ export default defineConfig({
   // src/config.ts reads each fallback as a literal `import.meta.env.VITE_*` member
   // expression precisely so these overrides reach it.
   define: {
+    // __APP_VERSION__ / __APP_NAME__, as in the real builds.
+    ...sharedViteConfig.define,
     'import.meta.env.VITE_TESTING': '"true"',
     'import.meta.env.VITE_SEND_SERVER_URL': '"https://localhost:8088"',
     // Without this, config.sendClientUrl is undefined and every assertion built

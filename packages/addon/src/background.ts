@@ -50,6 +50,7 @@ import {
 } from './menu';
 import { cloudFileStartupAction } from './cloudFileGate';
 import { checkAndUninstallIfDeprecated } from './selfUninstall';
+import { gateSentryOnTelemetry } from './sentryGate';
 
 // Initialize the shared Pinia instance that will be used by both
 // background and extension contexts
@@ -884,6 +885,8 @@ function initTelemetryListener() {
 }
 
 (async function main() {
+  // Not awaited: Sentry must never delay startup (#1278).
+  void gateSentryOnTelemetry();
   await checkAndUninstallIfDeprecated();
   initMenu();
   // These three only register listeners and don't depend on the login state.

@@ -1,11 +1,12 @@
 import Extension from 'send-frontend/src/apps/send/ExtensionPage.vue';
 import { createApp } from 'vue';
-import { initSentry } from 'send-frontend/src/lib/sentry';
 import { mountApp, setupApp } from 'send-frontend/src/apps/send/setup';
+import { gateSentryOnTelemetry } from '../sentryGate';
 
 const app = createApp(Extension);
 
-initSentry(app);
-
-setupApp(app);
-mountApp(app, '#extension-page');
+// Sentry must be initialized (or not) before mount so it can hook the app.
+gateSentryOnTelemetry(app).then(() => {
+  setupApp(app);
+  mountApp(app, '#extension-page');
+});

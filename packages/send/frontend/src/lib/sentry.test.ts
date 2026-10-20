@@ -1,6 +1,14 @@
 import * as Sentry from '@sentry/vue';
-import { describe, expect, it } from 'vitest';
-import { scrubBreadcrumb, scrubEvent } from './sentry';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { initSentry, scrubBreadcrumb, scrubEvent } from './sentry';
+
+vi.mock('@sentry/vue', () => ({
+  init: vi.fn(),
+  getClient: vi.fn(() => undefined),
+  setTag: vi.fn(),
+  browserTracingIntegration: vi.fn(() => ({ name: 'BrowserTracing' })),
+  captureConsoleIntegration: vi.fn(() => ({ name: 'CaptureConsole' })),
+}));
 
 describe('scrubEvent', () => {
   it('drops user identity and sensitive request payloads', () => {
@@ -78,5 +86,59 @@ describe('scrubBreadcrumb', () => {
       category: 'ui.click',
       message: 'button',
     });
+  });
+});
+
+describe('initSentry', () => {
+  const defaults = [{ name: 'Vue' }, { name: 'BrowserSession' }];
+
+  const initOptions = () => {
+    const opts = vi.mocked(Sentry.init).mock.calls[0][0]!;
+    const integrations = opts.integrations as (
+      d: typeof defaults
+    ) => { name: string }[];
+    return { opts, names: integrations(defaults).map((i) => i.name) };
+  };
+
+  beforeEach(() => {
+    vi.mocked(Sentry.init).mockClear();
+  });
+
+  it('tags events and sessions with the build version as the release', () => {
+    initSentry({} as never);
+    expect(initOptions().opts.release).toBe(__APP_VERSION__);
+    expect(__APP_VERSION__).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
+  it('keeps the Vue integration and page tracing when given an app', () => {
+    const app = {} as never;
+    initSentry(app);
+    const { opts, names } = initOptions();
+    expect(opts.app).toBe(app);
+    expect(names).toEqual([
+      'Vue',
+      'BrowserSession',
+      'BrowserTracing',
+      'CaptureConsole',
+    ]);
+  });
+
+  it('works without an app: no Vue integration or page tracing, sessions kept', () => {
+    initSentry();
+    const { opts, names } = initOptions();
+    expect(opts.app).toBeUndefined();
+    expect(opts.release).toBe(__APP_VERSION__);
+    expect(names).toEqual(['BrowserSession', 'CaptureConsole']);
+  });
+
+  it.each([
+    ['with an app', {} as never],
+    ['without an app', undefined],
+  ])('attaches the privacy scrubbers %s', (_label, app) => {
+    initSentry(app);
+    const { opts } = initOptions();
+    expect(opts.sendDefaultPii).toBe(false);
+    expect(opts.beforeSend).toBe(scrubEvent);
+    expect(opts.beforeBreadcrumb).toBe(scrubBreadcrumb);
   });
 });

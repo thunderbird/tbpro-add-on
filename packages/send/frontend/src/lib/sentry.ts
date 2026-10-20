@@ -67,7 +67,12 @@ export function scrubBreadcrumb(
 
 let initialized = false;
 
-export const initSentry = (app: App) => {
+/**
+ * Starts Sentry. `app` is omitted by the add-on background page, which has no
+ * Vue app: the Vue integration (which would warn "Misconfigured SDK") and page
+ * tracing are skipped there. Sessions are tagged with the build version.
+ */
+export const initSentry = (app?: App) => {
   // Calling Sentry.init again after a close() re-creates the client, so this is
   // safe to invoke on opt-in. Guard against a redundant double-init.
   if (initialized && Sentry.getClient()) {
@@ -77,8 +82,10 @@ export const initSentry = (app: App) => {
   Sentry.init({
     app,
     dsn: config.sentryDsn,
-    integrations: [
-      Sentry.browserTracingIntegration(),
+    release: __APP_VERSION__,
+    integrations: (defaults) => [
+      ...(app ? defaults : defaults.filter((i) => i.name !== 'Vue')),
+      ...(app ? [Sentry.browserTracingIntegration()] : []),
       // Session Replay is intentionally NOT enabled: it records DOM contents
       // and input, which can capture PII. See issue #892 (privacy hardening).
       // Console capture stays on: messages are developer-authored log
