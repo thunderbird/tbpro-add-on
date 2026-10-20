@@ -82,7 +82,7 @@ export function countRecentEncryptedPassphrases(ownerId: string) {
   });
 }
 
-export async function storeEncryptedPassphrase(
+export function storeEncryptedPassphrase(
   data: EncryptedPassphraseData,
   ownerId: string
 ) {
@@ -100,7 +100,7 @@ export async function storeEncryptedPassphrase(
 // Only the creator can read a row, and only while it is fresh. Rows are not
 // deleted on read: every same-account client with a live onPassphraseShared
 // subscription fetches it, so the first reader could starve the new device.
-export async function getEncryptedPassphrase(id: string, ownerId: string) {
+export function getEncryptedPassphrase(id: string, ownerId: string) {
   const since = new Date(Date.now() - ENCRYPTED_PASSPHRASE_READ_TTL_MS);
 
   return prisma.encryptedPassphrase.findFirst({
