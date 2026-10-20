@@ -197,10 +197,8 @@ export function wrapAsyncHandler(fn: RequestHandler) {
 }
 
 // Global error handler middleware.
-// Uses the error status code and message
-// if added by `addErrorHandling`.
-// Falls back to a generic status 500 and the
-// message from the `err` object.
+// Uses the status code and message set by `addErrorHandling` (or a matching
+// override); see the fallback below for errors without them.
 // Express only treats a middleware as an error handler when it declares four
 // parameters.
 export function errorHandler(

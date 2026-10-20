@@ -424,7 +424,7 @@ router.post(
  *       200:
  *         description: Item removed successfully
  *       404:
- *         description: Item or container not found
+ *         description: Item not found in this container
  */
 router.delete(
   '/:containerId/item/:itemId',
