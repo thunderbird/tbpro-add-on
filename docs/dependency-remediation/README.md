@@ -26,8 +26,13 @@ For each advisory group, take the first rule that applies:
 4. **Dismiss as unreachable.** The fix would be a breaking jump and the vulnerable code provably
    never loads in this app. Dismiss the Dependabot alert with reason `not_used` and a comment
    that records why and when to revisit.
-5. **Accept or defer.** No fix exists or the only fix is a risky jump on a production path.
-   Here, deeper compatibility analysis can be performed.
+5. **No clean fix.** No fix exists, or the only fix is a breaking jump.
+   - **High risk** (runtime path, vulnerable code reachable or not ruled out): a human decides.
+     The skill lays out the options (upgrade across the major and adapt our code, forcing
+     override, mitigation in our own code, or accept/defer) with the risks and benefits of each
+     and a recommendation, and applies only the option chosen. The decision and who made it go
+     in the PR.
+   - **Normal risk**: accept or defer, with a re-check condition. The Dependabot alert stays open.
 
 Every bump gets its release notes read. Every runtime bump gets a **test-coverage check**.
 If the case is not covered, add coverage and proceed.
@@ -44,9 +49,9 @@ Two rules follow:
 
 - A fix version younger than 7 days is **deferred to the next pass** unless the group is
   high risk. The Dependabot alert stays open as the reminder.
-- A high-risk group may bypass the cooldown with a version-pinned entry in
-  `minimumReleaseAgeExclude` (`name@version`, never a bare name), justified in the PR and
-  removed on the next pass once the version is a week old.
+- For a high-risk group, a human decides whether to wait or bypass the cooldown. A bypass is a
+  version-pinned entry in `minimumReleaseAgeExclude` (`name@version`, never a bare name),
+  justified in the PR and removed on the next pass once the version is a week old.
 
 The only workspace-wide exception allowed is a pattern for our own packages, should we ever
 publish any.
