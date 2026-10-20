@@ -28,11 +28,11 @@
   },
   "engines": {
     "bun": "1.1.13",
-    "node": ">=22.11.0",
+    "node": ">=22.22.2",
     "pnpm": ">=10.6.4"
   },
   "volta": {
-    "node": "22.14.0"
+    "node": "22.22.2"
   },
   "dependencies": {
     "@tanstack/vue-query": "^5.100.6",
