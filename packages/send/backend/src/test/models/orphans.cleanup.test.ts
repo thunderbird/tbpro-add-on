@@ -256,10 +256,16 @@ describe('deleteOrphans', () => {
     await deleteOrphans();
 
     expect(h.prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(h.prisma.pendingUpload.createMany).toHaveBeenCalledWith({
-      data: [{ id: 'a', ownerId: 'o', expiresAt: new Date(0) }],
-      skipDuplicates: true,
-    });
+    // Claimed (sweptAt set), so a replayed finalize for the id is refused.
+    const { data } = h.prisma.pendingUpload.createMany.mock.calls[0][0];
+    expect(data).toEqual([
+      {
+        id: 'a',
+        ownerId: 'o',
+        expiresAt: new Date(0),
+        sweptAt: expect.any(Date),
+      },
+    ]);
     expect(
       h.prisma.pendingUpload.createMany.mock.invocationCallOrder[0]
     ).toBeLessThan(h.storageDel.mock.invocationCallOrder[0]);
@@ -370,5 +376,77 @@ describe('sweepExpiredPendingUploads', () => {
 
     expect(result).toEqual({ deletedIds: [], errorIds: [] });
     expect(h.prisma.pendingUpload.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+// In-memory PendingUpload row with Postgres conditional-update semantics: each
+// updateMany re-checks its WHERE against the current row, as a row lock would.
+describe('finalize vs sweep race', () => {
+  type Row = {
+    id: string;
+    ownerId: string;
+    expiresAt: Date;
+    sweptAt: Date | null;
+  };
+  let row: Row | null;
+  const matches = (r: Row, where: Record<string, unknown>) =>
+    (!('sweptAt' in where) ||
+      (where.sweptAt === null) === (r.sweptAt === null)) &&
+    (!where.expiresAt || r.expiresAt < (where.expiresAt as { lt: Date }).lt);
+
+  beforeEach(() => {
+    row = { id: 'r', ownerId: 'o', expiresAt: hoursAgoDate(48), sweptAt: null };
+    h.prisma.pendingUpload.findMany.mockImplementation(async () =>
+      row ? [{ id: row.id, ownerId: row.ownerId }] : []
+    );
+    h.prisma.pendingUpload.updateMany.mockImplementation(
+      async ({ where, data }) => {
+        if (!row || !matches(row, where)) return { count: 0 };
+        Object.assign(row, data);
+        return { count: 1 };
+      }
+    );
+    h.prisma.pendingUpload.count.mockImplementation(async () =>
+      row?.sweptAt ? 1 : 0
+    );
+    h.prisma.pendingUpload.deleteMany.mockImplementation(async () => {
+      row = null;
+      return { count: 1 };
+    });
+  });
+
+  function hoursAgoDate(hours: number) {
+    return new Date(Date.now() - hours * HOUR_MS);
+  }
+
+  it('finalize holds first: the sweep claim loses and the bytes stay', async () => {
+    expect(await holdPendingUpload('r')).toBe(true);
+    // The finalize's Upload row exists by the time the sweep runs.
+    h.prisma.upload.count.mockResolvedValue(1);
+
+    const result = await sweepExpiredPendingUploads(24);
+
+    expect(result).toEqual({ deletedIds: [], errorIds: [] });
+    expect(h.storageDel).not.toHaveBeenCalled();
+    expect(row?.sweptAt).toBeNull();
+  });
+
+  it('sweep claims first: the bytes go and finalize is refused', async () => {
+    const sweep = sweepExpiredPendingUploads(24);
+    // Finalize arrives while the sweep is still deleting the bytes.
+    h.storageDel.mockImplementation(async () => {
+      expect(await holdPendingUpload('r')).toBe(false);
+      return true;
+    });
+
+    expect(await sweep).toEqual({ deletedIds: ['r'], errorIds: [] });
+    expect(h.storageDel).toHaveBeenCalledWith('r');
+  });
+
+  it('a claim whose delete failed keeps refusing finalize until retried', async () => {
+    h.storageDel.mockRejectedValue(new Error('bucket down'));
+
+    expect((await sweepExpiredPendingUploads(24)).errorIds).toEqual(['r']);
+    expect(await holdPendingUpload('r')).toBe(false);
   });
 });

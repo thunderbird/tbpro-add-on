@@ -1,12 +1,15 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import storage from '../storage';
 import { UPLOAD_URL_TTL_SECONDS } from '../storage/s3b2';
+import { mapLimit } from '../utils/mapLimit';
 const prisma = new PrismaClient();
 
 const HOUR_MS = 60 * 60 * 1000;
 const DEFAULT_ORPHAN_MIN_AGE_HOURS = 24;
 // Per-run cap so one run stays bounded; later runs pick up the rest.
 export const CLEANUP_BATCH_SIZE = 1000;
+// Rows cleaned up in parallel; small so cleanup leaves the pool to requests.
+export const CLEANUP_CONCURRENCY = 5;
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -123,6 +126,26 @@ export async function releasePendingUploads(ownerId: string, ids: string[]) {
   });
 }
 
+type SweepOutcome = 'deleted' | 'kept' | 'error';
+
+async function sweepOne(
+  { id, ownerId }: { id: string; ownerId: string },
+  cutoff: Date
+): Promise<SweepOutcome> {
+  // Claim, then look for the Upload row: a finalize either held the
+  // reservation first (the claim matches nothing) or is refused after it.
+  const { count } = await prisma.pendingUpload.updateMany({
+    where: { id, expiresAt: { lt: cutoff } },
+    data: { sweptAt: new Date() },
+  });
+  if (count === 0) return 'kept';
+  const finalized = (await prisma.upload.count({ where: { id } })) > 0;
+  // A failed delete keeps the claimed record, so the next run retries.
+  if (!finalized) await storage.del(id);
+  await clearPendingUploads(ownerId, [id]);
+  return finalized ? 'kept' : 'deleted';
+}
+
 /**
  * Removes the storage objects of reservations that expired more than
  * `hoursSinceExpiry` ago without being finalized, then the reservations.
@@ -131,10 +154,7 @@ export async function releasePendingUploads(ownerId: string, ids: string[]) {
 export async function sweepExpiredPendingUploads(
   hoursSinceExpiry = getOrphanMinAgeHours()
 ) {
-  const deletedIds: string[] = [];
-  const errorIds: string[] = [];
   const cutoff = hoursAgo(hoursSinceExpiry);
-
   const expired = await prisma.pendingUpload.findMany({
     where: { expiresAt: { lt: cutoff } },
     select: { id: true, ownerId: true },
@@ -142,28 +162,13 @@ export async function sweepExpiredPendingUploads(
     take: CLEANUP_BATCH_SIZE,
   });
 
-  for (const { id, ownerId } of expired) {
-    // Claim, then look for the Upload row: a finalize either held the
-    // reservation first (the claim matches nothing) or is refused after it.
-    const { count } = await prisma.pendingUpload.updateMany({
-      where: { id, expiresAt: { lt: cutoff } },
-      data: { sweptAt: new Date() },
-    });
-    if (count === 0) continue;
-
-    if ((await prisma.upload.count({ where: { id } })) === 0) {
-      try {
-        await storage.del(id);
-        deletedIds.push(id);
-      } catch (e) {
-        // Keep the claimed record so the next run retries.
-        console.error(`[sweepExpiredPendingUploads] storage.del(${id})`, e);
-        errorIds.push(id);
-        continue;
-      }
-    }
-    await clearPendingUploads(ownerId, [id]);
-  }
-
-  return { deletedIds, errorIds };
+  const outcomes = await mapLimit(expired, CLEANUP_CONCURRENCY, (row) =>
+    sweepOne(row, cutoff).catch((e): SweepOutcome => {
+      console.error(`[sweepExpiredPendingUploads] ${row.id}`, e);
+      return 'error';
+    })
+  );
+  const idsWith = (outcome: SweepOutcome) =>
+    expired.filter((_, i) => outcomes[i] === outcome).map(({ id }) => id);
+  return { deletedIds: idsWith('deleted'), errorIds: idsWith('error') };
 }

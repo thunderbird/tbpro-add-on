@@ -15,6 +15,7 @@ import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
 import {
   CLEANUP_BATCH_SIZE,
+  CLEANUP_CONCURRENCY,
   clearPendingUploads,
   getOrphanMinAgeHours,
   getReservedBytes,
@@ -23,6 +24,7 @@ import {
 } from './models/pendingUploads';
 import { addExpiryToContainer } from './utils';
 import { verifyOwnedUploadId } from './utils/ownedUploadId';
+import { mapLimit } from './utils/mapLimit';
 import storage from './storage';
 const prisma = new PrismaClient();
 
@@ -423,48 +425,59 @@ export async function findOrphans(
   return { uploadIds: rows.map(({ id }) => id) };
 }
 
+type OrphanOutcome = 'deleted' | 'kept' | 'error';
+
+async function deleteOrphan({
+  id,
+  ownerId,
+}: {
+  id: string;
+  ownerId: string;
+}): Promise<OrphanOutcome> {
+  let claimed: boolean;
+  try {
+    // The row goes together with a claimed sweep record for its bytes, so they
+    // stay reachable if the delete below fails and a replayed finalize is
+    // refused. Conditional, so an upload that gained an item is kept.
+    claimed = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.upload.deleteMany({
+        where: { id, items: { none: {} } },
+      });
+      if (count === 0) return false;
+      await tx.pendingUpload.createMany({
+        data: [{ id, ownerId, expiresAt: new Date(0), sweptAt: new Date() }],
+        skipDuplicates: true,
+      });
+      return true;
+    });
+  } catch (e) {
+    console.error(`[deleteOrphans] Could not delete upload ${id}`, e);
+    return 'error';
+  }
+  if (!claimed) return 'kept';
+
+  try {
+    await storage.del(id);
+    await clearPendingUploads(ownerId, [id]);
+  } catch (e) {
+    // The sweep record stays; the next sweep retries.
+    console.error(`[deleteOrphans] storage cleanup of ${id} failed`, e);
+  }
+  return 'deleted';
+}
+
 /** Deletes orphaned Upload rows and their stored bytes. */
 export async function deleteOrphans(
   hoursSinceCreation = getOrphanMinAgeHours()
 ) {
-  const deletedUploadIds: string[] = [];
-  const errorUploadIds: string[] = [];
-
-  for (const { id, ownerId } of await findOrphanRows(hoursSinceCreation)) {
-    let claimed: boolean;
-    try {
-      // The row goes together with a sweep record for its bytes, so they stay
-      // reachable if the delete below fails or the process stops. Conditional,
-      // so an upload that gained an item since the scan is kept.
-      claimed = await prisma.$transaction(async (tx) => {
-        const { count } = await tx.upload.deleteMany({
-          where: { id, items: { none: {} } },
-        });
-        if (count === 0) return false;
-        await tx.pendingUpload.createMany({
-          data: [{ id, ownerId, expiresAt: new Date(0) }],
-          skipDuplicates: true,
-        });
-        return true;
-      });
-    } catch (e) {
-      console.error(`[deleteOrphans] Could not delete upload ${id}`, e);
-      errorUploadIds.push(id);
-      continue;
-    }
-    if (!claimed) continue;
-
-    try {
-      await storage.del(id);
-      await clearPendingUploads(ownerId, [id]);
-    } catch (e) {
-      // The sweep record stays; the next sweep retries.
-      console.error(`[deleteOrphans] storage cleanup of ${id} failed`, e);
-    }
-    deletedUploadIds.push(id);
-  }
-
-  return { deletedUploadIds, errorUploadIds };
+  const rows = await findOrphanRows(hoursSinceCreation);
+  const outcomes = await mapLimit(rows, CLEANUP_CONCURRENCY, deleteOrphan);
+  const idsWith = (outcome: OrphanOutcome) =>
+    rows.filter((_, i) => outcomes[i] === outcome).map(({ id }) => id);
+  return {
+    deletedUploadIds: idsWith('deleted'),
+    errorUploadIds: idsWith('error'),
+  };
 }
 
 const getUploadSizesForUser = async (userId: string) => {
