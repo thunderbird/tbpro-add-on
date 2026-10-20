@@ -26,6 +26,9 @@ app.post(
 app.post('/unrouted', () => {
   throw new Error('Invalid `prisma.user.findUnique()` invocation: secret-id');
 });
+app.get('/unavailable', () => {
+  throw Object.assign(new Error('upstream down'), { status: 503 });
+});
 app.use(errorHandler);
 
 describe('errorHandler', () => {
@@ -71,11 +74,24 @@ describe('errorHandler', () => {
       .send('{bad json');
     expect(malformed.status).toBe(400);
     expect(malformed.body.statusCode).toBe(400);
+    // the reason phrase, never the parser's message quoting the body
+    expect(malformed.body.message).toBe('Bad Request');
 
     const tooLarge = await request(app)
       .post('/unrouted')
       .send({ pad: 'x'.repeat(2048) });
     expect(tooLarge.status).toBe(413);
     expect(tooLarge.body.statusCode).toBe(413);
+    expect(tooLarge.body.message).toBe('Payload Too Large');
+  });
+
+  it('keeps the status of an unrouted http-error above 500', async () => {
+    const res = await request(app).get('/unavailable');
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({
+      status: 'error',
+      statusCode: 503,
+      message: 'Service Unavailable',
+    });
   });
 });
