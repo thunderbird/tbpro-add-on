@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Upload = {
   id: string;
-  fileHash: string;
+  fileHash: string | null;
   part: number | null;
   reported: boolean;
   reportPending: boolean;
@@ -297,6 +297,20 @@ describe('POST /api/uploads/:uploadId/report/:verdict', () => {
       reportPending: false,
     });
     expect(h.db.suspicious.size).toBe(0);
+    expect((await download()).status).toBe(200);
+  });
+
+  it.each([
+    ['an empty', ''],
+    ['a missing', null],
+  ])('confirm blocks an upload with %s file hash', async (_label, hash) => {
+    h.db.uploads.get(UPLOAD).fileHash = hash;
+
+    await verdict('confirm', cookieFor(ADMIN)).expect(200);
+    expect(h.db.suspicious.size).toBe(0);
+    expect((await download()).status).toBe(401);
+
+    await verdict('clear', cookieFor(ADMIN)).expect(200);
     expect((await download()).status).toBe(200);
   });
 

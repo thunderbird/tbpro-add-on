@@ -243,10 +243,14 @@ export async function checkHashAgainstSuspiciousFiles(fileHash: string) {
 
 export async function checkIdAgainstSuspiciousFiles(id: string) {
   // Get the fileHash from the uploadId
-  const { fileHash } = await prisma.upload.findUnique({
+  const { fileHash, reported } = await prisma.upload.findUnique({
     where: { id },
-    select: { fileHash: true },
+    select: { fileHash: true, reported: true },
   });
+  // Only an admin `confirm` sets `reported`; it blocks even without a hash.
+  if (reported) {
+    return true;
+  }
   if (!fileHash) {
     return false;
   }
