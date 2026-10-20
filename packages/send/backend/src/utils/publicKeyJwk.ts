@@ -1,4 +1,4 @@
-import { createPublicKey } from 'crypto';
+import { createPublicKey } from 'node:crypto';
 import { z } from 'zod';
 
 const base64url = (max: number) =>
@@ -6,7 +6,9 @@ const base64url = (max: number) =>
     .string()
     .min(1)
     .max(max)
-    .regex(/^[A-Za-z0-9_-]+$/);
+    .regex(/^[A-Za-z0-9_-]+$/)
+    // A single trailing character cannot encode a whole byte.
+    .refine((value) => value.length % 4 !== 1);
 
 // Members of the public RSA-OAEP JWK that WebCrypto `exportKey('jwk')` returns.
 const rsaPublicJwk = z.object({
@@ -18,6 +20,7 @@ const rsaPublicJwk = z.object({
   key_ops: z.array(z.string().max(16)).max(8).optional(),
 });
 
+const PUBLIC_MEMBERS = new Set(Object.keys(rsaPublicJwk.shape));
 const MAX_JWK_JSON_LENGTH = 8192;
 // Clients generate RSA-OAEP 2048-bit keys.
 const MIN_MODULUS_BITS = 2048;
@@ -61,7 +64,7 @@ export const publicKeyJwkSchema = z.unknown().transform((value, ctx) => {
     return z.NEVER;
   }
   const members = Object.keys(raw as object).filter((key) =>
-    Object.prototype.hasOwnProperty.call(rsaPublicJwk.shape, key)
+    PUBLIC_MEMBERS.has(key)
   );
   return JSON.stringify(raw, members);
 });
