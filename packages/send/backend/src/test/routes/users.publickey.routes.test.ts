@@ -72,7 +72,13 @@ describe('POST /api/users/publickey', () => {
   });
 
   it('ignores extra body fields and drops non-public JWK members', async () => {
-    const jwk = { ...JSON.parse(CLIENT_JWK), d: 'secret', p: 'x' };
+    const jwk = {
+      ...JSON.parse(CLIENT_JWK),
+      d: 'secret',
+      p: 'x',
+      constructor: 'x',
+      toString: 'x',
+    };
     const res = await post({ publicKey: jwk, avatar: 'ignored' });
 
     expect(res.status).toBe(200);
@@ -90,6 +96,9 @@ describe('POST /api/users/publickey', () => {
     ['{kty:"EC"} as a string', '{"kty":"EC"}'],
     ['RSA without e', { kty: 'RSA', n: 'AQAB' }],
     ['non-base64url n', { kty: 'RSA', n: 'a+b/', e: 'AQAB' }],
+    ['malformed n', { kty: 'RSA', n: 'A', e: 'AQAB' }],
+    ['undersized n', { kty: 'RSA', n: 'AQAB', e: 'AQAB' }],
+    ['zero e', { ...JSON.parse(CLIENT_JWK), e: 'AA' }],
     ['missing', undefined],
   ])('rejects %s with 400', async (_label, publicKey) => {
     const res = await post({ publicKey });
