@@ -1,11 +1,15 @@
 import * as Sentry from '@sentry/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { initSentry, scrubBreadcrumb, scrubEvent } from './sentry';
+import { closeSentry, initSentry, scrubBreadcrumb, scrubEvent } from './sentry';
 
 vi.mock('@sentry/vue', () => ({
   init: vi.fn(),
   getClient: vi.fn(() => undefined),
   setTag: vi.fn(),
+  close: vi.fn(() => Promise.resolve(true)),
+  startSession: vi.fn(),
+  captureSession: vi.fn(),
+  breadcrumbsIntegration: vi.fn(() => ({ name: 'Breadcrumbs' })),
   browserTracingIntegration: vi.fn(() => ({ name: 'BrowserTracing' })),
   captureConsoleIntegration: vi.fn(() => ({ name: 'CaptureConsole' })),
 }));
@@ -101,7 +105,7 @@ describe('initSentry', () => {
   };
 
   beforeEach(() => {
-    vi.mocked(Sentry.init).mockClear();
+    vi.clearAllMocks();
   });
 
   it('tags events and sessions with the build version as the release', () => {
@@ -123,12 +127,29 @@ describe('initSentry', () => {
     ]);
   });
 
-  it('works without an app: no Vue integration or page tracing, sessions kept', () => {
+  it('works without an app: no Vue, page tracing or console breadcrumbs', () => {
     initSentry();
     const { opts, names } = initOptions();
     expect(opts.app).toBeUndefined();
     expect(opts.release).toBe(__APP_VERSION__);
-    expect(names).toEqual(['BrowserSession', 'CaptureConsole']);
+    expect(names).toEqual(['BrowserSession', 'Breadcrumbs', 'CaptureConsole']);
+    expect(Sentry.breadcrumbsIntegration).toHaveBeenCalledWith({
+      console: false,
+    });
+  });
+
+  it('starts a new session only when re-initialized after close', async () => {
+    initSentry();
+    expect(Sentry.startSession).not.toHaveBeenCalled();
+
+    // close() and the re-init both see the lingering client.
+    vi.mocked(Sentry.getClient)
+      .mockReturnValueOnce({} as never)
+      .mockReturnValueOnce({} as never);
+    await closeSentry();
+    initSentry();
+    expect(Sentry.startSession).toHaveBeenCalledWith({ ignoreDuration: true });
+    expect(Sentry.captureSession).toHaveBeenCalledTimes(1);
   });
 
   it.each([

@@ -343,7 +343,6 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       }
 
       console.log(`Attempting to create with token as password`);
-      console.log(token);
 
       try {
         await createThundermailAccount(

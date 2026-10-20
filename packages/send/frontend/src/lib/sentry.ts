@@ -79,13 +79,19 @@ export const initSentry = (app?: App) => {
     return;
   }
 
+  // A closed client lingers after close(); its presence means this is a re-init.
+  const reinit = !!Sentry.getClient();
+
   Sentry.init({
     app,
     dsn: config.sentryDsn,
     release: __APP_VERSION__,
     integrations: (defaults) => [
       ...(app ? defaults : defaults.filter((i) => i.name !== 'Vue')),
-      ...(app ? [Sentry.browserTracingIntegration()] : []),
+      ...(app
+        ? [Sentry.browserTracingIntegration()]
+        : // Background console logs can carry credentials and addresses.
+          [Sentry.breadcrumbsIntegration({ console: false })]),
       // Session Replay is intentionally NOT enabled: it records DOM contents
       // and input, which can capture PII. See issue #892 (privacy hardening).
       // Console capture stays on: messages are developer-authored log
@@ -107,6 +113,13 @@ export const initSentry = (app?: App) => {
     beforeSend: scrubEvent,
     beforeBreadcrumb: scrubBreadcrumb,
   });
+
+  // The session integration only starts a session on the first init per page,
+  // so start one explicitly when telemetry is re-enabled at runtime.
+  if (reinit) {
+    Sentry.startSession({ ignoreDuration: true });
+    Sentry.captureSession();
+  }
 
   Sentry.setTag('environmentName', config.appEnv);
   initialized = true;
