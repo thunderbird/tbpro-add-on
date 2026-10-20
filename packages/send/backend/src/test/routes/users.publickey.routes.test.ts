@@ -99,6 +99,11 @@ describe('POST /api/users/publickey', () => {
     ['malformed n', { kty: 'RSA', n: 'A', e: 'AQAB' }],
     ['undersized n', { kty: 'RSA', n: 'AQAB', e: 'AQAB' }],
     ['zero e', { ...JSON.parse(CLIENT_JWK), e: 'AA' }],
+    ['malformed e', { ...JSON.parse(CLIENT_JWK), e: 'A' }],
+    [
+      'n with a dangling character',
+      { ...JSON.parse(CLIENT_JWK), n: JSON.parse(CLIENT_JWK).n + 'AAA' },
+    ],
     ['missing', undefined],
   ])('rejects %s with 400', async (_label, publicKey) => {
     const res = await post({ publicKey });
