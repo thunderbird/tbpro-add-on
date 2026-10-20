@@ -680,8 +680,9 @@ const useFolderStore = defineStore('folderManager', () => {
       type: combinedType,
     });
 
-    // Multipart files bypass Downloader.doDownload, which captures single-part
-    // downloads; same event and properties so both land in one metric.
+    // Multipart files bypass Downloader.doDownload, so capture the same event
+    // here. `type` is the parts' stored type (application/zip); `part_count`
+    // tells these events apart from single-part ones.
     metrics.capture(ANALYTICS_EVENTS.FILE_DOWNLOADED, {
       size: totalSize,
       type: combinedType,

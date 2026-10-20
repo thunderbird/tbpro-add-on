@@ -11,11 +11,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Multipart downloads must emit the same `file_downloaded` event as
 // single-part ones, with the whole file's size and type.
 
-vi.mock('@send-frontend/lib/trpc', () => ({
-  trpc: {
-    getDefaultFolder: { query: vi.fn().mockResolvedValue({ id: null }) },
-  },
-}));
 vi.mock('@send-frontend/lib/helpers', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@send-frontend/lib/helpers')>()),
   _download: vi.fn(async () => new Blob(['zipped'])),
@@ -63,7 +58,6 @@ const progress = {
   setProcessStage: vi.fn(),
   setText: vi.fn(),
   setProgress: vi.fn(),
-  setFileName: vi.fn(),
 } as unknown as ProgressTracker;
 
 function download() {
@@ -79,16 +73,17 @@ function download() {
 }
 
 describe('FolderStore — downloadMultipart analytics', () => {
+  let capture: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    capture = vi
+      .spyOn(useMetricsStore().metrics, 'capture')
+      .mockReturnValue(undefined);
   });
 
   it('captures file_downloaded with the total size and part count', async () => {
-    const capture = vi
-      .spyOn(useMetricsStore().metrics, 'capture')
-      .mockReturnValue(undefined);
-
     await download();
 
     expect(capture).toHaveBeenCalledOnce();
@@ -100,9 +95,6 @@ describe('FolderStore — downloadMultipart analytics', () => {
   });
 
   it('captures nothing when saving the file fails', async () => {
-    const capture = vi
-      .spyOn(useMetricsStore().metrics, 'capture')
-      .mockReturnValue(undefined);
     vi.mocked(_saveFileStream).mockRejectedValueOnce(new Error('disk full'));
 
     await expect(download()).rejects.toThrow('disk full');
