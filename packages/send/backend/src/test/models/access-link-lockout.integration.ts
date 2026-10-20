@@ -46,9 +46,11 @@ describe('acceptAccessLink under overlapping attempts', () => {
     await prisma.$disconnect();
   });
 
-  const createLink = (id: string) =>
-    prisma.accessLink.create({
-      data: {
+  // Races run in parallel, one link each, so they only contend with themselves.
+  const createLinks = async () => {
+    const ids = Array.from({ length: RUNS }, () => `lockout-${uuidv4()}`);
+    await prisma.accessLink.createMany({
+      data: ids.map((id) => ({
         id,
         shareId,
         wrappedKey: 'wrapped',
@@ -58,40 +60,49 @@ describe('acceptAccessLink under overlapping attempts', () => {
         challengeCiphertext: 'ciphertext',
         challengePlaintext: ANSWER,
         retryCount: MAX_ACCESS_LINK_RETRIES - 2,
-      },
+      })),
     });
+    return ids;
+  };
+  const readLinks = (ids: string[]) =>
+    prisma.accessLink.findMany({ where: { id: { in: ids } } });
 
   it('a correct and a wrong answer near the limit never lock the link', async () => {
-    for (let i = 0; i < RUNS; i++) {
-      const id = `lockout-${uuidv4()}`;
-      await createLink(id);
-      const attempts =
-        i % 2 === 0
-          ? [acceptAccessLink(id, ANSWER), acceptAccessLink(id, 'wrong')]
-          : [acceptAccessLink(id, 'wrong'), acceptAccessLink(id, ANSWER)];
-      const [first, second] = await Promise.allSettled(attempts);
-      const [correct, wrong] = i % 2 === 0 ? [first, second] : [second, first];
+    const ids = await createLinks();
+    const outcomes = await Promise.all(
+      ids.map(async (id, i) => {
+        const correct = acceptAccessLink(id, ANSWER);
+        const wrong = acceptAccessLink(id, 'wrong');
+        const [c, w] = await Promise.allSettled(
+          i % 2 === 0 ? [correct, wrong] : [wrong, correct]
+        );
+        return i % 2 === 0 ? [c.status, w.status] : [w.status, c.status];
+      })
+    );
 
-      expect(correct.status).toBe('fulfilled');
-      expect(wrong.status).toBe('rejected');
-      const row = await prisma.accessLink.findUniqueOrThrow({ where: { id } });
-      expect(row.locked).toBe(false);
-    }
+    expect(outcomes).toEqual(ids.map(() => ['fulfilled', 'rejected']));
+    const rows = await readLinks(ids);
+    expect(rows.filter((row) => row.locked)).toEqual([]);
   });
 
   it('a lock never coexists with a reset count', async () => {
-    for (let i = 0; i < RUNS; i++) {
-      const id = `lockout-${uuidv4()}`;
-      await createLink(id);
-      await Promise.allSettled([
-        acceptAccessLink(id, 'wrong'),
-        acceptAccessLink(id, ANSWER),
-        acceptAccessLink(id, 'wrong'),
-      ]);
-      const row = await prisma.accessLink.findUniqueOrThrow({ where: { id } });
-      if (row.locked) {
-        expect(row.retryCount).toBeGreaterThanOrEqual(MAX_ACCESS_LINK_RETRIES);
-      }
-    }
+    const ids = await createLinks();
+    await Promise.all(
+      ids.map((id) =>
+        Promise.allSettled([
+          acceptAccessLink(id, 'wrong'),
+          acceptAccessLink(id, ANSWER),
+          acceptAccessLink(id, 'wrong'),
+        ])
+      )
+    );
+
+    const rows = await readLinks(ids);
+    expect(rows).toHaveLength(RUNS);
+    expect(
+      rows.filter(
+        (row) => row.locked && row.retryCount < MAX_ACCESS_LINK_RETRIES
+      )
+    ).toEqual([]);
   });
 });
