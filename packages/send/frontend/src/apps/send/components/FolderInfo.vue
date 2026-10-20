@@ -104,13 +104,6 @@ const showForm = ref(false);
         v-if="folderStore?.selectedFolder?.id"
         :folder-id="folderStore.selectedFolder.id"
       />
-      <!-- tags -->
-      <!-- <section class="flex flex-col gap-2">
-      <div class="font-semibold text-gray-600">Tags</div>
-      <div class="flex flex-wrap gap-1">
-        <TagLabel v-for="tag in folderStore.selectedFolder.tags" :color="tag.color"> {{ tag.name }}</TagLabel>
-      </div>
-    </section> -->
       <!-- meta -->
       <footer class="mt-auto flex flex-col gap-3">
         <label
