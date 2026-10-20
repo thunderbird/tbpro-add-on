@@ -163,10 +163,10 @@ Then proceed with the upgrade. The new test and what it proves go in the QA Log.
 ## 5. Verify
 
 - `pnpm audit --json > /tmp/audit-after.json`; compare with the before file.
-- Backend (`packages/send/backend`, MinIO up): `pnpm prisma generate && pnpm test && pnpm lint:all && pnpm typecheck`.
-  Run `test` on its own; `ci:validate` chains with `;` and hides failures.
-- Frontend and addon: `pnpm --filter send-frontend run ci:validate`, `--filter addon run ci:validate`,
-  plus `typecheck` and `build` in each. Addon `typecheck` is known to fail on `main`; compare, don't block.
+- Backend (`packages/send/backend`, MinIO up): `pnpm prisma generate && pnpm ci:validate && pnpm typecheck`.
+- Frontend (`packages/send/frontend`): `pnpm ci:validate && pnpm build` (`ci:validate` includes `typecheck`).
+- Addon (`packages/addon`): `pnpm ci:validate && pnpm build`, then `pnpm typecheck` on its own: it
+  is known to fail on `main`, so compare, don't block.
 - Integration and e2e when a runtime path changed; otherwise rely on PR CI and say so in the QA Log.
 - For every high-risk mitigation: run the new test against the *old* version too (it should fail
   or show the vulnerable behaviour) and against the new version (it passes). Both results go in
