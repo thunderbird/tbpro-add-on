@@ -5,8 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   prisma: {
+    $transaction: vi.fn(),
     accessLink: {
       update: vi.fn(),
+      updateMany: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
     },
@@ -56,12 +58,15 @@ const linkAfterAttempt = (retryCount: number) => ({
 
 const updateCalls = () =>
   h.prisma.accessLink.update.mock.calls.map((c) => c[0]);
+const updateManyCalls = () =>
+  h.prisma.accessLink.updateMany.mock.calls.map((c) => c[0]);
 
 describe('access-link lockout and validity', () => {
   let consoleCapture: ReturnType<typeof captureConsole>;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    h.prisma.$transaction.mockImplementation((fn) => fn(h.prisma));
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
     consoleCapture = captureConsole();
@@ -77,23 +82,24 @@ describe('access-link lockout and validity', () => {
   });
 
   describe('acceptAccessLink', () => {
-    it('counts the attempt on a usable link only', async () => {
-      h.prisma.accessLink.update
-        .mockResolvedValueOnce(linkAfterAttempt(1))
-        .mockResolvedValue({ id: 'link-1' });
+    it('counts the attempt on a usable link only, inside a transaction', async () => {
+      h.prisma.accessLink.update.mockResolvedValueOnce(linkAfterAttempt(1));
+      h.prisma.accessLink.updateMany.mockResolvedValue({ count: 1 });
 
       await acceptAccessLink('link-1', ANSWER);
 
+      expect(h.prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(updateCalls()[0]).toMatchObject({
         where: { id: 'link-1', ...USABLE },
         data: { retryCount: { increment: 1 } },
       });
     });
 
-    it('resets the count and returns the link on a correct answer', async () => {
-      h.prisma.accessLink.update
-        .mockResolvedValueOnce(linkAfterAttempt(MAX_ACCESS_LINK_RETRIES))
-        .mockResolvedValue({ id: 'link-1' });
+    it('resets the count of an unlocked link and returns it on a correct answer', async () => {
+      h.prisma.accessLink.update.mockResolvedValueOnce(
+        linkAfterAttempt(MAX_ACCESS_LINK_RETRIES)
+      );
+      h.prisma.accessLink.updateMany.mockResolvedValue({ count: 1 });
 
       const link = await acceptAccessLink('link-1', ANSWER);
 
@@ -102,11 +108,18 @@ describe('access-link lockout and validity', () => {
         salt: 'salt',
         share: { containerId: 'container-1' },
       });
-      expect(updateCalls()).toHaveLength(2);
-      expect(updateCalls()[1]).toMatchObject({
-        where: { id: 'link-1' },
-        data: { retryCount: 0 },
-      });
+      expect(updateManyCalls()).toEqual([
+        { where: { id: 'link-1', locked: false }, data: { retryCount: 0 } },
+      ]);
+    });
+
+    it('refuses a correct answer when the link was locked meanwhile', async () => {
+      h.prisma.accessLink.update.mockResolvedValueOnce(linkAfterAttempt(4));
+      h.prisma.accessLink.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(acceptAccessLink('link-1', ANSWER)).rejects.toThrow(
+        'ACCESSLINK_NOT_FOUND'
+      );
     });
 
     it('refuses a wrong answer below the limit without locking', async () => {
@@ -117,33 +130,40 @@ describe('access-link lockout and validity', () => {
       await expect(acceptAccessLink('link-1', 'wrong')).rejects.toThrow(
         'ACCESSLINK_NOT_FOUND'
       );
-      expect(updateCalls()).toHaveLength(1);
+      expect(updateManyCalls()).toHaveLength(0);
     });
 
     it('locks the link on the wrong answer that reaches the limit', async () => {
-      h.prisma.accessLink.update
-        .mockResolvedValueOnce(linkAfterAttempt(MAX_ACCESS_LINK_RETRIES))
-        .mockResolvedValue({ id: 'link-1' });
+      h.prisma.accessLink.update.mockResolvedValueOnce(
+        linkAfterAttempt(MAX_ACCESS_LINK_RETRIES)
+      );
+      h.prisma.accessLink.updateMany.mockResolvedValue({ count: 1 });
 
       await expect(acceptAccessLink('link-1', 'wrong')).rejects.toThrow(
         'ACCESSLINK_NOT_FOUND'
       );
-      expect(updateCalls()[1]).toMatchObject({
-        where: { id: 'link-1' },
-        data: { locked: true },
-      });
+      expect(updateManyCalls()).toEqual([
+        {
+          where: {
+            id: 'link-1',
+            retryCount: { gte: MAX_ACCESS_LINK_RETRIES },
+          },
+          data: { locked: true },
+        },
+      ]);
     });
 
     it('refuses even a correct answer once concurrent attempts passed the limit', async () => {
-      h.prisma.accessLink.update
-        .mockResolvedValueOnce(linkAfterAttempt(MAX_ACCESS_LINK_RETRIES + 1))
-        .mockResolvedValue({ id: 'link-1' });
+      h.prisma.accessLink.update.mockResolvedValueOnce(
+        linkAfterAttempt(MAX_ACCESS_LINK_RETRIES + 1)
+      );
+      h.prisma.accessLink.updateMany.mockResolvedValue({ count: 1 });
 
       await expect(acceptAccessLink('link-1', ANSWER)).rejects.toThrow(
         'ACCESSLINK_NOT_FOUND'
       );
-      expect(updateCalls()[1]).toMatchObject({ data: { locked: true } });
-      expect(updateCalls().some((c) => c.data.retryCount === 0)).toBe(false);
+      expect(updateManyCalls()).toHaveLength(1);
+      expect(updateManyCalls()[0]).toMatchObject({ data: { locked: true } });
     });
 
     it('treats a non-string answer as wrong', async () => {
@@ -152,7 +172,7 @@ describe('access-link lockout and validity', () => {
       await expect(
         acceptAccessLink('link-1', { not: ANSWER } as unknown)
       ).rejects.toThrow('ACCESSLINK_NOT_FOUND');
-      expect(updateCalls()).toHaveLength(1);
+      expect(updateManyCalls()).toHaveLength(0);
     });
 
     it('refuses a locked or expired link without counting', async () => {
@@ -165,6 +185,75 @@ describe('access-link lockout and validity', () => {
         'ACCESSLINK_NOT_FOUND'
       );
       expect(updateCalls()).toHaveLength(1);
+      expect(updateManyCalls()).toHaveLength(0);
+    });
+
+    describe('overlapping correct and wrong attempts', () => {
+      // An in-memory row that honours the where clauses, with the correct
+      // request's final write held back until the wrong request has finished.
+      type Where = {
+        locked?: boolean;
+        retryCount?: { gte: number };
+      };
+      let row: { retryCount: number; locked: boolean };
+      const matches = (where: Where) =>
+        (where.locked === undefined || row.locked === where.locked) &&
+        (where.retryCount === undefined ||
+          row.retryCount >= where.retryCount.gte);
+
+      const fakeTx = (gate?: Promise<void>) => ({
+        accessLink: {
+          update: vi.fn(async ({ where, data }) => {
+            if (!matches(where)) throw new Error('NotFoundError');
+            row.retryCount += data.retryCount.increment;
+            return { ...linkAfterAttempt(row.retryCount), ...row };
+          }),
+          updateMany: vi.fn(async ({ where, data }) => {
+            await gate;
+            if (!matches(where)) return { count: 0 };
+            Object.assign(row, data);
+            return { count: 1 };
+          }),
+        },
+      });
+
+      const overlap = async (correctWritesLast: boolean) => {
+        row = { retryCount: MAX_ACCESS_LINK_RETRIES - 2, locked: false };
+        let releaseLate!: () => void;
+        const late = new Promise<void>((r) => (releaseLate = r));
+        const txs = correctWritesLast
+          ? [fakeTx(late), fakeTx()]
+          : [fakeTx(), fakeTx(late)];
+        h.prisma.$transaction
+          .mockImplementationOnce((fn) => fn(txs[0]))
+          .mockImplementationOnce((fn) => fn(txs[1]));
+
+        const correct = acceptAccessLink('link-1', ANSWER);
+        const wrong = acceptAccessLink('link-1', 'wrong');
+        const results = await Promise.allSettled(
+          correctWritesLast
+            ? [wrong.finally(releaseLate), correct]
+            : [correct.finally(releaseLate), wrong]
+        );
+        return { results, row };
+      };
+
+      it('a reset after a concurrent lock is refused and leaves the lock consistent', async () => {
+        const { results, row } = await overlap(true);
+
+        expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected']);
+        expect(row).toEqual({
+          locked: true,
+          retryCount: MAX_ACCESS_LINK_RETRIES,
+        });
+      });
+
+      it('a lock after a concurrent reset is skipped and the correct answer succeeds', async () => {
+        const { results, row } = await overlap(false);
+
+        expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected']);
+        expect(row).toEqual({ locked: false, retryCount: 0 });
+      });
     });
   });
 

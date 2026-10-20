@@ -153,58 +153,52 @@ export async function getAccessLinkChallenge(linkId: string) {
 
 /**
  * Checks a challenge answer and enforces the retry limit server-side (#1006).
- * Every attempt is counted before it is checked, so concurrent guesses cannot
- * get past MAX_ACCESS_LINK_RETRIES; a correct answer within the limit resets
- * the count, and any refused attempt that reaches the limit locks the link.
+ * Every attempt is counted before it is checked, in one transaction whose first
+ * update holds the row lock. The reset only applies to an unlocked link and the
+ * lock only to a count still at the limit, so overlapping attempts can never
+ * leave a link locked after a successful answer.
  */
 export async function acceptAccessLink(
   linkId: string,
   challengePlaintext: unknown
 ) {
-  const query = {
-    where: {
-      id: linkId,
-      ...usableAccessLinkWhere(),
-    },
-    data: {
-      retryCount: { increment: 1 },
-    },
-    include: {
-      share: {
-        select: {
-          containerId: true,
-        },
+  const { link, accepted } = await prisma.$transaction(async (tx) => {
+    const counted = await fromPrismaV2(
+      tx.accessLink.update,
+      {
+        where: { id: linkId, ...usableAccessLinkWhere() },
+        data: { retryCount: { increment: 1 } },
+        include: { share: { select: { containerId: true } } },
       },
-    },
-  };
+      ACCESSLINK_NOT_FOUND
+    );
 
-  const link = await fromPrismaV2(
-    prisma.accessLink.update,
-    query,
-    ACCESSLINK_NOT_FOUND
-  );
+    const isCorrect =
+      typeof challengePlaintext === 'string' &&
+      challengePlaintext === counted.challengePlaintext;
 
-  const isCorrect =
-    typeof challengePlaintext === 'string' &&
-    challengePlaintext === link.challengePlaintext;
+    if (isCorrect && counted.retryCount <= MAX_ACCESS_LINK_RETRIES) {
+      const reset = await tx.accessLink.updateMany({
+        where: { id: linkId, locked: false },
+        data: { retryCount: 0 },
+      });
+      return { link: counted, accepted: reset.count === 1 };
+    }
 
-  if (isCorrect && link.retryCount <= MAX_ACCESS_LINK_RETRIES) {
-    await prisma.accessLink.update({
-      where: { id: linkId },
-      data: { retryCount: 0 },
-      select: { id: true },
-    });
-    return link;
+    if (counted.retryCount >= MAX_ACCESS_LINK_RETRIES) {
+      await tx.accessLink.updateMany({
+        where: { id: linkId, retryCount: { gte: MAX_ACCESS_LINK_RETRIES } },
+        data: { locked: true },
+      });
+    }
+    // Refuse outside the transaction so the counted attempt is committed.
+    return { link: counted, accepted: false };
+  });
+
+  if (!accepted) {
+    throw new BaseError(ACCESSLINK_NOT_FOUND);
   }
-
-  if (link.retryCount >= MAX_ACCESS_LINK_RETRIES) {
-    await prisma.accessLink.update({
-      where: { id: linkId },
-      data: { locked: true },
-      select: { id: true },
-    });
-  }
-  throw new BaseError(ACCESSLINK_NOT_FOUND);
+  return link;
 }
 
 export async function getContainerForAccessLink(linkId: string) {
