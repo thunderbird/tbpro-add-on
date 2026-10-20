@@ -1,6 +1,6 @@
 ---
 name: dependency-remediation
-description: Careful remediation of Dependabot / pnpm audit findings. Prefers parent upgrades over overrides, reads changelogs, checks reachability and test coverage, mitigates high-risk findings instead of deferring them, and produces a PR with a QA Log. Run manually from a laptop.
+description: Careful remediation of Dependabot / pnpm audit findings. Prefers parent upgrades over overrides, reads changelogs, checks reachability and test coverage, surfaces high-risk findings without a clean fix for a human decision, and produces a PR with a QA Log. Run manually from a laptop.
 ---
 
 # Dependency audit remediation
@@ -49,10 +49,13 @@ Before choosing a fix, rate each group:
 - **Normal**: everything else (dev tooling, test-only, nightly-only, or runtime but provably
   unreachable).
 
-High-risk groups are never deferred. If the only fix is a breaking jump, the work becomes
-"make the app compatible with the fix": read the breaking changes, refactor our code where it
-hits them, and add tests that exercise the vulnerable path before and after. Flag each such
-group in its own PR section (see step 6).
+A high-risk group is never deferred or accepted on your own judgement. When it has a clean fix
+(rules 1-3 in step 3), apply it. When it doesn't (a young fix version, or only a breaking jump
+or no fix at all), stop and put the decision to the person running the skill: lay out the
+options, the risks and benefits of each (exposure while waiting, breaking changes and the code
+they hit, test coverage of the vulnerable path, effort), and your recommendation. Apply only
+the option they choose. Record each such group in the PR's "High-risk decisions" section (see
+step 6).
 
 ## 3. Decide, one group at a time
 
@@ -66,9 +69,10 @@ npm view <pkg>@<version> time.<version>
 
 If it is younger than 7 days and the group is **normal** risk, defer the group to the next
 pass: leave the alert open and list it under "Deferred for cooling period" in the PR. If the
-group is **high** risk, bypass for that one version only by adding `name@version` to
-`minimumReleaseAgeExclude` (never a bare package name, which exempts every future release),
-justify it in the PR, and note the date it ages out. On every pass, delete exclusions whose
+group is **high** risk, surface it for a human decision (step 2): wait for the cooling period,
+or bypass it. A bypass covers that one version only, by adding `name@version` to
+`minimumReleaseAgeExclude` (never a bare package name, which exempts every future release);
+justify it in the PR and note the date it ages out. On every pass, delete exclusions whose
 version is now at least 7 days old.
 
 Walk this list in order and stop at the first rule that applies.
@@ -98,12 +102,13 @@ Walk this list in order and stop at the first rule that applies.
    ```
 
 5. **No clean fix.** Split by risk:
-   - **High risk**: mitigate. Options, in order of preference: upgrade the parent across the
-     major and adapt our code to its breaking changes; take the fixed sub-dependency via a
-     forcing override and prove compatibility with tests that cover the parent's use of it;
-     patch around the vulnerable behaviour in our own code (input validation, disabling the
-     feature) while the upstream fix is pending. Add coverage for the vulnerable path in every
-     case. Record the mitigation in its own PR section.
+   - **High risk**: surface it for a human decision (step 2). The options to lay out: upgrade
+     the parent across the major and adapt our code to its breaking changes; take the fixed
+     sub-dependency via a forcing override and prove compatibility with tests that cover the
+     parent's use of it; patch around the vulnerable behaviour in our own code (input
+     validation, disabling the feature) while the upstream fix is pending; or accept/defer,
+     leaving the alert open with a re-check condition. Whichever change they choose, add
+     coverage for the vulnerable path.
    - **Normal risk, no fix upstream**: accept. List the package, why it is low risk, and the
      re-check condition in the PR's "Accepted / no upstream fix" section. If a Dependabot alert
      exists for it, leave the alert open; it is the reminder to re-check.
@@ -168,7 +173,7 @@ Then proceed with the upgrade. The new test and what it proves go in the QA Log.
 - Addon (`packages/addon`): `pnpm ci:validate && pnpm build`, then `pnpm typecheck` on its own: it
   is known to fail on `main`, so compare, don't block.
 - Integration and e2e when a runtime path changed; otherwise rely on PR CI and say so in the QA Log.
-- For every high-risk mitigation: run the new test against the *old* version too (it should fail
+- For every high-risk change chosen in step 3: run the new test against the *old* version too (it should fail
   or show the vulnerable behaviour) and against the new version (it passes). Both results go in
   the QA Log.
 - `gh api ".../dependabot/alerts?state=dismissed"` shows the new dismissals with their comments.
@@ -192,9 +197,11 @@ One paragraph: alerts addressed, direct bumps, overrides before -> after.
 | Alert | Package | Parent declares | Fix | Decision |
 one row per group, decisions in the words of step 3
 
-## High-risk mitigations
-One subsection per high-risk group (omit the section if none): what was reachable and how,
-what breaking changes were handled and where our code changed, which test now covers the path.
+## High-risk decisions
+One subsection per high-risk group put to a human (omit the section if none): what was
+reachable and how, the options presented with their risks and benefits, who decided, what they
+chose and why. If a change was made: what breaking changes were handled and where our code
+changed, which test now covers the path. If accepted or deferred: the re-check condition.
 
 ## Overrides
 Added (with justification) / removed (with drift-script status).
@@ -206,8 +213,9 @@ Alert numbers, package, one-line rationale each (the 280-char API comment points
 Package, why it is low risk, re-check condition.
 
 ## Cooling period
-Deferred: package, fix version, publish date, eligible date. Bypassed (high risk only): the
-`minimumReleaseAgeExclude` entry added, why it could not wait, date to remove it.
+Deferred: package, fix version, publish date, eligible date. Bypassed (high risk, human
+decision only): the `minimumReleaseAgeExclude` entry added, why it could not wait, date to
+remove it.
 
 ## QA Log
 - bulleted list of every verification step actually run, with the command and the result
