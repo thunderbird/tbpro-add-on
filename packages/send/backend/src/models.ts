@@ -23,10 +23,17 @@ import { verifyOwnedUploadId } from './utils/ownedUploadId';
 import storage from './storage';
 const prisma = new PrismaClient();
 
-export async function updateItemName(itemId: number, name: string) {
+// Rename only needs container scope: WRITE on the folder covers renaming any
+// item in it. Upload ownership is required only where the upload is destroyed.
+export async function updateItemName(
+  itemId: number,
+  containerId: string,
+  name: string
+) {
   const query = {
     where: {
       id: itemId,
+      containerId,
     },
     data: {
       name,
@@ -88,29 +95,52 @@ export async function createItem(
   return await fromPrismaV2(prisma.item.create, query, ITEM_NOT_CREATED);
 }
 
-export async function getWrappedKeyFromId(itemId: number) {
+// Matches an item only within the given container and only when the caller
+// owns its upload.
+function ownedItemInContainer(
+  id: number,
+  containerId: string,
+  ownerId: string
+) {
+  return { id, containerId, upload: { ownerId } };
+}
+
+export async function isUploadOwnedBy(uploadId: string, ownerId: string) {
+  const upload = await prisma.upload.findFirst({
+    where: { id: uploadId, ownerId },
+    select: { id: true },
+  });
+  return upload !== null;
+}
+
+export async function getWrappedKeyFromId(
+  itemId: number,
+  containerId: string,
+  ownerId: string
+) {
   const query = {
-    where: {
-      id: itemId,
-    },
+    where: ownedItemInContainer(itemId, containerId, ownerId),
     select: {
       wrappedKey: true,
     },
   };
 
   const item = await fromPrismaV2(
-    prisma.item.findUniqueOrThrow,
+    prisma.item.findFirstOrThrow,
     query,
     ITEM_NOT_FOUND
   );
   return item.wrappedKey;
 }
 
-export async function deleteItem(id: number, shouldDeleteUpload = false) {
+export async function deleteItem(
+  id: number,
+  containerId: string,
+  ownerId: string,
+  shouldDeleteUpload = false
+) {
   const findItemQuery = {
-    where: {
-      id,
-    },
+    where: ownedItemInContainer(id, containerId, ownerId),
     select: {
       containerId: true,
       uploadId: true,
@@ -120,14 +150,19 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
   };
 
   const item = await fromPrismaV2(
-    prisma.item.findUniqueOrThrow,
+    prisma.item.findFirstOrThrow,
     findItemQuery,
     ITEM_NOT_FOUND
   );
 
-  // find related parts
+  // find related parts (multipart siblings share a wrappedKey), limited to the
+  // same container and to uploads the caller owns
   const uploadIds = await prisma.item.findMany({
-    where: { wrappedKey: item.wrappedKey },
+    where: {
+      wrappedKey: item.wrappedKey,
+      containerId,
+      upload: { ownerId },
+    },
     select: {
       uploadId: true,
     },
@@ -135,11 +170,12 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
 
   const uploadIdsToDelete = uploadIds.map(({ uploadId }) => uploadId);
 
-  // delete items associated with those uploads
+  // delete only this container's items for those uploads
   try {
     await prisma.item.deleteMany({
       where: {
         uploadId: { in: uploadIdsToDelete },
+        containerId,
       },
     });
   } catch (error) {
@@ -147,11 +183,22 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
     throw new Error(ITEM_NOT_DELETED);
   }
 
+  // an upload still referenced from another container stays
+  const stillReferenced = await prisma.item.findMany({
+    where: { uploadId: { in: uploadIdsToDelete } },
+    select: { uploadId: true },
+    distinct: ['uploadId'],
+  });
+  const referenced = new Set(stillReferenced.map(({ uploadId }) => uploadId));
+  const unreferencedUploadIds = uploadIdsToDelete.filter(
+    (uploadId) => !referenced.has(uploadId)
+  );
+
   // delete uploads
   try {
     await prisma.upload.deleteMany({
       where: {
-        id: { in: uploadIdsToDelete },
+        id: { in: unreferencedUploadIds },
       },
     });
   } catch (error) {
@@ -160,7 +207,7 @@ export async function deleteItem(id: number, shouldDeleteUpload = false) {
   }
 
   if (shouldDeleteUpload) {
-    const deletePromises = uploadIdsToDelete.map((id) => storage.del(id));
+    const deletePromises = unreferencedUploadIds.map((id) => storage.del(id));
     try {
       await Promise.all(deletePromises);
     } catch (error) {

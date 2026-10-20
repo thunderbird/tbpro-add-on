@@ -30,6 +30,7 @@ vi.mock('../../middleware', () => ({
   requireJWT: named('requireJWT'),
   requireAuth: named('requireAuth'),
   getAuthenticatedUserData: vi.fn(),
+  reject: vi.fn(),
   renameBodyProperty: () => named('renameBodyProperty'),
   getGroupMemberPermissions: named('getGroupMemberPermissions'),
   requireReadPermission: named('requireReadPermission'),
@@ -50,6 +51,7 @@ vi.mock('../../models', () => ({
   getContainerInfo: vi.fn(),
   getContainerWithDescendants: vi.fn(),
   getWrappedKeyFromId: vi.fn(),
+  isUploadOwnedBy: vi.fn(),
   updateItemName: vi.fn(),
 }));
 
@@ -158,14 +160,17 @@ const EXPECTED_CONTAINERS: Record<string, string[]> = {
   ],
   'POST /:containerId/item': [
     'getGroupMemberPermissions',
+    'requireWritePermission',
     'rateLimiter(sensitive)',
   ],
   'DELETE /:containerId/item/:itemId': [
     'getGroupMemberPermissions',
+    'requireWritePermission',
     'rateLimiter(sensitive)',
   ],
   'POST /:containerId/item/:itemId/rename': [
     'getGroupMemberPermissions',
+    'requireWritePermission',
     'rateLimiter(sensitive)',
   ],
   'POST /:containerId/rename': [
@@ -196,11 +201,6 @@ const PERMISSION_EXEMPT: Record<string, string> = {
     'public by design: the challenge answer is itself the proof of access',
   'POST /:linkId/add-password':
     'compatibility no-op: accepts and ignores the body, writes nothing',
-  'POST /:containerId/item': 'pre-existing: any member may add items',
-  'DELETE /:containerId/item/:itemId':
-    'pre-existing: any member may delete items',
-  'POST /:containerId/item/:itemId/rename':
-    'pre-existing: any member may rename items',
   'POST /:containerId/report':
     'abuse reporting is reachable without an account',
 };

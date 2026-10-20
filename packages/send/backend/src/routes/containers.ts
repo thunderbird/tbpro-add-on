@@ -6,12 +6,15 @@ import {
   getContainerInfo,
   getContainerWithDescendants,
   getWrappedKeyFromId,
+  isUploadOwnedBy,
   reportUpload,
   updateItemName,
 } from '../models';
 
 import {
+  getAuthenticatedUserData,
   getGroupMemberPermissions,
+  reject,
   renameBodyProperty,
   requireAdminPermission,
   requireJWT,
@@ -358,12 +361,22 @@ router.delete(
 router.post(
   '/:containerId/item',
   getGroupMemberPermissions,
+  requireWritePermission,
   // State-changing action: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_CREATED),
   wrapAsyncHandler(async (req, res) => {
     const { containerId } = req.params;
     const { name, uploadId, type, wrappedKey, multipart, totalSize } = req.body;
+    // An item may only reference an upload the caller owns.
+    const userId = getAuthenticatedUserData(req)?.id;
+    if (
+      !userId ||
+      typeof uploadId !== 'string' ||
+      !(await isUploadOwnedBy(uploadId, userId))
+    ) {
+      return reject(res);
+    }
     try {
       const item = await createItem(
         name,
@@ -412,17 +425,26 @@ router.post(
 router.delete(
   '/:containerId/item/:itemId',
   getGroupMemberPermissions,
+  requireWritePermission,
   // State-changing action: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_DELETED),
   wrapAsyncHandler(async (req, res) => {
-    const { itemId } = req.params;
+    const { containerId, itemId } = req.params;
+    const userId = getAuthenticatedUserData(req)?.id;
+    if (!userId) {
+      return reject(res);
+    }
     // Force req.body.shouldDeleteUpload to a boolean
     const shouldDeleteUpload =
       req?.body?.shouldDeleteUpload === false ? false : true;
-    const wrappedKey = await getWrappedKeyFromId(parseInt(itemId));
+    const wrappedKey = await getWrappedKeyFromId(
+      parseInt(itemId),
+      containerId,
+      userId
+    );
     // We don't await the deleteItem promise because we want to return a response immediately after initiating the delete.
-    deleteItem(parseInt(itemId), shouldDeleteUpload);
+    deleteItem(parseInt(itemId), containerId, userId, shouldDeleteUpload);
     return res.status(202).json({ wrappedKey });
   })
 );
@@ -465,13 +487,14 @@ router.delete(
 router.post(
   '/:containerId/item/:itemId/rename',
   getGroupMemberPermissions,
+  requireWritePermission,
   // State-changing action: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
   addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_RENAMED),
   wrapAsyncHandler(async (req, res) => {
-    const { itemId } = req.params;
+    const { containerId, itemId } = req.params;
     const { name } = req.body;
-    const item = await updateItemName(parseInt(itemId), name);
+    const item = await updateItemName(parseInt(itemId), containerId, name);
     res.status(200).json(item);
   })
 );
