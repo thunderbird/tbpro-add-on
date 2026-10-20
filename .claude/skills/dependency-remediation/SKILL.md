@@ -21,6 +21,8 @@ reason and comment for every alert we dismiss, and the PR body holds every other
   7-day cooling period in `pnpm-workspace.yaml` needs it (see step 3).
 - `gh auth status` succeeds; the token can read and dismiss Dependabot alerts.
 - Fresh install so `node_modules/.pnpm` matches the lockfile: `pnpm install --frozen-lockfile`.
+- `scripts/override-drift.js` runs `npm view` by absolute path, not via PATH. If it exits with
+  "npm not found" (Nix and some other setups), `export NPM_BIN="$(command -v npm)"`.
 - Test environments: backend needs `packages/send/backend/.env` from `.env.sample` plus
   `docker compose up -d --wait minio`; addon needs `packages/addon/.env` (contents are in
   `.github/workflows/validate.yml`). Both files are gitignored.
