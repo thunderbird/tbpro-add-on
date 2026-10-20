@@ -16,13 +16,14 @@
 // Usage: node scripts/override-drift.js [--json] [--offline] [--dir <repo>]
 //   --json     print machine-readable JSON instead of markdown
 //   --offline  skip the registry lookups used to detect redundant overrides
+//   NPM_BIN    absolute path to npm, if it is not next to node or in a system dir
 //
 // Requires a fresh `pnpm install` so node_modules/.pnpm matches the lockfile.
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
@@ -46,6 +47,30 @@ function requireFromStore(name, majorPrefix) {
 }
 const semver = requireFromStore('semver', '7');
 const yaml = requireFromStore('js-yaml', '4');
+
+// Run `npm view` by absolute path rather than letting execFileSync search a
+// user-writable PATH (Sonar S4036). Candidates, in order: an explicit NPM_BIN,
+// the npm next to the node running this script (nvm, fnm, volta, Homebrew and
+// the official installers all lay it out that way), then fixed system dirs.
+function findNpm() {
+    const candidates = [
+        process.env.NPM_BIN,
+        path.join(path.dirname(process.execPath), 'npm'),
+        ...['/usr/local/bin', '/usr/bin', '/bin', '/opt/homebrew/bin'].map((d) => path.join(d, 'npm')),
+    ];
+    return candidates.find((c) => c && fs.existsSync(c)) || null;
+}
+const npmBin = offline ? null : findNpm();
+if (!offline && !npmBin) {
+    console.error('override-drift: npm not found; set NPM_BIN="$(command -v npm)" or pass --offline.');
+    process.exit(1);
+}
+function npmView(...fields) {
+    return execFileSync(npmBin, ['view', ...fields, '--json'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+    });
+}
 
 // --- Parse the lockfile -------------------------------------------------------
 
@@ -88,7 +113,7 @@ for (const [importer, sections] of Object.entries(lock.importers || {})) {
     const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : {};
     for (const sec of ['dependencies', 'devDependencies', 'optionalDependencies']) {
         for (const [child, info] of Object.entries(sections[sec] || {})) {
-            const declared = (manifest[sec] && manifest[sec][child]) || info.specifier;
+            const declared = manifest[sec]?.[child] || info.specifier;
             addEdge(child, `workspace:${importer}`, null, info.version, declared);
         }
     }
@@ -133,12 +158,7 @@ function declaredRange(parentName, parentVersion, child) {
             manifest = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
         } else if (!offline) {
             try {
-                manifest = JSON.parse(
-                    execFileSync('npm', ['view', id, 'dependencies', 'optionalDependencies', '--json'], {
-                        encoding: 'utf8',
-                        stdio: ['ignore', 'pipe', 'ignore'],
-                    }) || '{}',
-                );
+                manifest = JSON.parse(npmView(id, 'dependencies', 'optionalDependencies') || '{}');
             } catch {
                 manifest = null;
             }
@@ -149,12 +169,7 @@ function declaredRange(parentName, parentVersion, child) {
     if (!m) return null;
     // pnpm applies overrides to peer ranges too (optional peers show up in the
     // lockfile as optionalDependencies), so fall back to peerDependencies.
-    return (
-        (m.dependencies && m.dependencies[child]) ||
-        (m.optionalDependencies && m.optionalDependencies[child]) ||
-        (m.peerDependencies && m.peerDependencies[child]) ||
-        null
-    );
+    return m.dependencies?.[child] || m.optionalDependencies?.[child] || m.peerDependencies?.[child] || null;
 }
 
 // Only the packages named by an override matter; resolving declared ranges for
@@ -178,11 +193,7 @@ function publishedVersions(name) {
     if (offline) return null;
     if (!versionsCache.has(name)) {
         try {
-            const out = execFileSync('npm', ['view', name, 'versions', '--json'], {
-                encoding: 'utf8',
-                stdio: ['ignore', 'pipe', 'ignore'],
-            });
-            const parsed = JSON.parse(out);
+            const parsed = JSON.parse(npmView(name, 'versions'));
             versionsCache.set(name, (Array.isArray(parsed) ? parsed : [parsed]).filter((v) => semver.valid(v) && !semver.prerelease(v)));
         } catch {
             versionsCache.set(name, null);
@@ -239,10 +250,8 @@ for (const [selector, target] of Object.entries(overridesRaw)) {
     const child = sel.target.name;
     const rows = [];
     for (const e of edges.get(child) || []) {
-        if (sel.parent) {
-            if (e.parentName !== sel.parent.name) continue;
-            if (sel.parent.range && e.parentVersion && !semver.satisfies(e.parentVersion, sel.parent.range)) continue;
-        }
+        if (sel.parent && e.parentName !== sel.parent.name) continue;
+        if (sel.parent?.range && e.parentVersion && !semver.satisfies(e.parentVersion, sel.parent.range)) continue;
         if (e.declared == null) {
             // Parent manifest not available (or child is a peer we can't see);
             // report it, but it cannot count for or against the override.
@@ -287,25 +296,23 @@ for (const [selector, target] of Object.entries(overridesRaw)) {
         status = rows.length ? 'unknown' : 'dead'; // dead = matches no parent in the lockfile
     } else if (known.some((r) => r.meetsTarget === false)) {
         status = 'ineffective'; // a parent it applies to still resolves outside the target
+    } else if (worst !== 'in-range') {
+        status = 'forcing'; // parents run a version they never declared
     } else {
-        if (worst !== 'in-range') {
-            status = 'forcing'; // parents run a version they never declared
+        // Every parent is still inside its own range. Would it have resolved
+        // high enough without the override? Check against published versions.
+        const versions = publishedVersions(child);
+        if (versions) {
+            const redundant = rows.every((r) => {
+                const natural = semver.maxSatisfying(versions, r.declared);
+                return natural && semver.validRange(target) && semver.satisfies(natural, target);
+            });
+            status = redundant ? 'redundant' : 'needed';
         } else {
-            // Every parent is still inside its own range. Would it have resolved
-            // high enough without the override? Check against published versions.
-            const versions = publishedVersions(child);
-            if (versions) {
-                const redundant = rows.every((r) => {
-                    const natural = semver.maxSatisfying(versions, r.declared);
-                    return natural && semver.validRange(target) && semver.satisfies(natural, target);
-                });
-                status = redundant ? 'redundant' : 'needed';
-            } else {
-                status = 'in-range';
-            }
+            status = 'in-range';
         }
     }
-    const shadowed = rows.some((r) => r.competing && r.competing.length);
+    const shadowed = rows.some((r) => r.competing?.length);
     report.push({ selector, target, status, worstJump: worst, shadowed, rows });
 }
 
@@ -343,7 +350,11 @@ if (asJson) {
         }
     }
     console.log('\n## Summary\n');
-    for (const [k, v] of Object.entries(summary)) console.log(`- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`);
+    // Split the one nested object off first so only numbers are ever interpolated.
+    const { forcingByJump, ...counts } = summary;
+    for (const [k, n] of Object.entries(counts)) console.log(`- ${k}: ${n}`);
+    console.log('- forcingByJump:');
+    for (const [jump, n] of Object.entries(forcingByJump)) console.log(`  - ${jump}: ${n}`);
     console.log(
         '\nStatus key: dead = matches no parent; ineffective = a matched parent still resolves outside the target;',
     );
