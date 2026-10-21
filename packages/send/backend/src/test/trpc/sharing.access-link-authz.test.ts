@@ -17,13 +17,6 @@ vi.mock('@send-backend/models/sharing', () => ({
   incrementAccessLinkRetryCount: vi.fn(),
 }));
 vi.mock('../../models/containers', () => containersModel);
-vi.mock('@send-backend/models/verification', () => ({
-  getEncryptedPassphrase: vi.fn(),
-  storeEncryptedPassphrase: vi.fn(),
-}));
-vi.mock('@send-backend/ws/verify', () => ({
-  verificationEmitter: { emit: vi.fn() },
-}));
 vi.mock('../../trpc/middlewares', () => ({
   getAuthenticatedUserId: vi.fn(
     async (ctx: { user?: { id?: string } }) => ctx?.user?.id ?? null

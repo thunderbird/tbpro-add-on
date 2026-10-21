@@ -31,15 +31,6 @@ vi.mock('@send-backend/models/users', () => ({
   getUserByOIDCSubject: vi.fn(),
 }));
 
-vi.mock('@send-backend/models/verification', () => ({
-  getEncryptedPassphrase: vi.fn(),
-  storeEncryptedPassphrase: vi.fn(),
-}));
-
-vi.mock('@send-backend/ws/verify', () => ({
-  verificationEmitter: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
-}));
-
 const input = { linkId: 'link-1' };
 const baseCtx = {
   res: { setHeader: vi.fn() },

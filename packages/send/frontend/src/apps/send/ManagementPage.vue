@@ -14,7 +14,6 @@ import LoadingComponent from '../common/LoadingComponent.vue';
 import { useMetricsUpdate } from '../common/mixins/metrics';
 import SecureSendIcon from '../common/SecureSendIcon.vue';
 import TBBanner from '../common/TBBanner.vue';
-import { useVerificationStore } from './stores/verification-store';
 
 const { isLoggedIn } = useAuth();
 const { finishLogin, useLoginQuery } = useSendConfig();
@@ -23,7 +22,6 @@ const { updateMetricsIdentity } = useMetricsUpdate();
 const authStore = useAuthStore();
 
 const { loginToOIDC } = authStore;
-useVerificationStore();
 
 const { isLoading } = useLoginQuery();
 updateMetricsIdentity();

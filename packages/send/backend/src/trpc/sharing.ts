@@ -3,11 +3,6 @@ import {
   getAccessLinkRetryCount,
   incrementAccessLinkRetryCount,
 } from '@send-backend/models/sharing';
-import {
-  getEncryptedPassphrase,
-  storeEncryptedPassphrase,
-} from '@send-backend/models/verification';
-import { verificationEmitter } from '@send-backend/ws/verify';
 import { z } from 'zod';
 import { router, publicProcedure as t } from '../trpc';
 import { TRPCError } from '@trpc/server';
@@ -235,46 +230,5 @@ export const sharingRouter = router({
         console.error('Error deleting access link', error);
         throw new TRPCError({ code: 'NOT_FOUND' });
       }
-    }),
-
-  // Stores encrypted passphrase data
-  shareEncryptedPassphrase: t
-    .use(isAuthed)
-    .input(
-      z.object({
-        encryptedPassphrase: z.string(),
-        wrappedEncryptionKey: z.string(),
-        salt: z.string(),
-        codeSalt: z.string(),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const { encryptedPassphrase, wrappedEncryptionKey, salt, codeSalt } =
-        input;
-
-      // Store the encrypted passphrase data in the database
-      const result = await storeEncryptedPassphrase({
-        encryptedPassphrase,
-        wrappedEncryptionKey,
-        salt,
-        codeSalt,
-      });
-
-      if (result.id) {
-        // Notify any listeners waiting for the passphrase
-        verificationEmitter.emit('shared_passphrase', { id: result.id });
-        return { success: true, id: result.id };
-      } else {
-        throw new Error('Failed to store verification data');
-      }
-    }),
-
-  // Gets encrypted passphrase data using its ID
-  getEncryptedPassphrase: t
-    .use(isAuthed)
-    .input(z.string())
-    .query(async ({ input }) => {
-      const result = await getEncryptedPassphrase(input);
-      return result;
     }),
 });

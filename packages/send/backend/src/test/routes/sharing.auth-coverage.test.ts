@@ -11,8 +11,6 @@ vi.mock('@prisma/client', () => ({
 
 vi.mock('../../models/sharing', () => ({}));
 vi.mock('../../models/users', () => ({}));
-vi.mock('../../models/verification', () => ({}));
-vi.mock('../../ws/verify', () => ({ verificationEmitter: {} }));
 vi.mock('../../auth/client', () => ({}));
 vi.mock('../../metrics', () => ({ useMetrics: () => ({}) }));
 vi.mock('../../utils', () => ({}));

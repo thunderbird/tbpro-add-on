@@ -139,8 +139,7 @@ startup, so an untrusted cert fails the TLS handshake — and Gecko reports that
 rejection, which would carry a real status and an "Access-Control-Allow-Origin missing" error). Pick
 one of these:
 
-- **Trust the cert at the OS level (survives `--temp-profile`, and keeps the `wss` tRPC
-  connection working too).** Import the proxy cert into the macOS keychain and enable Gecko's enterprise-roots
+- **Trust the cert at the OS level (survives `--temp-profile`).** Import the proxy cert into the macOS keychain and enable Gecko's enterprise-roots
   support per run:
 
   ```sh
