@@ -24,8 +24,24 @@ export async function createUser(
   });
 }
 
+// Profile fields only (frontend `UserType`): callers send this row to the
+// client, so credentials and key-backup columns must never be selected (#1340).
+const USER_PROFILE_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  thundermailEmail: true,
+  tier: true,
+  createdAt: true,
+  updatedAt: true,
+  uniqueHash: true,
+} as const;
+
 export async function getUserById(id: string) {
-  return await prisma.user.findUnique({ where: { id } });
+  return await prisma.user.findUnique({
+    where: { id },
+    select: USER_PROFILE_SELECT,
+  });
 }
 
 /**
@@ -277,6 +293,8 @@ export async function updateUserPublicKey(id: string, publicKey: string) {
     data: {
       publicKey,
     },
+    // The route returns this row to the client (#1340).
+    select: { publicKey: true },
   };
 
   return await fromPrismaV2(prisma.user.update, query, USER_NOT_UPDATED);

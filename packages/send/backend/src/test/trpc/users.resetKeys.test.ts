@@ -46,7 +46,6 @@ vi.mock('@send-backend/models/users', () => ({
   getFTUEStatus: vi.fn(),
   getHashedPassword: vi.fn(),
   getUserByEmailV2: vi.fn(),
-  getUserById: vi.fn(),
   getUserByOIDCSubject: vi.fn(),
   markFTUEComplete: vi.fn(),
   resetKeys: vi.fn(),

@@ -20,7 +20,6 @@ import {
   getFTUEStatus,
   getHashedPassword,
   getUserByEmailV2,
-  getUserById,
   markFTUEComplete,
   resetKeys,
   updateUniqueHash,
@@ -66,33 +65,6 @@ export const usersRouter = router({
    */
   getUser: trpc.use(isAuthed).query(({ ctx }) => {
     return { user: Number(ctx.user.id) };
-  }),
-
-  /**
-   * @openapi
-   * /trpc/getUserData:
-   *   get:
-   *     tags:
-   *       - Users
-   *     summary: Get current user data
-   *     description: Returns the complete user data for the currently authenticated user
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: User data
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 userData:
-   *                   type: object
-   *                   description: Complete user data object
-   */
-  getUserData: trpc.use(isAuthed).query(async ({ ctx }) => {
-    const userData = await getUserById(ctx.user.id);
-    return { userData: userData };
   }),
 
   /**
