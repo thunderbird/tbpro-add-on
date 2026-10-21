@@ -2,6 +2,7 @@
 import useApiStore from '@send-frontend/stores/api-store';
 
 import { trpc } from '@send-frontend/lib/trpc';
+import { TRPCClientError } from '@trpc/client';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useVerificationStore } from '../stores/verification-store';
@@ -13,16 +14,31 @@ const router = useRouter();
 
 const codeVerification = ref<string | null>(null);
 const isError = ref(false);
+const shareError = ref<string | null>(null);
+
+const describeShareError = (error: unknown) =>
+  error instanceof TRPCClientError && error.data?.code === 'TOO_MANY_REQUESTS'
+    ? 'Too many attempts — wait a few minutes and try again.'
+    : 'Could not share your passphrase with the new device. Please try again.';
 
 const verifyCode = async (data: { code: string }) => {
   if (!data || !data.code) {
     console.error('Verification failed: no code provided');
     return;
   }
-  codeVerification.value = data.code;
-  const { id } = await handleSuccessfulVerificationForExistingClient(data.code);
-  console.log('Verification successful, ID:', id);
-  router.back(); // Navigate back after verification
+  shareError.value = null;
+  // Only report success once the server has actually stored the handoff.
+  try {
+    const { id } = await handleSuccessfulVerificationForExistingClient(
+      data.code
+    );
+    codeVerification.value = data.code;
+    console.log('Verification successful, ID:', id);
+    router.back(); // Navigate back after verification
+  } catch (error) {
+    console.error('Sharing passphrase failed:', error);
+    shareError.value = describeShareError(error);
+  }
 };
 
 const handleCodeInput = async (event: Event) => {
@@ -81,5 +97,8 @@ trpc.onVerificationFinished.subscribe(
   </p>
   <p v-if="isError" style="color: red">
     Verification failed. Please try again.
+  </p>
+  <p v-if="shareError" style="color: red" data-testid="share-error">
+    {{ shareError }}
   </p>
 </template>
