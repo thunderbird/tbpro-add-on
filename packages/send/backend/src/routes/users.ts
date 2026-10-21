@@ -10,6 +10,7 @@ import {
 } from '../errors/routes';
 
 import {
+  getAdminStatus,
   getAllUserGroupContainers,
   getBackup,
   getFTUEStatus,
@@ -340,8 +341,8 @@ router.get('/ftue', requireJWT, async (req: Request, res) => {
  */
 router.get('/is-admin', requireJWT, async (req: Request, res) => {
   const { id } = getDataFromAuthenticatedRequest(req);
-  const user = await getUserById(id);
-  res.status(200).json({ isAdmin: user?.isAdmin ?? false });
+  const isAdmin = await getAdminStatus(id);
+  res.status(200).json({ isAdmin: isAdmin ?? false });
 });
 
 /* ADMIN ONLY ROUTES */
