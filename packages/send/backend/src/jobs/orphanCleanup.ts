@@ -48,7 +48,7 @@ export function startOrphanCleanupSchedule(): NodeJS.Timeout | undefined {
     );
   }
   const timer = setInterval(() => {
-    if (running) {
+    if (running !== null) {
       console.warn('[orphanCleanup] previous run still active; skipping');
       return;
     }
