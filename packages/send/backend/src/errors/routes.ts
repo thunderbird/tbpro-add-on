@@ -1,5 +1,5 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
-import { STATUS_CODES } from 'http';
+import { STATUS_CODES } from 'node:http';
 
 type ErrorRespInfo = {
   statusCode: number;
@@ -219,5 +219,7 @@ export function errorHandler(
   });
 
   const log = status >= 500 ? console.error : console.warn;
-  log(`${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `);
+  // Strip line breaks so a crafted URL cannot forge extra log lines.
+  const url = req.originalUrl.replace(/[\r\n]/g, '');
+  log(`${status} - ${req.method} ${url} - ${req.ip} - ${message} `);
 }
