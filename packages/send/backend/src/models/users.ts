@@ -1,5 +1,9 @@
 import { ContainerType, PrismaClient, User, UserTier } from '@prisma/client';
+import { KEY_BACKUP_V2 } from '@send-backend/config';
 import {
+  BACKUP_FORMAT_SUPERSEDED,
+  BaseError,
+  KEY_UPGRADE_STALE,
   PROFILE_NOT_CREATED,
   USER_NOT_CREATED,
   USER_NOT_FOUND,
@@ -7,6 +11,36 @@ import {
 } from '../errors/models';
 import { fromPrismaV2, itemsIncludeOptions } from './prisma-helper';
 const prisma = new PrismaClient();
+
+// backupVersion only ever moves up. Legacy (v1) writes match no row once a user
+// is on v2, so a write racing an upgrade fails instead of clobbering it.
+const LEGACY_BACKUP_WRITABLE = (id: string) => ({
+  id,
+  backupVersion: { lt: KEY_BACKUP_V2 },
+});
+
+export async function getBackupVersion(id: string): Promise<number | null> {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { backupVersion: true },
+  });
+  return user?.backupVersion ?? null;
+}
+
+/**
+ * Throws BaseError(BACKUP_FORMAT_SUPERSEDED) when the user is on a v2 backup.
+ * Old clients still send v1 writes; the log line counts how many remain.
+ */
+export async function assertLegacyBackupWritable(id: string, via: string) {
+  const version = await getBackupVersion(id);
+  if (version !== null && version >= KEY_BACKUP_V2) {
+    console.warn(
+      'legacy key backup write rejected',
+      JSON.stringify({ userId: id, via, backupVersion: version })
+    );
+    throw new BaseError(BACKUP_FORMAT_SUPERSEDED);
+  }
+}
 
 export async function createUser(
   publicKey: string,
@@ -98,9 +132,7 @@ export async function resetKeys(
       backupContainerKeys: replacement.backupContainerKeys ?? null,
       updatedAt: new Date(),
     },
-    where: {
-      id,
-    },
+    where: LEGACY_BACKUP_WRITABLE(id),
   });
 }
 
@@ -380,6 +412,8 @@ export async function getBackup(id: string) {
         backupKeypair: true,
         backupKeystring: true,
         backupSalt: true,
+        backup: true,
+        backupVersion: true,
       },
     },
     USER_NOT_FOUND
@@ -394,9 +428,7 @@ export async function setBackup(
   salt: string
 ) {
   const query = {
-    where: {
-      id,
-    },
+    where: LEGACY_BACKUP_WRITABLE(id),
     data: {
       backupContainerKeys: keys,
       backupKeypair: keypair,
@@ -406,6 +438,74 @@ export async function setBackup(
   };
 
   return await fromPrismaV2(prisma.user.update, query, USER_NOT_FOUND);
+}
+
+export type KeyUpgrade = {
+  publicKey: string;
+  backup: string;
+  items?: { id: number; wrappedKey: string; expectedWrappedKey: string }[];
+  revokeLinks?: boolean;
+};
+
+/**
+ * Install a v2 backup and the new public key in one transaction, optionally
+ * re-wrapping item keys (each must still hold the value the client read, and
+ * sit in a container the user owns) and deleting the user's access links.
+ * Throws BaseError(KEY_UPGRADE_STALE) and rolls back if any item check fails.
+ */
+export async function upgradeKeys(id: string, upgrade: KeyUpgrade) {
+  const { publicKey, backup, items = [], revokeLinks = false } = upgrade;
+  return prisma.$transaction(
+    async (tx) => {
+      const { backupVersion: from } = await tx.user.findUniqueOrThrow({
+        where: { id },
+        select: { backupVersion: true },
+      });
+      if (from > KEY_BACKUP_V2) {
+        throw new BaseError(BACKUP_FORMAT_SUPERSEDED);
+      }
+
+      for (const item of items) {
+        const { count } = await tx.item.updateMany({
+          where: {
+            id: item.id,
+            wrappedKey: item.expectedWrappedKey,
+            container: { ownerId: id },
+          },
+          data: { wrappedKey: item.wrappedKey, updatedAt: new Date() },
+        });
+        if (count !== 1) {
+          throw new BaseError(KEY_UPGRADE_STALE);
+        }
+      }
+
+      let linksRevoked = 0;
+      if (revokeLinks) {
+        ({ count: linksRevoked } = await tx.accessLink.deleteMany({
+          where: { share: { container: { ownerId: id } } },
+        }));
+      }
+
+      await tx.user.update({
+        // Never lower a version (v2 -> v2 rewrites are allowed).
+        where: { id, backupVersion: { lte: KEY_BACKUP_V2 } },
+        data: {
+          publicKey,
+          backup,
+          backupVersion: KEY_BACKUP_V2,
+          backupKeypair: null,
+          backupContainerKeys: null,
+          backupKeystring: null,
+          backupSalt: null,
+          updatedAt: new Date(),
+        },
+      });
+
+      return { from, items: items.length, linksRevoked };
+    },
+    // One row update per re-wrapped item; large accounts need more than 5 s.
+    { timeout: 60_000 }
+  );
 }
 
 // OIDC Authentication Functions

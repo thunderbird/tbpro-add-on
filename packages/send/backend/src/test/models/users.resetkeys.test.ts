@@ -92,6 +92,7 @@ describe('resetKeys — safe write-new-then-swap (#1116)', () => {
 
     expect(h.mockUpdate).toHaveBeenCalledTimes(1);
     const args = h.mockUpdate.mock.calls[0][0];
-    expect(args.where).toEqual({ id: ID });
+    // Scoped to the user, and never over a v2 backup.
+    expect(args.where).toEqual({ id: ID, backupVersion: { lt: 2 } });
   });
 });

@@ -1,0 +1,157 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Key backup v2, model layer: what upgradeKeys writes inside its transaction,
+// and the legacy-write guard. Rollback itself is proven against a real DB in
+// users.upgradekeys.integration.ts.
+
+const h = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
+  userFindUniqueOrThrow: vi.fn(),
+  userUpdate: vi.fn(),
+  itemUpdateMany: vi.fn(),
+  accessLinkDeleteMany: vi.fn(),
+  transaction: vi.fn(),
+}));
+
+vi.mock('@prisma/client', () => ({
+  ContainerType: { FOLDER: 'FOLDER', CONVERSATION: 'CONVERSATION' },
+  UserTier: { FREE: 'FREE', PRO: 'PRO', EPHEMERAL: 'EPHEMERAL' },
+  PrismaClient: vi.fn(function () {
+    return {
+      user: { findUnique: h.userFindUnique },
+      $transaction: h.transaction,
+    };
+  }),
+  Prisma: {},
+}));
+
+import { assertLegacyBackupWritable, upgradeKeys } from '../../models/users';
+
+const ID = 'user-v2';
+const tx = {
+  user: { findUniqueOrThrow: h.userFindUniqueOrThrow, update: h.userUpdate },
+  item: { updateMany: h.itemUpdateMany },
+  accessLink: { deleteMany: h.accessLinkDeleteMany },
+};
+const base = { publicKey: 'new-pk', backup: '{"v":2}' };
+
+describe('upgradeKeys (model)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    h.transaction.mockImplementation((fn) => fn(tx));
+    h.userFindUniqueOrThrow.mockResolvedValue({ backupVersion: 1 });
+    h.itemUpdateMany.mockResolvedValue({ count: 1 });
+    h.accessLinkDeleteMany.mockResolvedValue({ count: 2 });
+    h.userUpdate.mockResolvedValue({});
+  });
+
+  it('sets the v2 backup and public key, nulls legacy columns, bumps updatedAt', async () => {
+    await expect(upgradeKeys(ID, base)).resolves.toEqual({
+      from: 1,
+      items: 0,
+      linksRevoked: 0,
+    });
+
+    const { where, data } = h.userUpdate.mock.calls[0][0];
+    expect(where).toEqual({ id: ID, backupVersion: { lte: 2 } });
+    expect(data).toMatchObject({
+      publicKey: 'new-pk',
+      backup: '{"v":2}',
+      backupVersion: 2,
+      backupKeypair: null,
+      backupContainerKeys: null,
+      backupKeystring: null,
+      backupSalt: null,
+    });
+    expect(data.updatedAt).toBeInstanceOf(Date);
+    expect(h.itemUpdateMany).not.toHaveBeenCalled();
+    expect(h.accessLinkDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it('re-wraps items only where the key is unchanged and the caller owns the container', async () => {
+    const items = [
+      { id: 1, wrappedKey: 'n1', expectedWrappedKey: 'o1' },
+      { id: 2, wrappedKey: 'n2', expectedWrappedKey: 'o2' },
+    ];
+
+    await expect(
+      upgradeKeys(ID, { ...base, items, revokeLinks: true })
+    ).resolves.toEqual({ from: 1, items: 2, linksRevoked: 2 });
+
+    expect(h.itemUpdateMany).toHaveBeenCalledTimes(2);
+    expect(h.itemUpdateMany.mock.calls[0][0].where).toEqual({
+      id: 1,
+      wrappedKey: 'o1',
+      container: { ownerId: ID },
+    });
+    expect(h.itemUpdateMany.mock.calls[0][0].data.wrappedKey).toBe('n1');
+    expect(h.accessLinkDeleteMany).toHaveBeenCalledWith({
+      where: { share: { container: { ownerId: ID } } },
+    });
+  });
+
+  it('aborts before writing the user row when an item is stale or not owned', async () => {
+    h.itemUpdateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+
+    await expect(
+      upgradeKeys(ID, {
+        ...base,
+        items: [
+          { id: 1, wrappedKey: 'n1', expectedWrappedKey: 'o1' },
+          { id: 2, wrappedKey: 'n2', expectedWrappedKey: 'stale' },
+        ],
+        revokeLinks: true,
+      })
+    ).rejects.toThrow('KEY_UPGRADE_STALE');
+
+    expect(h.accessLinkDeleteMany).not.toHaveBeenCalled();
+    expect(h.userUpdate).not.toHaveBeenCalled();
+  });
+
+  it('allows a v2 -> v2 rewrite', async () => {
+    h.userFindUniqueOrThrow.mockResolvedValue({ backupVersion: 2 });
+
+    await expect(upgradeKeys(ID, base)).resolves.toMatchObject({ from: 2 });
+    expect(h.userUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('never lowers a newer backup version', async () => {
+    h.userFindUniqueOrThrow.mockResolvedValue({ backupVersion: 3 });
+
+    await expect(upgradeKeys(ID, base)).rejects.toThrow(
+      'BACKUP_FORMAT_SUPERSEDED'
+    );
+    expect(h.userUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('assertLegacyBackupWritable', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('passes for a v1 user', async () => {
+    h.userFindUnique.mockResolvedValue({ backupVersion: 1 });
+
+    await expect(assertLegacyBackupWritable(ID, 'test')).resolves.toBe(
+      undefined
+    );
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('throws BACKUP_FORMAT_SUPERSEDED and logs one counter line for a v2 user', async () => {
+    h.userFindUnique.mockResolvedValue({ backupVersion: 2 });
+
+    await expect(assertLegacyBackupWritable(ID, 'test')).rejects.toThrow(
+      'BACKUP_FORMAT_SUPERSEDED'
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      'legacy key backup write rejected',
+      JSON.stringify({ userId: ID, via: 'test', backupVersion: 2 })
+    );
+  });
+});

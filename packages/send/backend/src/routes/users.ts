@@ -10,6 +10,7 @@ import {
 } from '../errors/routes';
 
 import {
+  assertLegacyBackupWritable,
   getAdminStatus,
   getAllUserGroupContainers,
   getBackup,
@@ -23,6 +24,11 @@ import {
 } from '../models/users';
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
+import { KEY_BACKUP_V2 } from '@send-backend/config';
+import {
+  BACKUP_FORMAT_SUPERSEDED,
+  BaseError,
+} from '@send-backend/errors/models';
 import { requireAdminPermisions, requireJWT } from '../middleware';
 
 const router: Router = Router();
@@ -245,6 +251,8 @@ router.post(
  *         description: Backup created successfully
  *       400:
  *         description: Backup failed
+ *       409:
+ *         description: The user is on backup format v2; legacy writes are refused (code BACKUP_FORMAT_SUPERSEDED)
  */
 router.post(
   '/backup',
@@ -252,6 +260,17 @@ router.post(
   addErrorHandling(USER_ERRORS.BACKUP_FAILED),
   wrapAsyncHandler(async (req, res) => {
     const { id } = getDataFromAuthenticatedRequest(req);
+    try {
+      await assertLegacyBackupWritable(id, 'POST /api/users/backup');
+    } catch (e) {
+      if (e instanceof BaseError && e.message === BACKUP_FORMAT_SUPERSEDED) {
+        const { statusCode, message } = USER_ERRORS.BACKUP_FORMAT_SUPERSEDED;
+        return res
+          .status(statusCode)
+          .json({ statusCode, code: BACKUP_FORMAT_SUPERSEDED, message });
+      }
+      throw e;
+    }
     const { keys, keypair, keystring, salt } = req.body;
     // We're not using the return value, but we want to make sure the backup runs
     await setBackup(id, keys, keypair, keystring, salt);
@@ -272,7 +291,32 @@ router.post(
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Backup retrieved successfully
+ *         description: >
+ *           Backup retrieved successfully. Users on backup format v1 get the
+ *           legacy fields; users on v2 get only the v2 envelope (a JSON string)
+ *           and the legacy fields are absent.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     backupContainerKeys:
+ *                       type: string
+ *                     backupKeypair:
+ *                       type: string
+ *                     backupKeystring:
+ *                       type: string
+ *                     backupSalt:
+ *                       type: string
+ *                 - type: object
+ *                   properties:
+ *                     backupVersion:
+ *                       type: integer
+ *                       enum: [2]
+ *                     backup:
+ *                       type: string
+ *                       description: v2 backup envelope, JSON-encoded
  *       404:
  *         description: Backup not found
  */
@@ -283,8 +327,15 @@ router.get(
   wrapAsyncHandler(async (req, res) => {
     try {
       const { id } = getDataFromAuthenticatedRequest(req);
-      const backup = await getBackup(id);
-      res.status(200).json(backup);
+      const row = await getBackup(id);
+      if (!row) {
+        return res.status(200).json(row);
+      }
+      const { backup, backupVersion, ...legacy } = row;
+      if (backupVersion >= KEY_BACKUP_V2) {
+        return res.status(200).json({ backupVersion, backup });
+      }
+      res.status(200).json(legacy);
     } catch {
       res.status(USER_ERRORS.BACKUP_NOT_FOUND.statusCode).json({
         message: USER_ERRORS.BACKUP_NOT_FOUND.message,

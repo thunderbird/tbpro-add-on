@@ -42,7 +42,9 @@ vi.mock('@send-backend/models', () => ({
 }));
 
 vi.mock('@send-backend/models/users', () => ({
+  assertLegacyBackupWritable: vi.fn(),
   createUserWithPassword: vi.fn(),
+  getBackupVersion: vi.fn(),
   getFTUEStatus: vi.fn(),
   getHashedPassword: vi.fn(),
   getUserByEmailV2: vi.fn(),
@@ -50,6 +52,7 @@ vi.mock('@send-backend/models/users', () => ({
   markFTUEComplete: vi.fn(),
   resetKeys: vi.fn(),
   updateUniqueHash: vi.fn(),
+  upgradeKeys: vi.fn(),
 }));
 
 const input = {

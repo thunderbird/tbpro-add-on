@@ -65,6 +65,34 @@ export function getEnvironmentName(): EnvironmentName {
 
 export { ENVIRONMENT };
 
+// --- Key backup v2 rollout ---------------------------------------------------
+//
+//   off    clients read v2 backups but never write them (default)
+//   optin  the "upgrade my keys" button is available
+//   auto   clients upgrade at their next unlock
+export const KEY_BACKUP_V2 = 2;
+export type KeyBackupV2Mode = 'off' | 'optin' | 'auto';
+const KEY_BACKUP_V2_MODES: readonly string[] = ['off', 'optin', 'auto'];
+let warnedKeyBackupV2Mode: string | null = null;
+
+// Read per request so the rollout stage can change without a code change.
+export function getKeyBackupV2Mode(): KeyBackupV2Mode {
+  const raw = (process.env.KEY_BACKUP_V2_MODE ?? '').trim().toLowerCase();
+  if (raw === '') {
+    return 'off';
+  }
+  if (KEY_BACKUP_V2_MODES.includes(raw)) {
+    return raw as KeyBackupV2Mode;
+  }
+  if (warnedKeyBackupV2Mode !== raw) {
+    warnedKeyBackupV2Mode = raw;
+    console.warn(
+      `KEY_BACKUP_V2_MODE="${raw}" is not one of off|optin|auto; using "off"`
+    );
+  }
+  return 'off';
+}
+
 // --- Rate limiting -----------------------------------------------------------
 //
 // One named tier per kind of endpoint, so every route picks a limit by name

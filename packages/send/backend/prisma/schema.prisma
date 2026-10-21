@@ -35,6 +35,8 @@ model User {
   backupContainerKeys String?
   backupKeystring     String?
   backupSalt          String?
+  backup              String?
+  backupVersion       Int          @default(1)
   containers          Container[]
   groups              Membership[]
   profile             Profile?

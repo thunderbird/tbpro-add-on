@@ -130,6 +130,10 @@ export const USER_ERRORS = {
     statusCode: 404,
     message: 'Could not retrieve backup.',
   },
+  BACKUP_FORMAT_SUPERSEDED: {
+    statusCode: 409,
+    message: 'Your encryption keys were upgraded. Update the app to continue.',
+  },
   DEV_LOGIN_FAILED: {
     statusCode: 500,
     message: 'Could not perform dev-only login.',

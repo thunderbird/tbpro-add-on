@@ -37,6 +37,11 @@ export const USER_NOT_FOUND = 'USER_NOT_FOUND';
 export const USER_NOT_UPDATED = 'USER_NOT_UPDATED';
 export const USER_NOT_DELETED = 'USER_NOT_DELETED';
 
+// A v2 key backup must never be overwritten by a legacy (v1) write.
+export const BACKUP_FORMAT_SUPERSEDED = 'BACKUP_FORMAT_SUPERSEDED';
+// An item's wrapped key changed since the client read it.
+export const KEY_UPGRADE_STALE = 'KEY_UPGRADE_STALE';
+
 export const PROFILE_NOT_CREATED = 'PROFILE_NOT_CREATED';
 
 export const SESSION_NOT_SAVED = 'SESSION_NOT_SAVED';

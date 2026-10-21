@@ -1,5 +1,13 @@
 import { hashPassword, verifyHash } from '@send-backend/auth/client';
-import { VERSION } from '@send-backend/config';
+import {
+  getKeyBackupV2Mode,
+  KEY_BACKUP_V2,
+  VERSION,
+} from '@send-backend/config';
+import {
+  BACKUP_FORMAT_SUPERSEDED,
+  BaseError,
+} from '@send-backend/errors/models';
 import {
   createLoginSession,
   deleteContainer,
@@ -13,16 +21,49 @@ import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import {
+  assertLegacyBackupWritable,
   createUserWithPassword,
+  getBackupVersion,
   getFTUEStatus,
   getHashedPassword,
   getUserByEmailV2,
+  getUserById,
+  KeyUpgrade,
   markFTUEComplete,
   resetKeys,
   updateUniqueHash,
+  upgradeKeys,
 } from '../models/users';
 import { router, publicProcedure as trpc } from '../trpc';
 import { isAuthed, requirePublicLogin, useEnvironment } from './middlewares';
+
+const b64 = z.string().regex(/^[A-Za-z0-9+/_-]+={0,2}$/);
+const encryptedItem = z.object({ iv: b64, ct: b64 });
+
+// Shape check only; the server never decrypts the backup.
+const backupV2Envelope = z.object({
+  v: z.literal(KEY_BACKUP_V2),
+  kdf: z.object({
+    name: z.literal('PBKDF2'),
+    hash: z.literal('SHA-256'),
+    iterations: z.number().int().positive(),
+    salt: b64,
+  }),
+  wrappedBackupKey: b64,
+  items: z.object({
+    publicKey: encryptedItem,
+    privateKey: encryptedItem,
+    containerKeys: z.record(z.string(), encryptedItem),
+  }),
+});
+
+const backupV2Json = z.string().refine((raw) => {
+  try {
+    return backupV2Envelope.safeParse(JSON.parse(raw)).success;
+  } catch {
+    return false;
+  }
+}, 'backup must be a v2 key backup envelope');
 
 /**
  * Delete every container and upload row the user owns. Containers go first so
@@ -104,6 +145,19 @@ export const usersRouter = router({
    *                 clientVersion:
    *                   type: string
    *                   description: Client version that was checked
+   *                 keyBackupV2:
+   *                   type: object
+   *                   description: Key backup v2 rollout state
+   *                   properties:
+   *                     mode:
+   *                       type: string
+   *                       enum: [off, optin, auto]
+   *                     available:
+   *                       type: boolean
+   *                     userVersion:
+   *                       type: integer
+   *                       nullable: true
+   *                       description: Caller's backupVersion; null when signed out
    */
   settings: trpc
     .input(
@@ -112,7 +166,7 @@ export const usersRouter = router({
         appName: z.string().nullable(),
       })
     )
-    .query(async ({ input: { version: clientVersion, appName } }) => {
+    .query(async ({ ctx, input: { version: clientVersion, appName } }) => {
       const compatibility = {
         resolvedCompatibility: false,
         result: 'UNRESOLVED',
@@ -131,7 +185,17 @@ export const usersRouter = router({
       }
 
       const apiVersion = VERSION;
-      return { apiVersion, compatibility, clientVersion };
+      const mode = getKeyBackupV2Mode();
+      let userVersion: number | null = null;
+      if (ctx?.user?.id) {
+        try {
+          userVersion = await getBackupVersion(ctx.user.id);
+        } catch (e) {
+          console.error('settings: could not read backupVersion', e);
+        }
+      }
+      const keyBackupV2 = { mode, available: mode !== 'off', userVersion };
+      return { apiVersion, compatibility, clientVersion, keyBackupV2 };
     }),
 
   /**
@@ -155,6 +219,8 @@ export const usersRouter = router({
    *                 success:
    *                   type: boolean
    *                   description: Whether the reset was successful
+   *       409:
+   *         description: CONFLICT with message BACKUP_FORMAT_SUPERSEDED when the user is on backup format v2
    */
   resetKeys: trpc
     .use(isAuthed)
@@ -172,6 +238,17 @@ export const usersRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const id = ctx.user.id;
+      try {
+        await assertLegacyBackupWritable(id, 'resetKeys');
+      } catch (e) {
+        if (e instanceof BaseError && e.message === BACKUP_FORMAT_SUPERSEDED) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: BACKUP_FORMAT_SUPERSEDED,
+          });
+        }
+        throw e;
+      }
       try {
         // 1. Write-new-then-swap: install the confirmed replacement blob FIRST.
         //    Only once this succeeds is it safe to abandon the old containers.
@@ -197,6 +274,92 @@ export const usersRouter = router({
       }
 
       return { success: true };
+    }),
+
+  /**
+   * @openapi
+   * /trpc/upgradeKeys:
+   *   post:
+   *     tags:
+   *       - Users
+   *     summary: Install a v2 key backup and a new public key
+   *     description: >
+   *       Atomically replaces the public key and backup with a v2 envelope and
+   *       clears the legacy backup columns. Optionally re-wraps item keys in
+   *       containers the caller owns (each guarded by expectedWrappedKey) and
+   *       deletes the caller's access links. Refused while KEY_BACKUP_V2_MODE is off.
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Upgrade applied
+   *       400:
+   *         description: Malformed input or backup envelope
+   *       409:
+   *         description: CONFLICT (KEY_UPGRADE_STALE) when an item changed or is not the caller's; nothing is written
+   *       412:
+   *         description: PRECONDITION_FAILED (KEY_BACKUP_V2_DISABLED) when the mode is off
+   */
+  upgradeKeys: trpc
+    .use(isAuthed)
+    .input(
+      z.object({
+        publicKey: z.string().min(1),
+        backup: backupV2Json,
+        backupVersion: z.literal(KEY_BACKUP_V2),
+        // Container.wrappedKey is written at creation but never read, so there
+        // is nothing to update server-side; accepted for forward compatibility.
+        containers: z
+          .array(z.object({ id: z.string(), wrappedKey: z.string() }))
+          .optional(),
+        items: z
+          .array(
+            z.object({
+              id: z.number().int(),
+              wrappedKey: z.string().min(1),
+              expectedWrappedKey: z.string().min(1),
+            })
+          )
+          .optional(),
+        revokeLinks: z.boolean().optional(),
+        trigger: z.enum(['optin', 'auto']),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (getKeyBackupV2Mode() === 'off') {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'KEY_BACKUP_V2_DISABLED',
+        });
+      }
+      const userId = ctx.user.id;
+      try {
+        const { from, items, linksRevoked } = await upgradeKeys(
+          userId,
+          input as KeyUpgrade
+        );
+        console.info(
+          'key backup upgraded',
+          JSON.stringify({
+            userId,
+            from,
+            to: KEY_BACKUP_V2,
+            trigger: input.trigger,
+            items,
+            linksRevoked,
+          })
+        );
+        return { backupVersion: KEY_BACKUP_V2, linksRevoked };
+      } catch (e) {
+        if (e instanceof BaseError) {
+          throw new TRPCError({ code: 'CONFLICT', message: e.message });
+        }
+        console.error('upgradeKeys failed', e);
+        throw new TRPCError({
+          code: 'UNPROCESSABLE_CONTENT',
+          message: 'Could not upgrade keys',
+        });
+      }
     }),
 
   /**
