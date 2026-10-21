@@ -2,7 +2,7 @@
 // profile fields may leave the server, never credentials or key backups (#1340).
 import express from 'express';
 import request from 'supertest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => {
   const fullRow = {
@@ -71,10 +71,6 @@ const SECRET_FIELDS = [
 ];
 
 describe('current-user routes return only profile fields', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('GET /api/users/me', async () => {
     const response = await request(app).get('/api/users/me');
 

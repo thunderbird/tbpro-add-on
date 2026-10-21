@@ -26,7 +26,7 @@ export async function createUser(
 
 // Profile fields only (frontend `UserType`): callers send this row to the
 // client, so credentials and key-backup columns must never be selected (#1340).
-export const USER_PROFILE_SELECT = {
+const USER_PROFILE_SELECT = {
   id: true,
   email: true,
   name: true,
