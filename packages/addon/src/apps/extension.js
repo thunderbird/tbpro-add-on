@@ -5,7 +5,9 @@ import { gateSentryOnTelemetry } from '../sentryGate';
 
 const app = createApp(Extension);
 
-// Sentry must be initialized (or not) before mount so it can hook the app.
-await gateSentryOnTelemetry(app);
+// Not awaited: a slow or hung telemetry read must never block the UI (#1278).
+// Sentry attaches to the app once the gate resolves; the few ms before that
+// are uncaptured, which is acceptable.
+void gateSentryOnTelemetry(app);
 setupApp(app);
 mountApp(app, '#extension-page');
