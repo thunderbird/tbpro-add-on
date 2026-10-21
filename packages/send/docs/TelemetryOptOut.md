@@ -71,12 +71,27 @@ to Send tabs when the prefs change. `token-bridge.js` relays both between
   (`scrubBreadcrumb`) strips the query and fragment from auto-captured breadcrumb
   URLs (`data.url`/`to`/`from`) — the access-link secret lives in the URL fragment.
   `closeSentry()` tears down on runtime opt-out.
+  - **Add-on pages gate through `packages/addon/src/sentryGate.ts`**
+    (`gateSentryOnTelemetry(app?)`): reads `browser.thundermailTelemetry`, calls
+    `initSentry` only when enabled, and subscribes to `onChanged` so Sentry is
+    started/stopped on pref changes. Fails closed and never throws. Callers
+    (`background.ts`, `extension.js`) do **not** await it, so a slow telemetry
+    read cannot delay startup or mount.
+  - **Background page:** `initSentry()` without an `app` skips the Vue
+    integration and page tracing and disables console breadcrumbs (background
+    logs can carry tokens and addresses).
+  - **Releases & sessions:** `release` is the package version
+    (`__APP_VERSION__`), not the git commit, so Sentry Release Health shows
+    adoption per version (#1330). Re-enabling telemetry at runtime starts a new
+    session explicitly (`startSession` / `captureSession`), since the session
+    integration only does so on the first init per page.
 - `posthog.js` — `init()` is deferred until first opt-in; `setPosthogConsent()`
   opts in/out at runtime.
 
 ## Verification
 
 ### Automated
+
 `tsc --noEmit`, ESLint (touched files), and `vitest` (`telemetryConsent.test.ts`
 covers website-allowed, pref on/off, bridge on/off, and fail-closed) are green.
 

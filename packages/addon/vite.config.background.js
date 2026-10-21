@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
         org: 'thunderbird',
         project: 'tbpro-addon',
         authToken: env.VITE_SENTRY_AUTH_TOKEN,
-        release: packageJson.version,
+        release: { name: packageJson.version },
         moduleMetadata: {
           version: packageJson.version,
           appHost: 'background',

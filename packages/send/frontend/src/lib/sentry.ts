@@ -67,18 +67,31 @@ export function scrubBreadcrumb(
 
 let initialized = false;
 
-export const initSentry = (app: App) => {
+/**
+ * Starts Sentry. `app` is omitted by the add-on background page, which has no
+ * Vue app: the Vue integration (which would warn "Misconfigured SDK") and page
+ * tracing are skipped there. Sessions are tagged with the build version.
+ */
+export const initSentry = (app?: App) => {
   // Calling Sentry.init again after a close() re-creates the client, so this is
   // safe to invoke on opt-in. Guard against a redundant double-init.
   if (initialized && Sentry.getClient()) {
     return;
   }
 
+  // A closed client lingers after close(); its presence means this is a re-init.
+  const reinit = !!Sentry.getClient();
+
   Sentry.init({
     app,
     dsn: config.sentryDsn,
-    integrations: [
-      Sentry.browserTracingIntegration(),
+    release: __APP_VERSION__,
+    integrations: (defaults) => [
+      ...(app ? defaults : defaults.filter((i) => i.name !== 'Vue')),
+      ...(app
+        ? [Sentry.browserTracingIntegration()]
+        : // Background console logs can carry credentials and addresses.
+          [Sentry.breadcrumbsIntegration({ console: false })]),
       // Session Replay is intentionally NOT enabled: it records DOM contents
       // and input, which can capture PII. See issue #892 (privacy hardening).
       // Console capture stays on: messages are developer-authored log
@@ -100,6 +113,13 @@ export const initSentry = (app: App) => {
     beforeSend: scrubEvent,
     beforeBreadcrumb: scrubBreadcrumb,
   });
+
+  // The session integration only starts a session on the first init per page,
+  // so start one explicitly when telemetry is re-enabled at runtime.
+  if (reinit) {
+    Sentry.startSession({ ignoreDuration: true });
+    Sentry.captureSession();
+  }
 
   Sentry.setTag('environmentName', config.appEnv);
   initialized = true;
