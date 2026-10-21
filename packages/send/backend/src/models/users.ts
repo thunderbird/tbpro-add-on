@@ -293,6 +293,8 @@ export async function updateUserPublicKey(id: string, publicKey: string) {
     data: {
       publicKey,
     },
+    // The route returns this row to the client (#1340).
+    select: { publicKey: true },
   };
 
   return await fromPrismaV2(prisma.user.update, query, USER_NOT_UPDATED);

@@ -26,15 +26,27 @@ const h = vi.hoisted(() => {
     isAdmin: true,
   };
   // Behaves like Prisma: no `select` returns every scalar column.
+  const pick = (
+    row: Record<string, unknown>,
+    select?: Record<string, boolean>
+  ) =>
+    select
+      ? Object.fromEntries(Object.keys(select).map((key) => [key, row[key]]))
+      : row;
   const findUnique = vi.fn(
     async ({ select }: { select?: Record<string, boolean> }) =>
-      select
-        ? Object.fromEntries(
-            Object.keys(select).map((key) => [key, fullRow[key]])
-          )
-        : fullRow
+      pick(fullRow, select)
   );
-  return { fullRow, prisma: { user: { findUnique } } };
+  const update = vi.fn(
+    async ({
+      data,
+      select,
+    }: {
+      data: Record<string, unknown>;
+      select?: Record<string, boolean>;
+    }) => pick({ ...fullRow, ...data }, select)
+  );
+  return { fullRow, prisma: { user: { findUnique, update } } };
 });
 
 vi.mock('@prisma/client', () => ({
@@ -60,15 +72,17 @@ const app = express();
 app.use(express.json());
 app.use('/api/users', router);
 
-const SECRET_FIELDS = [
-  'hashedPassword',
-  'backupKeypair',
-  'backupContainerKeys',
-  'backupKeystring',
-  'backupSalt',
-  'publicKey',
-  'oidcSubject',
-];
+// Allowlist (frontend `UserType`), so a column added to `User` later can't leak.
+const PROFILE_FIELDS = new Set([
+  'id',
+  'email',
+  'name',
+  'thundermailEmail',
+  'tier',
+  'createdAt',
+  'updatedAt',
+  'uniqueHash',
+]);
 
 describe('current-user routes return only profile fields', () => {
   it('GET /api/users/me', async () => {
@@ -76,9 +90,7 @@ describe('current-user routes return only profile fields', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.user.id).toBe(h.fullRow.id);
-    for (const field of SECRET_FIELDS) {
-      expect(response.body.user).not.toHaveProperty(field);
-    }
+    expect(new Set(Object.keys(response.body.user))).toEqual(PROFILE_FIELDS);
   });
 
   it('POST /api/users/login', async () => {
@@ -88,9 +100,7 @@ describe('current-user routes return only profile fields', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe(h.fullRow.id);
-    for (const field of SECRET_FIELDS) {
-      expect(response.body).not.toHaveProperty(field);
-    }
+    expect(new Set(Object.keys(response.body))).toEqual(PROFILE_FIELDS);
   });
 
   it('GET /api/users/is-admin still reports admin status', async () => {
@@ -98,5 +108,14 @@ describe('current-user routes return only profile fields', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ isAdmin: true });
+  });
+
+  it('POST /api/users/publickey returns only the new public key', async () => {
+    const response = await request(app)
+      .post('/api/users/publickey')
+      .send({ publicKey: 'new-key' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ update: { publicKey: '"new-key"' } });
   });
 });
