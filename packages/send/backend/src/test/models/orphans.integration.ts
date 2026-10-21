@@ -307,6 +307,86 @@ describe('findOrphans', () => {
     expect(admitted.filter(Boolean)).toHaveLength(2);
   });
 
+  it('counts an upload finalized while the quota is read', async () => {
+    const finalizing = '00000000-0000-4000-8000-0000000000c1';
+    await prisma.pendingUpload.create({
+      data: {
+        id: finalizing,
+        ownerId: user.id,
+        size: 1000,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    });
+
+    // The finalize commits its Upload row and drops the reservation while the
+    // reserve is blocked reading PendingUpload; the reserve must still see one.
+    let reserve: Promise<boolean> = Promise.resolve(false);
+    await prisma.$transaction(async (tx) => {
+      await tx.upload.create({
+        data: { id: finalizing, size: 1000, ownerId: user.id, type: 'x' },
+      });
+      await tx.pendingUpload.delete({ where: { id: finalizing } });
+      await tx.$executeRaw`LOCK TABLE "PendingUpload" IN ACCESS EXCLUSIVE MODE`;
+      reserve = reservePendingUpload(
+        '00000000-0000-4000-8000-0000000000c2',
+        user.id,
+        600,
+        1500
+      );
+      await vi.waitFor(async () => {
+        const [{ waiting }] = await prisma.$queryRaw<{ waiting: bigint }[]>`
+          SELECT COUNT(*) AS waiting FROM pg_stat_activity
+          WHERE wait_event_type = 'Lock' AND query LIKE '%PendingUpload%'`;
+        expect(Number(waiting)).toBeGreaterThan(0);
+      });
+    });
+    uploads.push(
+      await prisma.upload.findUniqueOrThrow({ where: { id: finalizing } })
+    );
+
+    expect(await reserve).toBe(false);
+  });
+
+  it('a retried finalize is refused once cleanup deleted the orphan', async () => {
+    storageDel.mockResolvedValue(true);
+    const orphan = await prisma.upload.create({
+      data: { size: 1000, ownerId: user.id, createdAt: OLD, type: 'x' },
+    });
+    uploads.push(orphan);
+    // The reservation outlived its finalize because clearing it failed.
+    await prisma.pendingUpload.create({
+      data: { id: orphan.id, ownerId: user.id, size: 1000, expiresAt: OLD },
+    });
+
+    // The retried finalize arrives while cleanup is deleting the bytes.
+    let retryHeld: boolean | undefined;
+    storageDel.mockImplementationOnce(async () => {
+      retryHeld = await holdPendingUpload(orphan.id);
+      return true;
+    });
+
+    expect((await deleteOrphans()).deletedUploadIds).toEqual([orphan.id]);
+    expect(retryHeld).toBe(false);
+  });
+
+  it('keeps an orphan whose reservation a finalize is holding', async () => {
+    storageDel.mockResolvedValue(true);
+    const orphan = await prisma.upload.create({
+      data: { size: 1000, ownerId: user.id, createdAt: OLD, type: 'x' },
+    });
+    uploads.push(orphan);
+    await prisma.pendingUpload.create({
+      data: { id: orphan.id, ownerId: user.id, size: 1000, expiresAt: OLD },
+    });
+    expect(await holdPendingUpload(orphan.id)).toBe(true);
+
+    expect((await deleteOrphans()).deletedUploadIds).toEqual([]);
+    expect(storageDel).not.toHaveBeenCalledWith(orphan.id);
+    expect(
+      await prisma.upload.findUnique({ where: { id: orphan.id } })
+    ).not.toBeNull();
+  });
+
   it('a held reservation is not swept; a claimed one cannot be held', async () => {
     storageDel.mockResolvedValue(true);
     const held = '00000000-0000-4000-8000-0000000000b1';

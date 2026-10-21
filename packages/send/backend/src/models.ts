@@ -427,6 +427,9 @@ export async function findOrphans(
 
 type OrphanOutcome = 'deleted' | 'kept' | 'error';
 
+// Thrown to roll back an orphan delete whose reservation a finalize holds.
+class OrphanHeld extends Error {}
+
 async function deleteOrphan({
   id,
   ownerId,
@@ -434,27 +437,39 @@ async function deleteOrphan({
   id: string;
   ownerId: string;
 }): Promise<OrphanOutcome> {
-  let claimed: boolean;
   try {
     // The row goes together with a claimed sweep record for its bytes, so they
     // stay reachable if the delete below fails and a replayed finalize is
-    // refused. Conditional, so an upload that gained an item is kept.
-    claimed = await prisma.$transaction(async (tx) => {
+    // refused. A leftover reservation is claimed rather than skipped; one a
+    // finalize holds (unexpired) rolls the delete back.
+    const claimed = await prisma.$transaction(async (tx) => {
       const { count } = await tx.upload.deleteMany({
         where: { id, items: { none: {} } },
       });
       if (count === 0) return false;
-      await tx.pendingUpload.createMany({
-        data: [{ id, ownerId, expiresAt: new Date(0), sweptAt: new Date() }],
+      const sweptAt = new Date();
+      const existing = await tx.pendingUpload.updateMany({
+        where: { id, sweptAt: null, expiresAt: { lt: sweptAt } },
+        data: { sweptAt },
+      });
+      if (existing.count > 0) return true;
+      const created = await tx.pendingUpload.createMany({
+        data: [{ id, ownerId, expiresAt: new Date(0), sweptAt }],
         skipDuplicates: true,
       });
+      if (created.count > 0) return true;
+      const held = await tx.pendingUpload.count({
+        where: { id, sweptAt: null },
+      });
+      if (held > 0) throw new OrphanHeld();
       return true;
     });
+    if (!claimed) return 'kept';
   } catch (e) {
+    if (e instanceof OrphanHeld) return 'kept';
     console.error(`[deleteOrphans] Could not delete upload ${id}`, e);
     return 'error';
   }
-  if (!claimed) return 'kept';
 
   try {
     await storage.del(id);

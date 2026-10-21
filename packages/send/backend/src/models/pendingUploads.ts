@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import storage from '../storage';
 import { UPLOAD_URL_TTL_SECONDS } from '../storage/s3b2';
 import { mapLimit } from '../utils/mapLimit';
@@ -10,8 +10,6 @@ const DEFAULT_ORPHAN_MIN_AGE_HOURS = 24;
 export const CLEANUP_BATCH_SIZE = 1000;
 // Rows cleaned up in parallel; small so cleanup leaves the pool to requests.
 export const CLEANUP_CONCURRENCY = 5;
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
  * How old an unfinished upload must be before cleanup may remove it (#117).
@@ -39,10 +37,9 @@ function urlExpiry(): Date {
  */
 export async function getReservedBytes(
   ownerId: string,
-  excludeId?: string,
-  db: Db = prisma
+  excludeId?: string
 ): Promise<number> {
-  const result = await db.pendingUpload.aggregate({
+  const result = await prisma.pendingUpload.aggregate({
     where: {
       ownerId,
       expiresAt: { gt: new Date() },
@@ -68,14 +65,17 @@ export function reservePendingUpload(
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${ownerId}))`;
     if (size) {
-      const uploads = await tx.upload.aggregate({
-        where: { ownerId },
-        _sum: { size: true },
-      });
-      const used =
-        Number(uploads._sum.size ?? 0) +
-        (await getReservedBytes(ownerId, undefined, tx));
-      if (used + size >= limit) return false;
+      // One statement, one snapshot: a finalize committing meanwhile is counted
+      // as its Upload row or as its reservation, never as neither.
+      const [{ used }] = await tx.$queryRaw<{ used: bigint }[]>`
+        SELECT (
+          (SELECT COALESCE(SUM("size"), 0) FROM "Upload"
+            WHERE "ownerId" = ${ownerId}::uuid)
+          + (SELECT COALESCE(SUM("size"), 0) FROM "PendingUpload"
+            WHERE "ownerId" = ${ownerId}::uuid
+              AND "expiresAt" > (NOW() AT TIME ZONE 'UTC'))
+        )::bigint AS used`;
+      if (Number(used) + size >= limit) return false;
     }
     await tx.pendingUpload.create({
       data: { id, ownerId, size: size ?? null, expiresAt: urlExpiry() },

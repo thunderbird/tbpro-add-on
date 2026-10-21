@@ -9,6 +9,7 @@ const h = vi.hoisted(() => {
   const prisma = {
     $transaction: vi.fn(),
     $executeRaw: vi.fn(),
+    $queryRaw: vi.fn(),
     upload: {
       findMany: vi.fn(),
       deleteMany: vi.fn(),
@@ -61,6 +62,7 @@ beforeEach(() => {
   delete process.env.ORPHAN_MIN_AGE_HOURS;
   h.prisma.$transaction.mockImplementation((fn) => fn(h.prisma));
   h.prisma.$executeRaw.mockResolvedValue(1);
+  h.prisma.$queryRaw.mockResolvedValue([{ used: 0n }]);
   h.storageDel.mockResolvedValue(true);
   h.prisma.upload.findMany.mockResolvedValue([]);
   h.prisma.upload.deleteMany.mockResolvedValue({ count: 1 });
@@ -97,15 +99,23 @@ describe('reservePendingUpload', () => {
     expect(sql.join('?')).toContain('pg_advisory_xact_lock');
     expect(owner).toBe('owner-1');
     expect(h.prisma.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
-      h.prisma.pendingUpload.aggregate.mock.invocationCallOrder[0]
+      h.prisma.$queryRaw.mock.invocationCallOrder[0]
     );
   });
 
+  it('reads stored and reserved bytes in one statement', async () => {
+    await reservePendingUpload('id-1', 'owner-1', 2048, LIMIT);
+
+    expect(h.prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const sql = h.prisma.$queryRaw.mock.calls[0][0].join('?');
+    expect(sql).toContain('FROM "Upload"');
+    expect(sql).toContain('FROM "PendingUpload"');
+    expect(h.prisma.upload.aggregate).not.toHaveBeenCalled();
+    expect(h.prisma.pendingUpload.aggregate).not.toHaveBeenCalled();
+  });
+
   it('refuses, reserving nothing, when stored plus reserved bytes would reach the limit', async () => {
-    h.prisma.upload.aggregate.mockResolvedValue({ _sum: { size: 6000n } });
-    h.prisma.pendingUpload.aggregate.mockResolvedValue({
-      _sum: { size: 3000n },
-    });
+    h.prisma.$queryRaw.mockResolvedValue([{ used: 9000n }]);
 
     expect(await reservePendingUpload('id-1', 'owner-1', 1000, LIMIT)).toBe(
       false
@@ -114,11 +124,12 @@ describe('reservePendingUpload', () => {
   });
 
   it('records a size-less reservation for a request that sent none', async () => {
-    h.prisma.upload.aggregate.mockResolvedValue({ _sum: { size: 99999n } });
+    h.prisma.$queryRaw.mockResolvedValue([{ used: 99999n }]);
 
     expect(
       await reservePendingUpload('id-1', 'owner-1', undefined, LIMIT)
     ).toBe(true);
+    expect(h.prisma.$queryRaw).not.toHaveBeenCalled();
     const { data } = h.prisma.pendingUpload.create.mock.calls[0][0];
     expect(data.size).toBeNull();
   });
@@ -252,6 +263,7 @@ describe('deleteOrphans', () => {
 
   it('records the bytes for the sweep in the same transaction as the row delete', async () => {
     h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
 
     await deleteOrphans();
 
@@ -275,6 +287,34 @@ describe('deleteOrphans', () => {
     });
   });
 
+  it('claims a leftover expired reservation instead of adding a record', async () => {
+    h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
+
+    const result = await deleteOrphans();
+
+    expect(result.deletedUploadIds).toEqual(['a']);
+    const { where, data } = h.prisma.pendingUpload.updateMany.mock.calls[0][0];
+    expect(where).toEqual({
+      id: 'a',
+      sweptAt: null,
+      expiresAt: { lt: data.sweptAt },
+    });
+    expect(h.prisma.pendingUpload.createMany).not.toHaveBeenCalled();
+    expect(h.storageDel).toHaveBeenCalledWith('a');
+  });
+
+  it('rolls back and keeps the bytes when a finalize holds the reservation', async () => {
+    h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+    h.prisma.pendingUpload.createMany.mockResolvedValue({ count: 0 });
+    h.prisma.pendingUpload.count.mockResolvedValue(1);
+
+    const result = await deleteOrphans();
+
+    expect(result).toEqual({ deletedUploadIds: [], errorUploadIds: [] });
+    expect(h.storageDel).not.toHaveBeenCalled();
+  });
+
   it('keeps an upload that gained an item after the scan', async () => {
     h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
     h.prisma.upload.deleteMany.mockResolvedValue({ count: 0 });
@@ -293,7 +333,7 @@ describe('deleteOrphans', () => {
     const result = await deleteOrphans();
 
     expect(result.deletedUploadIds).toEqual(['a']);
-    expect(h.prisma.pendingUpload.createMany).toHaveBeenCalled();
+    expect(h.prisma.pendingUpload.updateMany).toHaveBeenCalled();
     expect(h.prisma.pendingUpload.deleteMany).not.toHaveBeenCalled();
   });
 

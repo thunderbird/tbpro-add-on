@@ -78,4 +78,38 @@ describe('startOrphanCleanupSchedule', () => {
 
     clearInterval(timer);
   });
+
+  it('refuses an interval beyond the timer limit at startup', () => {
+    process.env.ORPHAN_CLEANUP_INTERVAL_HOURS = '720';
+    expect(() => startOrphanCleanupSchedule()).toThrow(
+      'ORPHAN_CLEANUP_INTERVAL_HOURS=720 exceeds the maximum of 596 hours'
+    );
+
+    process.env.ORPHAN_CLEANUP_INTERVAL_HOURS = '596';
+    clearInterval(startOrphanCleanupSchedule());
+  });
+
+  it('skips ticks while the previous run is still active', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let finish = () => {};
+    h.deleteOrphans.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = () => resolve(ORPHANS);
+      })
+    );
+    process.env.ORPHAN_CLEANUP_INTERVAL_HOURS = '1';
+    const timer = startOrphanCleanupSchedule();
+
+    await vi.advanceTimersByTimeAsync(3 * 60 * 60 * 1000);
+    expect(h.deleteOrphans).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledTimes(2);
+
+    finish();
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    expect(h.deleteOrphans).toHaveBeenCalledTimes(2);
+
+    clearInterval(timer);
+    warn.mockRestore();
+  });
 });
