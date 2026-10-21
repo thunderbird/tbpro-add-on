@@ -4,7 +4,6 @@ packages:
   - packages/send/frontend
   - packages/send/e2e
   - packages/addon
-
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
@@ -19,12 +18,9 @@ allowBuilds:
   prisma: true
   protobufjs: true
   vue-demi: true
-
 injectWorkspacePackages: true
-
 minimumReleaseAgeExclude:
   - http-cache-semantics@4.3.0
-
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
@@ -39,80 +35,17 @@ onlyBuiltDependencies:
   - prisma
   - protobufjs
   - vue-demi
-
 overrides:
-  '@grpc/grpc-js@>=1.14.0 <1.14.5': ^1.14.5
   '@opentelemetry/core@<2.8.0': '>=2.8.0'
-  '@opentelemetry/instrumentation-knex@<0.65.0': ^0.65.0
-  '@opentelemetry/instrumentation-mongoose@<0.67.0': ^0.67.0
-  '@opentelemetry/instrumentation-mysql2@<0.67.0': ^0.67.0
-  '@opentelemetry/instrumentation-mysql@<0.67.0': ^0.67.0
-  '@opentelemetry/instrumentation-pg@<0.73.0': ^0.73.0
-  '@opentelemetry/instrumentation-tedious@<0.40.0': ^0.40.0
-  '@vitest/mocker@>=2.1.0 <4.1.11': ^4.1.11
-  '@vue/server-renderer@<3.5.42': ^3.5.42
   axios@>=1.0.0 <1.20.0: ^1.20.0
-  axios@>=1.12.0 <1.20.0: ^1.20.0
-  axios@>=1.13.0 <1.20.0: ^1.20.0
-  axios@>=1.15.0 <1.20.0: ^1.20.0
-  axios@>=1.15.1 <1.20.0: ^1.20.0
-  axios@>=1.15.2 <1.20.0: ^1.20.0
-  axios@>=1.16.1 <1.20.0: ^1.20.0
-  axios@>=1.17.0 <1.20.0: ^1.20.0
-  axios@>=1.7.0 <1.20.0: ^1.20.0
   basic-ftp@<=6.2.0: ^6.2.1
-  brace-expansion@<1.1.18: '>=1.1.18 <2'
-  brace-expansion@<1.1.19: ^1.1.19
-  brace-expansion@<1.1.20: ^1.1.20
-  brace-expansion@<1.1.21: ^1.1.21
-  brace-expansion@>=2.0.0 <2.1.4: '>=2.1.4 <3'
-  brace-expansion@>=2.0.0 <2.1.5: ^2.1.5
-  brace-expansion@>=2.0.0 <2.1.6: ^2.1.6
-  brace-expansion@>=2.0.0 <2.1.7: ^2.1.7
-  brace-expansion@>=4.0.0 <5.0.10: ^5.0.10
-  brace-expansion@>=4.0.0 <5.0.11: ^5.0.11
   brace-expansion@>=4.0.0 <5.0.12: ^5.0.12
-  brace-expansion@>=4.0.0 <5.0.9: '>=5.0.9 <6'
-  browserslist@<=4.28.6: '>=4.28.7'
   browserstack-node-sdk>aws-sdk: 2.1693.0
-  dompurify@>=3.4.13 <=3.4.15: ^3.4.16
-  fast-uri@>=3.0.0 <3.1.5: '>=3.1.5 <4'
-  fast-uri@>=3.0.0 <3.1.6: '>=3.1.6'
-  fast-uri@>=3.0.0 <3.1.8: ^3.1.8
-  fast-uri@>=3.1.2 <3.1.6: '>=3.1.6'
-  fast-uri@>=3.1.3 <3.1.6: '>=3.1.6'
   fflate@>=0.4.5 <0.4.9: '>=0.4.9'
-  handlebars@>=3.0.0 <=4.7.9: ^4.7.10
-  http-cache-semantics@<=4.2.0: ^4.3.0
-  ip-address@<=10.3.0: '>=10.3.1 <11'
-  ip-address@<=10.5.0: ^10.5.1
-  ip-address@<=10.7.0: ^10.7.1
-  ip-address@>=10.2.0 <=10.5.0: ^10.5.1
-  js-yaml@>=3.0.0 <3.15.1: '>=3.15.1 <4'
-  js-yaml@>=3.0.0 <3.15.2: '>=3.15.2 <4'
-  js-yaml@>=4.0.0 <4.3.1: '>=4.3.1 <5'
-  js-yaml@>=4.0.0 <4.3.2: '>=4.3.2 <5'
-  nanoid@<3.3.17: '>=3.3.17 <4'
-  nx@>=23.0.0 <23.2.1: ^23.2.1
-  pacote@>=11.2.7 <21.5.1: '>=21.5.1'
+  nx@>=23.0.0 <24.0.0: 23.2.1
   postcss-selector-parser@>=6.1.0 <6.1.3: '>=6.1.3'
-  postcss-selector-parser@>=7.1.0 <7.1.3: '>=7.1.3'
-  postcss@<=8.5.22: '>=8.5.23 <9'
-  proxy-addr@>=1.1.0 <2.0.8: ^2.0.8
   qs@>=2.2.5 <6.16.0: '>=6.16.0'
-  qs@>=6.11.1 <=6.15.1: '>=6.15.2 <7'
-  qs@>=6.14.2 <=6.15.3: '>=6.16.0'
-  smol-toml@<=1.7.0: ^1.7.1
-  smol-toml@<=1.8.0: ^1.9.0
-  source-map-js@>=1.0.0 <1.2.2: ^1.2.2
-  tar@<=7.5.20: '>=7.5.21 <8'
+  smol-toml@<=1.8.0: ^1.9.1
   tsx: 4.23.1
-  undici@<6.28.1: ^6.28.1
-  undici@>=6.25.0 <6.28.1: ^6.28.1
-  undici@>=6.7.0 <6.28.1: ^6.28.1
-  undici@>=8.0.0 <8.10.2: ^8.10.2
-  undici@>=8.1.0 <8.10.2: ^8.10.2
-  undici@>=8.10.0 <8.10.2: ^8.10.2
   uuid@<11.1.1: '>=11.1.1'
-  vitest@>=2.1.0 <4.1.11: ^4.1.11
-  yaml@>=2.0.0 <2.8.3: '>=2.8.3 <3'
+  vue@3.5.41: ^3.5.43
