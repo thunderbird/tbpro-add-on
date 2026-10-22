@@ -5,7 +5,6 @@ import {
 import { getContainerKeyFromChallenge } from '@send-frontend/lib/challenge';
 import { Keychain, Util } from '@send-frontend/lib/keychain';
 import Sharer from '@send-frontend/lib/share';
-import { trpc } from '@send-frontend/lib/trpc';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
@@ -71,12 +70,8 @@ const useSharingStore = defineStore('sharingManager', () => {
       keychain as Keychain
     );
 
-    // If the password is incorrect, increment the password retry count.
+    // Wrong password: the challenge endpoint has already counted the attempt.
     if (!containerKey?.unwrappedKey) {
-      await trpc.incrementPasswordRetryCount.mutate({
-        linkId,
-      });
-
       return false;
     }
 

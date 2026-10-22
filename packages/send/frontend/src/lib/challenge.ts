@@ -39,23 +39,18 @@ export async function getContainerKeyFromChallenge(
     return null;
   }
 
+  // Steps 3-4: unwrap the challenge key and decrypt the challenge. A wrong
+  // password yields '', which we still post so the server counts the attempt
+  // and locks the link when due.
+  const challengePlaintext = await solveChallenge(
+    keychain,
+    password,
+    challengeKeyStr,
+    challengeCiphertext,
+    challengeSalt
+  );
+
   try {
-    // Step 3: unwrap the challenge key using the password
-    const unwrappedChallengeKey: CryptoKey =
-      await keychain.password.unwrapContentKey(
-        challengeKeyStr,
-        password,
-        challengeSalt
-      );
-
-    // Step 4: decrypt the challenge ciphertext and send it back
-    const challengePlaintext: string =
-      await keychain.challenge.decryptChallenge(
-        challengeCiphertext,
-        unwrappedChallengeKey,
-        challengeSalt
-      );
-
     // Step 5: post the challenge text to receive:
     // - containerId
     // - wrapped container key
@@ -73,8 +68,8 @@ export async function getContainerKeyFromChallenge(
       'POST'
     );
 
-    if (!challengeResp.containerId) {
-      throw Error('Challenge unsuccessful');
+    if (!challengePlaintext || !challengeResp?.containerId) {
+      return null;
     }
     const {
       containerId,
@@ -93,5 +88,29 @@ export async function getContainerKeyFromChallenge(
   } catch (e) {
     console.log(e);
     return null;
+  }
+}
+
+async function solveChallenge(
+  keychain: Keychain,
+  password: string,
+  challengeKeyStr: string,
+  challengeCiphertext: string,
+  challengeSalt: ArrayBuffer
+): Promise<string> {
+  try {
+    const unwrappedChallengeKey: CryptoKey =
+      await keychain.password.unwrapContentKey(
+        challengeKeyStr,
+        password,
+        challengeSalt
+      );
+    return await keychain.challenge.decryptChallenge(
+      challengeCiphertext,
+      unwrappedChallengeKey,
+      challengeSalt
+    );
+  } catch {
+    return '';
   }
 }

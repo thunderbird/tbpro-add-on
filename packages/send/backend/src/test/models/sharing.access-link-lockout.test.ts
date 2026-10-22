@@ -175,6 +175,30 @@ describe('access-link lockout and validity', () => {
       expect(updateManyCalls()).toHaveLength(0);
     });
 
+    it('counts an empty answer and locks on the one that reaches the limit', async () => {
+      // Clients post an empty answer when the password fails locally.
+      h.prisma.accessLink.update.mockResolvedValueOnce(
+        linkAfterAttempt(MAX_ACCESS_LINK_RETRIES)
+      );
+      h.prisma.accessLink.updateMany.mockResolvedValue({ count: 1 });
+
+      await expect(acceptAccessLink('link-1', '')).rejects.toThrow(
+        'ACCESSLINK_NOT_FOUND'
+      );
+      expect(updateCalls()[0]).toMatchObject({
+        data: { retryCount: { increment: 1 } },
+      });
+      expect(updateManyCalls()).toEqual([
+        {
+          where: {
+            id: 'link-1',
+            retryCount: { gte: MAX_ACCESS_LINK_RETRIES },
+          },
+          data: { locked: true },
+        },
+      ]);
+    });
+
     it('refuses a locked or expired link without counting', async () => {
       // The usable-link filter matches no row, so the update throws.
       h.prisma.accessLink.update.mockRejectedValueOnce(

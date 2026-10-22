@@ -2,8 +2,10 @@ import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getContainerKeyFromChallenge } from '@send-frontend/lib/challenge';
 import { Util } from '@send-frontend/lib/keychain';
 import Sharer from '@send-frontend/lib/share';
+import { trpc } from '@send-frontend/lib/trpc';
 
 const URL = 'http://just.kidding';
 
@@ -20,6 +22,14 @@ vi.mock('@send-frontend/lib/share', () => {
     default: Sharer,
   };
 });
+
+vi.mock('@send-frontend/lib/challenge', () => ({
+  getContainerKeyFromChallenge: vi.fn(),
+}));
+
+vi.mock('@send-frontend/lib/trpc', () => ({
+  trpc: { incrementPasswordRetryCount: { mutate: vi.fn() } },
+}));
 
 describe(`Sharing Store`, () => {
   beforeEach(() => {
@@ -102,6 +112,19 @@ describe(`Sharing Store`, () => {
         undefined
       );
       expect(result).toBeNull();
+    });
+  });
+
+  describe(`acceptAccessLink`, () => {
+    it(`returns false for a wrong password without calling the legacy retry mutation`, async () => {
+      vi.mocked(getContainerKeyFromChallenge).mockResolvedValueOnce(null);
+      const sharingStore = useSharingStore();
+
+      const result = await sharingStore.acceptAccessLink('link-1', 'wrong');
+
+      expect(result).toBe(false);
+      expect(getContainerKeyFromChallenge).toHaveBeenCalledTimes(1);
+      expect(trpc.incrementPasswordRetryCount.mutate).not.toHaveBeenCalled();
     });
   });
 });
