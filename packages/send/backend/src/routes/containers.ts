@@ -444,7 +444,7 @@ router.delete(
       req?.body?.shouldDeleteUpload !== false &&
       req?.body?.shouldDeleteContent !== false;
     const { wrappedKey } = await deleteItem(
-      parseInt(itemId),
+      Number.parseInt(itemId),
       containerId,
       userId,
       shouldDeleteUpload
@@ -500,7 +500,7 @@ router.post(
   wrapAsyncHandler(async (req, res) => {
     const { containerId, itemId } = req.params;
     const { name } = req.body;
-    const item = await updateItemName(parseInt(itemId), containerId, name);
+    const item = await updateItemName(Number.parseInt(itemId), containerId, name);
     res.status(200).json(item);
   })
 );
