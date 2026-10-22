@@ -61,10 +61,7 @@ router.get(
       const jwtRefreshToken = getCookie(req?.headers?.cookie, 'refresh_token');
       const refreshToken = getJWTfromToken(jwtRefreshToken);
 
-      const signedData = getUserFromJWT(
-        refreshToken,
-        process.env.REFRESH_TOKEN_SECRET
-      );
+      const signedData = getUserFromJWT(refreshToken, 'refresh');
 
       registerAuthToken(signedData, res);
 

@@ -1,22 +1,15 @@
-import { getJWTfromToken } from '@send-backend/auth/client';
+import { getJWTfromToken, getUserFromJWT } from '@send-backend/auth/client';
 import { validateJWT } from '@send-backend/auth/jwt';
-import jwt from 'jsonwebtoken';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@send-backend/auth/client', () => ({
   getJWTfromToken: vi.fn(),
-}));
-
-vi.mock('jsonwebtoken', () => ({
-  default: {
-    verify: vi.fn(),
-  },
+  getUserFromJWT: vi.fn(),
 }));
 
 describe('validateJWT', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    process.env.ACCESS_TOKEN_SECRET = 'test-secret';
+    vi.resetAllMocks();
   });
 
   it('should return null when no tokens are present', () => {
@@ -28,11 +21,14 @@ describe('validateJWT', () => {
     });
 
     expect(result).toBeNull();
+    expect(getUserFromJWT).not.toHaveBeenCalled();
   });
 
-  it('should return valid when token verification succeeds', () => {
-    vi.mocked(getJWTfromToken).mockReturnValue('valid-token');
-    vi.mocked(jwt.verify).mockReturnValue({} as never);
+  it('should return valid when both tokens verify against their own lifetime', () => {
+    vi.mocked(getJWTfromToken)
+      .mockReturnValueOnce('valid-token')
+      .mockReturnValueOnce('refresh-token');
+    vi.mocked(getUserFromJWT).mockReturnValue({} as never);
 
     const result = validateJWT({
       jwtToken: 'valid-token',
@@ -40,17 +36,21 @@ describe('validateJWT', () => {
     });
 
     expect(result).toBe('valid');
-    expect(jwt.verify).toHaveBeenCalledWith('valid-token', 'test-secret');
+    expect(getUserFromJWT).toHaveBeenNthCalledWith(
+      1,
+      'refresh-token',
+      'refresh'
+    );
+    expect(getUserFromJWT).toHaveBeenNthCalledWith(2, 'valid-token', 'access');
   });
 
-  it('should return shouldRefresh when token verification fails', () => {
-    vi.resetAllMocks();
+  it('should return shouldRefresh when only the access token fails to verify', () => {
     vi.mocked(getJWTfromToken).mockReturnValue('valid-token');
-    vi.mocked(jwt.verify)
-      .mockImplementationOnce(() => ({}) as never) // first call succeeds
+    vi.mocked(getUserFromJWT)
+      .mockImplementationOnce(() => ({}) as never) // refresh token verifies
       .mockImplementationOnce(() => {
         throw new Error('Token invalid');
-      }); // second call throws
+      }); // access token throws
 
     const result = validateJWT({
       jwtToken: 'invalid-token',
@@ -60,9 +60,9 @@ describe('validateJWT', () => {
     expect(result).toBe('shouldRefresh');
   });
 
-  it('should return null when refresh token is not valid', () => {
+  it('should return shouldLogin when the refresh token is not valid', () => {
     vi.mocked(getJWTfromToken).mockReturnValue('invalid-refresh-token');
-    vi.mocked(jwt.verify).mockImplementation(() => {
+    vi.mocked(getUserFromJWT).mockImplementation(() => {
       throw new Error('Token invalid');
     });
 

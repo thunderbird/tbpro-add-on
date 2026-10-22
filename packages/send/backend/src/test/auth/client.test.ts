@@ -3,7 +3,9 @@
 import {
   DAYS_TO_EXPIRY,
   JWT_EXPIRY_IN_MILLISECONDS,
+  JWT_EXPIRY_IN_SECONDS,
   JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS,
+  JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS,
 } from '@send-backend/config';
 import {
   convertDaysToMilliseconds,
@@ -98,16 +100,22 @@ describe('getUserFromJWT', () => {
 
     const data = getUserFromJWT('valid.token.here');
     expect(data).toStrictEqual(mockedTokenData);
-    expect(mockedVerify).toHaveBeenCalledWith('valid.token.here', 'your_secret');
+    expect(mockedVerify).toHaveBeenCalledWith(
+      'valid.token.here',
+      'your_secret',
+      { maxAge: JWT_EXPIRY_IN_SECONDS }
+    );
   });
 
-  it('should verify against the given secret when one is passed', () => {
+  it('should verify a refresh token against the refresh secret and lifetime', () => {
+    vi.stubEnv('REFRESH_TOKEN_SECRET', 'refresh_secret');
     mockedVerify.mockReturnValue({ userId: '123' });
 
-    getUserFromJWT('refresh.token.here', 'refresh_secret');
+    getUserFromJWT('refresh.token.here', 'refresh');
     expect(mockedVerify).toHaveBeenCalledWith(
       'refresh.token.here',
-      'refresh_secret'
+      'refresh_secret',
+      { maxAge: JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS }
     );
   });
 
@@ -253,6 +261,8 @@ describe('registerTokens', () => {
       cookie: vi.fn(),
     };
     const mockSignedData = {
+      id: 1,
+      uniqueHash: 'hash-1',
       tier: 'PRO',
       email: 'test@example.com',
     };
@@ -270,6 +280,8 @@ describe('registerTokens', () => {
     expect(
       convertMillisecondsToMinutes(JWT_EXPIRY_IN_MILLISECONDS).stringified
     ).toBe('60m');
+    expect(JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS).toBe(7 * 24 * 60 * 60);
+    expect(JWT_EXPIRY_IN_SECONDS).toBe(60 * 60);
 
     expect(mockRes.cookie).toHaveBeenCalledTimes(2);
     expect(mockRes.cookie).toHaveBeenNthCalledWith(
@@ -297,44 +309,61 @@ describe('registerTokens', () => {
     );
     expect(mockedSign).toHaveBeenCalledTimes(2);
 
+    // The lifetime is handed to the library as `expiresIn` (seconds); the
+    // payload itself carries no `exp`, so the library sets it in the unit
+    // verify() reads.
     expect(mockedSign).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({
-        ...mockSignedData,
-        // we validate the expected value below
-        exp: expect.any(Number),
-      }),
-      'refresh_secret'
+      mockSignedData,
+      'refresh_secret',
+      {
+        expiresIn: JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS,
+      }
     );
     expect(mockedSign).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({
-        ...mockSignedData,
-        // we validate the expected value below
-        exp: expect.any(Number),
-      }),
-      'test_secret'
+      mockSignedData,
+      'test_secret',
+      {
+        expiresIn: JWT_EXPIRY_IN_SECONDS,
+      }
     );
+  });
 
-    // Check that the token expiration is withing 1 second of the expected value
-    // This compensates for computing time and leaves a wide margin of error
+  it('signs only the session fields, dropping extra columns and old time claims', () => {
+    mockedSign.mockClear();
+    const mockRes = { cookie: vi.fn() };
+    const fromVerifiedRefreshToken = {
+      id: 1,
+      uniqueHash: 'hash-1',
+      tier: 'PRO',
+      email: 'test@example.com',
+      name: 'Test',
+      exp: 1,
+      iat: 1,
+    };
 
-    // Get the expiration time
-    const firstExp = mockedSign.mock.calls[0][0].exp;
-    const expectedFirstExp =
-      // Compute the expected expiration time by adding date.now and the expiration
-      Date.now() +
-      convertDaysToMilliseconds(JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS).milliseconds;
-    // Compare the difference and check if it's within 1 second
-    expect(Math.abs(firstExp - expectedFirstExp)).toBeLessThanOrEqual(1000);
+    //@ts-ignore
+    registerTokens(fromVerifiedRefreshToken as any, mockRes);
 
-    // Repeat for the second call
-    // Get the expiration time
-    const secondExp = mockedSign.mock.calls[1][0].exp;
-    // Compute the expected expiration time by adding date.now and the expiration
-    const expectedSecondExp = Date.now() + JWT_EXPIRY_IN_MILLISECONDS;
-    // Compare the difference and check if it's within 1 second
-    expect(Math.abs(secondExp - expectedSecondExp)).toBeLessThanOrEqual(1000);
+    const expectedPayload = {
+      id: 1,
+      uniqueHash: 'hash-1',
+      tier: 'PRO',
+      email: 'test@example.com',
+    };
+    expect(mockedSign).toHaveBeenNthCalledWith(
+      1,
+      expectedPayload,
+      'refresh_secret',
+      expect.anything()
+    );
+    expect(mockedSign).toHaveBeenNthCalledWith(
+      2,
+      expectedPayload,
+      'test_secret',
+      expect.anything()
+    );
   });
 });
 
