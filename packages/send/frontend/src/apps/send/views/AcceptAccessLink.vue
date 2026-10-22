@@ -25,10 +25,14 @@ const LOCKED_MESSAGE =
 // How long the locked message shows before the reload.
 const LOCKED_RELOAD_DELAY_MS = 2000;
 let reloadTimer: ReturnType<typeof setTimeout> | undefined;
+let isUnmounted = false;
 
 // On reload the share route's retry-count guard reads the lock from the server
-// and renders the locked page.
+// and renders the locked page. A response that lands after leaving the page
+// must not reload whatever page the user is on now.
 function reloadIntoLockedPage() {
+  if (isUnmounted) return;
+  clearTimeout(reloadTimer);
   reloadTimer = setTimeout(
     () => window.location.reload(),
     LOCKED_RELOAD_DELAY_MS
@@ -80,7 +84,10 @@ async function accept() {
   }
 }
 
-onBeforeUnmount(() => clearTimeout(reloadTimer));
+onBeforeUnmount(() => {
+  isUnmounted = true;
+  clearTimeout(reloadTimer);
+});
 
 onMounted(() => {
   const { hash } = window.location;

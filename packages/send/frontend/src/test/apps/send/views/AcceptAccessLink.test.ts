@@ -129,6 +129,24 @@ describe('AcceptAccessLink', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
+  it('does not reload when the locked response arrives after leaving the page', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let respond!: (value: { status: 'locked' }) => void;
+    store.acceptAccessLink.mockReturnValue(
+      new Promise((resolve) => (respond = resolve))
+    );
+    const wrapper = mount(AcceptAccessLink);
+    await wrapper.get('[data-testid="password-input"]').setValue('guess');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    wrapper.unmount();
+    respond({ status: 'locked' });
+    await flushPromises();
+    vi.runOnlyPendingTimers();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it('cancels the pending reload when the form unmounts', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     store.acceptAccessLink.mockResolvedValue({ status: 'locked' });
