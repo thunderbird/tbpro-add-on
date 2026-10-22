@@ -7,7 +7,10 @@ import {
   getContainersOwnedByUser,
   getUploadsOwnedByUser,
 } from '@send-backend/models';
-import { checkCompatibility } from '@send-backend/utils/compatibility';
+import {
+  getClientGate,
+  toLegacyCompatibilityResult,
+} from '@send-backend/utils/compatibility';
 import { TRPCError } from '@trpc/server';
 import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -104,6 +107,19 @@ export const usersRouter = router({
    *                 clientVersion:
    *                   type: string
    *                   description: Client version that was checked
+   *                 clientGate:
+   *                   type: object
+   *                   description: Server-controlled update gate for this client
+   *                   properties:
+   *                     action:
+   *                       type: string
+   *                       enum: [none, banner, block]
+   *                     minVersion:
+   *                       type: string
+   *                       nullable: true
+   *                     message:
+   *                       type: string
+   *                       nullable: true
    */
   settings: trpc
     .input(
@@ -112,26 +128,15 @@ export const usersRouter = router({
         appName: z.string().nullable(),
       })
     )
-    .query(async ({ input: { version: clientVersion, appName } }) => {
+    .query(({ input: { version: clientVersion, appName } }) => {
+      const clientGate = getClientGate(clientVersion, appName);
+      // Clients without `clientGate` read only `compatibility.result`.
       const compatibility = {
-        resolvedCompatibility: false,
-        result: 'UNRESOLVED',
+        resolvedCompatibility: true,
+        result: toLegacyCompatibilityResult(clientGate.action),
       };
 
-      const compatibilityResult = checkCompatibility(clientVersion, VERSION!);
-
-      compatibility.result = compatibilityResult;
-      compatibility.resolvedCompatibility = true;
-
-      // When users use the tbpro addon, we don't want to check compatibility
-      if (appName && appName.includes('addon')) {
-        // If the client name includes 'addon', we don't want to check compatibility
-        compatibility.result = 'COMPATIBLE';
-        compatibility.resolvedCompatibility = true;
-      }
-
-      const apiVersion = VERSION;
-      return { apiVersion, compatibility, clientVersion };
+      return { apiVersion: VERSION, compatibility, clientVersion, clientGate };
     }),
 
   /**
