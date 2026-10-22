@@ -1,5 +1,4 @@
-import jwt from 'jsonwebtoken';
-import { getJWTfromToken } from './client';
+import { getJWTfromToken, verifyCookieToken } from './client';
 
 type Args = {
   jwtToken: string;
@@ -31,14 +30,14 @@ export const validateJWT = ({
 
   // validate refresh token
   try {
-    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    verifyCookieToken(refreshToken, 'refresh');
   } catch {
     // Refresh token failed to verify, tell the user to re-login.
     return 'shouldLogin';
   }
   // validate access token
   try {
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    verifyCookieToken(token, 'access');
   } catch {
     // catch error and try to refresh token
     return 'shouldRefresh';

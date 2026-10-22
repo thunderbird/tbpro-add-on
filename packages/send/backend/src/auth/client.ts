@@ -1,7 +1,9 @@
 import {
   DAYS_TO_EXPIRY,
   JWT_EXPIRY_IN_MILLISECONDS,
+  JWT_EXPIRY_IN_SECONDS,
   JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS,
+  JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS,
 } from '@send-backend/config';
 import { AuthResponse } from '@send-backend/routes/auth';
 import { convertDaysToMilliseconds, getCookie } from '@send-backend/utils';
@@ -28,15 +30,61 @@ export function getAllowedOrigins() {
     .filter(String);
 }
 
+export type CookieTokenKind = 'access' | 'refresh';
+
+const COOKIE_TOKENS: Record<
+  CookieTokenKind,
+  { secret: () => string; lifetimeSeconds: number }
+> = {
+  access: {
+    secret: () => process.env.ACCESS_TOKEN_SECRET!,
+    lifetimeSeconds: JWT_EXPIRY_IN_SECONDS,
+  },
+  refresh: {
+    secret: () => process.env.REFRESH_TOKEN_SECRET!,
+    lifetimeSeconds: JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS,
+  },
+};
+
+// Only the session fields go into the token. Callers pass DB rows or the
+// payload of a verified token, which would otherwise carry extra columns and
+// the previous `exp`/`iat` claims into the new signature.
+function toTokenPayload({
+  id,
+  uniqueHash,
+  email,
+  tier,
+}: AuthResponse): AuthResponse {
+  return { id, uniqueHash, email, tier };
+}
+
+// `expiresIn` lets jsonwebtoken set `exp` in seconds, the unit verify() reads.
+function signCookieToken(data: AuthResponse, kind: CookieTokenKind): string {
+  const { secret, lifetimeSeconds } = COOKIE_TOKENS[kind];
+  return jwt.sign(toTokenPayload(data), secret(), {
+    expiresIn: lifetimeSeconds,
+  });
+}
+
 // Verifies the signature before trusting the payload, so a forged cookie can't
-// name another user. Throws on an invalid or unsigned token. Callers holding a
-// refresh token pass REFRESH_TOKEN_SECRET.
+// name another user, and bounds the token's age by `iat` as well as `exp`, so
+// a token whose `exp` claim is unusable still expires on schedule. Throws on
+// an invalid, unsigned or expired token.
+export function verifyCookieToken(
+  token: string,
+  kind: CookieTokenKind = 'access'
+): AuthResponse {
+  const { secret, lifetimeSeconds } = COOKIE_TOKENS[kind];
+  return jwt.verify(token, secret(), {
+    maxAge: lifetimeSeconds,
+  }) as AuthResponse;
+}
+
 export function getUserFromJWT(
   token: string,
-  secret: string = process.env.ACCESS_TOKEN_SECRET
+  kind: CookieTokenKind = 'access'
 ) {
-  const data = jwt.verify(token, secret);
-  return data as AuthResponse;
+  return verifyCookieToken(token, kind);
 }
 
 export function getJWTfromToken(jwtToken: string): string | null {
@@ -68,17 +116,7 @@ export const clearJWTCookies = (res: Response) => {
 };
 
 export const registerAuthToken = (signedData: AuthResponse, res: Response) => {
-  const expiration = Date.now() + JWT_EXPIRY_IN_MILLISECONDS;
-  // Sign the jwt and pass it as a cookie
-  const jwtToken = jwt.sign(
-    {
-      ...signedData,
-      // The library expects this value in milliseconds
-      // If we don't express it as part of the object, it causes issues
-      exp: expiration,
-    },
-    process.env.ACCESS_TOKEN_SECRET!
-  );
+  const jwtToken = signCookieToken(signedData, 'access');
 
   res.cookie('authorization', `Bearer ${jwtToken}`, {
     maxAge: JWT_EXPIRY_IN_MILLISECONDS,
@@ -105,22 +143,8 @@ export const getStorageLimit = (req: Request) => {
   return { hasLimitedStorage, daysToExpiry: DAYS_TO_EXPIRY };
 };
 
-export function registerTokens(
-  signedData: AuthResponse,
-  res: Response,
-  expirationOverride?: number
-) {
-  const expiration =
-    Date.now() + (expirationOverride ?? refreshTokenExpiration.milliseconds);
-  const refreshTokenToken = jwt.sign(
-    {
-      ...signedData,
-      // The library expects this value in milliseconds
-      // If we don't express it as part of the object, it causes issues
-      exp: expiration,
-    },
-    process.env.REFRESH_TOKEN_SECRET!
-  );
+export function registerTokens(signedData: AuthResponse, res: Response) {
+  const refreshTokenToken = signCookieToken(signedData, 'refresh');
 
   res.cookie('refresh_token', `Bearer ${refreshTokenToken}`, {
     maxAge: refreshTokenExpiration.milliseconds,
@@ -128,7 +152,7 @@ export function registerTokens(
     sameSite: 'none',
     secure: true,
     // Set the expiration on date format
-    expires: new Date(expiration),
+    expires: new Date(Date.now() + refreshTokenExpiration.milliseconds),
   });
 
   registerAuthToken(signedData, res);

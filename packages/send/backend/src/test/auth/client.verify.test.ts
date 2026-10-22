@@ -1,13 +1,21 @@
 /**
  * Uses the real jsonwebtoken module (client.test.ts mocks it) to prove that
  * the identity read from the `authorization` cookie is signature-checked, so a
- * forged cookie cannot name another user.
+ * forged cookie cannot name another user, and that the cookie tokens expire on
+ * the configured schedule.
  */
+import {
+  JWT_EXPIRY_IN_SECONDS,
+  JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS,
+} from '@send-backend/config';
 import jwt from 'jsonwebtoken';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   getDataFromAuthenticatedRequest,
   getUserFromJWT,
+  registerAuthToken,
+  registerTokens,
+  verifyCookieToken,
 } from '../../auth/client';
 
 const payload = {
@@ -41,9 +49,7 @@ describe('getUserFromJWT verifies signatures', () => {
   it('verifies a refresh token against the refresh secret when asked', () => {
     const token = jwt.sign(payload, 'refresh-secret');
 
-    expect(
-      getUserFromJWT(token, process.env.REFRESH_TOKEN_SECRET)
-    ).toMatchObject(payload);
+    expect(getUserFromJWT(token, 'refresh')).toMatchObject(payload);
     expect(() => getUserFromJWT(token)).toThrow();
   });
 
@@ -62,6 +68,135 @@ describe('getUserFromJWT verifies signatures', () => {
     const tampered = `${header}.${b64url({ ...payload, id: 'victim' })}.${signature}`;
 
     expect(() => getUserFromJWT(tampered)).toThrow();
+  });
+});
+
+// Reads the token back out of the `res.cookie` call the register helpers make.
+function issuedTokens() {
+  const res = { cookie: vi.fn() };
+  //@ts-ignore
+  registerTokens(payload, res);
+  const byName = Object.fromEntries(
+    res.cookie.mock.calls.map(([name, value]) => [
+      name,
+      String(value).replace(/^Bearer /, ''),
+    ])
+  );
+  return { access: byName.authorization, refresh: byName.refresh_token };
+}
+
+describe('cookie tokens expire on schedule', () => {
+  const issuedAt = new Date('2026-01-01T00:00:00Z');
+
+  beforeAll(() => {
+    vi.stubEnv('ACCESS_TOKEN_SECRET', 'access-secret');
+    vi.stubEnv('REFRESH_TOKEN_SECRET', 'refresh-secret');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('signs exp and iat in seconds, one lifetime apart', () => {
+    vi.useFakeTimers({ now: issuedAt });
+    const { access, refresh } = issuedTokens();
+    const nowSeconds = Math.floor(issuedAt.getTime() / 1000);
+
+    expect(jwt.decode(access)).toMatchObject({
+      ...payload,
+      iat: nowSeconds,
+      exp: nowSeconds + JWT_EXPIRY_IN_SECONDS,
+    });
+    expect(jwt.decode(refresh)).toMatchObject({
+      ...payload,
+      iat: nowSeconds,
+      exp: nowSeconds + JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS,
+    });
+  });
+
+  it('accepts the access token within its lifetime and rejects it after', () => {
+    vi.useFakeTimers({ now: issuedAt });
+    const { access } = issuedTokens();
+
+    vi.setSystemTime(issuedAt.getTime() + (JWT_EXPIRY_IN_SECONDS - 1) * 1000);
+    expect(verifyCookieToken(access, 'access')).toMatchObject(payload);
+
+    vi.setSystemTime(issuedAt.getTime() + (JWT_EXPIRY_IN_SECONDS + 1) * 1000);
+    expect(() => verifyCookieToken(access, 'access')).toThrow(
+      jwt.TokenExpiredError
+    );
+  });
+
+  it('accepts the refresh token within its lifetime and rejects it after', () => {
+    vi.useFakeTimers({ now: issuedAt });
+    const { refresh } = issuedTokens();
+
+    vi.setSystemTime(
+      issuedAt.getTime() + (JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS - 1) * 1000
+    );
+    expect(verifyCookieToken(refresh, 'refresh')).toMatchObject(payload);
+
+    vi.setSystemTime(
+      issuedAt.getTime() + (JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS + 1) * 1000
+    );
+    expect(() => verifyCookieToken(refresh, 'refresh')).toThrow(
+      jwt.TokenExpiredError
+    );
+  });
+
+  it('rejects a token whose exp claim is far in the future once it is older than its lifetime', () => {
+    // Shape of tokens issued before this change: `exp` set by the caller as
+    // epoch milliseconds, which jsonwebtoken reads as seconds (~year 58,000);
+    // `iat` was still stamped in seconds.
+    vi.useFakeTimers({ now: issuedAt });
+    const legacyAccess = jwt.sign(
+      { ...payload, exp: issuedAt.getTime() + JWT_EXPIRY_IN_SECONDS * 1000 },
+      'access-secret'
+    );
+    const legacyRefresh = jwt.sign(
+      {
+        ...payload,
+        exp: issuedAt.getTime() + JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS * 1000,
+      },
+      'refresh-secret'
+    );
+
+    vi.setSystemTime(issuedAt.getTime() + (JWT_EXPIRY_IN_SECONDS - 1) * 1000);
+    expect(verifyCookieToken(legacyAccess, 'access')).toMatchObject(payload);
+
+    vi.setSystemTime(issuedAt.getTime() + (JWT_EXPIRY_IN_SECONDS + 1) * 1000);
+    expect(() => verifyCookieToken(legacyAccess, 'access')).toThrow(
+      /maxAge exceeded/
+    );
+
+    vi.setSystemTime(
+      issuedAt.getTime() + (JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS + 1) * 1000
+    );
+    expect(() => verifyCookieToken(legacyRefresh, 'refresh')).toThrow(
+      /maxAge exceeded/
+    );
+  });
+
+  it('re-signing from a verified refresh payload issues a fresh lifetime', () => {
+    // /auth/refresh passes the verified refresh-token payload (incl. its
+    // exp/iat) straight to registerAuthToken.
+    vi.useFakeTimers({ now: issuedAt });
+    const { refresh } = issuedTokens();
+
+    const later = issuedAt.getTime() + 2 * JWT_EXPIRY_IN_SECONDS * 1000;
+    vi.setSystemTime(later);
+    const res = { cookie: vi.fn() };
+    //@ts-ignore
+    registerAuthToken(verifyCookieToken(refresh, 'refresh'), res);
+    const access = String(res.cookie.mock.calls[0][1]).replace(/^Bearer /, '');
+
+    const laterSeconds = Math.floor(later / 1000);
+    expect(jwt.decode(access)).toMatchObject({
+      ...payload,
+      iat: laterSeconds,
+      exp: laterSeconds + JWT_EXPIRY_IN_SECONDS,
+    });
+    expect(verifyCookieToken(access, 'access')).toMatchObject(payload);
   });
 });
 
