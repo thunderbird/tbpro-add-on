@@ -29,11 +29,14 @@ useMetricsUpdate();
 
 // The update screen replaces the upload UI, so release Thunderbird's pending
 // uploads instead of leaving them waiting for a popup that can't finish them.
-function abortPendingUploads() {
+async function abortPendingUploads() {
   try {
-    browser.runtime.sendMessage({ type: ALL_UPLOADS_ABORTED, aborted: true });
+    await browser.runtime.sendMessage({
+      type: ALL_UPLOADS_ABORTED,
+      aborted: true,
+    });
   } catch {
-    // Not running as an extension.
+    // Not running as an extension, or no background listener.
   }
 }
 </script>
