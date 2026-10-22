@@ -15,7 +15,6 @@ import {
   getUserFromJWT,
   registerAuthToken,
   registerTokens,
-  verifyCookieToken,
 } from '../../auth/client';
 
 const payload = {
@@ -119,10 +118,10 @@ describe('cookie tokens expire on schedule', () => {
     const { access } = issuedTokens();
 
     vi.setSystemTime(issuedAt.getTime() + (JWT_EXPIRY_IN_SECONDS - 1) * 1000);
-    expect(verifyCookieToken(access, 'access')).toMatchObject(payload);
+    expect(getUserFromJWT(access, 'access')).toMatchObject(payload);
 
     vi.setSystemTime(issuedAt.getTime() + (JWT_EXPIRY_IN_SECONDS + 1) * 1000);
-    expect(() => verifyCookieToken(access, 'access')).toThrow(
+    expect(() => getUserFromJWT(access, 'access')).toThrow(
       jwt.TokenExpiredError
     );
   });
@@ -134,12 +133,12 @@ describe('cookie tokens expire on schedule', () => {
     vi.setSystemTime(
       issuedAt.getTime() + (JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS - 1) * 1000
     );
-    expect(verifyCookieToken(refresh, 'refresh')).toMatchObject(payload);
+    expect(getUserFromJWT(refresh, 'refresh')).toMatchObject(payload);
 
     vi.setSystemTime(
       issuedAt.getTime() + (JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS + 1) * 1000
     );
-    expect(() => verifyCookieToken(refresh, 'refresh')).toThrow(
+    expect(() => getUserFromJWT(refresh, 'refresh')).toThrow(
       jwt.TokenExpiredError
     );
   });
@@ -162,17 +161,17 @@ describe('cookie tokens expire on schedule', () => {
     );
 
     vi.setSystemTime(issuedAt.getTime() + (JWT_EXPIRY_IN_SECONDS - 1) * 1000);
-    expect(verifyCookieToken(legacyAccess, 'access')).toMatchObject(payload);
+    expect(getUserFromJWT(legacyAccess, 'access')).toMatchObject(payload);
 
     vi.setSystemTime(issuedAt.getTime() + (JWT_EXPIRY_IN_SECONDS + 1) * 1000);
-    expect(() => verifyCookieToken(legacyAccess, 'access')).toThrow(
+    expect(() => getUserFromJWT(legacyAccess, 'access')).toThrow(
       /maxAge exceeded/
     );
 
     vi.setSystemTime(
       issuedAt.getTime() + (JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS + 1) * 1000
     );
-    expect(() => verifyCookieToken(legacyRefresh, 'refresh')).toThrow(
+    expect(() => getUserFromJWT(legacyRefresh, 'refresh')).toThrow(
       /maxAge exceeded/
     );
   });
@@ -187,7 +186,7 @@ describe('cookie tokens expire on schedule', () => {
     vi.setSystemTime(later);
     const res = { cookie: vi.fn() };
     //@ts-ignore
-    registerAuthToken(verifyCookieToken(refresh, 'refresh'), res);
+    registerAuthToken(getUserFromJWT(refresh, 'refresh'), res);
     const access = String(res.cookie.mock.calls[0][1]).replace(/^Bearer /, '');
 
     const laterSeconds = Math.floor(later / 1000);
@@ -196,7 +195,7 @@ describe('cookie tokens expire on schedule', () => {
       iat: laterSeconds,
       exp: laterSeconds + JWT_EXPIRY_IN_SECONDS,
     });
-    expect(verifyCookieToken(access, 'access')).toMatchObject(payload);
+    expect(getUserFromJWT(access, 'access')).toMatchObject(payload);
   });
 });
 

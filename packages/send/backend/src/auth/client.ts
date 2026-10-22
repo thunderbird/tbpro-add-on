@@ -70,7 +70,7 @@ function signCookieToken(data: AuthResponse, kind: CookieTokenKind): string {
 // name another user, and bounds the token's age by `iat` as well as `exp`, so
 // a token whose `exp` claim is unusable still expires on schedule. Throws on
 // an invalid, unsigned or expired token.
-export function verifyCookieToken(
+export function getUserFromJWT(
   token: string,
   kind: CookieTokenKind = 'access'
 ): AuthResponse {
@@ -78,13 +78,6 @@ export function verifyCookieToken(
   return jwt.verify(token, secret(), {
     maxAge: lifetimeSeconds,
   }) as AuthResponse;
-}
-
-export function getUserFromJWT(
-  token: string,
-  kind: CookieTokenKind = 'access'
-) {
-  return verifyCookieToken(token, kind);
 }
 
 export function getJWTfromToken(jwtToken: string): string | null {

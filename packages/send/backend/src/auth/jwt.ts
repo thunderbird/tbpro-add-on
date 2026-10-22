@@ -1,4 +1,4 @@
-import { getJWTfromToken, verifyCookieToken } from './client';
+import { getJWTfromToken, getUserFromJWT } from './client';
 
 type Args = {
   jwtToken: string;
@@ -30,14 +30,14 @@ export const validateJWT = ({
 
   // validate refresh token
   try {
-    verifyCookieToken(refreshToken, 'refresh');
+    getUserFromJWT(refreshToken, 'refresh');
   } catch {
     // Refresh token failed to verify, tell the user to re-login.
     return 'shouldLogin';
   }
   // validate access token
   try {
-    verifyCookieToken(token, 'access');
+    getUserFromJWT(token, 'access');
   } catch {
     // catch error and try to refresh token
     return 'shouldRefresh';
