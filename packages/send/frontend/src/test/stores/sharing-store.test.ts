@@ -116,13 +116,16 @@ describe(`Sharing Store`, () => {
   });
 
   describe(`acceptAccessLink`, () => {
-    it(`returns false for a wrong password without calling the legacy retry mutation`, async () => {
-      vi.mocked(getContainerKeyFromChallenge).mockResolvedValueOnce(null);
+    it(`passes a refusal through without calling the legacy retry mutation`, async () => {
+      vi.mocked(getContainerKeyFromChallenge).mockResolvedValueOnce({
+        status: 'incorrect',
+        attemptsRemaining: 2,
+      });
       const sharingStore = useSharingStore();
 
       const result = await sharingStore.acceptAccessLink('link-1', 'wrong');
 
-      expect(result).toBe(false);
+      expect(result).toEqual({ status: 'incorrect', attemptsRemaining: 2 });
       expect(getContainerKeyFromChallenge).toHaveBeenCalledTimes(1);
       expect(trpc.incrementPasswordRetryCount.mutate).not.toHaveBeenCalled();
     });

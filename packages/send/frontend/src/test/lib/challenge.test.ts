@@ -74,15 +74,34 @@ describe('getContainerKeyFromChallenge', () => {
     );
 
     expect(posts()).toEqual([
-      [`sharing/${LINK_ID}/challenge`, { challengePlaintext }, 'POST'],
+      [
+        `sharing/${LINK_ID}/challenge`,
+        { challengePlaintext },
+        'POST',
+        {},
+        expect.objectContaining({ skipAuthRetry: true }),
+      ],
     ]);
-    expect(result?.containerId).toBe('container-1');
-    expect(result?.unwrappedKey.algorithm.name).toBe('AES-KW');
+    expect(result.status).toBe('accepted');
+    if (result.status !== 'accepted') return;
+    expect(result.containerId).toBe('container-1');
+    expect(result.unwrappedKey.algorithm.name).toBe('AES-KW');
   });
 
-  it('still posts a non-matching answer for a wrong password and returns null', async () => {
-    // The server refuses the answer (api.call returns null on a 4xx).
-    call.mockResolvedValueOnce(challenge).mockResolvedValueOnce(null);
+  // api.call returns null on a 4xx and reports it through onFailure.
+  const refuseWith = (status: number, body = '') =>
+    call
+      .mockResolvedValueOnce(challenge)
+      .mockImplementationOnce(async (_path, _body, _method, _headers, opts) => {
+        opts.onFailure({ kind: 'http', status, statusText: '', body });
+        return null;
+      });
+
+  it('still posts a non-matching answer for a wrong password and reports it as incorrect', async () => {
+    refuseWith(
+      401,
+      JSON.stringify({ code: 'INCORRECT_PASSWORD', attemptsRemaining: 3 })
+    );
 
     const result = await getContainerKeyFromChallenge(
       LINK_ID,
@@ -91,13 +110,55 @@ describe('getContainerKeyFromChallenge', () => {
       keychain
     );
 
-    expect(result).toBeNull();
-    expect(posts()).toEqual([
-      [`sharing/${LINK_ID}/challenge`, { challengePlaintext: '' }, 'POST'],
+    expect(result).toEqual({ status: 'incorrect', attemptsRemaining: 3 });
+    expect(posts()).toHaveLength(1);
+    expect(posts()[0].slice(0, 3)).toEqual([
+      `sharing/${LINK_ID}/challenge`,
+      { challengePlaintext: '' },
+      'POST',
     ]);
   });
 
-  it('returns null without posting when the challenge cannot be fetched', async () => {
+  it('reports incorrect without a count when the 401 body has none', async () => {
+    refuseWith(401, 'not json');
+
+    const result = await getContainerKeyFromChallenge(
+      LINK_ID,
+      'wrong-password',
+      api,
+      keychain
+    );
+
+    expect(result).toEqual({ status: 'incorrect' });
+  });
+
+  it('reports a locked link on 423', async () => {
+    refuseWith(423, JSON.stringify({ code: 'ACCESS_LINK_LOCKED' }));
+
+    const result = await getContainerKeyFromChallenge(
+      LINK_ID,
+      PASSWORD,
+      api,
+      keychain
+    );
+
+    expect(result).toEqual({ status: 'locked' });
+  });
+
+  it('reports other refusals as a generic failure', async () => {
+    refuseWith(404);
+
+    const result = await getContainerKeyFromChallenge(
+      LINK_ID,
+      PASSWORD,
+      api,
+      keychain
+    );
+
+    expect(result).toEqual({ status: 'failed' });
+  });
+
+  it('fails without posting when the challenge cannot be fetched', async () => {
     call.mockResolvedValueOnce(null);
 
     const result = await getContainerKeyFromChallenge(
@@ -107,7 +168,7 @@ describe('getContainerKeyFromChallenge', () => {
       keychain
     );
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ status: 'failed' });
     expect(call).toHaveBeenCalledTimes(1);
     expect(posts()).toHaveLength(0);
   });

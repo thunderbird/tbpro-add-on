@@ -2,7 +2,10 @@ import {
   FolderResponse,
   Item,
 } from '@send-frontend/apps/send/stores/folder-store.types';
-import { getContainerKeyFromChallenge } from '@send-frontend/lib/challenge';
+import {
+  ChallengeRefusal,
+  getContainerKeyFromChallenge,
+} from '@send-frontend/lib/challenge';
 import { Keychain, Util } from '@send-frontend/lib/keychain';
 import Sharer from '@send-frontend/lib/share';
 import useApiStore from '@send-frontend/stores/api-store';
@@ -62,26 +65,26 @@ const useSharingStore = defineStore('sharingManager', () => {
   async function acceptAccessLink(
     linkId: string,
     password: string
-  ): Promise<boolean> {
-    const containerKey = await getContainerKeyFromChallenge(
+  ): Promise<{ status: 'accepted' } | ChallengeRefusal> {
+    const result = await getContainerKeyFromChallenge(
       linkId,
       password,
       api,
       keychain as Keychain
     );
 
-    // Wrong password: the challenge endpoint has already counted the attempt.
-    if (!containerKey?.unwrappedKey) {
-      return false;
+    // Refused: the challenge endpoint has already counted the attempt.
+    if (result.status !== 'accepted') {
+      return result;
     }
 
-    const { unwrappedKey, containerId } = containerKey;
+    const { unwrappedKey, containerId } = result;
     // keychain.add() needs an RSA keypair to wrap the container key.
     await keychain.rsa.generateKeyPair();
 
     await keychain.add(containerId, unwrappedKey);
     await keychain.store();
-    return true;
+    return { status: 'accepted' };
   }
 
   async function isAccessLinkValid(linkId: string): Promise<{ id: string }> {

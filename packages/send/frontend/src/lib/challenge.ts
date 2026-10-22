@@ -1,15 +1,45 @@
-import { ApiConnection } from '@send-frontend/lib/api';
+import { ApiCallFailure, ApiConnection } from '@send-frontend/lib/api';
 import { Keychain, Util } from '@send-frontend/lib/keychain';
+
+export type ChallengeRefusal =
+  | { status: 'incorrect'; attemptsRemaining?: number }
+  | { status: 'locked' }
+  | { status: 'failed' };
+
+export type ChallengeResult =
+  | { status: 'accepted'; unwrappedKey: CryptoKey; containerId: string }
+  | ChallengeRefusal;
+
+const FAILED: ChallengeRefusal = { status: 'failed' };
+
+// POST /challenge answers 401 for an incorrect password and 423 for a locked link.
+function refusalFromFailure(failure?: ApiCallFailure): ChallengeRefusal {
+  if (failure?.status === 423) {
+    return { status: 'locked' };
+  }
+  if (failure?.status !== 401) {
+    return FAILED;
+  }
+  let attemptsRemaining: unknown;
+  try {
+    attemptsRemaining =
+      failure.kind === 'http'
+        ? JSON.parse(failure.body).attemptsRemaining
+        : undefined;
+  } catch {
+    attemptsRemaining = undefined;
+  }
+  return Number.isInteger(attemptsRemaining)
+    ? { status: 'incorrect', attemptsRemaining: attemptsRemaining as number }
+    : { status: 'incorrect' };
+}
 
 export async function getContainerKeyFromChallenge(
   hash: string,
   password: string,
   api: ApiConnection,
   keychain: Keychain
-): Promise<{
-  unwrappedKey: CryptoKey;
-  containerId: string;
-} | null> {
+): Promise<ChallengeResult> {
   const resp = await api.call<{
     challengeKey: string;
     challengeSalt: string;
@@ -17,7 +47,7 @@ export async function getContainerKeyFromChallenge(
   }>(`sharing/${hash}/challenge`);
 
   if (!resp) {
-    return null;
+    return FAILED;
   }
 
   // Step 1: receive the challenge info,
@@ -36,7 +66,7 @@ export async function getContainerKeyFromChallenge(
     challengeSalt = Util.base64ToArrayBuffer(challengeSaltStr);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
-    return null;
+    return FAILED;
   }
 
   // Steps 3-4: unwrap the challenge key and decrypt the challenge. A wrong
@@ -55,6 +85,7 @@ export async function getContainerKeyFromChallenge(
     // - containerId
     // - wrapped container key
     // - salt (for unwrapping container key)
+    let failure: ApiCallFailure | undefined;
     const challengeResp = await api.call<{
       status: string;
       containerId: string;
@@ -65,11 +96,17 @@ export async function getContainerKeyFromChallenge(
       {
         challengePlaintext,
       },
-      'POST'
+      'POST',
+      {},
+      // A 401 here is a wrong password; replaying the POST would count it twice.
+      { skipAuthRetry: true, onFailure: (f) => (failure = f) }
     );
 
-    if (!challengePlaintext || !challengeResp?.containerId) {
-      return null;
+    if (!challengeResp) {
+      return refusalFromFailure(failure);
+    }
+    if (!challengePlaintext || !challengeResp.containerId) {
+      return FAILED;
     }
     const {
       containerId,
@@ -84,10 +121,10 @@ export async function getContainerKeyFromChallenge(
       Util.base64ToArrayBuffer(saltStr)
     );
 
-    return { unwrappedKey, containerId };
+    return { status: 'accepted', unwrappedKey, containerId };
   } catch (e) {
     console.log(e);
-    return null;
+    return FAILED;
   }
 }
 
