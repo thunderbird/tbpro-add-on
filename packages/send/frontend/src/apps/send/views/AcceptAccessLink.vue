@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import { getCanRetry } from '@send-frontend/lib/validations';
 import { useRoute } from 'vue-router';
@@ -22,22 +22,6 @@ const sharingStore = useSharingStore();
 const INCORRECT_MESSAGE = 'This password is incorrect';
 const LOCKED_MESSAGE =
   'This link has been locked after too many incorrect attempts.';
-// How long the locked message shows before the reload.
-const LOCKED_RELOAD_DELAY_MS = 2000;
-let reloadTimer: ReturnType<typeof setTimeout> | undefined;
-let isUnmounted = false;
-
-// On reload the share route's retry-count guard reads the lock from the server
-// and renders the locked page. A response that lands after leaving the page
-// must not reload whatever page the user is on now.
-function reloadIntoLockedPage() {
-  if (isUnmounted) return;
-  clearTimeout(reloadTimer);
-  reloadTimer = setTimeout(
-    () => window.location.reload(),
-    LOCKED_RELOAD_DELAY_MS
-  );
-}
 
 function attemptsText(attemptsRemaining?: number) {
   if (!attemptsRemaining) return '';
@@ -69,7 +53,6 @@ async function accept() {
       case 'locked':
         error.value = LOCKED_MESSAGE;
         isLocked.value = true;
-        reloadIntoLockedPage();
         break;
       case 'incorrect':
         error.value = INCORRECT_MESSAGE;
@@ -83,11 +66,6 @@ async function accept() {
     error.value = 'An error occurred while processing your request';
   }
 }
-
-onBeforeUnmount(() => {
-  isUnmounted = true;
-  clearTimeout(reloadTimer);
-});
 
 onMounted(() => {
   const { hash } = window.location;

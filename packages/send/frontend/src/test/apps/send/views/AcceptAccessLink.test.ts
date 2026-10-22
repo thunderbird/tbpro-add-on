@@ -1,10 +1,10 @@
 import AcceptAccessLink from '@send-frontend/apps/send/views/AcceptAccessLink.vue';
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The password form shows the server's challenge outcome: incorrect (with the
-// attempts left), locked (form disabled, then a reload into the locked page),
-// or a generic failure.
+// attempts left), locked (form disabled in place, no reload), or a generic
+// failure.
 const { store } = vi.hoisted(() => ({
   store: {
     isAccessLinkValid: vi.fn(),
@@ -21,9 +21,6 @@ vi.mock('@send-frontend/lib/validations', () => ({
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { linkId: 'link-1' } }),
 }));
-
-// Unmounting clears any pending reload timer left by a locked result.
-enableAutoUnmount(afterEach);
 
 async function submit(password = 'guess') {
   const wrapper = mount(AcceptAccessLink);
@@ -84,7 +81,8 @@ describe('AcceptAccessLink', () => {
     );
   });
 
-  it('shows the locked message and disables the form', async () => {
+  it('shows the locked message and disables the form in place, without reloading', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval'] });
     store.acceptAccessLink.mockResolvedValue({ status: 'locked' });
     const wrapper = await submit();
 
@@ -101,60 +99,12 @@ describe('AcceptAccessLink', () => {
     await wrapper.get('form').trigger('submit');
     await flushPromises();
     expect(store.acceptAccessLink).toHaveBeenCalledTimes(1);
-  });
 
-  it('reloads after a 423 so the page renders the server-side lock', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    store.acceptAccessLink.mockResolvedValue({ status: 'locked' });
-    const wrapper = await submit();
-
+    vi.runAllTimers();
+    expect(reload).not.toHaveBeenCalled();
     expect(wrapper.get('[data-testid="access-link-error"]').text()).toBe(
       'This link has been locked after too many incorrect attempts.'
     );
-    expect(reload).not.toHaveBeenCalled();
-    vi.runOnlyPendingTimers();
-    expect(reload).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not reload for incorrect passwords or other failures', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    store.acceptAccessLink
-      .mockResolvedValueOnce({ status: 'incorrect', attemptsRemaining: 2 })
-      .mockResolvedValueOnce({ status: 'failed' });
-    const wrapper = await submit();
-    await wrapper.get('form').trigger('submit');
-    await flushPromises();
-
-    vi.runOnlyPendingTimers();
-    expect(reload).not.toHaveBeenCalled();
-  });
-
-  it('does not reload when the locked response arrives after leaving the page', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    let respond!: (value: { status: 'locked' }) => void;
-    store.acceptAccessLink.mockReturnValue(
-      new Promise((resolve) => (respond = resolve))
-    );
-    const wrapper = mount(AcceptAccessLink);
-    await wrapper.get('[data-testid="password-input"]').setValue('guess');
-    await wrapper.get('form').trigger('submit');
-    await flushPromises();
-
-    wrapper.unmount();
-    respond({ status: 'locked' });
-    await flushPromises();
-    vi.runOnlyPendingTimers();
-    expect(reload).not.toHaveBeenCalled();
-  });
-
-  it('cancels the pending reload when the form unmounts', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    store.acceptAccessLink.mockResolvedValue({ status: 'locked' });
-    const wrapper = await submit();
-
-    wrapper.unmount();
-    vi.runOnlyPendingTimers();
-    expect(reload).not.toHaveBeenCalled();
   });
 
   it('keeps the generic message for other failures', async () => {
