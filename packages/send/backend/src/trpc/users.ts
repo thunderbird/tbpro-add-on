@@ -27,7 +27,6 @@ import {
   getFTUEStatus,
   getHashedPassword,
   getUserByEmailV2,
-  getUserById,
   isLegacyBackupSuperseded,
   KeyUpgrade,
   markFTUEComplete,
@@ -36,7 +35,12 @@ import {
   upgradeKeys,
 } from '../models/users';
 import { router, publicProcedure as trpc } from '../trpc';
-import { isAuthed, requirePublicLogin, useEnvironment } from './middlewares';
+import {
+  getAuthenticatedUserId,
+  isAuthed,
+  requirePublicLogin,
+  useEnvironment,
+} from './middlewares';
 
 const b64 = z.string().regex(/^[A-Za-z0-9+/_-]+={0,2}$/);
 const encryptedItem = z.object({ iv: b64, ct: b64 });
@@ -321,7 +325,10 @@ export const usersRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
+      const userId = await getAuthenticatedUserId(ctx);
+      if (!userId) {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
       try {
         const { from, items, linksRevoked } = await upgradeKeys(
           userId,

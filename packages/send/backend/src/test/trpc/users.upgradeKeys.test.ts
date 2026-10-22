@@ -8,6 +8,7 @@ import {
 } from '@send-backend/errors/models';
 import {
   getBackupVersion,
+  getUserByOIDCSubject,
   isLegacyBackupSuperseded,
   resetKeys,
   upgradeKeys,
@@ -245,6 +246,37 @@ describe('upgradeKeys', () => {
     await expect(
       caller().upgradeKeys({ ...input, backupVersion: 1 as never })
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    expect(upgradeKeys).not.toHaveBeenCalled();
+  });
+
+  it('uses the database user behind a validated OIDC token', async () => {
+    vi.mocked(oidc.extractBearerToken).mockReturnValue('token');
+    vi.mocked(oidc.isAccessTokenRevoked).mockResolvedValue(false);
+    vi.mocked(oidc.validateOIDCToken).mockResolvedValue({
+      isValid: true,
+      userInfo: { sub: 'oidc-sub' },
+    } as never);
+    vi.mocked(getUserByOIDCSubject).mockResolvedValue({
+      id: 'oidc-user',
+    } as never);
+
+    await caller().upgradeKeys(input);
+
+    expect(upgradeKeys).toHaveBeenCalledWith('oidc-user', input);
+  });
+
+  it('fails closed when the OIDC user has no account', async () => {
+    vi.mocked(oidc.extractBearerToken).mockReturnValue('token');
+    vi.mocked(oidc.isAccessTokenRevoked).mockResolvedValue(false);
+    vi.mocked(oidc.validateOIDCToken).mockResolvedValue({
+      isValid: true,
+      userInfo: { sub: 'oidc-sub' },
+    } as never);
+    vi.mocked(getUserByOIDCSubject).mockResolvedValue(null);
+
+    await expect(caller().upgradeKeys(input)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
     expect(upgradeKeys).not.toHaveBeenCalled();
   });
 
