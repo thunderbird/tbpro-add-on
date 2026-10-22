@@ -5,10 +5,11 @@ import {
   User,
   UserTier,
 } from '@prisma/client';
-import { KEY_BACKUP_V2 } from '@send-backend/config';
+import { getKeyBackupV2Mode, KEY_BACKUP_V2 } from '@send-backend/config';
 import {
   BACKUP_FORMAT_SUPERSEDED,
   BaseError,
+  KEY_BACKUP_V2_DISABLED,
   KEY_UPGRADE_STALE,
   PROFILE_NOT_CREATED,
   USER_NOT_CREATED,
@@ -462,6 +463,7 @@ export type KeyUpgrade = {
  * The user row must still hold expectedPublicKey, the key the client rotated
  * from, and a folder-key rotation (items given) must cover every owned item.
  * Throws BaseError(KEY_UPGRADE_STALE) and rolls back if any check fails.
+ * While KEY_BACKUP_V2_MODE is off, only v2 users may write (rewrites).
  */
 export async function upgradeKeys(id: string, upgrade: KeyUpgrade) {
   const {
@@ -480,6 +482,9 @@ export async function upgradeKeys(id: string, upgrade: KeyUpgrade) {
         });
         if (from > KEY_BACKUP_V2) {
           throw new BaseError(BACKUP_FORMAT_SUPERSEDED);
+        }
+        if (from < KEY_BACKUP_V2 && getKeyBackupV2Mode() === 'off') {
+          throw new BaseError(KEY_BACKUP_V2_DISABLED);
         }
 
         // Compare-and-set on the key the client rotated from: a concurrent

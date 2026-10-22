@@ -39,8 +39,10 @@ export const USER_NOT_DELETED = 'USER_NOT_DELETED';
 
 // A v2 key backup must never be overwritten by a legacy (v1) write.
 export const BACKUP_FORMAT_SUPERSEDED = 'BACKUP_FORMAT_SUPERSEDED';
-// An item's wrapped key changed since the client read it.
+// The public key or an item changed since the client read it.
 export const KEY_UPGRADE_STALE = 'KEY_UPGRADE_STALE';
+// First upgrade to a v2 key backup while KEY_BACKUP_V2_MODE is off.
+export const KEY_BACKUP_V2_DISABLED = 'KEY_BACKUP_V2_DISABLED';
 
 export const PROFILE_NOT_CREATED = 'PROFILE_NOT_CREATED';
 

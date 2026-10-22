@@ -7,6 +7,7 @@ import {
 import {
   BACKUP_FORMAT_SUPERSEDED,
   BaseError,
+  KEY_BACKUP_V2_DISABLED,
 } from '@send-backend/errors/models';
 import {
   createLoginSession,
@@ -284,7 +285,8 @@ export const usersRouter = router({
    *       equals expectedPublicKey. Optionally re-wraps the keys of every item
    *       in containers the caller owns (each guarded by expectedWrappedKey;
    *       the list must cover all of them) and deletes the caller's access
-   *       links. Refused while KEY_BACKUP_V2_MODE is off.
+   *       links. While KEY_BACKUP_V2_MODE is off, only users already on v2 may
+   *       write (routine rewrites, trigger "rewrite").
    *     security:
    *       - bearerAuth: []
    *     responses:
@@ -295,7 +297,7 @@ export const usersRouter = router({
    *       409:
    *         description: CONFLICT (KEY_UPGRADE_STALE) when the public key or an item changed, an owned item is missing from the list, or an item is not the caller's; nothing is written
    *       412:
-   *         description: PRECONDITION_FAILED (KEY_BACKUP_V2_DISABLED) when the mode is off
+   *         description: PRECONDITION_FAILED (KEY_BACKUP_V2_DISABLED) for a first upgrade while the mode is off
    */
   upgradeKeys: trpc
     .use(isAuthed)
@@ -315,16 +317,10 @@ export const usersRouter = router({
           )
           .optional(),
         revokeLinks: z.boolean().optional(),
-        trigger: z.enum(['optin', 'auto']),
+        trigger: z.enum(['optin', 'auto', 'rewrite']),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (getKeyBackupV2Mode() === 'off') {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'KEY_BACKUP_V2_DISABLED',
-        });
-      }
       const userId = ctx.user.id;
       try {
         const { from, items, linksRevoked } = await upgradeKeys(
@@ -346,7 +342,11 @@ export const usersRouter = router({
         return { backupVersion: KEY_BACKUP_V2, linksRevoked };
       } catch (e) {
         if (e instanceof BaseError) {
-          throw new TRPCError({ code: 'CONFLICT', message: e.message });
+          const code =
+            e.message === KEY_BACKUP_V2_DISABLED
+              ? 'PRECONDITION_FAILED'
+              : 'CONFLICT';
+          throw new TRPCError({ code, message: e.message });
         }
         console.error('upgradeKeys failed', e);
         throw new TRPCError({

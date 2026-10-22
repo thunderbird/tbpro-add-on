@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Key backup v2, model layer: what upgradeKeys writes inside its transaction,
 // and the legacy-write guard. Rollback itself is proven against a real DB in
@@ -63,6 +63,11 @@ describe('upgradeKeys (model)', () => {
     h.itemCount.mockResolvedValue(2);
     h.accessLinkDeleteMany.mockResolvedValue({ count: 2 });
     h.userUpdateMany.mockResolvedValue({ count: 1 });
+    vi.stubEnv('KEY_BACKUP_V2_MODE', 'optin');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('sets the v2 backup and public key, nulls legacy columns, bumps updatedAt', async () => {
@@ -191,6 +196,23 @@ describe('upgradeKeys (model)', () => {
     );
 
     await expect(upgradeKeys(ID, base)).rejects.toThrow('KEY_UPGRADE_STALE');
+  });
+
+  it('refuses a first upgrade while the mode is off', async () => {
+    vi.stubEnv('KEY_BACKUP_V2_MODE', 'off');
+
+    await expect(upgradeKeys(ID, base)).rejects.toThrow(
+      'KEY_BACKUP_V2_DISABLED'
+    );
+    expect(h.userUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('allows a v2 -> v2 rewrite while the mode is off', async () => {
+    vi.stubEnv('KEY_BACKUP_V2_MODE', 'off');
+    h.userFindUniqueOrThrow.mockResolvedValue({ backupVersion: 2 });
+
+    await expect(upgradeKeys(ID, base)).resolves.toMatchObject({ from: 2 });
+    expect(h.userUpdateMany).toHaveBeenCalledTimes(1);
   });
 
   it('allows a v2 -> v2 rewrite', async () => {

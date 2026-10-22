@@ -3,6 +3,7 @@ import * as oidc from '@send-backend/auth/oidc';
 import {
   BACKUP_FORMAT_SUPERSEDED,
   BaseError,
+  KEY_BACKUP_V2_DISABLED,
   KEY_UPGRADE_STALE,
 } from '@send-backend/errors/models';
 import {
@@ -15,8 +16,8 @@ import { TRPCError } from '@trpc/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usersRouter } from '../../trpc/users';
 
-// Key backup v2, router layer: input validation, the KEY_BACKUP_V2_MODE gate,
-// error mapping for upgradeKeys, the resetKeys downgrade guard, and the
+// Key backup v2, router layer: input validation, error mapping for upgradeKeys
+// (incl. the KEY_BACKUP_V2_MODE gate), the resetKeys downgrade guard, and the
 // keyBackupV2 block on the settings query.
 
 vi.mock('@send-backend/auth/jwt', () => ({
@@ -188,13 +189,35 @@ describe('upgradeKeys', () => {
     });
   });
 
-  it('is refused while KEY_BACKUP_V2_MODE is off', async () => {
-    vi.stubEnv('KEY_BACKUP_V2_MODE', 'off');
+  it('maps a first upgrade while the mode is off to 412 PRECONDITION_FAILED', async () => {
+    vi.mocked(upgradeKeys).mockRejectedValue(
+      new BaseError(KEY_BACKUP_V2_DISABLED)
+    );
 
-    await expect(caller().upgradeKeys(input)).rejects.toMatchObject({
-      code: 'PRECONDITION_FAILED',
+    await expect(caller().upgradeKeys(input)).rejects.toThrow(
+      new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: KEY_BACKUP_V2_DISABLED,
+      })
+    );
+  });
+
+  it('accepts and logs a routine rewrite', async () => {
+    vi.mocked(upgradeKeys).mockResolvedValue({
+      from: 2,
+      items: 0,
+      linksRevoked: 0,
     });
-    expect(upgradeKeys).not.toHaveBeenCalled();
+
+    await caller().upgradeKeys({ ...input, trigger: 'rewrite' });
+
+    const logged = vi
+      .mocked(console.info)
+      .mock.calls.find(([msg]) => msg === 'key backup upgraded');
+    expect(JSON.parse(logged[1])).toMatchObject({
+      from: 2,
+      trigger: 'rewrite',
+    });
   });
 
   it.each([

@@ -5,7 +5,7 @@ import {
   User,
   UserTier,
 } from '@prisma/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetKeys, setBackup, upgradeKeys } from '../../models/users';
 
 // Key backup v2 against a real database: the transaction rolls back as a whole
@@ -92,6 +92,7 @@ describe('upgradeKeys (database)', () => {
   let extraUploads: string[];
 
   beforeEach(async () => {
+    vi.stubEnv('KEY_BACKUP_V2_MODE', 'optin');
     const tag = Date.now();
     alice = await makeUser(`alice-${tag}@example.com`);
     bob = await makeUser(`bob-${tag}@example.com`);
@@ -134,6 +135,7 @@ describe('upgradeKeys (database)', () => {
   }
 
   afterEach(async () => {
+    vi.unstubAllEnvs();
     for (const f of [aliceFolder, bobFolder]) {
       await prisma.group.delete({ where: { id: f.group.id } });
       await prisma.upload.delete({ where: { id: f.upload.id } });
