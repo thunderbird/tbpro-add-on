@@ -8,7 +8,12 @@ const { gate } = vi.hoisted(() => ({ gate: { action: 'none' } }));
 
 vi.mock('@send-frontend/composables/useClientGate', () => ({
   useClientGate: () => ({
-    gate: ref({ action: gate.action, minVersion: '9.9.9', message: null }),
+    gate: ref({
+      action: gate.action,
+      minVersion: '9.9.9',
+      title: null,
+      message: null,
+    }),
     clientVersion: '1.0.0',
     error: ref(null),
   }),
