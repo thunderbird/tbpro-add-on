@@ -20,8 +20,12 @@ vi.mock('../send/stores/config-store', () => ({
 }));
 vi.mock('@vueuse/core', () => ({ usePreferredDark: () => ref(false) }));
 
-function gate(action: string, message: string | null = null) {
-  return { clientGate: { action, minVersion: '9.9.9', message } };
+function gate(
+  action: string,
+  message: unknown = null,
+  title: unknown = 'Server title'
+) {
+  return { clientGate: { action, minVersion: '9.9.9', title, message } };
 }
 
 describe('CompatibilityBanner', () => {
@@ -66,6 +70,14 @@ describe('CompatibilityBanner', () => {
     const wrapper = mount(CompatibilityBanner);
     expect(wrapper.find(getByTestId('prompt-update-message')).text()).toBe(
       'Version 3 is out.'
+    );
+  });
+
+  it('falls back to the default copy for a non-string message', () => {
+    query.data = gate('banner', ['Version 3 is out.']);
+    const wrapper = mount(CompatibilityBanner);
+    expect(wrapper.find(getByTestId('prompt-update-message')).text()).toBe(
+      'A new version of Send is available. Reload the page to get it.'
     );
   });
 

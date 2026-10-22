@@ -32,6 +32,7 @@ export function useClientGate() {
     return {
       action,
       minVersion: asString(clientGate?.minVersion),
+      title: asString(clientGate?.title),
       message: asString(clientGate?.message),
     };
   });

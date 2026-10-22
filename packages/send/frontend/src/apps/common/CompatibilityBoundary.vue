@@ -26,7 +26,7 @@ const isLocalCertError = computed(
   () => isDev && Boolean(error.value?.message?.includes('Failed to fetch'))
 );
 
-const title = isTbproExtension
+const defaultTitle = isTbproExtension
   ? 'Update Thunderbird to continue using Send'
   : 'Reload to continue using Send';
 const defaultMessage = isTbproExtension
@@ -49,7 +49,9 @@ const toggleInstructions = () => {
     role="alert"
     data-testid="force-update-banner"
   >
-    <h2 class="title">{{ title }}</h2>
+    <h2 class="title" data-testid="client-gate-title">
+      {{ gate.title ?? defaultTitle }}
+    </h2>
     <p class="description" data-testid="client-gate-message">
       {{ gate.message ?? defaultMessage }}
     </p>

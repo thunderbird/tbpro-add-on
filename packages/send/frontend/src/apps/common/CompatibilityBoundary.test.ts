@@ -34,8 +34,13 @@ vi.mock('@vueuse/core', () => ({
 const stubs = { PrimaryButton: { template: '<button><slot /></button>' } };
 const SLOT = '<div data-testid="app-content">App</div>';
 
-function gate(action: string, minVersion = '9.9.9', message = null) {
-  return { clientGate: { action, minVersion, message } };
+function gate(
+  action: string,
+  minVersion: string | null = '9.9.9',
+  message: string | null = null,
+  title: string | null = null
+) {
+  return { clientGate: { action, minVersion, title, message } };
 }
 
 function mountBoundary() {
@@ -180,17 +185,49 @@ describe('CompatibilityBoundary', () => {
       ).toBe(true);
     });
 
-    it('shows the server message instead of the default copy', () => {
-      query.data = gate('block', '9.9.9', 'Please update today.');
+    it.each([false, true])(
+      'shows the server title and message instead of the default copy (add-on: %s)',
+      (isTbproExtension) => {
+        config.isTbproExtension = isTbproExtension;
+        query.data = gate('block', '9.9.9', 'Please update today.', 'Stop');
+        const wrapper = mountBoundary();
+        expect(wrapper.find(getByTestId('client-gate-title')).text()).toBe(
+          'Stop'
+        );
+        expect(wrapper.find(getByTestId('client-gate-message')).text()).toBe(
+          'Please update today.'
+        );
+      }
+    );
+
+    it('shows the default add-on title and message without server text', () => {
+      config.isTbproExtension = true;
       const wrapper = mountBoundary();
+      expect(wrapper.find(getByTestId('client-gate-title')).text()).toBe(
+        'Update Thunderbird to continue using Send'
+      );
       expect(wrapper.find(getByTestId('client-gate-message')).text()).toBe(
-        'Please update today.'
+        'This version of the Send add-on is no longer supported.'
       );
     });
 
-    it('falls back to the default copy for a non-string message', () => {
-      query.data = { clientGate: { action: 'block', message: { a: 1 } } };
+    it('renders server text as text, not HTML', () => {
+      query.data = gate('block', '9.9.9', '<b>x</b>', '<i>y</i>');
       const wrapper = mountBoundary();
+      expect(wrapper.find(getByTestId('client-gate-title')).text()).toBe(
+        '<i>y</i>'
+      );
+      expect(wrapper.find('b').exists()).toBe(false);
+    });
+
+    it('falls back to the default copy for a non-string title or message', () => {
+      query.data = {
+        clientGate: { action: 'block', title: 42, message: { a: 1 } },
+      };
+      const wrapper = mountBoundary();
+      expect(wrapper.find(getByTestId('client-gate-title')).text()).toBe(
+        'Reload to continue using Send'
+      );
       expect(wrapper.find(getByTestId('client-gate-message')).text()).toContain(
         'This version of Send is out of date.'
       );
