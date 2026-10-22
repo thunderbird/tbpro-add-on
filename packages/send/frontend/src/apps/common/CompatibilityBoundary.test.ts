@@ -101,6 +101,16 @@ describe('CompatibilityBoundary', () => {
     expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
   });
 
+  it.each([
+    ['an action this build does not know', gate('interstitial')],
+    ['a malformed clientGate', { clientGate: 'block' }],
+  ])('renders the app for %s', (_, data) => {
+    query.data = data;
+    const wrapper = mountBoundary();
+    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+    expect(wrapper.emitted('blocked')).toBeUndefined();
+  });
+
   it.each(['none', 'banner'])('renders the app for %s', (action) => {
     query.data = gate(action);
     const wrapper = mountBoundary();
@@ -175,6 +185,17 @@ describe('CompatibilityBoundary', () => {
       const wrapper = mountBoundary();
       expect(wrapper.find(getByTestId('client-gate-message')).text()).toBe(
         'Please update today.'
+      );
+    });
+
+    it('falls back to the default copy for a non-string message', () => {
+      query.data = { clientGate: { action: 'block', message: { a: 1 } } };
+      const wrapper = mountBoundary();
+      expect(wrapper.find(getByTestId('client-gate-message')).text()).toContain(
+        'This version of Send is out of date.'
+      );
+      expect(wrapper.find(getByTestId('client-gate-versions')).text()).toBe(
+        `You are using version ${__APP_VERSION__}.`
       );
     });
 
