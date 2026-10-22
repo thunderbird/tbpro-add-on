@@ -68,11 +68,6 @@ const submit = async () => {
   setPassphrase(userSetPassword.value);
   restoreFromBackup();
 };
-
-// Temporarily disabled feature
-// const handleRestoreFromDevice = () => {
-//   router.push('/prompt-verification');
-// };
 </script>
 
 <template>
@@ -128,17 +123,6 @@ const submit = async () => {
       data-testid="restore-key-input"
     />
   </div>
-
-  <!-- This feature will be revamped and it's disabled for the time being -->
-  <!-- <div v-if="shouldRestore" class="flex">
-    <button-component
-      primary
-      data-testid="restore-from-device"
-      @click.prevent="handleRestoreFromDevice"
-    >
-      Restore from device
-    </button-component>
-  </div> -->
 
   <button-component
     v-if="shouldBackup"

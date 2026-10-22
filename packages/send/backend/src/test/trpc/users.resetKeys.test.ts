@@ -52,19 +52,6 @@ vi.mock('@send-backend/models/users', () => ({
   updateUniqueHash: vi.fn(),
 }));
 
-vi.mock('@send-backend/models/verification', () => ({
-  getEncryptedPassphrase: vi.fn(),
-  storeEncryptedPassphrase: vi.fn(),
-}));
-
-vi.mock('@send-backend/ws/login', () => ({
-  loginEmitter: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
-}));
-
-vi.mock('@send-backend/ws/verify', () => ({
-  verificationEmitter: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
-}));
-
 const input = {
   publicKey: 'new-public-key-jwk',
   backupKeypair: 'new-encrypted-keypair',

@@ -1,5 +1,5 @@
 {
-  "threshold": 1.87,
+  "threshold": 1.92,
   "minLines": 5,
   "minTokens": 50,
   "format": ["typescript", "javascript", "vue"],

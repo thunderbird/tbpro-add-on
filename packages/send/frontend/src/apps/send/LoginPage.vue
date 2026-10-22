@@ -30,7 +30,6 @@
 import { useIsRouteExtension } from '@send-frontend/composables/isRouteExtension';
 import { dbUserSetup } from '@send-frontend/lib/helpers';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
-import { trpc } from '@send-frontend/lib/trpc';
 import { useAuthStore } from '@send-frontend/stores';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
@@ -84,13 +83,6 @@ async function onSuccess() {
     await openManagementPage();
   }
 }
-
-trpc.onLoginFinished.subscribe(
-  { name: 'login' },
-  {
-    onData: onSuccess,
-  }
-);
 
 async function _loginToOIDC() {
   loginToOIDC({ onSuccess, isExtension: isRouteExtension.value });

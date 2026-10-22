@@ -8,12 +8,9 @@ import {
   getUploadsOwnedByUser,
 } from '@send-backend/models';
 import { checkCompatibility } from '@send-backend/utils/compatibility';
-import { loginEmitter } from '@send-backend/ws/login';
-import { verificationEmitter } from '@send-backend/ws/verify';
 import { TRPCError } from '@trpc/server';
 import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { on } from 'events';
 import { z } from 'zod';
 import {
   createUserWithPassword,
@@ -135,100 +132,6 @@ export const usersRouter = router({
 
       const apiVersion = VERSION;
       return { apiVersion, compatibility, clientVersion };
-    }),
-
-  // This listener is not exposed to the API, but is used internally to listen for login events
-  onLoginFinished: trpc
-    .input(
-      z.object({
-        name: z.string(),
-      })
-    )
-    .subscription(async function* (opts) {
-      if (opts.ctx?.user?.id) {
-        console.log('logged in already');
-        return;
-      }
-      // listen for new events
-      for await (const [data] of on(loginEmitter, 'login_complete', {
-        // Passing the AbortSignal from the request automatically cancels the event emitter when the request is aborted
-        signal: opts.signal,
-      })) {
-        const post = data;
-        yield post;
-      }
-    }),
-
-  // This listener is not exposed to the API, but is used internally to listen for verification events
-  onPassphraseShared: trpc
-    .input(
-      z.object({
-        code: z.string(),
-      })
-    )
-    .subscription(async function* (opts) {
-      if (!opts.ctx?.user?.id) {
-        return;
-      }
-      // listen for new events
-      for await (const [data] of on(verificationEmitter, 'shared_passphrase', {
-        // Passing the AbortSignal from the request automatically cancels the event emitter when the request is aborted
-        signal: opts.signal,
-      })) {
-        const post = data;
-        yield post;
-      }
-    }),
-
-  // This listener is not exposed to the API, but is used internally to listen for verification events
-  onVerificationFinished: trpc
-    .input(
-      z.object({
-        code: z.string(),
-      })
-    )
-    .subscription(async function* (opts) {
-      if (!opts.ctx?.user?.id) {
-        return;
-      }
-      // listen for new events
-      for await (const [data] of on(
-        verificationEmitter,
-        'verification_complete',
-        {
-          // Passing the AbortSignal from the request automatically cancels the event emitter when the request is aborted
-          signal: opts.signal,
-        }
-      )) {
-        const post = data;
-        yield post;
-      }
-    }),
-
-  // This listener is not exposed to the API, but is used internally to listen for verification events
-
-  onVerificationRequested: trpc
-    .input(
-      z.object({
-        code: z.string(),
-      })
-    )
-    .subscription(async function* (opts) {
-      if (!opts.ctx?.user?.id) {
-        return;
-      }
-      // listen for new events
-      for await (const [data] of on(
-        verificationEmitter,
-        'verification_requested',
-        {
-          // Passing the AbortSignal from the request automatically cancels the event emitter when the request is aborted
-          signal: opts.signal,
-        }
-      )) {
-        const post = data;
-        yield post;
-      }
     }),
 
   /**

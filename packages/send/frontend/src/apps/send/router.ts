@@ -42,12 +42,9 @@ import ClosePage from './pages/ClosePage.vue';
 import ForceClose from './pages/ForceClose.vue';
 import LockedPage from './pages/LockedPage.vue';
 import LogOutPage from './pages/LogOutPage.vue';
-import PromptVerification from './pages/PromptVerification.vue';
 import SettingsPage from './pages/SettingsPage.vue';
-import VerifyPage from './pages/VerifyPage.vue';
 import WelcomePage from './pages/WelcomePage.vue';
 import { useStatusStore } from './stores/status-store';
-import { useVerificationStore } from './stores/verification-store';
 import PassphrasePage from './views/PassphrasePage.vue';
 import PassphraseChanged from './pages/PassphraseChanged.vue';
 
@@ -102,22 +99,6 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/addon-auth',
     component: AddonAuthPage,
-  },
-  {
-    path: '/verify',
-    component: VerifyPage,
-    meta: {
-      [META_OPTIONS.requiresValidToken]: true,
-      [META_OPTIONS.requiresBackedUpKeys]: true,
-      [META_OPTIONS.autoRestoresKeys]: true,
-    },
-  },
-  {
-    path: '/prompt-verification',
-    component: PromptVerification,
-    meta: {
-      [META_OPTIONS.requiresValidToken]: true,
-    },
   },
   {
     path: '/passphrase-changed',
@@ -248,7 +229,6 @@ router.beforeEach(async (to, from, next) => {
   const { keychain } = useKeychainStore();
   const userStore = useUserStore();
   const { metrics } = useMetricsStore();
-  useVerificationStore();
   const { isThunderbirdHost } = useConfigStore();
   const { queryAddonLoginState } = useSendConfig();
   const keychainIsLocked = keychain?.locked;

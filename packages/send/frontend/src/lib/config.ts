@@ -42,5 +42,3 @@ export const getEnvironmentName = (
     ? 'development'
     : 'staging';
 };
-
-export const TRPC_WS_PATH = `/trpc/ws`;

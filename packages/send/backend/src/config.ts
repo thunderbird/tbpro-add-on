@@ -5,8 +5,6 @@ import path from 'path';
 type Environment = 'development' | 'production';
 export type EnvironmentName = 'stage' | 'prod' | 'development';
 
-export const TRPC_WS_PATH = `/trpc/ws`;
-
 const ONE_KB_IN_BYTES = 1000;
 const ONE_MB_IN_BYTES = ONE_KB_IN_BYTES * 1000;
 const ONE_GB_IN_BYTES = ONE_MB_IN_BYTES * 1000;

@@ -4,14 +4,12 @@ import * as t from './trpc';
 // We need to import this before importing any other modules that use BigInt
 import './utils/bigint';
 
-import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import swaggerUi from 'swagger-ui-express';
 import './sentry';
 
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 import express from 'express';
-import WebSocket from 'websocket';
 
 import indexroutes from './routes';
 import auth from './routes/auth';
@@ -22,13 +20,10 @@ import oidcAuth from './routes/oidc-auth';
 import sharing from './routes/sharing';
 import uploads from './routes/uploads';
 import users from './routes/users';
-import verifyroute from './routes/verify';
 
 import * as Sentry from '@sentry/node';
 
-import events from 'events';
 import helmet from 'helmet';
-import { TRPC_WS_PATH } from './config';
 import { errorHandler } from './errors/routes';
 import { addVersionHeader } from './middleware';
 import { originsHandler } from './origins';
@@ -37,16 +32,9 @@ import metricsRoute from './routes/metrics';
 import { openapiSpecification } from './swagger';
 import { createContext } from './trpc/context';
 import { appRouter } from './router';
-import { wsHandler } from './ws/setup';
 
 const PORT = 8080;
 const HOST = '0.0.0.0';
-// The only WebSocket server. `noServer` because `wsHandler` owns the single
-// `upgrade` listener and decides what gets upgraded.
-export const wss = new WebSocket.Server({ path: TRPC_WS_PATH, noServer: true });
-
-events.EventEmitter.defaultMaxListeners = 0;
-
 const app = express();
 app.use(express.static('public'));
 app.use(express.json({ limit: '5mb' }));
@@ -98,27 +86,7 @@ export const router = t.router;
 export const publicProcedure = t.publicProcedure;
 export const mergeRouters = t.mergeRouters;
 
-/* tRPC */
-
-const trpcWebsocket = applyWSSHandler({
-  wss,
-  router: appRouter,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createContext: createContext as any,
-  // Enable heartbeat messages to keep connection open (disabled by default)
-  keepAlive: {
-    enabled: true,
-    // server ping message interval in milliseconds
-    pingMs: 30000,
-    // connection is terminated if pong message is not received in this many milliseconds
-    pongWaitMs: 5000,
-  },
-});
-
-process.on('SIGTERM', () => {
-  trpcWebsocket.broadcastReconnectNotification();
-  wss.close();
-});
+/* tRPC (HTTP only) */
 
 app.use(
   '/trpc',
@@ -139,7 +107,6 @@ app.use('/api/auth', auth);
 app.use('/api/auth', oidcAuth);
 app.use('/api/internal', internal);
 app.use(metricsRoute);
-app.use('/api/verify', verifyroute);
 app.use(
   '/api/docs',
   swaggerUi.serve,
@@ -164,8 +131,6 @@ if (isRateLimitingEnabled()) {
   }
 }
 
-const server = app.listen(PORT, HOST, async () => {
+app.listen(PORT, HOST, () => {
   console.log(`🚀 Server ready at: http://${HOST}:${PORT}`);
 });
-
-wsHandler(server);

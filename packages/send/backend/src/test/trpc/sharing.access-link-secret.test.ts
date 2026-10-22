@@ -18,13 +18,6 @@ const { containersModel } = vi.hoisted(() => ({
 
 vi.mock('@send-backend/models/sharing', () => sharingModel);
 vi.mock('../../models/containers', () => containersModel);
-vi.mock('@send-backend/models/verification', () => ({
-  getEncryptedPassphrase: vi.fn(),
-  storeEncryptedPassphrase: vi.fn(),
-}));
-vi.mock('@send-backend/ws/verify', () => ({
-  verificationEmitter: { emit: vi.fn() },
-}));
 vi.mock('../../trpc/middlewares', () => ({
   isAuthed: ({ next }) => next(),
   getAuthenticatedUserId: vi.fn(async () => 'owner-1'),

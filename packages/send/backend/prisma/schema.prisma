@@ -154,21 +154,6 @@ model Login {
   createdAt  DateTime?
 }
 
-model Verification {
-  id        String   @id @unique @default(uuid()) @db.Uuid
-  createdAt DateTime @default(now())
-  code      String
-}
-
-model EncryptedPassphrase {
-  id                   String   @id @unique @default(uuid()) @db.Uuid
-  createdAt            DateTime @default(now())
-  encryptedPassphrase  String
-  wrappedEncryptionKey String
-  salt                 String
-  codeSalt             String
-}
-
 enum UserTier {
   PRO
   EPHEMERAL
