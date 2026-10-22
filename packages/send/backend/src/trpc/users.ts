@@ -117,6 +117,9 @@ export const usersRouter = router({
    *                     minVersion:
    *                       type: string
    *                       nullable: true
+   *                     title:
+   *                       type: string
+   *                       nullable: true
    *                     message:
    *                       type: string
    *                       nullable: true
