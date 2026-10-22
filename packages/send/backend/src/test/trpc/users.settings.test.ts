@@ -33,20 +33,27 @@ describe('settings: client update gate', () => {
       apiVersion: VERSION,
       clientVersion: '0.0.1',
       compatibility: { resolvedCompatibility: true, result: 'COMPATIBLE' },
-      clientGate: { action: 'none', minVersion: null, message: null },
+      clientGate: {
+        action: 'none',
+        minVersion: null,
+        title: null,
+        message: null,
+      },
     });
   });
 
   it('blocks an outdated add-on and reports FORCE_UPDATE to old clients', async () => {
     vi.stubEnv('CLIENT_MIN_VERSION_ADDON', '9.9.9');
     vi.stubEnv('CLIENT_GATE_MODE', 'block');
-    vi.stubEnv('CLIENT_GATE_MESSAGE', 'Update now');
+    vi.stubEnv('CLIENT_GATE_TITLE_ADDON', 'Update Thunderbird');
+    vi.stubEnv('CLIENT_GATE_MESSAGE_ADDON', 'Update now');
 
     const result = await settings('2.0.24', 'addon');
 
     expect(result.clientGate).toEqual({
       action: 'block',
       minVersion: '9.9.9',
+      title: 'Update Thunderbird',
       message: 'Update now',
     });
     expect(result.compatibility.result).toBe('FORCE_UPDATE');
@@ -55,10 +62,16 @@ describe('settings: client update gate', () => {
   it('shows a banner to an outdated web client as PROMPT_UPDATE', async () => {
     vi.stubEnv('CLIENT_MIN_VERSION_WEB', '9.9.9');
     vi.stubEnv('CLIENT_GATE_MODE', 'banner');
+    vi.stubEnv('CLIENT_GATE_MESSAGE_WEB', '');
+    vi.stubEnv('CLIENT_GATE_MESSAGE', 'Generic notice');
 
     const result = await settings('8.0.19', 'send-frontend');
 
-    expect(result.clientGate.action).toBe('banner');
+    expect(result.clientGate).toMatchObject({
+      action: 'banner',
+      title: null,
+      message: 'Generic notice',
+    });
     expect(result.compatibility.result).toBe('PROMPT_UPDATE');
   });
 

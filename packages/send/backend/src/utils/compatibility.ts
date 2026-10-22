@@ -6,6 +6,8 @@ export type ClientGateAction = 'none' | 'banner' | 'block';
 export type ClientGate = {
   action: ClientGateAction;
   minVersion: string | null;
+  /** Plain text; clients render it as text, never HTML. */
+  title: string | null;
   message: string | null;
 };
 
@@ -98,7 +100,14 @@ export function resetClientGateWarnings() {
   warnedConfig.clear();
 }
 
-const NO_GATE: ClientGate = { action: 'none', minVersion: null, message: null };
+const NO_GATE: ClientGate = {
+  action: 'none',
+  minVersion: null,
+  title: null,
+  message: null,
+};
+
+const text = (value: string | undefined) => value?.trim() || null;
 
 /**
  * Server-controlled update gate. `none` unless a valid minimum is configured
@@ -113,9 +122,8 @@ export function getClientGate(
   const minKey = isAddon
     ? 'CLIENT_MIN_VERSION_ADDON'
     : 'CLIENT_MIN_VERSION_WEB';
-  const minVersion = (
-    isAddon ? env.addonMinVersion : env.webMinVersion
-  )?.trim();
+  const app = isAddon ? env.addon : env.web;
+  const minVersion = app.minVersion?.trim();
 
   if (!minVersion) {
     return NO_GATE;
@@ -138,10 +146,12 @@ export function getClientGate(
     return { ...NO_GATE, minVersion };
   }
 
+  // Per-app text wins over the deprecated generic message; unset → null.
   return {
     action: mode,
     minVersion,
-    message: env.message?.trim() || null,
+    title: text(app.title),
+    message: text(app.message) ?? text(env.message),
   };
 }
 

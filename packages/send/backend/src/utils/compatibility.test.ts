@@ -12,6 +12,10 @@ const GATE_KEYS = [
   'CLIENT_MIN_VERSION_WEB',
   'CLIENT_GATE_MODE',
   'CLIENT_GATE_MESSAGE',
+  'CLIENT_GATE_TITLE_ADDON',
+  'CLIENT_GATE_MESSAGE_ADDON',
+  'CLIENT_GATE_TITLE_WEB',
+  'CLIENT_GATE_MESSAGE_WEB',
 ] as const;
 
 function setEnv(values: Partial<Record<(typeof GATE_KEYS)[number], string>>) {
@@ -94,6 +98,7 @@ describe('getClientGate', () => {
     expect(getClientGate('0.0.1', 'addon')).toEqual({
       action: 'none',
       minVersion: null,
+      title: null,
       message: null,
     });
     expect(getClientGate('0.0.1', 'send-frontend').action).toBe('none');
@@ -118,6 +123,7 @@ describe('getClientGate', () => {
         expect(getClientGate('2.0.24', appName)).toEqual({
           action: mode,
           minVersion: '2.0.25',
+          title: null,
           message: null,
         });
       });
@@ -126,6 +132,7 @@ describe('getClientGate', () => {
         expect(getClientGate('2.0.25', appName)).toEqual({
           action: 'none',
           minVersion: '2.0.25',
+          title: null,
           message: null,
         });
       });
@@ -155,16 +162,90 @@ describe('getClientGate', () => {
     expect(getClientGate('8.0.19', 'send-frontend').action).toBe('banner');
   });
 
-  it('returns the configured message only when gated', () => {
-    setEnv({
+  describe('text', () => {
+    const PER_APP = {
+      CLIENT_MIN_VERSION_ADDON: '9.0.0',
       CLIENT_MIN_VERSION_WEB: '9.0.0',
-      CLIENT_GATE_MODE: 'block',
-      CLIENT_GATE_MESSAGE: '  Please update.  ',
-    });
-    expect(getClientGate('8.0.0', 'send-frontend').message).toBe(
-      'Please update.'
+      CLIENT_GATE_TITLE_ADDON: ' Add-on title ',
+      CLIENT_GATE_MESSAGE_ADDON: ' Add-on message ',
+      CLIENT_GATE_TITLE_WEB: ' Web title ',
+      CLIENT_GATE_MESSAGE_WEB: ' Web message ',
+      CLIENT_GATE_MESSAGE: 'Generic message',
+    };
+
+    it.each(['banner', 'block'] as const)(
+      'resolves trimmed per-app title and message in %s mode',
+      (mode) => {
+        setEnv({ ...PER_APP, CLIENT_GATE_MODE: mode });
+        expect(getClientGate('8.0.0', 'addon')).toEqual({
+          action: mode,
+          minVersion: '9.0.0',
+          title: 'Add-on title',
+          message: 'Add-on message',
+        });
+        expect(getClientGate('8.0.0', 'send-frontend')).toEqual({
+          action: mode,
+          minVersion: '9.0.0',
+          title: 'Web title',
+          message: 'Web message',
+        });
+      }
     );
-    expect(getClientGate('9.0.0', 'send-frontend').message).toBeNull();
+
+    it('falls back to the generic message for an app without its own', () => {
+      setEnv({ ...PER_APP, CLIENT_GATE_MESSAGE_WEB: '  ' });
+      expect(getClientGate('8.0.0', 'addon').message).toBe('Add-on message');
+      expect(getClientGate('8.0.0', 'send-frontend').message).toBe(
+        'Generic message'
+      );
+    });
+
+    it('uses the generic message for both apps when it is the only text', () => {
+      setEnv({
+        CLIENT_MIN_VERSION_ADDON: '9.0.0',
+        CLIENT_MIN_VERSION_WEB: '9.0.0',
+        CLIENT_GATE_MESSAGE: '  Please update.  ',
+      });
+      for (const appName of ['addon', 'send-frontend']) {
+        expect(getClientGate('8.0.0', appName)).toMatchObject({
+          title: null,
+          message: 'Please update.',
+        });
+      }
+    });
+
+    it('is null when unset or whitespace', () => {
+      setEnv({
+        CLIENT_MIN_VERSION_ADDON: '9.0.0',
+        CLIENT_GATE_TITLE_ADDON: '   ',
+        CLIENT_GATE_MESSAGE_ADDON: '',
+        CLIENT_GATE_MESSAGE: ' ',
+      });
+      expect(getClientGate('8.0.0', 'addon')).toMatchObject({
+        title: null,
+        message: null,
+      });
+    });
+
+    it('never applies the other app’s text', () => {
+      setEnv({
+        CLIENT_MIN_VERSION_ADDON: '9.0.0',
+        CLIENT_GATE_TITLE_WEB: 'Web title',
+        CLIENT_GATE_MESSAGE_WEB: 'Web message',
+      });
+      expect(getClientGate('8.0.0', 'addon')).toMatchObject({
+        title: null,
+        message: null,
+      });
+    });
+
+    it('is returned only when gated', () => {
+      setEnv(PER_APP);
+      expect(getClientGate('9.0.0', 'addon')).toMatchObject({
+        title: null,
+        message: null,
+      });
+    });
   });
 
   it('fails open for a malformed client version', () => {
@@ -183,6 +264,7 @@ describe('getClientGate', () => {
     expect(getClientGate('1.0.0', 'send-frontend')).toEqual({
       action: 'none',
       minVersion: null,
+      title: null,
       message: null,
     });
     getClientGate('1.0.0', 'send-frontend');
