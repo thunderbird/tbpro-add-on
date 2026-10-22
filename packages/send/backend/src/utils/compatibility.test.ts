@@ -45,6 +45,9 @@ describe('parseSemver', () => {
     '1.2.x',
     '1.2.3-',
     '1.2.3-a..b',
+    '1.2.3+',
+    '1.2.3+bad..build',
+    '1.2.3+a+b',
   ])('rejects %j', (version) => {
     expect(parseSemver(version)).toBeNull();
   });
@@ -173,6 +176,7 @@ describe('getClientGate', () => {
   it.each([
     { CLIENT_MIN_VERSION_WEB: '9.0' },
     { CLIENT_MIN_VERSION_WEB: 'latest' },
+    { CLIENT_MIN_VERSION_WEB: '9.0.0+' },
     { CLIENT_MIN_VERSION_WEB: '9.0.0', CLIENT_GATE_MODE: 'lockout' },
   ])('is off with one warning for invalid config %j', (config) => {
     setEnv(config);

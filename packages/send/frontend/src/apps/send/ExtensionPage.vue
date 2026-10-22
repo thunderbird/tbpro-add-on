@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { ALL_UPLOADS_ABORTED } from '@send-frontend/lib/const';
 import init from '@send-frontend/lib/init';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
@@ -25,11 +26,21 @@ onMounted(async () => {
 });
 
 useMetricsUpdate();
+
+// The update screen replaces the upload UI, so release Thunderbird's pending
+// uploads instead of leaving them waiting for a popup that can't finish them.
+function abortPendingUploads() {
+  try {
+    browser.runtime.sendMessage({ type: ALL_UPLOADS_ABORTED, aborted: true });
+  } catch {
+    // Not running as an extension.
+  }
+}
 </script>
 
 <template>
   <div id="send-page" class="container">
-    <CompatibilityBoundary>
+    <CompatibilityBoundary @blocked="abortPendingUploads">
       <CompatibilityBanner />
       <PopupView />
     </CompatibilityBoundary>

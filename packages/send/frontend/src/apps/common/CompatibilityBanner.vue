@@ -41,7 +41,7 @@ function dismissUpdate() {
       v-if="showUpdate"
       class="notice client-gate-banner"
       :class="{ dark: prefersDark }"
-      role="status"
+      aria-live="polite"
       data-testid="prompt-update-banner"
     >
       <p class="title">Update available</p>
