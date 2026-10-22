@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetKeys, setBackup, upgradeKeys } from '../../models/users';
 
 // Key backup v2 against a real database: the transaction rolls back as a whole
-// when the public key or an item changed since the client read it, link
+// when the public key or an item changed since the client read it or an owned
+// item is missing from a rotation, link
 // revocation is scoped to the caller's containers, and legacy writes no longer
 // match a v2 row.
 
@@ -34,6 +35,26 @@ async function makeUser(email: string) {
   });
 }
 
+async function addItem(
+  ownerId: string,
+  containerId: string,
+  wrappedKey: string
+) {
+  const upload = await prisma.upload.create({
+    data: { size: 1, ownerId, type: 'application/octet-stream' },
+  });
+  const item = await prisma.item.create({
+    data: {
+      name: 'file',
+      wrappedKey,
+      containerId,
+      uploadId: upload.id,
+      type: ItemType.FILE,
+    },
+  });
+  return { upload, item };
+}
+
 async function makeFolderWithItemAndLink(owner: User, wrappedKey: string) {
   const group = await prisma.group.create({ data: {} });
   const container = await prisma.container.create({
@@ -44,18 +65,7 @@ async function makeFolderWithItemAndLink(owner: User, wrappedKey: string) {
       type: ContainerType.FOLDER,
     },
   });
-  const upload = await prisma.upload.create({
-    data: { size: 1, ownerId: owner.id, type: 'application/octet-stream' },
-  });
-  const item = await prisma.item.create({
-    data: {
-      name: 'file',
-      wrappedKey,
-      containerId: container.id,
-      uploadId: upload.id,
-      type: ItemType.FILE,
-    },
-  });
+  const { upload, item } = await addItem(owner.id, container.id, wrappedKey);
   const share = await prisma.share.create({
     data: { containerId: container.id, senderId: owner.id },
   });
@@ -79,6 +89,7 @@ describe('upgradeKeys (database)', () => {
   let bob: User;
   let aliceFolder: Awaited<ReturnType<typeof makeFolderWithItemAndLink>>;
   let bobFolder: Awaited<ReturnType<typeof makeFolderWithItemAndLink>>;
+  let extraUploads: string[];
 
   beforeEach(async () => {
     const tag = Date.now();
@@ -86,13 +97,48 @@ describe('upgradeKeys (database)', () => {
     bob = await makeUser(`bob-${tag}@example.com`);
     aliceFolder = await makeFolderWithItemAndLink(alice, 'alice-old');
     bobFolder = await makeFolderWithItemAndLink(bob, 'bob-old');
+    extraUploads = [];
   });
+
+  async function addAliceItem(wrappedKey: string) {
+    const { upload, item } = await addItem(
+      alice.id,
+      aliceFolder.container.id,
+      wrappedKey
+    );
+    extraUploads.push(upload.id);
+    return item;
+  }
+
+  async function expectAliceUntouched(wrappedKeys: Record<number, string>) {
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: alice.id },
+    });
+    expect(user).toMatchObject({
+      publicKey: 'old-pk',
+      backup: null,
+      backupVersion: 1,
+      ...LEGACY,
+    });
+    for (const [id, wrappedKey] of Object.entries(wrappedKeys)) {
+      const item = await prisma.item.findUniqueOrThrow({
+        where: { id: Number(id) },
+      });
+      expect(item.wrappedKey).toBe(wrappedKey);
+    }
+    expect(
+      await prisma.accessLink.count({
+        where: { id: `link-${aliceFolder.item.id}` },
+      })
+    ).toBe(1);
+  }
 
   afterEach(async () => {
     for (const f of [aliceFolder, bobFolder]) {
       await prisma.group.delete({ where: { id: f.group.id } });
       await prisma.upload.delete({ where: { id: f.upload.id } });
     }
+    await prisma.upload.deleteMany({ where: { id: { in: extraUploads } } });
     await prisma.user.deleteMany({ where: { id: { in: [alice.id, bob.id] } } });
   });
 
@@ -144,6 +190,7 @@ describe('upgradeKeys (database)', () => {
     ['an item in a container the user is only a member of', 'other'],
   ])('rolls everything back on %s', async (_, whose) => {
     const foreign = whose === 'other';
+    const second = await addAliceItem('alice-second');
     if (foreign) {
       await prisma.membership.create({
         data: { groupId: bobFolder.group.id, userId: alice.id },
@@ -159,7 +206,7 @@ describe('upgradeKeys (database)', () => {
             expectedWrappedKey: 'alice-old',
           },
           {
-            id: foreign ? bobFolder.item.id : aliceFolder.item.id,
+            id: foreign ? bobFolder.item.id : second.id,
             wrappedKey: 'x',
             expectedWrappedKey: foreign ? 'bob-old' : 'not-current',
           },
@@ -168,25 +215,34 @@ describe('upgradeKeys (database)', () => {
       })
     ).rejects.toThrow('KEY_UPGRADE_STALE');
 
-    const user = await prisma.user.findUniqueOrThrow({
-      where: { id: alice.id },
+    await expectAliceUntouched({
+      [aliceFolder.item.id]: 'alice-old',
+      [second.id]: 'alice-second',
+      [bobFolder.item.id]: 'bob-old',
     });
-    expect(user).toMatchObject({
-      publicKey: 'old-pk',
-      backup: null,
-      backupVersion: 1,
-      ...LEGACY,
-    });
-    const items = await prisma.item.findMany({
-      where: { id: { in: [aliceFolder.item.id, bobFolder.item.id] } },
-      orderBy: { id: 'asc' },
-    });
-    expect(items.map((i) => i.wrappedKey)).toEqual(['alice-old', 'bob-old']);
-    expect(
-      await prisma.accessLink.count({
-        where: { id: `link-${aliceFolder.item.id}` },
+  });
+
+  it('refuses a rotation that misses an item added after the client read', async () => {
+    const added = await addAliceItem('added-meanwhile');
+
+    await expect(
+      upgradeKeys(alice.id, {
+        ...base,
+        items: [
+          {
+            id: aliceFolder.item.id,
+            wrappedKey: 'alice-new',
+            expectedWrappedKey: 'alice-old',
+          },
+        ],
+        revokeLinks: true,
       })
-    ).toBe(1);
+    ).rejects.toThrow('KEY_UPGRADE_STALE');
+
+    await expectAliceUntouched({
+      [aliceFolder.item.id]: 'alice-old',
+      [added.id]: 'added-meanwhile',
+    });
   });
 
   it('lets exactly one of two concurrent upgrades win', async () => {

@@ -1,4 +1,10 @@
-import { ContainerType, PrismaClient, User, UserTier } from '@prisma/client';
+import {
+  ContainerType,
+  Prisma,
+  PrismaClient,
+  User,
+  UserTier,
+} from '@prisma/client';
 import { KEY_BACKUP_V2 } from '@send-backend/config';
 import {
   BACKUP_FORMAT_SUPERSEDED,
@@ -454,75 +460,101 @@ export type KeyUpgrade = {
  * re-wrapping item keys (each must still hold the value the client read, and
  * sit in a container the user owns) and deleting the user's access links.
  * The user row must still hold expectedPublicKey, the key the client rotated
- * from. Throws BaseError(KEY_UPGRADE_STALE) and rolls back if any check fails.
+ * from, and a folder-key rotation (items given) must cover every owned item.
+ * Throws BaseError(KEY_UPGRADE_STALE) and rolls back if any check fails.
  */
 export async function upgradeKeys(id: string, upgrade: KeyUpgrade) {
   const {
     publicKey,
     expectedPublicKey,
     backup,
-    items = [],
+    items,
     revokeLinks = false,
   } = upgrade;
-  return prisma.$transaction(
-    async (tx) => {
-      const { backupVersion: from } = await tx.user.findUniqueOrThrow({
-        where: { id },
-        select: { backupVersion: true },
-      });
-      if (from > KEY_BACKUP_V2) {
-        throw new BaseError(BACKUP_FORMAT_SUPERSEDED);
-      }
-
-      // Compare-and-set on the key the client rotated from: a concurrent
-      // upgrade or reset changes publicKey, so the later write matches no row.
-      const { count: usersUpdated } = await tx.user.updateMany({
-        where: {
-          id,
-          publicKey: expectedPublicKey,
-          backupVersion: { lte: KEY_BACKUP_V2 },
-        },
-        data: {
-          publicKey,
-          backup,
-          backupVersion: KEY_BACKUP_V2,
-          backupKeypair: null,
-          backupContainerKeys: null,
-          backupKeystring: null,
-          backupSalt: null,
-          updatedAt: new Date(),
-        },
-      });
-      if (usersUpdated !== 1) {
-        throw new BaseError(KEY_UPGRADE_STALE);
-      }
-
-      for (const item of items) {
-        const { count } = await tx.item.updateMany({
-          where: {
-            id: item.id,
-            wrappedKey: item.expectedWrappedKey,
-            container: { ownerId: id },
-          },
-          data: { wrappedKey: item.wrappedKey, updatedAt: new Date() },
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const { backupVersion: from } = await tx.user.findUniqueOrThrow({
+          where: { id },
+          select: { backupVersion: true },
         });
-        if (count !== 1) {
+        if (from > KEY_BACKUP_V2) {
+          throw new BaseError(BACKUP_FORMAT_SUPERSEDED);
+        }
+
+        // Compare-and-set on the key the client rotated from: a concurrent
+        // upgrade or reset changes publicKey, so the later write matches no row.
+        const { count: usersUpdated } = await tx.user.updateMany({
+          where: {
+            id,
+            publicKey: expectedPublicKey,
+            backupVersion: { lte: KEY_BACKUP_V2 },
+          },
+          data: {
+            publicKey,
+            backup,
+            backupVersion: KEY_BACKUP_V2,
+            backupKeypair: null,
+            backupContainerKeys: null,
+            backupKeystring: null,
+            backupSalt: null,
+            updatedAt: new Date(),
+          },
+        });
+        if (usersUpdated !== 1) {
           throw new BaseError(KEY_UPGRADE_STALE);
         }
-      }
 
-      let linksRevoked = 0;
-      if (revokeLinks) {
-        ({ count: linksRevoked } = await tx.accessLink.deleteMany({
-          where: { share: { container: { ownerId: id } } },
-        }));
-      }
+        // Rotation replaces every owned folder key, so an unlisted item (e.g.
+        // uploaded meanwhile) would keep a wrap under a discarded key.
+        if (items) {
+          const owned = await tx.item.count({
+            where: { container: { ownerId: id } },
+          });
+          if (owned !== items.length) {
+            throw new BaseError(KEY_UPGRADE_STALE);
+          }
+        }
 
-      return { from, items: items.length, linksRevoked };
-    },
-    // One row update per re-wrapped item; large accounts need more than 5 s.
-    { timeout: 60_000 }
-  );
+        for (const item of items ?? []) {
+          const { count } = await tx.item.updateMany({
+            where: {
+              id: item.id,
+              wrappedKey: item.expectedWrappedKey,
+              container: { ownerId: id },
+            },
+            data: { wrappedKey: item.wrappedKey, updatedAt: new Date() },
+          });
+          if (count !== 1) {
+            throw new BaseError(KEY_UPGRADE_STALE);
+          }
+        }
+
+        let linksRevoked = 0;
+        if (revokeLinks) {
+          ({ count: linksRevoked } = await tx.accessLink.deleteMany({
+            where: { share: { container: { ownerId: id } } },
+          }));
+        }
+
+        return { from, items: items?.length ?? 0, linksRevoked };
+      },
+      {
+        // Serializable so a concurrent item insert aborts one side (P2034).
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        // One row update per re-wrapped item; large accounts need more than 5 s.
+        timeout: 60_000,
+      }
+    );
+  } catch (e) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2034'
+    ) {
+      throw new BaseError(KEY_UPGRADE_STALE);
+    }
+    throw e;
+  }
 }
 
 // OIDC Authentication Functions

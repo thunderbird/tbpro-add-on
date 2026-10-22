@@ -159,12 +159,13 @@ describe('upgradeKeys', () => {
     const full = {
       ...input,
       trigger: 'auto' as const,
-      containers: [{ id: 'c-1', wrappedKey: 'ignored' }],
       items: [{ id: 7, wrappedKey: 'new', expectedWrappedKey: 'old' }],
       revokeLinks: true,
     };
 
-    await expect(caller().upgradeKeys(full)).resolves.toEqual({
+    await expect(
+      caller().upgradeKeys({ ...full, containers: [{ id: 'c-1' }] } as never)
+    ).resolves.toEqual({
       backupVersion: 2,
       linksRevoked: 3,
     });

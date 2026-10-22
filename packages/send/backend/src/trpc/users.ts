@@ -281,9 +281,10 @@ export const usersRouter = router({
    *     description: >
    *       Atomically replaces the public key and backup with a v2 envelope and
    *       clears the legacy backup columns, provided the stored public key still
-   *       equals expectedPublicKey. Optionally re-wraps item keys in
-   *       containers the caller owns (each guarded by expectedWrappedKey) and
-   *       deletes the caller's access links. Refused while KEY_BACKUP_V2_MODE is off.
+   *       equals expectedPublicKey. Optionally re-wraps the keys of every item
+   *       in containers the caller owns (each guarded by expectedWrappedKey;
+   *       the list must cover all of them) and deletes the caller's access
+   *       links. Refused while KEY_BACKUP_V2_MODE is off.
    *     security:
    *       - bearerAuth: []
    *     responses:
@@ -292,7 +293,7 @@ export const usersRouter = router({
    *       400:
    *         description: Malformed input or backup envelope
    *       409:
-   *         description: CONFLICT (KEY_UPGRADE_STALE) when the public key or an item changed, or an item is not the caller's; nothing is written
+   *         description: CONFLICT (KEY_UPGRADE_STALE) when the public key or an item changed, an owned item is missing from the list, or an item is not the caller's; nothing is written
    *       412:
    *         description: PRECONDITION_FAILED (KEY_BACKUP_V2_DISABLED) when the mode is off
    */
@@ -304,11 +305,6 @@ export const usersRouter = router({
         expectedPublicKey: z.string().min(1),
         backup: backupV2Json,
         backupVersion: z.literal(KEY_BACKUP_V2),
-        // Container.wrappedKey is written at creation but never read, so there
-        // is nothing to update server-side; accepted for forward compatibility.
-        containers: z
-          .array(z.object({ id: z.string(), wrappedKey: z.string() }))
-          .optional(),
         items: z
           .array(
             z.object({

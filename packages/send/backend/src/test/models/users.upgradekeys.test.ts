@@ -9,6 +9,7 @@ const h = vi.hoisted(() => ({
   userFindUniqueOrThrow: vi.fn(),
   userUpdateMany: vi.fn(),
   itemUpdateMany: vi.fn(),
+  itemCount: vi.fn(),
   accessLinkDeleteMany: vi.fn(),
   transaction: vi.fn(),
 }));
@@ -22,9 +23,19 @@ vi.mock('@prisma/client', () => ({
       $transaction: h.transaction,
     };
   }),
-  Prisma: {},
+  Prisma: {
+    TransactionIsolationLevel: { Serializable: 'Serializable' },
+    PrismaClientKnownRequestError: class extends Error {
+      code: string;
+      constructor(message: string, { code }: { code: string }) {
+        super(message);
+        this.code = code;
+      }
+    },
+  },
 }));
 
+import { Prisma } from '@prisma/client';
 import { isLegacyBackupSuperseded, upgradeKeys } from '../../models/users';
 
 const ID = 'user-v2';
@@ -33,7 +44,7 @@ const tx = {
     findUniqueOrThrow: h.userFindUniqueOrThrow,
     updateMany: h.userUpdateMany,
   },
-  item: { updateMany: h.itemUpdateMany },
+  item: { updateMany: h.itemUpdateMany, count: h.itemCount },
   accessLink: { deleteMany: h.accessLinkDeleteMany },
 };
 const base = {
@@ -49,6 +60,7 @@ describe('upgradeKeys (model)', () => {
     h.transaction.mockImplementation((fn) => fn(tx));
     h.userFindUniqueOrThrow.mockResolvedValue({ backupVersion: 1 });
     h.itemUpdateMany.mockResolvedValue({ count: 1 });
+    h.itemCount.mockResolvedValue(2);
     h.accessLinkDeleteMany.mockResolvedValue({ count: 2 });
     h.userUpdateMany.mockResolvedValue({ count: 1 });
   });
@@ -134,6 +146,51 @@ describe('upgradeKeys (model)', () => {
     ).rejects.toThrow('KEY_UPGRADE_STALE');
 
     expect(h.accessLinkDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it('runs serializably and counts owned items only for a rotation', async () => {
+    await upgradeKeys(ID, base);
+    expect(h.itemCount).not.toHaveBeenCalled();
+    expect(h.transaction.mock.calls[0][1]).toMatchObject({
+      isolationLevel: 'Serializable',
+    });
+
+    await upgradeKeys(ID, {
+      ...base,
+      items: [
+        { id: 1, wrappedKey: 'n1', expectedWrappedKey: 'o1' },
+        { id: 2, wrappedKey: 'n2', expectedWrappedKey: 'o2' },
+      ],
+    });
+    expect(h.itemCount).toHaveBeenCalledWith({
+      where: { container: { ownerId: ID } },
+    });
+  });
+
+  it('refuses a rotation that does not cover every owned item', async () => {
+    h.itemCount.mockResolvedValue(3);
+
+    await expect(
+      upgradeKeys(ID, {
+        ...base,
+        items: [
+          { id: 1, wrappedKey: 'n1', expectedWrappedKey: 'o1' },
+          { id: 2, wrappedKey: 'n2', expectedWrappedKey: 'o2' },
+        ],
+      })
+    ).rejects.toThrow('KEY_UPGRADE_STALE');
+    expect(h.itemUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('maps a serialization failure to KEY_UPGRADE_STALE', async () => {
+    h.transaction.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('conflict', {
+        code: 'P2034',
+        clientVersion: 'test',
+      })
+    );
+
+    await expect(upgradeKeys(ID, base)).rejects.toThrow('KEY_UPGRADE_STALE');
   });
 
   it('allows a v2 -> v2 rewrite', async () => {
