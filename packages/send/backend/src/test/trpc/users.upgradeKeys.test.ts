@@ -84,6 +84,7 @@ const envelope = {
 
 const input = {
   publicKey: 'new-public-key-jwk',
+  expectedPublicKey: 'old-public-key-jwk',
   backup: JSON.stringify(envelope),
   backupVersion: 2 as const,
   trigger: 'optin' as const,

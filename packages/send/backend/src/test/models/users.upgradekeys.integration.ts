@@ -6,12 +6,12 @@ import {
   UserTier,
 } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { setBackup, upgradeKeys } from '../../models/users';
+import { resetKeys, setBackup, upgradeKeys } from '../../models/users';
 
 // Key backup v2 against a real database: the transaction rolls back as a whole
-// when one item is stale or sits in a container the user doesn't own, link
-// revocation is scoped
-// to the caller's containers, and legacy writes no longer match a v2 row.
+// when the public key or an item changed since the client read it, link
+// revocation is scoped to the caller's containers, and legacy writes no longer
+// match a v2 row.
 
 const prisma = new PrismaClient();
 const LEGACY = {
@@ -96,7 +96,11 @@ describe('upgradeKeys (database)', () => {
     await prisma.user.deleteMany({ where: { id: { in: [alice.id, bob.id] } } });
   });
 
-  const base = { publicKey: 'new-pk', backup: '{"v":2}' };
+  const base = {
+    publicKey: 'new-pk',
+    expectedPublicKey: 'old-pk',
+    backup: '{"v":2}',
+  };
 
   it('upgrades v1 -> v2, re-wraps owned items and revokes only own links', async () => {
     const result = await upgradeKeys(alice.id, {
@@ -183,6 +187,53 @@ describe('upgradeKeys (database)', () => {
         where: { id: `link-${aliceFolder.item.id}` },
       })
     ).toBe(1);
+  });
+
+  it('lets exactly one of two concurrent upgrades win', async () => {
+    const results = await Promise.allSettled(
+      ['pk-a', 'pk-b'].map((publicKey) =>
+        upgradeKeys(alice.id, {
+          ...base,
+          publicKey,
+          backup: `{"v":2,"from":"${publicKey}"}`,
+        })
+      )
+    );
+
+    const won = results.findIndex((r) => r.status === 'fulfilled');
+    const lost = results.find((r) => r.status === 'rejected');
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect((lost as PromiseRejectedResult).reason.message).toBe(
+      'KEY_UPGRADE_STALE'
+    );
+    const winner = ['pk-a', 'pk-b'][won];
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: alice.id },
+    });
+    expect(user.publicKey).toBe(winner);
+    expect(user.backup).toBe(`{"v":2,"from":"${winner}"}`);
+  });
+
+  it('refuses an upgrade built from keys that a reset replaced', async () => {
+    await resetKeys(alice.id, {
+      publicKey: 'reset-pk',
+      backupKeypair: 'kp2',
+      backupKeystring: 'ks2',
+      backupSalt: 'salt2',
+    });
+
+    await expect(upgradeKeys(alice.id, base)).rejects.toThrow(
+      'KEY_UPGRADE_STALE'
+    );
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: alice.id },
+    });
+    expect(user).toMatchObject({
+      publicKey: 'reset-pk',
+      backup: null,
+      backupVersion: 1,
+      backupKeypair: 'kp2',
+    });
   });
 
   it('refuses a legacy write after the upgrade', async () => {

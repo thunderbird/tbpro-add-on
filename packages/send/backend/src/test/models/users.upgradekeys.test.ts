@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   userFindUniqueOrThrow: vi.fn(),
-  userUpdate: vi.fn(),
+  userUpdateMany: vi.fn(),
   itemUpdateMany: vi.fn(),
   accessLinkDeleteMany: vi.fn(),
   transaction: vi.fn(),
@@ -29,11 +29,18 @@ import { isLegacyBackupSuperseded, upgradeKeys } from '../../models/users';
 
 const ID = 'user-v2';
 const tx = {
-  user: { findUniqueOrThrow: h.userFindUniqueOrThrow, update: h.userUpdate },
+  user: {
+    findUniqueOrThrow: h.userFindUniqueOrThrow,
+    updateMany: h.userUpdateMany,
+  },
   item: { updateMany: h.itemUpdateMany },
   accessLink: { deleteMany: h.accessLinkDeleteMany },
 };
-const base = { publicKey: 'new-pk', backup: '{"v":2}' };
+const base = {
+  publicKey: 'new-pk',
+  expectedPublicKey: 'old-pk',
+  backup: '{"v":2}',
+};
 
 describe('upgradeKeys (model)', () => {
   beforeEach(() => {
@@ -43,7 +50,7 @@ describe('upgradeKeys (model)', () => {
     h.userFindUniqueOrThrow.mockResolvedValue({ backupVersion: 1 });
     h.itemUpdateMany.mockResolvedValue({ count: 1 });
     h.accessLinkDeleteMany.mockResolvedValue({ count: 2 });
-    h.userUpdate.mockResolvedValue({});
+    h.userUpdateMany.mockResolvedValue({ count: 1 });
   });
 
   it('sets the v2 backup and public key, nulls legacy columns, bumps updatedAt', async () => {
@@ -53,8 +60,12 @@ describe('upgradeKeys (model)', () => {
       linksRevoked: 0,
     });
 
-    const { where, data } = h.userUpdate.mock.calls[0][0];
-    expect(where).toEqual({ id: ID, backupVersion: { lte: 2 } });
+    const { where, data } = h.userUpdateMany.mock.calls[0][0];
+    expect(where).toEqual({
+      id: ID,
+      publicKey: 'old-pk',
+      backupVersion: { lte: 2 },
+    });
     expect(data).toMatchObject({
       publicKey: 'new-pk',
       backup: '{"v":2}',
@@ -91,7 +102,22 @@ describe('upgradeKeys (model)', () => {
     });
   });
 
-  it('aborts before writing the user row when an item is stale or not owned', async () => {
+  it('writes the user row first and stops when the public key moved on', async () => {
+    h.userUpdateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      upgradeKeys(ID, {
+        ...base,
+        items: [{ id: 1, wrappedKey: 'n1', expectedWrappedKey: 'o1' }],
+        revokeLinks: true,
+      })
+    ).rejects.toThrow('KEY_UPGRADE_STALE');
+
+    expect(h.itemUpdateMany).not.toHaveBeenCalled();
+    expect(h.accessLinkDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it('aborts the transaction when an item is stale or not owned', async () => {
     h.itemUpdateMany
       .mockResolvedValueOnce({ count: 1 })
       .mockResolvedValueOnce({ count: 0 });
@@ -108,14 +134,13 @@ describe('upgradeKeys (model)', () => {
     ).rejects.toThrow('KEY_UPGRADE_STALE');
 
     expect(h.accessLinkDeleteMany).not.toHaveBeenCalled();
-    expect(h.userUpdate).not.toHaveBeenCalled();
   });
 
   it('allows a v2 -> v2 rewrite', async () => {
     h.userFindUniqueOrThrow.mockResolvedValue({ backupVersion: 2 });
 
     await expect(upgradeKeys(ID, base)).resolves.toMatchObject({ from: 2 });
-    expect(h.userUpdate).toHaveBeenCalledTimes(1);
+    expect(h.userUpdateMany).toHaveBeenCalledTimes(1);
   });
 
   it('never lowers a newer backup version', async () => {
@@ -124,7 +149,7 @@ describe('upgradeKeys (model)', () => {
     await expect(upgradeKeys(ID, base)).rejects.toThrow(
       'BACKUP_FORMAT_SUPERSEDED'
     );
-    expect(h.userUpdate).not.toHaveBeenCalled();
+    expect(h.userUpdateMany).not.toHaveBeenCalled();
   });
 });
 
