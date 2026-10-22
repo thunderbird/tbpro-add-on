@@ -192,6 +192,11 @@ export function getUploadRetryDelayMs(
   baseDelayMs: number = UPLOAD_HTTP_RETRY_BASE_DELAY_MS
 ): number {
   const exponential = baseDelayMs * 2 ** attempt;
+  // Math.random() is intentional: jitter only spreads retries out in time and
+  // gains an attacker nothing if predicted, so a CSPRNG buys no security here
+  // and CodeQL flags dividing/rounding a CSPRNG value as biased
+  // (js/biased-cryptographic-random). SonarCloud S2245 on this line is a
+  // triage item, not a defect.
   const jitter = 0.5 + Math.random() / 2; // [0.5, 1.0)
   // floor (not round) keeps each attempt's range strictly below the next's
   // floor: [base*2^a*0.5, base*2^a), so successive delays never collide.

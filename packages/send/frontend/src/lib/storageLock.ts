@@ -14,6 +14,8 @@
  * of the time.
  */
 
+import { randomHex } from './secureRandom';
+
 interface LockRecord {
   token: string;
   expiresAt: number;
@@ -37,18 +39,17 @@ export interface StorageLock {
 /**
  * Generate a unique token used to identify a lock holder.
  *
- * Prefers `crypto.randomUUID()` and falls back to a timestamp+random string in
- * environments without it (matches the fallback pattern already used in
- * keychain.ts).
+ * Prefers `crypto.randomUUID()` and falls back to a timestamp plus 128 random
+ * bits from `crypto.getRandomValues` where randomUUID is unavailable (it is
+ * restricted to secure contexts, so e.g. an http://localhost dev tab lacks it).
+ * The token is what `release` matches against, so it must not be guessable by
+ * another context.
  */
 export function generateToken(): string {
-  if (
-    typeof crypto !== 'undefined' &&
-    typeof crypto.randomUUID === 'function'
-  ) {
+  if (typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${Date.now()}-${randomHex(16)}`;
 }
 
 /**

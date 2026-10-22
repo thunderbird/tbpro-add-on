@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   GET_TELEMETRY_STATE,
+  TELEMETRY_STATE_CHANGED,
   TELEMETRY_STATE_RESPONSE,
 } from './const';
-import { isTelemetryAllowed } from './telemetryConsent';
+import { isTelemetryAllowed, onTelemetryChanged } from './telemetryConsent';
+import { dispatchBridgeMessage } from './testUtils';
 
 function setUserAgent(ua: string) {
   Object.defineProperty(navigator, 'userAgent', {
@@ -19,10 +21,10 @@ function setUserAgent(ua: string) {
 function installFakeBridge(enabled: boolean) {
   const bridge = (event: MessageEvent) => {
     if (event.data?.type === GET_TELEMETRY_STATE) {
-      window.postMessage(
-        { type: TELEMETRY_STATE_RESPONSE, enabled },
-        window.location.origin
-      );
+      // Reply asynchronously, like the real bridge's sendMessage round trip.
+      setTimeout(() => {
+        dispatchBridgeMessage({ type: TELEMETRY_STATE_RESPONSE, enabled });
+      }, 0);
     }
   };
   window.addEventListener('message', bridge);
@@ -49,7 +51,9 @@ describe('isTelemetryAllowed', () => {
   it('honors the pref when enabled inside Thunderbird', async () => {
     setUserAgent(THUNDERBIRD_UA);
     (globalThis as unknown as { browser: unknown }).browser = {
-      thundermailTelemetry: { isTelemetryEnabled: vi.fn().mockResolvedValue(true) },
+      thundermailTelemetry: {
+        isTelemetryEnabled: vi.fn().mockResolvedValue(true),
+      },
     };
     await expect(isTelemetryAllowed()).resolves.toBe(true);
   });
@@ -57,7 +61,9 @@ describe('isTelemetryAllowed', () => {
   it('blocks telemetry when the pref is disabled inside Thunderbird', async () => {
     setUserAgent(THUNDERBIRD_UA);
     (globalThis as unknown as { browser: unknown }).browser = {
-      thundermailTelemetry: { isTelemetryEnabled: vi.fn().mockResolvedValue(false) },
+      thundermailTelemetry: {
+        isTelemetryEnabled: vi.fn().mockResolvedValue(false),
+      },
     };
     await expect(isTelemetryAllowed()).resolves.toBe(false);
   });
@@ -96,6 +102,34 @@ describe('isTelemetryAllowed', () => {
     }
   });
 
+  it('ignores a TELEMETRY_STATE_RESPONSE from another origin or window (S2819)', async () => {
+    setUserAgent(THUNDERBIRD_UA);
+    vi.useFakeTimers();
+    try {
+      const pending = isTelemetryAllowed();
+      // A cross-origin frame and a same-origin popup both try to opt us in.
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { type: TELEMETRY_STATE_RESPONSE, enabled: true },
+          origin: 'https://evil.example',
+          source: window,
+        })
+      );
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { type: TELEMETRY_STATE_RESPONSE, enabled: true },
+          origin: window.location.origin,
+          source: {} as unknown as Window,
+        })
+      );
+      // Neither is trusted, so the request still times out and fails closed.
+      await vi.advanceTimersByTimeAsync(2000);
+      await expect(pending).resolves.toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('fails closed inside Thunderbird when reading the pref throws', async () => {
     setUserAgent(THUNDERBIRD_UA);
     (globalThis as unknown as { browser: unknown }).browser = {
@@ -104,5 +138,36 @@ describe('isTelemetryAllowed', () => {
       },
     };
     await expect(isTelemetryAllowed()).resolves.toBe(false);
+  });
+});
+
+describe('onTelemetryChanged (bridge path)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('forwards TELEMETRY_STATE_CHANGED from the bridge and ignores untrusted senders', () => {
+    setUserAgent(THUNDERBIRD_UA);
+    const cb = vi.fn();
+    const unsubscribe = onTelemetryChanged(cb);
+    try {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { type: TELEMETRY_STATE_CHANGED, enabled: true },
+          origin: 'https://evil.example',
+          source: window,
+        })
+      );
+      expect(cb).not.toHaveBeenCalled();
+
+      dispatchBridgeMessage({ type: TELEMETRY_STATE_CHANGED, enabled: true });
+      expect(cb).toHaveBeenCalledWith(true);
+      dispatchBridgeMessage({ type: TELEMETRY_STATE_CHANGED, enabled: false });
+      expect(cb).toHaveBeenLastCalledWith(false);
+    } finally {
+      unsubscribe();
+    }
+    dispatchBridgeMessage({ type: TELEMETRY_STATE_CHANGED, enabled: true });
+    expect(cb).toHaveBeenCalledTimes(2);
   });
 });

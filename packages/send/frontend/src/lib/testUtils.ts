@@ -28,3 +28,25 @@ export function denyStorage(...names: ReadonlyArray<WebStorageName>) {
   });
   return () => restores.forEach((restore) => restore());
 }
+
+/**
+ * Simulates the token-bridge content script relaying `data` to the page.
+ *
+ * In a real browser `window.postMessage(data, window.location.origin)` delivers
+ * an event with `source === window` and `origin === window.location.origin`,
+ * which is what isTrustedBridgeMessage() checks. Under vitest's happy-dom
+ * environment the `source` of a self-posted message is happy-dom's internal
+ * GlobalWindow, not the `window` global the test and the app see, so a
+ * postMessage-based simulation would be rejected by the guard. Dispatching the
+ * MessageEvent directly with the real bridge's fields keeps the tests exercising
+ * the production check.
+ */
+export function dispatchBridgeMessage(data: unknown) {
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      data,
+      origin: window.location.origin,
+      source: window,
+    })
+  );
+}

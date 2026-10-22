@@ -4,6 +4,7 @@ import {
   TELEMETRY_STATE_RESPONSE,
   GET_TELEMETRY_STATE,
 } from '@send-frontend/lib/const';
+import { dispatchBridgeMessage } from '@send-frontend/lib/testUtils';
 
 /**
  * End-to-end gate test for the hosted Send dashboard (issue #892 / #952).
@@ -103,10 +104,10 @@ function setUserAgent(ua: string) {
 function installFakeBridge(enabled: boolean) {
   const handler = (event: MessageEvent) => {
     if (event.data?.type === GET_TELEMETRY_STATE) {
-      window.postMessage(
-        { type: TELEMETRY_STATE_RESPONSE, enabled },
-        window.location.origin
-      );
+      // Reply asynchronously, like the real bridge's sendMessage round trip.
+      setTimeout(() => {
+        dispatchBridgeMessage({ type: TELEMETRY_STATE_RESPONSE, enabled });
+      }, 0);
     }
   };
   window.addEventListener('message', handler);
@@ -197,10 +198,7 @@ describe('Send dashboard telemetry gate (bridge → initSentry)', () => {
       expect(sentry.init).not.toHaveBeenCalled();
 
       // Background broadcasts a pref change to the open dashboard tab.
-      window.postMessage(
-        { type: TELEMETRY_STATE_CHANGED, enabled: true },
-        window.location.origin
-      );
+      dispatchBridgeMessage({ type: TELEMETRY_STATE_CHANGED, enabled: true });
 
       await vi.waitFor(() => expect(sentry.init).toHaveBeenCalledTimes(1));
       expect(wiring.setPosthogConsent).toHaveBeenLastCalledWith(true);
@@ -215,10 +213,7 @@ describe('Send dashboard telemetry gate (bridge → initSentry)', () => {
       await loadDashboardEntry();
       await vi.waitFor(() => expect(sentry.init).toHaveBeenCalledTimes(1));
 
-      window.postMessage(
-        { type: TELEMETRY_STATE_CHANGED, enabled: false },
-        window.location.origin
-      );
+      dispatchBridgeMessage({ type: TELEMETRY_STATE_CHANGED, enabled: false });
 
       await vi.waitFor(() => expect(sentry.close).toHaveBeenCalledTimes(1));
       expect(wiring.setPosthogConsent).toHaveBeenLastCalledWith(false);
