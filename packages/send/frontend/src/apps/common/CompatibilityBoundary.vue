@@ -1,122 +1,150 @@
 <script setup lang="ts">
-import { trpc } from '@send-frontend/lib/trpc';
-import { useQuery } from '@tanstack/vue-query';
-import { computed } from 'vue';
+import { useClientGate } from '@send-frontend/composables/useClientGate';
+import { PrimaryButton } from '@thunderbirdops/services-ui';
+import { usePreferredDark } from '@vueuse/core';
+import { computed, ref } from 'vue';
 import { useConfigStore } from '../send/stores/config-store';
 import FeedbackBox from './FeedbackBox.vue';
-import LoadingComponent from './LoadingComponent.vue';
 
-const { isExtension } = useConfigStore();
+const { isTbproExtension, isDev } = useConfigStore();
+const prefersDark = usePreferredDark();
+const { gate, clientVersion, error } = useClientGate();
+const showInstructions = ref(false);
 
-const { data, isLoading, error } = useQuery({
-  queryKey: ['settingsQuery'],
-  queryFn: async () =>
-    await trpc.settings.query({
-      version: __APP_VERSION__,
-      appName: __APP_NAME__,
-    }),
-});
+// Only a resolved `block` replaces the app; loading and errors never hide it.
+const isBlocked = computed(() => gate.value.action === 'block');
+const isLocalCertError = computed(
+  () => isDev && Boolean(error.value?.message?.includes('Failed to fetch'))
+);
 
-const compatibility = computed(() => {
-  if (data?.value?.compatibility.result === 'FORCE_UPDATE') {
-    return 'FORCE_UPDATE';
-  }
-
-  return null;
-});
-const version = computed(() => {
-  return data?.value?.apiVersion;
-});
+const title = isTbproExtension
+  ? 'Update Thunderbird to continue using Send'
+  : 'Reload to continue using Send';
+const defaultMessage = isTbproExtension
+  ? 'This version of the Send add-on is no longer supported.'
+  : 'This version of Send is out of date. Reload the page to get the latest version; if that does not help, clear your browser cache.';
 
 const reload = () => {
   window.location.reload();
 };
-const clientVersion = computed(() => data?.value?.clientVersion);
+const toggleInstructions = () => {
+  showInstructions.value = !showInstructions.value;
+};
 </script>
 
 <template>
-  <div v-if="isLoading">
-    <LoadingComponent />
-  </div>
-
-  <div v-else-if="error" data-testid="error">
-    <div v-if="error?.message?.includes('Failed to fetch')">
-      <p>
-        Make sure you accept the self signed cert to use this app locally. You
-        can <a href="https://localhost:8088/">do it here</a>
-      </p>
-    </div>
-
-    <div v-else>
-      {{ error }}
-    </div>
-  </div>
-
-  <div
-    v-else-if="compatibility === 'FORCE_UPDATE'"
+  <section
+    v-if="isBlocked"
+    class="client-gate-block"
+    :class="{ dark: prefersDark }"
+    role="alert"
     data-testid="force-update-banner"
   >
-    <p class="critical">
-      You are using an outdated version of Thunderbird Send.
+    <h2 class="title">{{ title }}</h2>
+    <p class="description" data-testid="client-gate-message">
+      {{ gate.message ?? defaultMessage }}
+    </p>
+    <p class="versions" data-testid="client-gate-versions">
+      You are using version {{ clientVersion
+      }}<template v-if="gate.minVersion"
+        >; version {{ gate.minVersion }} or newer is required</template
+      >.
+    </p>
 
-      <button
-        class="refresh-button"
-        data-testid="refresh-button"
-        @click="reload"
+    <template v-if="isTbproExtension">
+      <PrimaryButton
+        data-testid="client-gate-how-to-update"
+        :aria-expanded="showInstructions"
+        @click="toggleInstructions"
       >
-        Click here to refresh
-      </button>
+        How to update
+      </PrimaryButton>
+      <ol
+        v-if="showInstructions"
+        class="instructions"
+        data-testid="client-gate-instructions"
+      >
+        <li>
+          Open Help &gt; About Thunderbird and install any available update.
+        </li>
+        <li>
+          Open Add-ons and Themes, click the gear icon and choose Check for
+          Updates.
+        </li>
+        <li>Restart Thunderbird.</li>
+      </ol>
+    </template>
+    <PrimaryButton v-else data-testid="refresh-button" @click="reload">
+      Reload
+    </PrimaryButton>
+
+    <FeedbackBox />
+  </section>
+
+  <template v-else>
+    <p v-if="isLocalCertError" class="dev-hint" data-testid="error">
+      Make sure you accept the self signed cert to use this app locally. You can
+      <a href="https://localhost:8088/">do it here</a>.
     </p>
-
-    <p v-if="!isExtension">
-      If you tried refreshing and the problem persists, please try clearing your
-      cache.
-    </p>
-
-    <div v-if="isExtension">
-      <p>You are using version {{ clientVersion }}</p>
-      <p>Please update to version {{ version }} or higher</p>
-      <p>
-        If you have automatic updates enabled, we suggest you restart
-        Thunderbird to make sure the update is applied.
-        <br />
-        If you don't have automatic updates enabled, please go to the
-        Thunderbird Add-ons Manager and update the extension manually.
-      </p>
-    </div>
-
-    <div>
-      <p>If all else fails please raise an issue below</p>
-      <FeedbackBox />
-    </div>
-  </div>
-
-  <slot v-else-if="compatibility === null"></slot>
+    <slot></slot>
+  </template>
 </template>
 
 <style scoped>
-header {
-  position: relative;
+.client-gate-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 40rem;
+  margin: 1rem auto;
+  padding: 1.5rem;
+  border: 1px solid var(--colour-danger-default);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--colour-danger-soft);
+  color: var(--colour-neutral-900);
+  font-family: Inter, sans-serif;
 }
-p {
-  font-weight: bold;
+
+/* Same approach as NavBar: services-ui dark tokens only apply under html.dark. */
+.client-gate-block.dark {
+  --colour-danger-soft: #7f1d1d;
+  --colour-danger-default: #fee2e2;
+  --colour-neutral-900: #eeeef0;
 }
-.critical {
-  background: var(--colour-ti-critical);
+
+.title {
+  margin: 0;
+  font-family: Metropolis, sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--colour-danger-default);
+}
+
+.description,
+.versions,
+.instructions {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.versions {
+  font-weight: 600;
+}
+
+.instructions {
+  padding-left: 1.25rem;
+  list-style: decimal;
+}
+
+.dev-hint {
   padding: 1rem;
-}
-.warning {
-  background: var(--colour-warning-default);
-  padding: 1rem;
-}
-.testing {
-  background: var(--colour-send-primary-accent-1);
-  padding: 1rem;
-}
-.closebutton {
-  position: absolute;
-  right: 0;
-  top: 0;
-  padding: 0.5rem;
+  background: var(--colour-warning-soft);
+  color: var(--colour-neutral-900);
 }
 </style>
