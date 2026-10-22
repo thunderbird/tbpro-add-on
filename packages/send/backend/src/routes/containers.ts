@@ -5,7 +5,6 @@ import {
   deleteItem,
   getContainerInfo,
   getContainerWithDescendants,
-  getWrappedKeyFromId,
   isUploadOwnedBy,
   reportUpload,
   updateItemName,
@@ -23,6 +22,7 @@ import {
 } from '../middleware';
 import { createRateLimiter } from '../middleware/rate-limit';
 
+import { ITEM_NOT_FOUND } from '../errors/models';
 import {
   addErrorHandling,
   CONTAINER_ERRORS,
@@ -46,6 +46,10 @@ import {
 import { addExpiryToContainer } from '@send-backend/utils';
 
 const router: Router = Router();
+
+// An item lookup that matches nothing in the container (missing, or in another
+// container) answers 404, with the same body either way.
+const itemNotFound = { [ITEM_NOT_FOUND]: CONTAINER_ERRORS.ITEM_NOT_FOUND };
 
 export interface TreeNode {
   id: string;
@@ -420,7 +424,7 @@ router.post(
  *       200:
  *         description: Item removed successfully
  *       404:
- *         description: Item or container not found
+ *         description: Item not found in this container
  */
 router.delete(
   '/:containerId/item/:itemId',
@@ -428,23 +432,23 @@ router.delete(
   requireWritePermission,
   // State-changing action: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_DELETED),
+  addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_DELETED, itemNotFound),
   wrapAsyncHandler(async (req, res) => {
     const { containerId, itemId } = req.params;
     const userId = getAuthenticatedUserData(req)?.id;
     if (!userId) {
       return reject(res);
     }
-    // Force req.body.shouldDeleteUpload to a boolean
+    // Defaults to true; either spelling of the flag can turn it off.
     const shouldDeleteUpload =
-      req?.body?.shouldDeleteUpload === false ? false : true;
-    const wrappedKey = await getWrappedKeyFromId(
-      parseInt(itemId),
+      req?.body?.shouldDeleteUpload !== false &&
+      req?.body?.shouldDeleteContent !== false;
+    const { wrappedKey } = await deleteItem(
+      Number.parseInt(itemId),
       containerId,
-      userId
+      userId,
+      shouldDeleteUpload
     );
-    // We don't await the deleteItem promise because we want to return a response immediately after initiating the delete.
-    deleteItem(parseInt(itemId), containerId, userId, shouldDeleteUpload);
     return res.status(202).json({ wrappedKey });
   })
 );
@@ -482,6 +486,8 @@ router.delete(
  *         description: Item renamed successfully
  *       400:
  *         description: Failed to rename item
+ *       404:
+ *         description: Item not found in this container
  */
 // Rename an item in a container
 router.post(
@@ -490,11 +496,11 @@ router.post(
   requireWritePermission,
   // State-changing action: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
-  addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_RENAMED),
+  addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_RENAMED, itemNotFound),
   wrapAsyncHandler(async (req, res) => {
     const { containerId, itemId } = req.params;
     const { name } = req.body;
-    const item = await updateItemName(parseInt(itemId), containerId, name);
+    const item = await updateItemName(Number.parseInt(itemId), containerId, name);
     res.status(200).json(item);
   })
 );

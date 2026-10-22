@@ -1,4 +1,5 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
+import { BaseError } from './models';
 
 type ErrorRespInfo = {
   statusCode: number;
@@ -56,6 +57,10 @@ export const CONTAINER_ERRORS = {
   ITEM_NOT_DELETED: {
     statusCode: 500,
     message: 'Could not delete item.',
+  },
+  ITEM_NOT_FOUND: {
+    statusCode: 404,
+    message: 'Could not find item.',
   },
   ITEM_NOT_RENAMED: {
     statusCode: 500,
@@ -163,13 +168,20 @@ export const USER_ERRORS = {
 // Identifies the request variables used by the middleware in this file.
 const REQ_VAR_STATUS_CODE = 'REQ_VAR_STATUS_CODE';
 const REQ_VAR_USER_MESSAGE = 'REQ_VAR_USER_MESSAGE';
+const REQ_VAR_OVERRIDES = 'REQ_VAR_OVERRIDES';
 
-// Returns a middleware function that adds error information to the request object
-export function addErrorHandling(err: ErrorRespInfo): RequestHandler {
+// Returns a middleware function that adds error information to the request object.
+// `overrides` maps a model error type (the message of a thrown `BaseError`)
+// to the response that should be sent for it instead of `err`.
+export function addErrorHandling(
+  err: ErrorRespInfo,
+  overrides?: Record<string, ErrorRespInfo>
+): RequestHandler {
   const { statusCode, message } = err;
   return (req, res, next) => {
     req[REQ_VAR_STATUS_CODE] = statusCode;
     req[REQ_VAR_USER_MESSAGE] = message;
+    req[REQ_VAR_OVERRIDES] = overrides;
     next();
   };
 }
@@ -185,14 +197,37 @@ export function wrapAsyncHandler(fn: RequestHandler) {
 }
 
 // Global error handler middleware.
-// Uses the error status code and message
-// if added by `onError`.
-// Falls back to a generic status 500 and the
-// message from the `err` object.
-export function errorHandler(err: Error, req: Request, res: Response) {
-  const status = req[REQ_VAR_STATUS_CODE] ?? 500;
+// Uses the status code and message set by `addErrorHandling` (or a matching
+// override); see the fallback below for errors without them.
+// Express only treats a middleware as an error handler when it declares four
+// parameters.
+export function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  // A response is already on its way; let Express close the connection.
+  if (res.headersSent) {
+    return next(err);
+  }
+  const override: ErrorRespInfo | undefined =
+    err instanceof BaseError
+      ? req[REQ_VAR_OVERRIDES]?.[err.message]
+      : undefined;
+  // Without route information, keep a client error's own status (body
+  // parser, http-errors) and never echo a server error's message.
+  const errStatus = (err as { status?: number }).status;
+  const fallbackStatus =
+    errStatus !== undefined && errStatus >= 400 && errStatus < 500
+      ? errStatus
+      : 500;
+  const status =
+    override?.statusCode ?? req[REQ_VAR_STATUS_CODE] ?? fallbackStatus;
   const message =
-    req[REQ_VAR_USER_MESSAGE] ?? err.message ?? 'Internal Server Error';
+    override?.message ??
+    req[REQ_VAR_USER_MESSAGE] ??
+    (status < 500 ? err.message : 'Internal Server Error');
 
   res.status(status).json({
     status: 'error',
@@ -200,9 +235,10 @@ export function errorHandler(err: Error, req: Request, res: Response) {
     message: message,
   });
 
-  if (status === 500) {
+  // The log keeps the original error message; the response may not.
+  if (status >= 500) {
     console.error(
-      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `
+      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${err.message} `
     );
   } else {
     console.warn(

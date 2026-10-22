@@ -5,14 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   mockCreateItem,
   mockDeleteItem,
-  mockGetWrappedKeyFromId,
   mockIsUploadOwnedBy,
   mockUpdateItemName,
   mockGetAuthenticatedUserData,
 } = vi.hoisted(() => ({
   mockCreateItem: vi.fn(),
   mockDeleteItem: vi.fn(),
-  mockGetWrappedKeyFromId: vi.fn(),
   mockIsUploadOwnedBy: vi.fn(),
   mockUpdateItemName: vi.fn(),
   mockGetAuthenticatedUserData: vi.fn(),
@@ -25,7 +23,6 @@ vi.mock('@send-backend/models', () => ({
   deleteItem: mockDeleteItem,
   getContainerInfo: vi.fn(),
   getContainerWithDescendants: vi.fn(),
-  getWrappedKeyFromId: mockGetWrappedKeyFromId,
   isUploadOwnedBy: mockIsUploadOwnedBy,
   reportUpload: vi.fn(),
   updateItemName: mockUpdateItemName,
@@ -50,11 +47,20 @@ vi.mock('../../middleware/rate-limit', () => ({
   createRateLimiter: () => (_req, _res, next) => next(),
 }));
 
+import { BaseError, ITEM_NOT_FOUND } from '../../errors/models';
+import { errorHandler } from '../../errors/routes';
 import router from '../../routes/containers';
 
 const app = express();
 app.use(express.json());
 app.use('/api/containers', router);
+app.use(errorHandler);
+
+const NOT_FOUND_BODY = {
+  status: 'error',
+  statusCode: 404,
+  message: 'Could not find item.',
+};
 
 const CONTAINER = 'container-1';
 const USER = 'user-1';
@@ -117,9 +123,8 @@ describe('container item routes', () => {
   });
 
   describe('DELETE /:containerId/item/:itemId', () => {
-    it('scopes the lookup and the delete to the container and caller', async () => {
-      mockGetWrappedKeyFromId.mockResolvedValue('wk');
-      mockDeleteItem.mockResolvedValue(undefined);
+    it('scopes the delete to the container and caller', async () => {
+      mockDeleteItem.mockResolvedValue({ wrappedKey: 'wk' });
 
       const res = await request(app)
         .delete(`/api/containers/${CONTAINER}/item/42`)
@@ -127,19 +132,53 @@ describe('container item routes', () => {
 
       expect(res.status).toBe(202);
       expect(res.body).toEqual({ wrappedKey: 'wk' });
-      expect(mockGetWrappedKeyFromId).toHaveBeenCalledWith(42, CONTAINER, USER);
       expect(mockDeleteItem).toHaveBeenCalledWith(42, CONTAINER, USER, false);
     });
 
-    it('does not delete when the scoped lookup fails', async () => {
-      mockGetWrappedKeyFromId.mockRejectedValue(new Error('not found'));
+    it.each([
+      [{}, true],
+      [{ shouldDeleteContent: true }, true],
+      [{ shouldDeleteUpload: false }, false],
+      [{ shouldDeleteContent: false }, false],
+    ])('reads the delete flag from %j as %s', async (body, expected) => {
+      mockDeleteItem.mockResolvedValue({ wrappedKey: 'wk' });
+
+      await request(app)
+        .delete(`/api/containers/${CONTAINER}/item/42`)
+        .send(body);
+
+      expect(mockDeleteItem).toHaveBeenCalledWith(
+        42,
+        CONTAINER,
+        USER,
+        expected
+      );
+    });
+
+    it('answers 404 when no item matches in the container', async () => {
+      mockDeleteItem.mockRejectedValue(new BaseError(ITEM_NOT_FOUND));
 
       const res = await request(app).delete(
         `/api/containers/${CONTAINER}/item/42`
       );
 
-      expect(res.status).toBeGreaterThanOrEqual(400);
-      expect(mockDeleteItem).not.toHaveBeenCalled();
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual(NOT_FOUND_BODY);
+    });
+
+    it('answers an error, not 202, when the delete fails', async () => {
+      mockDeleteItem.mockRejectedValue(new Error('db down'));
+
+      const res = await request(app).delete(
+        `/api/containers/${CONTAINER}/item/42`
+      );
+
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({
+        status: 'error',
+        statusCode: 500,
+        message: 'Could not delete item.',
+      });
     });
 
     it('refuses when no authenticated user is resolved', async () => {
@@ -150,7 +189,6 @@ describe('container item routes', () => {
       );
 
       expect(res.status).toBe(403);
-      expect(mockGetWrappedKeyFromId).not.toHaveBeenCalled();
       expect(mockDeleteItem).not.toHaveBeenCalled();
     });
   });
@@ -166,6 +204,28 @@ describe('container item routes', () => {
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ id: 42, name: 'new.txt' });
       expect(mockUpdateItemName).toHaveBeenCalledWith(42, CONTAINER, 'new.txt');
+    });
+
+    it('answers 404 when no item matches in the container', async () => {
+      mockUpdateItemName.mockRejectedValue(new BaseError(ITEM_NOT_FOUND));
+
+      const res = await request(app)
+        .post(`/api/containers/${CONTAINER}/item/42/rename`)
+        .send({ name: 'new.txt' });
+
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual(NOT_FOUND_BODY);
+    });
+
+    it('answers 500 for any other update failure', async () => {
+      mockUpdateItemName.mockRejectedValue(new Error('db down'));
+
+      const res = await request(app)
+        .post(`/api/containers/${CONTAINER}/item/42/rename`)
+        .send({ name: 'new.txt' });
+
+      expect(res.status).toBe(500);
+      expect(res.body.message).toBe('Could not rename item.');
     });
   });
 });

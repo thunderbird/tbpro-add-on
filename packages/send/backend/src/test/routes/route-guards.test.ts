@@ -50,7 +50,6 @@ vi.mock('../../models', () => ({
   deleteItem: vi.fn(),
   getContainerInfo: vi.fn(),
   getContainerWithDescendants: vi.fn(),
-  getWrappedKeyFromId: vi.fn(),
   isUploadOwnedBy: vi.fn(),
   updateItemName: vi.fn(),
 }));

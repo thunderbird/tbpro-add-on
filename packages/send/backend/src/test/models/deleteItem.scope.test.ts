@@ -1,56 +1,53 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // deleteItem removes only the authorized container's item rows, and removes
-// the Upload row and stored bytes only once no other container references
-// that upload.
+// the Upload row and stored bytes only once no item references that upload.
 
 const h = vi.hoisted(() => {
-  const prisma = {
+  const tx = {
     item: {
-      findFirstOrThrow: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       deleteMany: vi.fn(),
     },
-    upload: { deleteMany: vi.fn() },
+    upload: { findMany: vi.fn(), deleteMany: vi.fn() },
     container: { update: vi.fn() },
   };
+  const prisma = {
+    $transaction: vi.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
+  };
   const storageDel = vi.fn();
-  return { prisma, storageDel };
+  return { prisma, tx, storageDel };
 });
 
-vi.mock('@prisma/client', () => ({
+vi.mock('@prisma/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@prisma/client')>()),
   PrismaClient: vi.fn(function () {
     return h.prisma;
   }),
-  ContainerType: { CONVERSATION: 'CONVERSATION', FOLDER: 'FOLDER' },
-  ItemType: { FILE: 'FILE', MESSAGE: 'MESSAGE' },
-  UserTier: { FREE: 'FREE', PRO: 'PRO', EPHEMERAL: 'EPHEMERAL' },
 }));
 
 vi.mock('../../storage', () => ({
   default: { del: h.storageDel },
 }));
 
+import { ITEM_NOT_DELETED } from '../../errors/models';
 import { deleteItem } from '../../models';
 
 const CONTAINER = 'container-a';
 const OWNER = 'user-owner';
 const UPLOAD = 'upload-1';
 
-function seed({ stillReferenced }: { stillReferenced: string[] }) {
-  h.prisma.item.findFirstOrThrow.mockResolvedValue({
-    containerId: CONTAINER,
-    uploadId: UPLOAD,
-    multipart: false,
-    wrappedKey: 'wk',
-  });
-  // first findMany: sibling lookup; second: remaining references after delete
-  h.prisma.item.findMany
-    .mockResolvedValueOnce([{ uploadId: UPLOAD }])
-    .mockResolvedValueOnce(stillReferenced.map((uploadId) => ({ uploadId })));
-  h.prisma.item.deleteMany.mockResolvedValue({ count: 1 });
-  h.prisma.upload.deleteMany.mockResolvedValue({ count: 0 });
-  h.prisma.container.update.mockResolvedValue({});
+function seed({ stillReferenced }: { stillReferenced: boolean }) {
+  h.tx.item.findFirst.mockResolvedValue({ wrappedKey: 'wk' });
+  h.tx.item.findMany.mockResolvedValue([{ id: 1, uploadId: UPLOAD }]);
+  h.tx.item.deleteMany.mockResolvedValue({ count: 1 });
+  // uploads with no remaining item rows
+  h.tx.upload.findMany.mockResolvedValue(
+    stillReferenced ? [] : [{ id: UPLOAD }]
+  );
+  h.tx.upload.deleteMany.mockResolvedValue({ count: 0 });
+  h.tx.container.update.mockResolvedValue({});
   h.storageDel.mockResolvedValue(undefined);
 }
 
@@ -59,29 +56,83 @@ describe('deleteItem container scoping', () => {
     vi.clearAllMocks();
   });
 
-  it('deletes item rows only in the authorized container', async () => {
-    seed({ stillReferenced: [] });
+  it('deletes only the item rows found in the authorized container', async () => {
+    seed({ stillReferenced: false });
     await deleteItem(1, CONTAINER, OWNER, true);
-    expect(h.prisma.item.deleteMany).toHaveBeenCalledWith({
-      where: { uploadId: { in: [UPLOAD] }, containerId: CONTAINER },
+    expect(h.tx.item.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          wrappedKey: 'wk',
+          containerId: CONTAINER,
+          upload: { ownerId: OWNER },
+        },
+      })
+    );
+    expect(h.tx.item.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: [1] } },
     });
   });
 
   it('removes the upload and bytes when nothing else references it', async () => {
-    seed({ stillReferenced: [] });
+    seed({ stillReferenced: false });
     await deleteItem(1, CONTAINER, OWNER, true);
-    expect(h.prisma.upload.deleteMany).toHaveBeenCalledWith({
+    expect(h.tx.upload.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: [UPLOAD] }, items: { none: {} } },
+      })
+    );
+    expect(h.tx.upload.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: [UPLOAD] } },
     });
     expect(h.storageDel).toHaveBeenCalledWith(UPLOAD);
   });
 
-  it('keeps the upload and bytes while another container references it', async () => {
-    seed({ stillReferenced: [UPLOAD] });
+  it('keeps the upload and bytes while another item references it', async () => {
+    seed({ stillReferenced: true });
     await deleteItem(1, CONTAINER, OWNER, true);
-    expect(h.prisma.upload.deleteMany).toHaveBeenCalledWith({
+    expect(h.tx.upload.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: [] } },
     });
     expect(h.storageDel).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleteItem transaction and storage boundary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    seed({ stillReferenced: false });
+  });
+
+  it('fails without touching storage when the transaction fails', async () => {
+    h.tx.container.update.mockRejectedValue(new Error('db down'));
+    await expect(deleteItem(1, CONTAINER, OWNER, true)).rejects.toThrow(
+      ITEM_NOT_DELETED
+    );
+    expect(h.storageDel).not.toHaveBeenCalled();
+  });
+
+  it('deletes stored bytes only after the transaction commits', async () => {
+    let commit: (() => void) | undefined;
+    h.prisma.$transaction.mockImplementationOnce(async (fn) => {
+      const result = await fn(h.tx);
+      await new Promise<void>((resolve) => (commit = resolve));
+      return result;
+    });
+    const pending = deleteItem(1, CONTAINER, OWNER, true);
+    await vi.waitFor(() => expect(commit).toBeTypeOf('function'));
+    expect(h.storageDel).not.toHaveBeenCalled();
+    commit?.();
+    await expect(pending).resolves.toEqual({ wrappedKey: 'wk' });
+    expect(h.storageDel).toHaveBeenCalledWith(UPLOAD);
+  });
+
+  it('still resolves when storage deletion fails after commit', async () => {
+    h.storageDel.mockRejectedValue(new Error('bucket down'));
+    await expect(deleteItem(1, CONTAINER, OWNER, true)).resolves.toEqual({
+      wrappedKey: 'wk',
+    });
+    expect(h.storageDel).toHaveBeenCalledWith(UPLOAD);
+    expect(console.error).toHaveBeenCalled();
   });
 });

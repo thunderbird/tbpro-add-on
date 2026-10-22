@@ -54,7 +54,7 @@ import { verifyOwnedUploadId } from '../../utils/ownedUploadId';
 const app = express();
 app.use(express.json());
 app.use('/api/uploads', router);
-app.use((err, req, res, _next) => errorHandler(err, req, res));
+app.use(errorHandler);
 
 describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
   beforeEach(() => {
