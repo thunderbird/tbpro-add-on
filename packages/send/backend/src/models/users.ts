@@ -28,18 +28,19 @@ export async function getBackupVersion(id: string): Promise<number | null> {
 }
 
 /**
- * Throws BaseError(BACKUP_FORMAT_SUPERSEDED) when the user is on a v2 backup.
+ * True when the user is on a v2 backup, so a legacy (v1) write must be refused.
  * Old clients still send v1 writes; the log line counts how many remain.
  */
-export async function assertLegacyBackupWritable(id: string, via: string) {
+export async function isLegacyBackupSuperseded(id: string, via: string) {
   const version = await getBackupVersion(id);
-  if (version !== null && version >= KEY_BACKUP_V2) {
-    console.warn(
-      'legacy key backup write rejected',
-      JSON.stringify({ userId: id, via, backupVersion: version })
-    );
-    throw new BaseError(BACKUP_FORMAT_SUPERSEDED);
+  if (version === null || version < KEY_BACKUP_V2) {
+    return false;
   }
+  console.warn(
+    'legacy key backup write rejected',
+    JSON.stringify({ userId: id, via, backupVersion: version })
+  );
+  return true;
 }
 
 export async function createUser(

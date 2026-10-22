@@ -42,13 +42,13 @@ vi.mock('@send-backend/models', () => ({
 }));
 
 vi.mock('@send-backend/models/users', () => ({
-  assertLegacyBackupWritable: vi.fn(),
   createUserWithPassword: vi.fn(),
   getBackupVersion: vi.fn(),
   getFTUEStatus: vi.fn(),
   getHashedPassword: vi.fn(),
   getUserByEmailV2: vi.fn(),
   getUserByOIDCSubject: vi.fn(),
+  isLegacyBackupSuperseded: vi.fn(),
   markFTUEComplete: vi.fn(),
   resetKeys: vi.fn(),
   updateUniqueHash: vi.fn(),

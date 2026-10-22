@@ -25,7 +25,7 @@ vi.mock('@prisma/client', () => ({
   Prisma: {},
 }));
 
-import { assertLegacyBackupWritable, upgradeKeys } from '../../models/users';
+import { isLegacyBackupSuperseded, upgradeKeys } from '../../models/users';
 
 const ID = 'user-v2';
 const tx = {
@@ -128,7 +128,7 @@ describe('upgradeKeys (model)', () => {
   });
 });
 
-describe('assertLegacyBackupWritable', () => {
+describe('isLegacyBackupSuperseded', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -137,18 +137,14 @@ describe('assertLegacyBackupWritable', () => {
   it('passes for a v1 user', async () => {
     h.userFindUnique.mockResolvedValue({ backupVersion: 1 });
 
-    await expect(assertLegacyBackupWritable(ID, 'test')).resolves.toBe(
-      undefined
-    );
+    await expect(isLegacyBackupSuperseded(ID, 'test')).resolves.toBe(false);
     expect(console.warn).not.toHaveBeenCalled();
   });
 
-  it('throws BACKUP_FORMAT_SUPERSEDED and logs one counter line for a v2 user', async () => {
+  it('is true and logs one counter line for a v2 user', async () => {
     h.userFindUnique.mockResolvedValue({ backupVersion: 2 });
 
-    await expect(assertLegacyBackupWritable(ID, 'test')).rejects.toThrow(
-      'BACKUP_FORMAT_SUPERSEDED'
-    );
+    await expect(isLegacyBackupSuperseded(ID, 'test')).resolves.toBe(true);
     expect(console.warn).toHaveBeenCalledWith(
       'legacy key backup write rejected',
       JSON.stringify({ userId: ID, via: 'test', backupVersion: 2 })

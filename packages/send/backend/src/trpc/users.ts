@@ -21,13 +21,13 @@ import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import {
-  assertLegacyBackupWritable,
   createUserWithPassword,
   getBackupVersion,
   getFTUEStatus,
   getHashedPassword,
   getUserByEmailV2,
   getUserById,
+  isLegacyBackupSuperseded,
   KeyUpgrade,
   markFTUEComplete,
   resetKeys,
@@ -238,16 +238,11 @@ export const usersRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const id = ctx.user.id;
-      try {
-        await assertLegacyBackupWritable(id, 'resetKeys');
-      } catch (e) {
-        if (e instanceof BaseError && e.message === BACKUP_FORMAT_SUPERSEDED) {
-          throw new TRPCError({
-            code: 'CONFLICT',
-            message: BACKUP_FORMAT_SUPERSEDED,
-          });
-        }
-        throw e;
+      if (await isLegacyBackupSuperseded(id, 'resetKeys')) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: BACKUP_FORMAT_SUPERSEDED,
+        });
       }
       try {
         // 1. Write-new-then-swap: install the confirmed replacement blob FIRST.
@@ -336,6 +331,7 @@ export const usersRouter = router({
       try {
         const { from, items, linksRevoked } = await upgradeKeys(
           userId,
+          // zod infers optional fields without strictNullChecks
           input as KeyUpgrade
         );
         console.info(

@@ -10,8 +10,8 @@ import {
 } from '../errors/routes';
 
 import {
-  assertLegacyBackupWritable,
   getAdminStatus,
+  isLegacyBackupSuperseded,
   getAllUserGroupContainers,
   getBackup,
   getFTUEStatus,
@@ -25,10 +25,7 @@ import {
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { KEY_BACKUP_V2 } from '@send-backend/config';
-import {
-  BACKUP_FORMAT_SUPERSEDED,
-  BaseError,
-} from '@send-backend/errors/models';
+import { BACKUP_FORMAT_SUPERSEDED } from '@send-backend/errors/models';
 import { requireAdminPermisions, requireJWT } from '../middleware';
 
 const router: Router = Router();
@@ -260,16 +257,11 @@ router.post(
   addErrorHandling(USER_ERRORS.BACKUP_FAILED),
   wrapAsyncHandler(async (req, res) => {
     const { id } = getDataFromAuthenticatedRequest(req);
-    try {
-      await assertLegacyBackupWritable(id, 'POST /api/users/backup');
-    } catch (e) {
-      if (e instanceof BaseError && e.message === BACKUP_FORMAT_SUPERSEDED) {
-        const { statusCode, message } = USER_ERRORS.BACKUP_FORMAT_SUPERSEDED;
-        return res
-          .status(statusCode)
-          .json({ statusCode, code: BACKUP_FORMAT_SUPERSEDED, message });
-      }
-      throw e;
+    if (await isLegacyBackupSuperseded(id, 'POST /api/users/backup')) {
+      const { statusCode, message } = USER_ERRORS.BACKUP_FORMAT_SUPERSEDED;
+      return res
+        .status(statusCode)
+        .json({ statusCode, code: BACKUP_FORMAT_SUPERSEDED, message });
     }
     const { keys, keypair, keystring, salt } = req.body;
     // We're not using the return value, but we want to make sure the backup runs

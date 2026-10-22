@@ -6,8 +6,8 @@ import {
   KEY_UPGRADE_STALE,
 } from '@send-backend/errors/models';
 import {
-  assertLegacyBackupWritable,
   getBackupVersion,
+  isLegacyBackupSuperseded,
   resetKeys,
   upgradeKeys,
 } from '@send-backend/models/users';
@@ -42,7 +42,6 @@ vi.mock('@send-backend/models', () => ({
 }));
 
 vi.mock('@send-backend/models/users', () => ({
-  assertLegacyBackupWritable: vi.fn(),
   createUserWithPassword: vi.fn(),
   getBackupVersion: vi.fn(),
   getFTUEStatus: vi.fn(),
@@ -50,6 +49,7 @@ vi.mock('@send-backend/models/users', () => ({
   getUserByEmailV2: vi.fn(),
   getUserById: vi.fn(),
   getUserByOIDCSubject: vi.fn(),
+  isLegacyBackupSuperseded: vi.fn(),
   markFTUEComplete: vi.fn(),
   resetKeys: vi.fn(),
   updateUniqueHash: vi.fn(),
@@ -235,9 +235,7 @@ describe('upgradeKeys', () => {
 
 describe('resetKeys downgrade guard', () => {
   it('refuses with 409 BACKUP_FORMAT_SUPERSEDED once the user is on v2', async () => {
-    vi.mocked(assertLegacyBackupWritable).mockRejectedValue(
-      new BaseError(BACKUP_FORMAT_SUPERSEDED)
-    );
+    vi.mocked(isLegacyBackupSuperseded).mockResolvedValue(true);
 
     await expect(caller().resetKeys(resetInput)).rejects.toThrow(
       new TRPCError({ code: 'CONFLICT', message: BACKUP_FORMAT_SUPERSEDED })
@@ -246,13 +244,13 @@ describe('resetKeys downgrade guard', () => {
   });
 
   it('still resets a v1 user', async () => {
-    vi.mocked(assertLegacyBackupWritable).mockResolvedValue(undefined);
+    vi.mocked(isLegacyBackupSuperseded).mockResolvedValue(false);
     vi.mocked(resetKeys).mockResolvedValue({ id: USER } as never);
 
     await expect(caller().resetKeys(resetInput)).resolves.toEqual({
       success: true,
     });
-    expect(assertLegacyBackupWritable).toHaveBeenCalledWith(USER, 'resetKeys');
+    expect(isLegacyBackupSuperseded).toHaveBeenCalledWith(USER, 'resetKeys');
   });
 });
 
