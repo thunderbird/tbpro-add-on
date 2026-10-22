@@ -2,11 +2,16 @@ import { trpc } from '@send-frontend/lib/trpc';
 import { useQuery } from '@tanstack/vue-query';
 import { computed } from 'vue';
 
+export type ClientGateAction = 'none' | 'banner' | 'block';
+
+const asString = (value: unknown) => (typeof value === 'string' ? value : null);
+
 /**
  * Server-controlled update gate from the `settings` query. The boundary and the
  * banner share the query key, so this is one request. Until it resolves, if it
- * fails (including a failed refetch over cached data), or against a server
- * that doesn't send `clientGate`, the action is `none` and the app renders.
+ * fails (including a failed refetch over cached data), against a server that
+ * doesn't send `clientGate`, or for an action this build doesn't know, the
+ * action is `none` and the app renders.
  */
 export function useClientGate() {
   const { data, error } = useQuery({
@@ -20,10 +25,14 @@ export function useClientGate() {
 
   const gate = computed(() => {
     const clientGate = error.value ? null : data.value?.clientGate;
+    const action: ClientGateAction =
+      clientGate?.action === 'banner' || clientGate?.action === 'block'
+        ? clientGate.action
+        : 'none';
     return {
-      action: clientGate?.action ?? 'none',
-      minVersion: clientGate?.minVersion ?? null,
-      message: clientGate?.message ?? null,
+      action,
+      minVersion: asString(clientGate?.minVersion),
+      message: asString(clientGate?.message),
     };
   });
 
