@@ -5,8 +5,8 @@ import { computed } from 'vue';
 /**
  * Server-controlled update gate from the `settings` query. The boundary and the
  * banner share the query key, so this is one request. Until it resolves, if it
- * fails, or against a server that doesn't send `clientGate`, the action is
- * `none` and the app renders normally.
+ * fails (including a failed refetch over cached data), or against a server
+ * that doesn't send `clientGate`, the action is `none` and the app renders.
  */
 export function useClientGate() {
   const { data, error } = useQuery({
@@ -18,11 +18,14 @@ export function useClientGate() {
       }),
   });
 
-  const gate = computed(() => ({
-    action: data.value?.clientGate?.action ?? 'none',
-    minVersion: data.value?.clientGate?.minVersion ?? null,
-    message: data.value?.clientGate?.message ?? null,
-  }));
+  const gate = computed(() => {
+    const clientGate = error.value ? null : data.value?.clientGate;
+    return {
+      action: clientGate?.action ?? 'none',
+      minVersion: clientGate?.minVersion ?? null,
+      message: clientGate?.message ?? null,
+    };
+  });
 
   return { gate, clientVersion: __APP_VERSION__, error };
 }

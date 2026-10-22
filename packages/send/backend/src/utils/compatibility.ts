@@ -24,7 +24,13 @@ export function parseSemver(version: unknown): ParsedVersion | null {
   if (typeof version !== 'string') {
     return null;
   }
-  const withoutBuild = version.trim().replace(/^v/, '').split('+')[0];
+  const parts = version.trim().replace(/^v/, '').split('+');
+  const withoutBuild = parts[0];
+  // Build metadata is ignored for precedence but must still be well-formed.
+  const build = parts.length > 1 ? parts[1].split('.') : [];
+  if (parts.length > 2 || !build.every((part) => IDENTIFIER.test(part))) {
+    return null;
+  }
   const dash = withoutBuild.indexOf('-');
   const coreText = dash === -1 ? withoutBuild : withoutBuild.slice(0, dash);
   const core = coreText.split('.');

@@ -2,9 +2,11 @@
 import { useClientGate } from '@send-frontend/composables/useClientGate';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
 import { usePreferredDark } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useConfigStore } from '../send/stores/config-store';
 import FeedbackBox from './FeedbackBox.vue';
+
+const emit = defineEmits<{ blocked: [] }>();
 
 const { isTbproExtension, isDev } = useConfigStore();
 const prefersDark = usePreferredDark();
@@ -13,6 +15,13 @@ const showInstructions = ref(false);
 
 // Only a resolved `block` replaces the app; loading and errors never hide it.
 const isBlocked = computed(() => gate.value.action === 'block');
+watch(
+  isBlocked,
+  (blocked) => {
+    if (blocked) emit('blocked');
+  },
+  { immediate: true }
+);
 const isLocalCertError = computed(
   () => isDev && Boolean(error.value?.message?.includes('Failed to fetch'))
 );

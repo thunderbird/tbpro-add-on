@@ -87,6 +87,14 @@ describe('CompatibilityBoundary', () => {
     expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
   });
 
+  it('renders the app when a refetch fails over a cached block', () => {
+    query.data = gate('block');
+    query.error = new Error('Failed to fetch');
+    const wrapper = mountBoundary();
+    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+    expect(wrapper.emitted('blocked')).toBeUndefined();
+  });
+
   it('renders the app for an old server without clientGate', () => {
     query.data = { compatibility: { result: 'FORCE_UPDATE' } };
     const wrapper = mountBoundary();
@@ -105,6 +113,11 @@ describe('CompatibilityBoundary', () => {
   describe('block', () => {
     beforeEach(() => {
       query.data = gate('block');
+    });
+
+    it('emits blocked so the host can release pending work', () => {
+      const wrapper = mountBoundary();
+      expect(wrapper.emitted('blocked')).toHaveLength(1);
     });
 
     it('replaces the app with the web update screen', () => {
