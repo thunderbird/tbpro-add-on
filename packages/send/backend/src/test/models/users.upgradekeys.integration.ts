@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setBackup, upgradeKeys } from '../../models/users';
 
 // Key backup v2 against a real database: the transaction rolls back as a whole
-// when one item is stale or belongs to someone else, link revocation is scoped
+// when one item is stale or sits in a container the user doesn't own, link
+// revocation is scoped
 // to the caller's containers, and legacy writes no longer match a v2 row.
 
 const prisma = new PrismaClient();
@@ -136,9 +137,14 @@ describe('upgradeKeys (database)', () => {
 
   it.each([
     ['a stale expectedWrappedKey', 'self'],
-    ["an item in another user's container", 'other'],
+    ['an item in a container the user is only a member of', 'other'],
   ])('rolls everything back on %s', async (_, whose) => {
     const foreign = whose === 'other';
+    if (foreign) {
+      await prisma.membership.create({
+        data: { groupId: bobFolder.group.id, userId: alice.id },
+      });
+    }
     await expect(
       upgradeKeys(alice.id, {
         ...base,
