@@ -8,6 +8,8 @@ import { onMounted } from 'vue';
 import { useMetricsUpdate } from '@send-frontend/apps/common/mixins/metrics';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import VersionTag from '@send-frontend/apps/common/VersionTag.vue';
+import CompatibilityBanner from '../common/CompatibilityBanner.vue';
+import CompatibilityBoundary from '../common/CompatibilityBoundary.vue';
 import PopupView from './views/PopupView.vue';
 
 const userStore = useUserStore();
@@ -27,7 +29,10 @@ useMetricsUpdate();
 
 <template>
   <div id="send-page" class="container">
-    <PopupView />
+    <CompatibilityBoundary>
+      <CompatibilityBanner />
+      <PopupView />
+    </CompatibilityBoundary>
     <VersionTag />
   </div>
 </template>

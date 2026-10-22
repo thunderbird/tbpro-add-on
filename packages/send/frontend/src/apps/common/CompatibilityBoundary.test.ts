@@ -1,162 +1,184 @@
 import { getByTestId } from '@send-frontend/lib/testUtils';
-import { useQuery } from '@tanstack/vue-query';
-import { shallowMount } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useConfigStore } from '../send/stores/config-store';
+import { ref } from 'vue';
 import CompatibilityBoundary from './CompatibilityBoundary.vue';
 
-// Mock dependencies
-vi.mock('@send-frontend/lib/trpc', () => ({
-  trpc: {
-    settings: {
-      query: vi.fn(),
-    },
+const { query, settingsQuery, config, prefersDark } = vi.hoisted(() => ({
+  query: { data: null, error: null } as {
+    data: unknown;
+    error: unknown;
+    options?: { queryFn: () => Promise<unknown> };
   },
+  settingsQuery: vi.fn(),
+  config: { isTbproExtension: false, isDev: false },
+  prefersDark: { value: false },
 }));
-vi.mock('@tanstack/vue-query', () => {
-  return {
-    useQuery: vi.fn(),
-  };
-});
+
+vi.mock('@send-frontend/lib/trpc', () => ({
+  trpc: { settings: { query: settingsQuery } },
+}));
+vi.mock('@tanstack/vue-query', () => ({
+  useQuery: vi.fn((options) => {
+    query.options = options;
+    return { data: ref(query.data), error: ref(query.error) };
+  }),
+}));
 vi.mock('../send/stores/config-store', () => ({
-  useConfigStore: vi.fn(),
+  useConfigStore: () => config,
 }));
+vi.mock('@vueuse/core', () => ({
+  usePreferredDark: () => ref(prefersDark.value),
+}));
+
+const stubs = { PrimaryButton: { template: '<button><slot /></button>' } };
+const SLOT = '<div data-testid="app-content">App</div>';
+
+function gate(action: string, minVersion = '9.9.9', message = null) {
+  return { clientGate: { action, minVersion, message } };
+}
+
+function mountBoundary() {
+  return mount(CompatibilityBoundary, {
+    slots: { default: SLOT },
+    global: { stubs },
+  });
+}
 
 describe('CompatibilityBoundary', () => {
-  let wrapper;
-  const mockApiVersion = '1.2.3';
-  const mockClientVersion = '1.0.0';
-  let useQueryMock;
-  let useConfigStoreMock;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    useQueryMock = vi.mocked(useQuery);
-    useConfigStoreMock = vi.mocked(useConfigStore);
-    useQueryMock.mockReturnValue({
-      data: { value: null },
-      isLoading: false,
-      error: null,
-    });
-    useConfigStoreMock.mockReturnValue({
-      isExtension: false,
+    query.data = null;
+    query.error = null;
+    config.isTbproExtension = false;
+    config.isDev = false;
+    prefersDark.value = false;
+  });
+
+  it('asks the server with this build’s version and app name', async () => {
+    mountBoundary();
+    await query.options?.queryFn();
+    expect(settingsQuery).toHaveBeenCalledWith({
+      version: __APP_VERSION__,
+      appName: __APP_NAME__,
     });
   });
 
-  it('should show loading state when isLoading is true', async () => {
-    useQueryMock.mockReturnValue({
-      data: { value: null },
-      isLoading: true,
-      error: null,
-    });
-    wrapper = shallowMount(CompatibilityBoundary);
-    expect(wrapper.findComponent({ name: 'LoadingComponent' }).exists()).toBe(
-      true
+  it('renders the app while settings are loading', () => {
+    const wrapper = mountBoundary();
+    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+    expect(wrapper.find(getByTestId('force-update-banner')).exists()).toBe(
+      false
     );
   });
 
-  it('should show error when there is an error', async () => {
-    useQueryMock.mockReturnValue({
-      data: { value: null },
-      isLoading: false,
-      error: new Error('Test error'),
-    });
-    wrapper = shallowMount(CompatibilityBoundary);
+  it('renders the app when settings fail', () => {
+    query.error = new Error('Failed to fetch');
+    const wrapper = mountBoundary();
+    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+    expect(wrapper.find(getByTestId('error')).exists()).toBe(false);
+  });
+
+  it('adds the local certificate hint in development', () => {
+    config.isDev = true;
+    query.error = new Error('Failed to fetch');
+    const wrapper = mountBoundary();
     expect(wrapper.find(getByTestId('error')).exists()).toBe(true);
-    expect(wrapper.find(getByTestId('error')).text()).toContain(
-      'Error: Test error'
+    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+  });
+
+  it('renders the app for an old server without clientGate', () => {
+    query.data = { compatibility: { result: 'FORCE_UPDATE' } };
+    const wrapper = mountBoundary();
+    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+  });
+
+  it.each(['none', 'banner'])('renders the app for %s', (action) => {
+    query.data = gate(action);
+    const wrapper = mountBoundary();
+    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+    expect(wrapper.find(getByTestId('force-update-banner')).exists()).toBe(
+      false
     );
   });
 
-  it.skip('should render slot when compatibility is OK', async () => {
-    useQueryMock.mockReturnValue({
-      data: {
-        value: {
-          compatibility: { result: 'OK' },
-          apiVersion: mockApiVersion,
-          clientVersion: mockClientVersion,
-        },
-      },
-      isLoading: false,
-      error: null,
-    });
-    wrapper = shallowMount(CompatibilityBoundary, {
-      slots: {
-        default: '<div class="test-slot">Slot content</div>',
-      },
-    });
-    expect(wrapper.find('.test-slot').exists()).toBe(true);
-    expect(wrapper.find('.test-slot').text()).toBe('Slot content');
-  });
-
-  describe('FORCE_UPDATE state', () => {
+  describe('block', () => {
     beforeEach(() => {
-      useQueryMock.mockReturnValue({
-        data: {
-          value: {
-            compatibility: { result: 'FORCE_UPDATE' },
-            apiVersion: mockApiVersion,
-            clientVersion: mockClientVersion,
-          },
-        },
-        isLoading: false,
-        error: null,
-      });
+      query.data = gate('block');
     });
 
-    it('should show compatibility failed message and refresh button', async () => {
-      wrapper = shallowMount(CompatibilityBoundary);
-      expect(wrapper.find(getByTestId('force-update-banner')).exists()).toBe(
-        true
-      );
-      expect(wrapper.find(getByTestId('force-update-banner')).text()).toContain(
-        'You are using an outdated version of Thunderbird Send.'
-      );
-      expect(wrapper.find(getByTestId('refresh-button')).exists()).toBe(true);
-      expect(wrapper.find(getByTestId('refresh-button')).text()).toBe(
-        'Click here to refresh'
-      );
-    });
+    it('replaces the app with the web update screen', () => {
+      const wrapper = mountBoundary();
+      const block = wrapper.find(getByTestId('force-update-banner'));
 
-    it('should show non-extension message when isExtension is false', async () => {
-      useConfigStoreMock.mockReturnValue({
-        isExtension: false,
-      });
-      wrapper = shallowMount(CompatibilityBoundary);
-      expect(wrapper.find(getByTestId('force-update-banner')).text()).toContain(
-        'If you tried refreshing and the problem persists, please try clearing your cache.'
+      expect(wrapper.find(getByTestId('app-content')).exists()).toBe(false);
+      expect(block.text()).toContain('Reload to continue using Send');
+      expect(block.text()).toContain(
+        `You are using version ${__APP_VERSION__}; version 9.9.9 or newer is required.`
       );
-      expect(
-        wrapper.find(getByTestId('force-update-banner')).text()
-      ).not.toContain(`You are using version ${mockClientVersion}`);
-    });
-
-    it('should show extension message when isExtension is true', async () => {
-      useConfigStoreMock.mockReturnValue({
-        isExtension: true,
-      });
-      wrapper = shallowMount(CompatibilityBoundary);
-      expect(
-        wrapper.find(getByTestId('force-update-banner')).text()
-      ).not.toContain(
-        'If you tried refreshing and the problem persists, please try clearing your cache.'
-      );
-      expect(wrapper.find(getByTestId('force-update-banner')).text()).toContain(
-        `You are using version ${mockClientVersion}`
-      );
-      expect(wrapper.find(getByTestId('force-update-banner')).text()).toContain(
-        `Please update to version ${mockApiVersion} or higher`
-      );
-      expect(wrapper.find(getByTestId('force-update-banner')).text()).toContain(
-        'If you have automatic updates enabled, we suggest you restart Thunderbird'
-      );
-    });
-
-    it('should show feedback box', async () => {
-      wrapper = shallowMount(CompatibilityBoundary);
       expect(wrapper.findComponent({ name: 'FeedbackBox' }).exists()).toBe(
         true
       );
+      // The build version changes every release; keep the snapshot stable.
+      expect(
+        block.html().replaceAll(__APP_VERSION__, '<client-version>')
+      ).toMatchSnapshot();
+    });
+
+    it('reloads the page from the web screen', async () => {
+      const reload = vi.fn();
+      vi.spyOn(window, 'location', 'get').mockReturnValue({
+        ...window.location,
+        reload,
+      });
+      const wrapper = mountBoundary();
+      await wrapper.find(getByTestId('refresh-button')).trigger('click');
+      expect(reload).toHaveBeenCalled();
+      vi.restoreAllMocks();
+    });
+
+    it('shows add-on update instructions on demand', async () => {
+      config.isTbproExtension = true;
+      const wrapper = mountBoundary();
+
+      expect(wrapper.text()).toContain(
+        'Update Thunderbird to continue using Send'
+      );
+      expect(wrapper.find(getByTestId('refresh-button')).exists()).toBe(false);
+      expect(
+        wrapper.find(getByTestId('client-gate-instructions')).exists()
+      ).toBe(false);
+
+      await wrapper
+        .find(getByTestId('client-gate-how-to-update'))
+        .trigger('click');
+      expect(
+        wrapper.find(getByTestId('client-gate-instructions')).exists()
+      ).toBe(true);
+    });
+
+    it('shows the server message instead of the default copy', () => {
+      query.data = gate('block', '9.9.9', 'Please update today.');
+      const wrapper = mountBoundary();
+      expect(wrapper.find(getByTestId('client-gate-message')).text()).toBe(
+        'Please update today.'
+      );
+    });
+
+    it('omits the required version when the server sends none', () => {
+      query.data = gate('block', null);
+      const wrapper = mountBoundary();
+      expect(wrapper.find(getByTestId('client-gate-versions')).text()).toBe(
+        `You are using version ${__APP_VERSION__}.`
+      );
+    });
+
+    it('follows the dark-mode preference like the nav bar', () => {
+      prefersDark.value = true;
+      const wrapper = mountBoundary();
+      expect(
+        wrapper.find(getByTestId('force-update-banner')).classes()
+      ).toContain('dark');
     });
   });
 });
