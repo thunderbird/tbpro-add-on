@@ -105,4 +105,21 @@ describe('acceptAccessLink under overlapping attempts', () => {
       )
     ).toEqual([]);
   });
+
+  it('reports incorrect, then locked, and not found for a missing link', async () => {
+    const [id] = await createLinks();
+    await expect(acceptAccessLink(id, 'wrong')).rejects.toMatchObject({
+      message: 'ACCESSLINK_CHALLENGE_INCORRECT',
+      attemptsRemaining: 1,
+    });
+    await expect(acceptAccessLink(id, 'wrong')).rejects.toThrow(
+      'ACCESSLINK_LOCKED'
+    );
+    await expect(acceptAccessLink(id, ANSWER)).rejects.toThrow(
+      'ACCESSLINK_LOCKED'
+    );
+    await expect(
+      acceptAccessLink(`missing-${uuidv4()}`, ANSWER)
+    ).rejects.toThrow('ACCESSLINK_NOT_FOUND');
+  });
 });

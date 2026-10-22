@@ -3,8 +3,9 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Public access-link routes: locked/expired links are refused with the
-// existing error codes, success shapes are unchanged, and viewing a link's
-// container never resets the retry count (#1006, #1010).
+// existing error codes, POST /challenge maps its refusals to 401/423/404,
+// success shapes are unchanged, and viewing a link's container never resets the
+// retry count (#1006, #1010).
 const { sharingModel } = vi.hoisted(() => ({
   sharingModel: {
     acceptAccessLink: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('../../middleware/rate-limit', () => ({
   createRateLimiter: () => (_req, _res, next) => next(),
 }));
 
+import { AccessLinkChallengeError } from '../../errors/models';
 import { errorHandler } from '../../errors/routes';
 import router from '../../routes/sharing';
 import { captureConsole } from '../testutils';
@@ -46,7 +48,11 @@ const app = express();
 app.use(express.json());
 app.use('/api/sharing', router);
 
-app.use((err, req, res, _next) => errorHandler(err, req, res));
+// Stands in for every error middleware, Sentry's included.
+const errorMiddleware = vi.fn((err, req, res, next) =>
+  errorHandler(err, req, res, next)
+);
+app.use(errorMiddleware);
 
 // What the model throws when the usable-link filter matches no row.
 const refused = () => Promise.reject(new Error('ACCESSLINK_NOT_FOUND'));
@@ -112,13 +118,73 @@ describe('sharing routes: access-link validity', () => {
       );
     });
 
-    it('returns 403 for a wrong answer or a locked/expired link', async () => {
-      sharingModel.acceptAccessLink.mockImplementation(refused);
-      const res = await request(app)
+    const answer = (challengePlaintext = 'wrong') =>
+      request(app)
         .post('/api/sharing/link-1/challenge')
-        .send({ challengePlaintext: 'wrong' });
-      expect(res.status).toBe(403);
+        .send({ challengePlaintext });
+    const consoleError = () => vi.mocked(console.error).mock.calls;
+
+    it('returns 401 with the attempts left for an incorrect answer', async () => {
+      sharingModel.acceptAccessLink.mockRejectedValue(
+        new AccessLinkChallengeError('ACCESSLINK_CHALLENGE_INCORRECT', 3)
+      );
+      const res = await answer();
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({
+        status: 'error',
+        code: 'INCORRECT_PASSWORD',
+        message: 'Incorrect password.',
+        attemptsRemaining: 3,
+      });
+    });
+
+    it('returns 423 for a locked link', async () => {
+      sharingModel.acceptAccessLink.mockRejectedValue(
+        new AccessLinkChallengeError('ACCESSLINK_LOCKED')
+      );
+      const res = await answer();
+      expect(res.status).toBe(423);
+      expect(res.body).toEqual({
+        status: 'error',
+        code: 'ACCESS_LINK_LOCKED',
+        message: 'This link has been locked after too many incorrect attempts.',
+      });
+    });
+
+    it('returns 404 for a missing or expired link', async () => {
+      sharingModel.acceptAccessLink.mockRejectedValue(
+        new AccessLinkChallengeError('ACCESSLINK_NOT_FOUND')
+      );
+      const res = await answer();
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({
+        status: 'error',
+        statusCode: 404,
+        message: 'Could not find access link.',
+      });
+    });
+
+    it('leaves unexpected errors to the global handler as a 500', async () => {
+      sharingModel.acceptAccessLink.mockRejectedValue(new Error('db down'));
+      const res = await answer();
+      expect(res.status).toBe(500);
       expect(res.body).not.toHaveProperty('wrappedKey');
+      expect(consoleError()).toHaveLength(1);
+    });
+
+    it('does not log incorrect answers or locked links as errors', async () => {
+      sharingModel.acceptAccessLink
+        .mockRejectedValueOnce(
+          new AccessLinkChallengeError('ACCESSLINK_CHALLENGE_INCORRECT', 1)
+        )
+        .mockRejectedValueOnce(
+          new AccessLinkChallengeError('ACCESSLINK_LOCKED')
+        );
+      await answer('secret-guess');
+      await answer('secret-guess');
+      expect(errorMiddleware).not.toHaveBeenCalled();
+      expect(consoleError()).toHaveLength(0);
+      expect(consoleCapture.output()).not.toContain('secret-guess');
     });
   });
 

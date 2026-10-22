@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Request, Response, Router } from 'express';
 
 import {
   acceptAccessLink,
@@ -12,7 +12,13 @@ import {
 } from '../models/sharing';
 
 import {
+  ACCESSLINK_CHALLENGE_INCORRECT,
+  ACCESSLINK_LOCKED,
+  AccessLinkChallengeError,
+} from '../errors/models';
+import {
   addErrorHandling,
+  setErrorInfo,
   SHARING_ERRORS,
   wrapAsyncHandler,
 } from '../errors/routes';
@@ -146,17 +152,49 @@ router.get(
   })
 );
 
+// A wrong password or a locked link is an expected outcome: answer it here
+// without the error logger. Missing/expired links take the usual 404 path and
+// anything unexpected falls through to the global error handler.
+function refuseChallenge(req: Request, res: Response, err: unknown) {
+  if (!(err instanceof AccessLinkChallengeError)) {
+    throw err;
+  }
+  switch (err.message) {
+    case ACCESSLINK_CHALLENGE_INCORRECT: {
+      const { statusCode, code, message } = SHARING_ERRORS.CHALLENGE_INCORRECT;
+      return res.status(statusCode).json({
+        status: 'error',
+        code,
+        message,
+        attemptsRemaining: err.attemptsRemaining,
+      });
+    }
+    case ACCESSLINK_LOCKED: {
+      const { statusCode, code, message } = SHARING_ERRORS.ACCESS_LINK_LOCKED;
+      return res.status(statusCode).json({ status: 'error', code, message });
+    }
+    default:
+      setErrorInfo(req, SHARING_ERRORS.ACCESS_LINK_NOT_FOUND);
+      throw err;
+  }
+}
+
 // Respond to the challenge.
 // If plaintext matches, we respond with wrapped key
 // associated salt
 router.post(
   '/:linkId/challenge',
-  addErrorHandling(SHARING_ERRORS.CHALLENGE_FAILED),
+  addErrorHandling(SHARING_ERRORS.CHALLENGE_NOT_PROCESSED),
   wrapAsyncHandler(async (req, res) => {
     const { linkId } = req.params;
     const { challengePlaintext } = req.body;
 
-    const link = await acceptAccessLink(linkId, challengePlaintext);
+    let link: Awaited<ReturnType<typeof acceptAccessLink>>;
+    try {
+      link = await acceptAccessLink(linkId, challengePlaintext);
+    } catch (err) {
+      return refuseChallenge(req, res, err);
+    }
     const { share, wrappedKey, salt } = link;
     res.status(200).json({
       status: 'success',

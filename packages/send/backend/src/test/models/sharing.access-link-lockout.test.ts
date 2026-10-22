@@ -9,6 +9,7 @@ const h = vi.hoisted(() => ({
     accessLink: {
       update: vi.fn(),
       updateMany: vi.fn(),
+      findFirst: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
     },
@@ -44,6 +45,9 @@ const USABLE = {
   OR: [{ expiryDate: null }, { expiryDate: { gt: NOW } }],
 };
 const ANSWER = 'challenge-plaintext';
+// What Prisma throws when the usable-link filter matches no row.
+const notFound = () =>
+  Object.assign(new Error('NotFoundError'), { code: 'P2025' });
 
 // The row the counting update returns: retryCount already includes this attempt.
 const linkAfterAttempt = (retryCount: number) => ({
@@ -118,7 +122,7 @@ describe('access-link lockout and validity', () => {
       h.prisma.accessLink.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(acceptAccessLink('link-1', ANSWER)).rejects.toThrow(
-        'ACCESSLINK_NOT_FOUND'
+        'ACCESSLINK_LOCKED'
       );
     });
 
@@ -127,9 +131,10 @@ describe('access-link lockout and validity', () => {
         linkAfterAttempt(MAX_ACCESS_LINK_RETRIES - 1)
       );
 
-      await expect(acceptAccessLink('link-1', 'wrong')).rejects.toThrow(
-        'ACCESSLINK_NOT_FOUND'
-      );
+      await expect(acceptAccessLink('link-1', 'wrong')).rejects.toMatchObject({
+        message: 'ACCESSLINK_CHALLENGE_INCORRECT',
+        attemptsRemaining: 1,
+      });
       expect(updateManyCalls()).toHaveLength(0);
     });
 
@@ -140,7 +145,7 @@ describe('access-link lockout and validity', () => {
       h.prisma.accessLink.updateMany.mockResolvedValue({ count: 1 });
 
       await expect(acceptAccessLink('link-1', 'wrong')).rejects.toThrow(
-        'ACCESSLINK_NOT_FOUND'
+        'ACCESSLINK_LOCKED'
       );
       expect(updateManyCalls()).toEqual([
         {
@@ -153,6 +158,18 @@ describe('access-link lockout and validity', () => {
       ]);
     });
 
+    it('reports a wrong answer as incorrect when a reset beat the lock', async () => {
+      h.prisma.accessLink.update.mockResolvedValueOnce(
+        linkAfterAttempt(MAX_ACCESS_LINK_RETRIES)
+      );
+      h.prisma.accessLink.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(acceptAccessLink('link-1', 'wrong')).rejects.toMatchObject({
+        message: 'ACCESSLINK_CHALLENGE_INCORRECT',
+        attemptsRemaining: 0,
+      });
+    });
+
     it('refuses even a correct answer once concurrent attempts passed the limit', async () => {
       h.prisma.accessLink.update.mockResolvedValueOnce(
         linkAfterAttempt(MAX_ACCESS_LINK_RETRIES + 1)
@@ -160,7 +177,7 @@ describe('access-link lockout and validity', () => {
       h.prisma.accessLink.updateMany.mockResolvedValue({ count: 1 });
 
       await expect(acceptAccessLink('link-1', ANSWER)).rejects.toThrow(
-        'ACCESSLINK_NOT_FOUND'
+        'ACCESSLINK_LOCKED'
       );
       expect(updateManyCalls()).toHaveLength(1);
       expect(updateManyCalls()[0]).toMatchObject({ data: { locked: true } });
@@ -171,7 +188,10 @@ describe('access-link lockout and validity', () => {
 
       await expect(
         acceptAccessLink('link-1', { not: ANSWER } as unknown)
-      ).rejects.toThrow('ACCESSLINK_NOT_FOUND');
+      ).rejects.toMatchObject({
+        message: 'ACCESSLINK_CHALLENGE_INCORRECT',
+        attemptsRemaining: MAX_ACCESS_LINK_RETRIES - 1,
+      });
       expect(updateManyCalls()).toHaveLength(0);
     });
 
@@ -183,7 +203,7 @@ describe('access-link lockout and validity', () => {
       h.prisma.accessLink.updateMany.mockResolvedValue({ count: 1 });
 
       await expect(acceptAccessLink('link-1', '')).rejects.toThrow(
-        'ACCESSLINK_NOT_FOUND'
+        'ACCESSLINK_LOCKED'
       );
       expect(updateCalls()[0]).toMatchObject({
         data: { retryCount: { increment: 1 } },
@@ -199,17 +219,39 @@ describe('access-link lockout and validity', () => {
       ]);
     });
 
-    it('refuses a locked or expired link without counting', async () => {
-      // The usable-link filter matches no row, so the update throws.
-      h.prisma.accessLink.update.mockRejectedValueOnce(
-        new Error('NotFoundError')
-      );
+    it('refuses a missing or expired link without counting', async () => {
+      h.prisma.accessLink.update.mockRejectedValueOnce(notFound());
+      h.prisma.accessLink.findFirst.mockResolvedValueOnce(null);
 
       await expect(acceptAccessLink('link-1', ANSWER)).rejects.toThrow(
         'ACCESSLINK_NOT_FOUND'
       );
       expect(updateCalls()).toHaveLength(1);
       expect(updateManyCalls()).toHaveLength(0);
+    });
+
+    it('reports an unexpired locked link as locked without counting', async () => {
+      h.prisma.accessLink.update.mockRejectedValueOnce(notFound());
+      h.prisma.accessLink.findFirst.mockResolvedValueOnce({ id: 'link-1' });
+
+      await expect(acceptAccessLink('link-1', ANSWER)).rejects.toThrow(
+        'ACCESSLINK_LOCKED'
+      );
+      expect(console.error).not.toHaveBeenCalled();
+      expect(h.prisma.accessLink.findFirst.mock.calls[0][0].where).toEqual({
+        id: 'link-1',
+        locked: true,
+        OR: USABLE.OR,
+      });
+      expect(updateManyCalls()).toHaveLength(0);
+    });
+
+    it('rethrows unexpected database errors unchanged', async () => {
+      const failure = new Error('connection lost');
+      h.prisma.accessLink.update.mockRejectedValueOnce(failure);
+
+      await expect(acceptAccessLink('link-1', ANSWER)).rejects.toBe(failure);
+      expect(h.prisma.accessLink.findFirst).not.toHaveBeenCalled();
     });
 
     describe('write guards', () => {
@@ -229,10 +271,11 @@ describe('access-link lockout and validity', () => {
       const fakeTx = (gate?: Promise<void>) => ({
         accessLink: {
           update: vi.fn(async ({ where, data }) => {
-            if (!matches(where)) throw new Error('NotFoundError');
+            if (!matches(where)) throw notFound();
             row.retryCount += data.retryCount.increment;
             return { ...linkAfterAttempt(row.retryCount), ...row };
           }),
+          findFirst: vi.fn(async () => (row.locked ? { id: 'link-1' } : null)),
           updateMany: vi.fn(async ({ where, data }) => {
             await gate;
             if (!matches(where)) return { count: 0 };

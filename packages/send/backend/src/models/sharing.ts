@@ -4,8 +4,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { MAX_ACCESS_LINK_RETRIES } from '@send-backend/config';
 import {
+  ACCESSLINK_CHALLENGE_INCORRECT,
+  ACCESSLINK_LOCKED,
   ACCESSLINK_NOT_DELETED,
-  BaseError,
+  AccessLinkChallengeError,
   ACCESSLINK_NOT_FOUND,
   CONTAINER_NOT_DELETED,
   CONTAINER_NOT_FOUND,
@@ -115,6 +117,12 @@ export async function createAccessLink(
 export function usableAccessLinkWhere(now = new Date()) {
   return {
     locked: false,
+    ...unexpiredAccessLinkWhere(now),
+  } satisfies Prisma.AccessLinkWhereInput;
+}
+
+function unexpiredAccessLinkWhere(now = new Date()) {
+  return {
     OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
   } satisfies Prisma.AccessLinkWhereInput;
 }
@@ -151,6 +159,14 @@ export async function getAccessLinkChallenge(linkId: string) {
   );
 }
 
+// Prisma's "record to update not found": the link is missing, locked or expired.
+function nullIfNotFound(err: unknown): null {
+  if ((err as { code?: string })?.code === 'P2025') {
+    return null;
+  }
+  throw err;
+}
+
 /**
  * Checks a challenge answer and enforces the retry limit server-side (#1006).
  * Every attempt is counted before it is checked, in one transaction whose first
@@ -162,16 +178,23 @@ export async function acceptAccessLink(
   linkId: string,
   challengePlaintext: unknown
 ) {
-  const { link, accepted } = await prisma.$transaction(async (tx) => {
-    const counted = await fromPrismaV2(
-      tx.accessLink.update,
-      {
+  const outcome = await prisma.$transaction(async (tx) => {
+    const counted = await tx.accessLink
+      .update({
         where: { id: linkId, ...usableAccessLinkWhere() },
         data: { retryCount: { increment: 1 } },
         include: { share: { select: { containerId: true } } },
-      },
-      ACCESSLINK_NOT_FOUND
-    );
+      })
+      .catch(nullIfNotFound);
+
+    if (!counted) {
+      // Nothing was counted. An unexpired locked link reports as locked.
+      const locked = await tx.accessLink.findFirst({
+        where: { id: linkId, locked: true, ...unexpiredAccessLinkWhere() },
+        select: { id: true },
+      });
+      return { refusal: locked ? ACCESSLINK_LOCKED : ACCESSLINK_NOT_FOUND };
+    }
 
     const isCorrect =
       typeof challengePlaintext === 'string' &&
@@ -182,23 +205,37 @@ export async function acceptAccessLink(
         where: { id: linkId, locked: false },
         data: { retryCount: 0 },
       });
-      return { link: counted, accepted: reset.count === 1 };
+      return reset.count === 1
+        ? { link: counted }
+        : { refusal: ACCESSLINK_LOCKED };
     }
 
     if (counted.retryCount >= MAX_ACCESS_LINK_RETRIES) {
-      await tx.accessLink.updateMany({
+      const lock = await tx.accessLink.updateMany({
         where: { id: linkId, retryCount: { gte: MAX_ACCESS_LINK_RETRIES } },
         data: { locked: true },
       });
+      if (lock.count === 1) {
+        return { refusal: ACCESSLINK_LOCKED };
+      }
     }
-    // Refuse outside the transaction so the counted attempt is committed.
-    return { link: counted, accepted: false };
+    return {
+      refusal: ACCESSLINK_CHALLENGE_INCORRECT,
+      attemptsRemaining: Math.max(
+        MAX_ACCESS_LINK_RETRIES - counted.retryCount,
+        0
+      ),
+    };
   });
 
-  if (!accepted) {
-    throw new BaseError(ACCESSLINK_NOT_FOUND);
+  // Refuse outside the transaction so the counted attempt is committed.
+  if ('link' in outcome) {
+    return outcome.link;
   }
-  return link;
+  throw new AccessLinkChallengeError(
+    outcome.refusal,
+    'attemptsRemaining' in outcome ? outcome.attemptsRemaining : undefined
+  );
 }
 
 export async function getContainerForAccessLink(linkId: string) {
