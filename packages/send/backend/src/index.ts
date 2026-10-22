@@ -131,6 +131,6 @@ if (isRateLimitingEnabled()) {
   }
 }
 
-app.listen(PORT, HOST, async () => {
+app.listen(PORT, HOST, () => {
   console.log(`🚀 Server ready at: http://${HOST}:${PORT}`);
 });
