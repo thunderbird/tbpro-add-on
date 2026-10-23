@@ -82,12 +82,16 @@ describe('FolderView — recovery from a deleted folder (#1354)', () => {
     expect(replace).toHaveBeenCalledWith('/send/folder/new-id');
   });
 
-  it('falls back to /send when the user has no default folder', async () => {
-    getDefaultFolderId.mockResolvedValue(null);
+  it.each([
+    ['there is no default folder', null],
+    ['the default folder is the failing one', 'old-id'],
+  ])('does not redirect when %s (no redirect loop)', async (_, defaultId) => {
+    getDefaultFolderId.mockResolvedValue(defaultId);
 
     const replace = await mountAt(404);
 
-    expect(replace).toHaveBeenCalledWith('/send');
+    expect(getDefaultFolderId).toHaveBeenCalledOnce();
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('leaves the locked-keychain case to the passphrase recovery path', async () => {

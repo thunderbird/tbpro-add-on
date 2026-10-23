@@ -132,6 +132,7 @@ export async function reset_keys({ page }: PlaywrightProps) {
   await backupKeysButtonOverlay.click();
 
   // Follow the in-app link (no reload) to the new default folder (#1354).
+  await expect(profileButton).not.toHaveAttribute("href", new RegExp(oldFolderId));
   await profileButton.click();
   await expect(page).toHaveURL(/\/send\/folder\/[^/?]+/);
   await expect(page).not.toHaveURL(new RegExp(oldFolderId));

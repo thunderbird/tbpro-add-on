@@ -189,9 +189,11 @@ watch(
       data?.type === 'subtree' &&
       (data.failureStatus === 403 || data.failureStatus === 404);
     if (!isGone || keychain.locked) return;
+    const goneId = folderId.value;
     const defaultId = await folderStore.getDefaultFolderId();
-    if (defaultId === folderId.value) return;
-    router.replace(defaultId ? `/send/folder/${defaultId}` : '/send');
+    // Skip when there is no other default folder or the user already moved on.
+    if (!defaultId || defaultId === goneId || folderId.value !== goneId) return;
+    router.replace(`/send/folder/${defaultId}`);
   },
   { immediate: true }
 );
