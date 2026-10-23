@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { RequestHandler, Router } from 'express';
 import { z } from 'zod';
 
 import {
@@ -22,6 +22,13 @@ import {
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
 import { deleteUploadsByIds, reportUpload } from '@send-backend/models';
+import {
+  clearPendingUploads,
+  holdPendingUpload,
+  reservePendingUpload,
+} from '@send-backend/models/pendingUploads';
+import { getStorageLimitForTier } from '@send-backend/utils/storageLimits';
+import { runOrphanCleanup } from '@send-backend/jobs/orphanCleanup';
 import storage from '@send-backend/storage';
 import { createRateLimiter } from '../middleware/rate-limit';
 import { useMetrics } from '../metrics';
@@ -29,14 +36,28 @@ import { ANALYTICS_EVENTS } from '../metrics/events';
 import {
   checkStorageLimit,
   getGroupMemberPermissions,
+  requireAdminPermisions,
   requireJWT,
   requireWritePermission,
+  STORAGE_LIMIT_EXCEEDED,
 } from '../middleware';
 import { calculateEncryptedSize } from '../utils/encryptedSize';
 import { mintOwnedUploadId } from '../utils/ownedUploadId';
 import { isAddonRequest } from '../origins';
 
 const router: Router = Router();
+
+const uploadIdSchema = z.string().uuid();
+
+// Lets checkStorageLimit leave out the reservation this request finalizes, so
+// its size is not counted twice. Ignores anything that is not a uuid.
+const markFinalizingUpload: RequestHandler = (req, res, next) => {
+  const parsed = uploadIdSchema.safeParse(req.body?.id);
+  if (parsed.success) {
+    res.locals.finalizingUploadId = parsed.data;
+  }
+  next();
+};
 
 // Zod schema for creating an upload
 const createUploadSchema = z.object({
@@ -85,6 +106,7 @@ router.post(
   requireJWT,
   getGroupMemberPermissions,
   requireWritePermission,
+  markFinalizingUpload,
   checkStorageLimit,
   // State-changing upload creation: sensitive tier, keyed per user.
   createRateLimiter('sensitive'),
@@ -97,9 +119,16 @@ router.post(
 
       const Metrics = useMetrics();
 
-      const { uniqueHash } = getDataFromAuthenticatedRequest(req);
+      const { id: requesterId, uniqueHash } =
+        getDataFromAuthenticatedRequest(req);
 
       const distinctId = uniqueHash;
+
+      // Keeps cleanup off this upload's bytes while it is finalized; refused
+      // when cleanup already claimed them.
+      if (!(await holdPendingUpload(id, requesterId))) {
+        return res.status(409).json({ message: 'Upload expired' });
+      }
 
       const upload = await createUpload(
         id,
@@ -108,6 +137,11 @@ router.post(
         type,
         part,
         fileHash
+      );
+      // The Upload row now counts toward quota; drop the reservation. A failure
+      // here only over-counts until the reservation expires.
+      await clearPendingUploads(requesterId, [id]).catch((e) =>
+        console.error('Could not clear pending upload:', e)
       );
       // Capture metrics
       Metrics.capture({
@@ -239,7 +273,7 @@ router.post(
     // The minted id carries an ownership tag bound to the caller, so /cleanup
     // can attribute the storage object to its minter even when the Upload row
     // was never created (failed/abandoned uploads).
-    const { id: requesterId } = getDataFromAuthenticatedRequest(req);
+    const { id: requesterId, tier } = getDataFromAuthenticatedRequest(req);
     const uploadId = mintOwnedUploadId(requesterId);
     const { type, size } = req.body;
     // Sign the exact ciphertext content-length into the URL only when the
@@ -250,16 +284,67 @@ router.post(
     const contentLength =
       typeof size === 'number' ? calculateEncryptedSize(size) : undefined;
     try {
-      const url = await storage.getUploadBucketUrl(
+      // Reserve quota until finalized, and leave a record so cleanup can
+      // remove the bytes if it never is. No URL is handed out without one.
+      const reserved = await reservePendingUpload(
         uploadId,
-        type,
-        contentLength
+        requesterId,
+        size,
+        getStorageLimitForTier(tier)
       );
-      return res.json({ id: uploadId, url });
+      if (!reserved) {
+        return res.status(403).json({ message: STORAGE_LIMIT_EXCEEDED });
+      }
+      try {
+        const url = await storage.getUploadBucketUrl(
+          uploadId,
+          type,
+          contentLength
+        );
+        return res.json({ id: uploadId, url });
+      } catch (error) {
+        // No URL was handed out, so nothing can land under this id.
+        await clearPendingUploads(requesterId, [uploadId]).catch((e) =>
+          console.error('Could not clear pending upload:', e)
+        );
+        throw error;
+      }
     } catch (error) {
       console.error('Error generating pre-signed URL:', error);
       return res.status(500).json(UPLOAD_ERRORS.NO_BUCKET);
     }
+  })
+);
+
+/**
+ * @openapi
+ * /api/uploads/reconcile:
+ *   post:
+ *     summary: Run the orphaned-storage sweep now (admin only)
+ *     description: >-
+ *       Manual trigger for the sweep that also runs every
+ *       ORPHAN_CLEANUP_INTERVAL_HOURS: deletes uploads that never got an item,
+ *       the bytes of presigned uploads never finalized, and bucket objects no
+ *       upload accounts for, all older than ORPHAN_MIN_AGE_HOURS. Skipped when
+ *       another instance is sweeping.
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The sweep summary, or why it was skipped
+ *       403:
+ *         description: Forbidden - admin permissions required
+ */
+router.post(
+  '/reconcile',
+  requireJWT,
+  requireAdminPermisions,
+  createRateLimiter('sensitive'),
+  addErrorHandling(UPLOAD_ERRORS.RECONCILE_FAILED),
+  wrapAsyncHandler(async (_req, res) => {
+    const result = await runOrphanCleanup(true);
+    return res.status(200).json(result);
   })
 );
 

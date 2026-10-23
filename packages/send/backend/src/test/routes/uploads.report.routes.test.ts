@@ -36,6 +36,7 @@ vi.mock('../../middleware', () => {
     checkStorageLimit: passthrough,
     getGroupMemberPermissions: passthrough,
     requireWritePermission: passthrough,
+    requireAdminPermisions: passthrough,
   };
 });
 

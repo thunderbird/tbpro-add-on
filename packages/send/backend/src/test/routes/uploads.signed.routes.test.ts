@@ -2,13 +2,28 @@ import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockGetUploadBucketUrl, mockGetUsedStorage, mockCaller } = vi.hoisted(
-  () => ({
-    mockGetUploadBucketUrl: vi.fn(),
-    mockGetUsedStorage: vi.fn(),
-    mockCaller: vi.fn(),
-  })
-);
+const {
+  mockGetUploadBucketUrl,
+  mockGetUsedStorage,
+  mockCaller,
+  mockReserve,
+  mockClear,
+} = vi.hoisted(() => ({
+  mockGetUploadBucketUrl: vi.fn(),
+  mockGetUsedStorage: vi.fn(),
+  mockCaller: vi.fn(),
+  mockReserve: vi.fn(),
+  mockClear: vi.fn(),
+}));
+
+vi.mock('@send-backend/models/pendingUploads', () => ({
+  reservePendingUpload: mockReserve,
+  clearPendingUploads: mockClear,
+  holdPendingUpload: vi.fn(() => Promise.resolve(true)),
+}));
+vi.mock('@send-backend/jobs/orphanCleanup', () => ({
+  runOrphanCleanup: vi.fn(),
+}));
 
 // Storage: only the presigned-url call matters here.
 vi.mock('@send-backend/storage', () => ({
@@ -65,6 +80,8 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
     mockCaller.mockReturnValue({ id: 'user-1', tier: 'PRO', uniqueHash: 'h' });
     mockGetUsedStorage.mockResolvedValue({ active: 0 });
     mockGetUploadBucketUrl.mockResolvedValue('https://bucket/signed-url');
+    mockReserve.mockResolvedValue(true);
+    mockClear.mockResolvedValue({ count: 1 });
   });
 
   const EXT_ORIGIN = 'moz-extension://abcd-1234';
@@ -247,5 +264,76 @@ describe('POST /api/uploads/signed (quota bypass, private #36)', () => {
 
     expect(res.status).toBe(403);
     expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
+  });
+
+  // Every minted URL reserves its stated size until finalized or expired.
+  it('records a reservation for the minted id with the stated size', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 1024 })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(200);
+    expect(mockReserve).toHaveBeenCalledWith(
+      res.body.id,
+      'user-1',
+      1024,
+      expect.any(Number)
+    );
+  });
+
+  it('records a size-less reservation for a legacy add-on request', async () => {
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream' })
+      .set('Content-Type', 'application/json')
+      .set('User-Agent', TB_UA);
+
+    expect(res.status).toBe(200);
+    expect(mockReserve).toHaveBeenCalledWith(
+      res.body.id,
+      'user-1',
+      undefined,
+      expect.any(Number)
+    );
+  });
+
+  it('does not hand out a URL when the reservation cannot be recorded', async () => {
+    mockReserve.mockRejectedValue(new Error('db down'));
+
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 1024 })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(500);
+    expect(res.body.url).toBeUndefined();
+  });
+
+  // The locked check inside the reservation is the authoritative one: it sees
+  // parallel requests that the middleware check could not.
+  it('answers 403 without a URL when the reservation would exceed the limit', async () => {
+    mockReserve.mockResolvedValue(false);
+
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 1024 })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(403);
+    expect(mockGetUploadBucketUrl).not.toHaveBeenCalled();
+  });
+
+  it('releases the reservation when signing the URL fails', async () => {
+    mockGetUploadBucketUrl.mockRejectedValue(new Error('signer down'));
+
+    const res = await request(app)
+      .post('/api/uploads/signed')
+      .send({ type: 'application/octet-stream', size: 1024 })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(500);
+    const [[id]] = mockReserve.mock.calls;
+    expect(mockClear).toHaveBeenCalledWith('user-1', [id]);
   });
 });

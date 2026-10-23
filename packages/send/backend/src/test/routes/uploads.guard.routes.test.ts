@@ -22,6 +22,7 @@ vi.mock('../../middleware', () => ({
   checkStorageLimit: named('checkStorageLimit'),
   getGroupMemberPermissions: named('getGroupMemberPermissions'),
   requireWritePermission: named('requireWritePermission'),
+  requireAdminPermisions: named('requireAdminPermisions'),
   requireReadPermission: named('requireReadPermission'),
   requireAdminPermission: named('requireAdminPermission'),
   requireSharePermission: named('requireSharePermission'),
@@ -104,5 +105,13 @@ describe('routes/uploads.ts auth-guard coverage', () => {
       if (!route) continue; // route removed — exemption is simply stale, not wrong.
       expect(route.guards.some((g) => AUTH_GUARDS.has(g))).toBe(false);
     }
+  });
+
+  // The cleanup trigger deletes other users' data, so it is admin-only.
+  it('restricts POST /reconcile to admins', () => {
+    const route = routes.find((r) => r.key === 'post /reconcile');
+    expect(route?.guards).toEqual(
+      expect.arrayContaining(['requireJWT', 'requireAdminPermisions'])
+    );
   });
 });

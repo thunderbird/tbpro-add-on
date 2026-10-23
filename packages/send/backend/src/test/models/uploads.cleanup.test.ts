@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => {
   const prisma = {
     upload: { findMany: vi.fn(), delete: vi.fn() },
+    pendingUpload: { updateMany: vi.fn(), createMany: vi.fn() },
   };
   const storageDel = vi.fn();
   return { prisma, storageDel };
@@ -47,6 +48,8 @@ describe('deleteUploadsByIds ownership binding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.prisma.upload.delete.mockResolvedValue({});
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+    h.prisma.pendingUpload.createMany.mockResolvedValue({ count: 0 });
     h.storageDel.mockResolvedValue(undefined);
   });
 
@@ -176,5 +179,25 @@ describe('deleteUploadsByIds ownership binding', () => {
     const result = await deleteUploadsByIds(['own', 'own2'], REQUESTER);
 
     expect(result.errors.length + result.deleted.length).toBe(2);
+  });
+
+  // Cleaned-up ids stop reserving quota but keep a sweep record, so bytes a
+  // late PUT stores under them are still removed.
+  it('releases the reservation of every deleted id, and only those', async () => {
+    const id = mintOwnedUploadId(REQUESTER);
+    seed({ ownedRows: ['own'], foreignRows: ['theirs'] });
+
+    await deleteUploadsByIds(['own', id, 'theirs'], REQUESTER);
+
+    const { data } = h.prisma.pendingUpload.createMany.mock.calls[0][0];
+    expect(data.map((row) => row.id).sort()).toEqual(['own', id].sort());
+    for (const row of data) {
+      expect(row.ownerId).toBe(REQUESTER);
+      expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    }
+    expect(h.prisma.pendingUpload.updateMany).toHaveBeenCalledWith({
+      where: { ownerId: REQUESTER, id: { in: data.map((row) => row.id) } },
+      data: { size: null },
+    });
   });
 });

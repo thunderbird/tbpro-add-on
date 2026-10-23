@@ -1,6 +1,9 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectVersionsCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -33,6 +36,9 @@ export type S3Settings = {
    */
   forcePathStyle?: boolean;
 };
+
+/** How long a presigned upload URL stays valid. */
+export const UPLOAD_URL_TTL_SECONDS = 3600;
 
 export function createS3Client(settings: S3Settings): S3Client {
   return new S3Client({
@@ -91,9 +97,8 @@ export async function getSignedUrl(
   const signableHeaders =
     ContentLength !== undefined ? new Set(['content-length']) : undefined;
 
-  // Generate the presigned URL (expires in 3600 seconds / 1 hour by default)
   const signedUrl = await getSignedUrlCommand(s3Client, command, {
-    expiresIn: 3600,
+    expiresIn: UPLOAD_URL_TTL_SECONDS,
     ...(signableHeaders ? { signableHeaders } : {}),
   });
   return signedUrl;
@@ -134,4 +139,71 @@ export async function getSignedUrlforDownload(
     expiresIn: 3600,
   });
   return signedUrl;
+}
+
+/**
+ * Erases every version and delete marker of exactly `Key`. A plain DeleteObject
+ * on a versioned bucket (B2 always is) only hides the bytes. An absent key is
+ * not an error.
+ */
+export async function deleteObjectVersions(
+  s3Client: S3Client,
+  {
+    Bucket,
+    Key,
+    KeyMarker,
+    VersionIdMarker,
+  }: {
+    Bucket: string;
+    Key: string;
+    KeyMarker?: string;
+    VersionIdMarker?: string;
+  }
+): Promise<void> {
+  const page = await s3Client.send(
+    new ListObjectVersionsCommand({
+      Bucket,
+      Prefix: Key,
+      KeyMarker,
+      VersionIdMarker,
+    })
+  );
+  const versions = [...(page.Versions ?? []), ...(page.DeleteMarkers ?? [])];
+  await Promise.all(
+    versions
+      .filter((v) => v.Key === Key)
+      .map((v) =>
+        s3Client.send(
+          new DeleteObjectCommand({ Bucket, Key, VersionId: v.VersionId })
+        )
+      )
+  );
+  if (page.IsTruncated === true) {
+    await deleteObjectVersions(s3Client, {
+      Bucket,
+      Key,
+      KeyMarker: page.NextKeyMarker,
+      VersionIdMarker: page.NextVersionIdMarker,
+    });
+  }
+}
+
+export type BucketObject = { key: string; lastModified: Date };
+
+/** One page of the bucket listing, in key order, after `StartAfter`. */
+export async function listObjectsPage(
+  s3Client: S3Client,
+  {
+    Bucket,
+    StartAfter,
+    MaxKeys,
+  }: { Bucket: string; StartAfter?: string; MaxKeys: number }
+): Promise<{ objects: BucketObject[]; truncated: boolean }> {
+  const page = await s3Client.send(
+    new ListObjectsV2Command({ Bucket, StartAfter, MaxKeys })
+  );
+  const objects = (page.Contents ?? []).flatMap(({ Key, LastModified }) =>
+    Key && LastModified ? [{ key: Key, lastModified: LastModified }] : []
+  );
+  return { objects, truncated: page.IsTruncated === true };
 }

@@ -13,8 +13,22 @@ import {
 } from './errors/models';
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
+import {
+  CLEANUP_BATCH_SIZE,
+  CLEANUP_CONCURRENCY,
+  CleanupOptions,
+  claimBytes,
+  clearPendingUploads,
+  getOrphanMinAgeHours,
+  getReservedBytes,
+  hoursAgo,
+  lastIdOf,
+  logDryRun,
+  releasePendingUploads,
+} from './models/pendingUploads';
 import { addExpiryToContainer } from './utils';
 import { verifyOwnedUploadId } from './utils/ownedUploadId';
+import { mapLimit } from './utils/mapLimit';
 import storage from './storage';
 const prisma = new PrismaClient();
 
@@ -311,6 +325,14 @@ export async function deleteUploadsByIds(ids: string[], requesterId: string) {
     })
   );
 
+  // A cleaned-up upload stops reserving quota; the sweep still removes any
+  // bytes a late PUT stores under its id.
+  try {
+    await releasePendingUploads(requesterId, deleted);
+  } catch (e) {
+    console.error('[deleteUploadsByIds] releasePendingUploads failed', e);
+  }
+
   return { deleted, skipped, errors };
 }
 
@@ -383,41 +405,105 @@ export const deleteSession = async (id: string) =>
     SESSION_NOT_DELETED
   );
 
-export async function findOrphans(): Promise<{ uploadIds: string[] }> {
-  // An orphan is an Upload with no associated Item
-
-  const uploadsWithoutItem = await prisma.upload.findMany({
+// An orphan is an Upload with no Item, older than `hoursSinceCreation` so an
+// in-flight upload (items are created after every part is stored) is never
+// matched (#117). Rows without a createdAt predate it being set and count as old.
+function findOrphanRows(
+  hoursSinceCreation: number,
+  take = CLEANUP_BATCH_SIZE,
+  after?: string
+) {
+  return prisma.upload.findMany({
     where: {
-      items: {
-        none: {},
-      },
+      items: { none: {} },
+      OR: [
+        { createdAt: { lt: hoursAgo(hoursSinceCreation) } },
+        { createdAt: null },
+      ],
+      ...(after ? { id: { gt: after } } : {}),
     },
-    select: {
-      id: true,
-    },
+    select: { id: true, ownerId: true },
+    orderBy: { id: 'asc' },
+    take,
   });
-
-  return {
-    uploadIds: [...uploadsWithoutItem.map(({ id }) => id)],
-  };
 }
 
-export async function deleteOrphans() {
-  const { uploadIds } = await findOrphans();
-  const errorUploadIds = [];
+export async function findOrphans(
+  hoursSinceCreation = getOrphanMinAgeHours()
+): Promise<{ uploadIds: string[] }> {
+  const rows = await findOrphanRows(hoursSinceCreation);
+  return { uploadIds: rows.map(({ id }) => id) };
+}
 
-  for (const id of uploadIds) {
-    try {
-      await deleteUpload(id);
-    } catch (e) {
-      console.error(`[deleteOrphans] Could not delete upload ${id}`);
-      console.error(e);
-      errorUploadIds.push(id);
-    }
+type OrphanOutcome = 'deleted' | 'kept' | 'error';
+
+// Thrown to roll back an orphan delete whose reservation a finalize holds.
+class OrphanHeld extends Error {}
+
+async function deleteOrphan({
+  id,
+  ownerId,
+}: {
+  id: string;
+  ownerId: string;
+}): Promise<OrphanOutcome> {
+  try {
+    // The row goes together with a claimed sweep record for its bytes, so they
+    // stay reachable if the delete below fails and a replayed finalize is
+    // refused. A leftover reservation is claimed rather than skipped; one a
+    // finalize holds (unexpired) rolls the delete back.
+    const claimed = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.upload.deleteMany({
+        where: { id, items: { none: {} } },
+      });
+      if (count === 0) return false;
+      if (!(await claimBytes(tx, id, ownerId))) throw new OrphanHeld();
+      return true;
+    });
+    if (!claimed) return 'kept';
+  } catch (e) {
+    if (e instanceof OrphanHeld) return 'kept';
+    console.warn(`[deleteOrphans] Could not delete upload ${id}`, e);
+    return 'error';
   }
 
+  try {
+    await storage.del(id);
+    await clearPendingUploads(ownerId, [id]);
+  } catch (e) {
+    // The sweep record stays; the next sweep retries.
+    console.warn(`[deleteOrphans] storage cleanup of ${id} failed`, e);
+  }
+  return 'deleted';
+}
+
+/**
+ * Deletes up to `limit` orphaned Upload rows and their stored bytes. A dry run
+ * only reports them.
+ */
+export async function deleteOrphans(
+  hoursSinceCreation = getOrphanMinAgeHours(),
+  { limit = CLEANUP_BATCH_SIZE, dryRun = false, after }: CleanupOptions = {}
+) {
+  const take = Math.min(limit, CLEANUP_BATCH_SIZE);
+  const rows =
+    take > 0 ? await findOrphanRows(hoursSinceCreation, take, after) : [];
+  if (dryRun) {
+    logDryRun('orphaned uploads', rows);
+    return {
+      found: rows.length,
+      lastId: lastIdOf(rows),
+      deletedUploadIds: [],
+      errorUploadIds: [],
+    };
+  }
+  const outcomes = await mapLimit(rows, CLEANUP_CONCURRENCY, deleteOrphan);
+  const idsWith = (outcome: OrphanOutcome) =>
+    rows.filter((_, i) => outcomes[i] === outcome).map(({ id }) => id);
   return {
-    errorUploadIds,
+    found: rows.length,
+    deletedUploadIds: idsWith('deleted'),
+    errorUploadIds: idsWith('error'),
   };
 }
 
@@ -429,13 +515,18 @@ const getUploadSizesForUser = async (userId: string) => {
   return Number(result._sum.size ?? 0);
 };
 
+// `active` includes bytes reserved by unfinished presigned uploads, so
+// repeatedly requesting URLs without finalizing cannot exceed the limit.
+// `finalizingId` is the upload being finalized; its reservation is not counted.
 export const getUsedStorage = async (
   userId: string,
-  hasLimitedStorage = false
+  hasLimitedStorage = false,
+  finalizingId?: string
 ) => {
+  const reserved = await getReservedBytes(userId, finalizingId);
   if (!hasLimitedStorage) {
     const uploads = await getUploadSizesForUser(userId);
-    return { active: uploads, expired: 0 };
+    return { active: uploads + reserved, expired: 0 };
   }
 
   const folders = await getAllUserGroupContainers(userId, ContainerType.FOLDER);
@@ -469,7 +560,7 @@ export const getUsedStorage = async (
       // Make a sum of all the sizes that haven't expired
       .reduce((sizeA, sizeB) => sizeA + Number(sizeB), 0);
     return {
-      active,
+      active: active + reserved,
       expired,
     };
   }
