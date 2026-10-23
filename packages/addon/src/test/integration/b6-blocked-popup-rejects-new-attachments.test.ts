@@ -1,7 +1,8 @@
 /**
  * A popup showing the client update screen can't upload. Once it reports the
  * block, files attached while it stays open are rejected at once instead of
- * waiting for that popup to close; closing it restores normal uploads.
+ * waiting for that popup to close; closing it or clearing the block restores
+ * normal uploads.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeWindow, type FakeHost } from './fakeThunderbirdHost';
@@ -57,6 +58,28 @@ describe('B6: a blocked popup rejects new attachments', () => {
     await vi.advanceTimersByTimeAsync(250);
     expect(bg.browser.windows.create).toHaveBeenCalledTimes(2);
     afterClose.catch(() => {});
+  });
+
+  it('accepts files again once the popup reports the block cleared', async () => {
+    const bg = stubContext(host);
+    await import('../../background');
+
+    const { upload, popupWindow } = await attachAndOpenPopup(host, bg, {
+      id: 1,
+      name: 'first.txt',
+      data: new Blob(['a']),
+    });
+    await bg.deliverMessage(BLOCKED);
+    await expect(upload).rejects.toThrow('User aborted the operation.');
+    await bg.deliverMessage({ type: 'CLIENT_GATE_UNBLOCKED' });
+
+    const later = bg.triggerFileUpload({
+      id: 2,
+      name: 'second.txt',
+      data: new Blob(['b']),
+    });
+    closeWindow(host, popupWindow.id);
+    await expect(later).rejects.toThrow('Popup window was closed prematurely.');
   });
 
   it('keeps queueing files after a plain user abort', async () => {

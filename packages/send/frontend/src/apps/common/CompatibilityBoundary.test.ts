@@ -1,7 +1,7 @@
 import { getByTestId } from '@send-frontend/lib/testUtils';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import CompatibilityBoundary from './CompatibilityBoundary.vue';
 
 const { query, settingsQuery, config, prefersDark } = vi.hoisted(() => ({
@@ -9,6 +9,7 @@ const { query, settingsQuery, config, prefersDark } = vi.hoisted(() => ({
     data: unknown;
     error: unknown;
     options?: { queryFn: () => Promise<unknown> };
+    dataRef?: { value: unknown };
   },
   settingsQuery: vi.fn(),
   config: { isThunderbirdHost: false, isDev: false },
@@ -21,7 +22,8 @@ vi.mock('@send-frontend/lib/trpc', () => ({
 vi.mock('@tanstack/vue-query', () => ({
   useQuery: vi.fn((options) => {
     query.options = options;
-    return { data: ref(query.data), error: ref(query.error) };
+    query.dataRef = ref(query.data);
+    return { data: query.dataRef, error: ref(query.error) };
   }),
 }));
 vi.mock('../send/stores/config-store', () => ({
@@ -141,6 +143,15 @@ describe('CompatibilityBoundary', () => {
     it('emits blocked so the host can release pending work', () => {
       const wrapper = mountBoundary();
       expect(wrapper.emitted('blocked')).toHaveLength(1);
+      expect(wrapper.emitted('unblocked')).toBeUndefined();
+    });
+
+    it('emits unblocked when a refetch clears the block', async () => {
+      const wrapper = mountBoundary();
+      query.dataRef!.value = gate('none');
+      await nextTick();
+      expect(wrapper.emitted('unblocked')).toHaveLength(1);
+      expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
     });
 
     it('replaces the app with the browser update screen', () => {
