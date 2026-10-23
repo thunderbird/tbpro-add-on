@@ -449,7 +449,8 @@ export async function deleteOrphans(
     try {
       if (!dryRun) {
         await storage.del(id);
-        await db.upload.delete({ where: { id } });
+        // Own connection: a failed row delete must not abort the lock's tx.
+        await deleteUpload(id);
       }
       result.deleted++;
     } catch (e) {

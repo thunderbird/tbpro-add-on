@@ -139,7 +139,7 @@ export async function runSweep(
  * Runs the sweep on whichever instance takes the transaction-scoped advisory
  * lock; the others skip. The lock is released when the transaction ends, so a
  * crashed instance never holds it and it is safe behind pgbouncer. Both passes
- * query through `tx`, so a sweep stops if the lock's connection is lost.
+ * read through `tx`, so a sweep stops if the lock's connection is lost.
  */
 export function runSweepIfLeader() {
   return prisma.$transaction(
