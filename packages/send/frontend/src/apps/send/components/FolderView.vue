@@ -179,9 +179,9 @@ watch(
   }
 );
 
-// An unlocked 403/404 means this folder is gone (e.g. replaced by Reset
-// Encryption Key, #1354): move to the current default folder instead of
-// leaving a dead view. The locked case is the StaleContainerAccessError above.
+// An unlocked 403/404 means this folder can't be opened, e.g. Reset Encryption
+// Key deleted it (#1354): move to the current default folder instead of leaving
+// a dead view. The locked case is the StaleContainerAccessError above.
 watch(
   () => folderQuery.data.value,
   async (data) => {
