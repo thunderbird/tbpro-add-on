@@ -6,7 +6,9 @@ deterministic, CI-friendly harness that loads the **real** production
 modules (`background.ts`, `menu.ts`, `token-bridge.js`, `init.ts`,
 `UserMenu.vue`, `PopupView.vue`) against a fake multi-context Thunderbird
 host, and drives the exact race windows described in
-`packages/send/e2e/ADDON-BUG-REPORTS-2026-07-22.md` deterministically.
+`packages/send/e2e/ADDON-BUG-REPORTS-2026-07-22.md` deterministically. It has
+since grown a set of happy-path and startup specs that use the same harness
+to pin down the behaviour that *should* keep working.
 
 ## Running
 
@@ -75,12 +77,13 @@ Each spec:
 1. Imports the **real** production module(s) under test (not
    reimplementations).
 2. Drives the exact interleaving/race described in the finding.
-3. Asserts the **current (buggy) behavior**, with a `CONFIRMED BUG:` prefix
-   in the test name.
+3. Asserts either the **current (buggy) behavior**, with a `CONFIRMED BUG:`
+   prefix in the test name, or — once the finding has been addressed — the
+   **fixed behavior**, with a `FIXED:` prefix.
 
-**These specs are expected to FAIL once the underlying bug is fixed.** That
-is the point — a failing spec here is the CI signal that a fix landed. When
-that happens:
+**A `CONFIRMED BUG:` spec is expected to FAIL once the underlying bug is
+fixed.** That is the point — a failing spec here is the CI signal that a fix
+landed. When that happens:
 
 - Do not just delete the spec.
 - Update it to assert the new, correct behavior instead (turn the
@@ -93,21 +96,37 @@ that happens:
 
 ## Coverage status
 
-| ID | Spec file | Priority |
-|----|-----------|----------|
-| A1 | `a1-logout-does-not-abort-popup-upload.test.ts` | Medium |
-| A2 | `a2-origin-mismatch-logout-not-delivered.test.ts` | Medium |
-| A5 | `a5-logout-clears-unrelated-storage.test.ts` | Medium |
-| A6 | `a6-menu-stale-login-no-push-refresh.test.ts` | Medium |
-| A7 | `a7-accounthub-login-races-web-login.test.ts` | Medium |
-| B1 | `b1-rapid-attach-before-popup-ready.test.ts` | Medium |
-| B2 | `b2-popup-close-mid-upload.test.ts` | Medium |
-| B3 | `b3-popup-check-then-act-race.test.ts` | Medium |
-| B4 | `b4-attach-while-popup-open.test.ts` | Medium |
-| B5 | `b5-background-restart-loses-bookkeeping.test.ts` | **High** |
-| C1 | `c1-disable-mid-upload-orphans-popup.test.ts` | **High** |
-| C2 | `c2-reenable-trusts-stale-auth.test.ts` | Medium |
-| D3 | `d3-init-single-flight-per-context-only.test.ts` | Medium |
+| ID | Spec file | Priority | State |
+|----|-----------|----------|-------|
+| A1 | `a1-logout-does-not-abort-popup-upload.test.ts` | Medium | `FIXED:` — SIGN_OUT rejects in-flight uploads and reaches the popup |
+| A2 | `a2-origin-mismatch-logout-not-delivered.test.ts` | Medium | Resolved — asserts the bridge is injected on every shipped Send origin and nowhere else |
+| A5 | `a5-logout-clears-unrelated-storage.test.ts` | Medium | Documents the current full wipe on logout |
+| A6 | `a6-menu-stale-login-no-push-refresh.test.ts` | Medium | `FIXED:` — the bridge forwards session changes to the page |
+| A7 | `a7-accounthub-login-races-web-login.test.ts` | Medium | `FIXED:` — first OIDC_USER write wins |
+| B1 | `b1-rapid-attach-before-popup-ready.test.ts` | Medium | `CONFIRMED BUG:` |
+| B2 | `b2-popup-close-mid-upload.test.ts` | Medium | `CONFIRMED BUG:` |
+| B3 | `b3-popup-check-then-act-race.test.ts` | Medium | `CONFIRMED BUG:` |
+| B4 | `b4-attach-while-popup-open.test.ts` | Medium | `CONFIRMED BUG:` |
+| B5 | `b5-background-restart-loses-bookkeeping.test.ts` | **High** | `CONFIRMED BUG:` |
+| C1 | `c1-disable-mid-upload-orphans-popup.test.ts` | **High** | `CONFIRMED BUG:` |
+| C2 | `c2-reenable-trusts-stale-auth.test.ts` | Medium | `CONFIRMED BUG:` |
+| D3 | `d3-init-single-flight-per-context-only.test.ts` | Medium | `FIXED:` — the init lock no longer deadlocks across contexts |
+
+The state column is read off the test names; when you flip a spec from
+`CONFIRMED BUG:` to `FIXED:`, update it here too.
+
+**Happy-path and startup specs** (not tied to a finding ID) use the same
+harness to lock in behaviour that must keep working:
+
+- `happy-full-upload-golden-path.test.ts`, `happy-sequential-multi-file-reuse.test.ts`
+  — attach → popup → upload → link, once and across popup sessions
+- `happy-login-sync-across-contexts.test.ts`, `happy-clean-logout-no-inflight-work.test.ts`
+  — login/logout propagate across background, popup and web contexts
+- `happy-init-no-conflict.test.ts` — `init()` with an intact default folder
+- `startup-missing-accounthub.test.ts`, `startup-storage-unreadable.test.ts`
+  — the background survives a missing experiment API / unreadable storage
+- `startup-sentry-gate.test.ts` — Sentry in the background page follows the
+  Thunderbird telemetry pref (see `packages/send/docs/TelemetryOptOut.md`)
 
 **Not yet covered** (deferred — see reasoning below):
 

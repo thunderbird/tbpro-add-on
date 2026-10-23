@@ -1,8 +1,8 @@
 ## Thunderbird Send
 
-Thunderbird Send is an end-to-end encrypted file sharing solution, allowing you to safely encrypt, password-protect and send files through our [website](https://send.tb.pro/) or as an [add-on](https://addons.thunderbird.net/en-US/thunderbird/addon/tb_send/?src=search) for your Thunderbird Desktop application.
+Thunderbird Send is an end-to-end encrypted file sharing solution, allowing you to safely encrypt, password-protect and send files through our [website](https://send.tb.pro/) or from inside Thunderbird Desktop, where it ships as part of the built-in Thunderbird Pro add-on (built from [`packages/addon`](../addon/README.md)).
 
-Currently, we are in a closed alpha state. Meanwhile, please join our [waitlist](https://tb.pro/) to try it out during our beta period, or feel free to follow the guide below to run a local or self-hosted version for yourself!
+Send is part of [Thunderbird Pro](https://tb.pro/) — or feel free to follow the guide below to run a local or self-hosted version for yourself!
 
 ## Getting started
 
@@ -67,6 +67,21 @@ identifies the caller in audit logs and the multi-key form enables zero-downtime
 rotation. With no key configured the endpoints fail closed (503); an invalid or
 missing key is rejected 401. Keys must be delivered only via a secret store,
 never chat or email. See the commented entry in `backend/.env.sample`.
+
+#### Rate limiting
+
+A subset of backend routes (token refresh, authenticated container reads, container and item
+mutations, share-link creation and the owner's share-link lookups, upload creation) are rate
+limited per user, with the counters kept in Redis so the limit means the same thing across every
+backend instance. Sign-in itself and the public share-link/download routes are not limited — see
+the design doc for the exact list. It is **opt-in through `REDIS_URL`**: the
+sample leaves it empty and `compose.yml` runs no Redis, so locally (and in E2E/CI) the limiter is
+a no-op and requests are unlimited. Set `REDIS_URL` to exercise it; once configured, an
+unreachable Redis fails closed with `503` rather than letting requests through unlimited. Limits
+live in `backend/src/config.ts` (`RATE_LIMITS`: `auth` 10/min, `read` 100/min, `sensitive` 30/min)
+and each is overridable with `RL_<TIER>_MAX` / `RL_<TIER>_WINDOW_MS`. Over-limit requests get a
+`429` with `Retry-After`, which the frontend's API client honours and retries once. The design
+and its rationale are in [`docs/design/rate-limiting-send-backend.md`](../../docs/design/rate-limiting-send-backend.md).
 
 ### Loading the TB Extension
 
@@ -154,9 +169,12 @@ Make sure you ask the team for `VITE_SENTRY_AUTH_TOKEN`
 
 ### VSCode debugger for the backend
 
-You can use VSCode's debugger for the backend.
+You can use VSCode's debugger for the backend. The dev container already starts node with
+`--inspect=0.0.0.0:9229` (the `debug` script in `backend/package.json`, run by `scripts/entry.sh`),
+and `compose.yml` publishes that port, so all that is left is attaching.
 
-1. Add this to your `.vscode/launch.json`
+1. Add this to your `.vscode/launch.json`. The paths assume you opened the repo root in VSCode;
+   if you opened `packages/send` instead, shorten `localRoot` to `${workspaceFolder}/backend`.
 
 ```
 {
@@ -167,7 +185,7 @@ You can use VSCode's debugger for the backend.
       "request": "attach",
       "port": 9229,
       "restart": true,
-      "localRoot": "${workspaceFolder}/backend",
+      "localRoot": "${workspaceFolder}/packages/send/backend",
       "name": "Docker: Attach to Node",
       "remoteRoot": "/app"
     },
@@ -182,7 +200,7 @@ You can use VSCode's debugger for the backend.
 
 ### VSCode debugger for the frontend
 
-1. Run this command `code frontend` to open a session on the frontend package.
+1. Run this command `code packages/send/frontend` (from the repo root) to open a session on the frontend package.
 
 2. Add this to your `.vscode/launch.json` file:
 
@@ -242,7 +260,7 @@ For details on how to run the E2E tests please see the [E2E Tests README](e2e/RE
 
 ## Releasing
 
-In order to keep track of our releases, we need to set our versions on either the `frontend` or `backend` package.json. To bump the version, move to the directory and run `pnpm version patch` (you can use minor or major depending on your needs). This will bump the version number on package.json and the related files that need updating. The backend requires `config.stage.yaml` to match the version number, whereas the frontend requires `manifest.json` to match. This is done automatically as long as you handle the version via `pnpm version`
+In order to keep track of our releases, we need to bump the versions in the `frontend` and `backend` `package.json` files whenever we change them. The usual way is the `Bump Package Versions` workflow in the repo's Actions tab: it runs [`scripts/bump-versions.js`](../../scripts/bump-versions.js), which bumps the patch version of every package in the monorepo together with the add-on and frontend `manifest.json` files, and opens a PR with the result. To bump a single package by hand instead, move to its directory and run `pnpm version patch` (you can use minor or major depending on your needs). The frontend requires its `public/manifest.json` to match, which its `postversion` hook (`scripts/bump.ts`) takes care of; the backend has no companion file to keep in sync — the image tag the deployment runs is written into the task definition by the deploy workflow, not read from a config file. How a tagged release is cut from these versions is described in the root [README](../../README.md#deployment).
 
 ## Storage
 
