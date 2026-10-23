@@ -8,6 +8,7 @@ const h = vi.hoisted(() => {
   const prisma = {
     upload: {
       findMany: vi.fn(),
+      count: vi.fn(async () => 1),
       delete: vi.fn(async ({ where }: { where: { id: string } }) => {
         order.push(`row:${where.id}`);
         return { id: where.id };
@@ -78,6 +79,26 @@ describe('deleteOrphans', () => {
     expect(result).toMatchObject({ deleted: 1, errors: 1 });
     expect(h.prisma.upload.delete).toHaveBeenCalledTimes(1);
     expect(h.prisma.upload.delete).toHaveBeenCalledWith({ where: { id: 'b' } });
+    warn.mockRestore();
+  });
+
+  it('skips an upload that an item claimed after the query', async () => {
+    h.prisma.upload.count.mockResolvedValueOnce(0);
+
+    await deleteOrphans(options);
+
+    expect(h.order).toEqual(['object:b', 'row:b']);
+  });
+
+  it('deletes nothing once the lock transaction is gone', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    h.prisma.upload.count.mockRejectedValue(new Error('transaction closed'));
+
+    const result = await deleteOrphans(options);
+
+    expect(result).toMatchObject({ deleted: 0, errors: 2 });
+    expect(h.del).not.toHaveBeenCalled();
+    h.prisma.upload.count.mockResolvedValue(1);
     warn.mockRestore();
   });
 

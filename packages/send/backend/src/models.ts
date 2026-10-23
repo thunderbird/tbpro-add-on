@@ -448,6 +448,12 @@ export async function deleteOrphans(
     }
     try {
       if (!dryRun) {
+        // Re-read through `db`: skips an upload an item claimed since the
+        // query, and throws once the sweep lock's transaction is gone.
+        const orphan = await db.upload.count({
+          where: { id, items: { none: {} } },
+        });
+        if (!orphan) return;
         await storage.del(id);
         // Own connection: a failed row delete must not abort the lock's tx.
         await deleteUpload(id);
