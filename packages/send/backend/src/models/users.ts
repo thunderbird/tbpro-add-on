@@ -5,6 +5,9 @@ import {
   USER_NOT_FOUND,
   USER_NOT_UPDATED,
 } from '../errors/models';
+import storage from '../storage';
+import { mapLimit } from '../utils/mapLimit';
+import { CLEANUP_CONCURRENCY } from './pendingUploads';
 import { fromPrismaV2, itemsIncludeOptions } from './prisma-helper';
 const prisma = new PrismaClient();
 
@@ -538,19 +541,34 @@ export async function getAllUsers() {
   });
 }
 
+/**
+ * Deletes the user, everything they own, and their stored objects (#1314).
+ * Shares they created and items in other users' folders that point at their
+ * uploads go too, since both would block the delete. Objects are removed only
+ * after the rows commit; a failed delete is left to the orphan sweep.
+ */
 export async function deleteUser(id: string) {
-  return prisma.$transaction(async (tx) => {
-    // 1. Remove memberships the user holds in other users' groups
+  const { user, uploadIds } = await prisma.$transaction(async (tx) => {
+    const uploads = await tx.upload.findMany({
+      where: { ownerId: id },
+      select: { id: true },
+    });
     await tx.membership.deleteMany({ where: { userId: id } });
-
-    // 2. Delete containers owned by the user.
-    //    Cascade: items → (upload refs dropped), shares → access links
+    await tx.share.deleteMany({ where: { senderId: id } });
+    await tx.item.deleteMany({ where: { upload: { ownerId: id } } });
+    // Cascade: items, shares and access links of the user's containers.
     await tx.container.deleteMany({ where: { ownerId: id } });
-
-    // 3. Delete uploads owned by the user
     await tx.upload.deleteMany({ where: { ownerId: id } });
-
-    // 4. Delete the user record itself (cascade: profile)
-    return tx.user.delete({ where: { id } });
+    // Cascade: profile.
+    const user = await tx.user.delete({ where: { id } });
+    return { user, uploadIds: uploads.map((upload) => upload.id) };
   });
+
+  await mapLimit(uploadIds, CLEANUP_CONCURRENCY, (uploadId) =>
+    storage.del(uploadId).catch((e) => {
+      console.warn(`[deleteUser] storage.del(${uploadId}) failed`, e);
+      return false;
+    })
+  );
+  return user;
 }
