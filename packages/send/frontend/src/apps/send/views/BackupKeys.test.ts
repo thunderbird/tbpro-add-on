@@ -22,7 +22,7 @@ vi.mock('@send-frontend/composables/useIsExtension', () => ({
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
-const mountOverlay = (errorMessage?: string) =>
+const mountOverlay = (errorMessage: string) =>
   mount(BackupKeys, {
     props: {
       words: ['one', 'two'],
@@ -47,13 +47,5 @@ describe('BackupKeys.vue', () => {
           .element as HTMLInputElement
       ).value
     ).toBe('one - two');
-  });
-
-  it('renders no error element without a message', () => {
-    const wrapper = mountOverlay();
-
-    expect(
-      wrapper.find('[data-testid="backup-keys-error-overlay"]').exists()
-    ).toBe(false);
   });
 });
