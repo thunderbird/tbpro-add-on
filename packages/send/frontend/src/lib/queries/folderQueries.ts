@@ -49,11 +49,12 @@ export const useFolderQuery = (
     queryFn: async () => {
       const id = folderIdComputed.value;
       if (id) {
-        await folderStore.fetchSubtree(id);
+        const failureStatus = await folderStore.fetchSubtree(id);
         return {
           type: 'subtree' as const,
           data: folderStore.rootFolder,
           folders: folderStore.visibleFolders,
+          failureStatus,
         };
       } else {
         await folderStore.fetchUserFolders();

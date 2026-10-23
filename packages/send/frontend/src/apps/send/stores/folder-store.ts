@@ -68,6 +68,7 @@ export interface FolderStore {
     shareOnly?: boolean
   ) => Promise<Container | null>;
   sync: () => Promise<void>;
+  getDefaultFolderId: () => Promise<string | null>;
   init: () => void;
   print: () => void;
   goToRootFolder: (folderId: string) => Promise<void>;
@@ -188,7 +189,8 @@ const useFolderStore = defineStore('folderManager', () => {
     selectedFileId.value = null;
   }
 
-  async function fetchSubtree(folderId: string): Promise<void> {
+  /** Resolves to the HTTP status of a failed fetch, or null otherwise. */
+  async function fetchSubtree(folderId: string): Promise<number | null> {
     let failure: ApiCallFailure | null = null;
     const tree = await api.call<ContainerResponse>(
       `containers/${folderId}/`,
@@ -253,11 +255,12 @@ const useFolderStore = defineStore('folderManager', () => {
         rootFolderId.value = null;
         await fetchUserFolders();
       }
-      return;
+      return status;
     }
 
     folders.value = tree.children;
     rootFolder.value = tree;
+    return null;
   }
 
   async function fetchUserFolders(): Promise<void> {

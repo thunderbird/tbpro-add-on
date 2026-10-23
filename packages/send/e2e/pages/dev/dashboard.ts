@@ -94,7 +94,7 @@ export async function reset_keys({ page }: PlaywrightProps) {
     dangerButton,
   } = dashboardLocators(page);
 
-  const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
+  const { folderRowSelector, dropZone, uploadButton } = fileLocators(page);
 
   const profileButton = page.getByTestId("navlink-manage-files");
   // Create a new folder
@@ -103,6 +103,10 @@ export async function reset_keys({ page }: PlaywrightProps) {
   await profileButton.click();
   // Check that the created folder exists
   await page.waitForSelector(folderRowSelector);
+
+  // The reset deletes this default folder; the Files link must not keep it (#1354).
+  await expect(page).toHaveURL(/\/send\/folder\/[^/?]+/);
+  const oldFolderId = new URL(page.url()).pathname.split("/").pop()!;
 
   await page.goto("/send/security-and-privacy");
 
@@ -127,10 +131,18 @@ export async function reset_keys({ page }: PlaywrightProps) {
   playwrightConfig.recoveredPassphrase = passPhrase;
   await backupKeysButtonOverlay.click();
 
-  // Navigate to files
-  await page.goto("/send");
+  // Follow the in-app link (no reload) to the new default folder (#1354).
+  await expect(profileButton).not.toHaveAttribute("href", new RegExp(oldFolderId));
+  await profileButton.click();
+  await expect(page).toHaveURL(/\/send\/folder\/[^/?]+/);
+  await expect(page).not.toHaveURL(new RegExp(oldFolderId));
+  await expect(dropZone).toBeVisible();
 
-  // `empty-folder` is a hidden marker element (FolderView.vue renders it with
-  // `display: none`), so this is a weak check by construction.
-  await expect(emptyFolderIndicator).toBeHidden();
+  // The Upload button only renders once the folder loaded.
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "after-reset.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("after reset"),
+  });
+  await expect(uploadButton).toBeVisible();
 }

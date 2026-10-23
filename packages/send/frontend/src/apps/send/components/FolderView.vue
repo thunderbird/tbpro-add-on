@@ -179,6 +179,25 @@ watch(
   }
 );
 
+// An unlocked 403/404 means this folder can't be opened, e.g. Reset Encryption
+// Key deleted it (#1354): move to the current default folder instead of leaving
+// a dead view. The locked case is the StaleContainerAccessError above.
+watch(
+  () => folderQuery.data.value,
+  async (data) => {
+    const isGone =
+      data?.type === 'subtree' &&
+      (data.failureStatus === 403 || data.failureStatus === 404);
+    if (!isGone || keychain.locked) return;
+    const goneId = folderId.value;
+    const defaultId = await folderStore.getDefaultFolderId();
+    // Skip when there is no other default folder or the user already moved on.
+    if (!defaultId || defaultId === goneId || folderId.value !== goneId) return;
+    router.replace(`/send/folder/${defaultId}`);
+  },
+  { immediate: true }
+);
+
 const gotoRoute = useDebounceFn(async () => {
   isRouterLoading.value = true;
   // Refetch the query which will use cached data if available

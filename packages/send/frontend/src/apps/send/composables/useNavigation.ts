@@ -1,13 +1,13 @@
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 import { useFolderStore } from '@send-frontend/stores';
-import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import { computed, reactive } from 'vue';
 
 export const useNavigation = () => {
   const { isRunningInsideThunderbird } = useIsExtension();
-  const { rootFolderId } = useFolderStore();
-  const rootFolderIdValue = computed(() =>
-    rootFolderId ? `/send/folder/${rootFolderId}` : '/send'
-  );
+  // Keep the store ref (not a snapshot) so mounted links follow a new default
+  // folder, e.g. after Reset Encryption Key (#1354).
+  const { rootFolderId } = storeToRefs(useFolderStore());
 
   const settingsLink = {
     path: '/send/security-and-privacy',
@@ -21,16 +21,14 @@ export const useNavigation = () => {
     label: 'Dashboard',
   };
 
-  const filesLink = {
-    path: rootFolderIdValue.value,
+  const filesLink = reactive({
+    path: computed(() =>
+      rootFolderId.value ? `/send/folder/${rootFolderId.value}` : '/send'
+    ),
     label: 'Manage Files',
-  };
+  });
 
-  const navLinkPaths = [
-    dashboardLink,
-    filesLink,
-    settingsLink,
-  ];
+  const navLinkPaths = [dashboardLink, filesLink, settingsLink];
 
   return {
     navLinkPaths,
