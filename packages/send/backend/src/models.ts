@@ -14,6 +14,7 @@ import {
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
 import { addExpiryToContainer } from './utils';
+import { STORAGE_DELETE_CONCURRENCY, mapLimit } from './utils/mapLimit';
 import { verifyOwnedUploadId } from './utils/ownedUploadId';
 import storage from './storage';
 const prisma = new PrismaClient();
@@ -383,42 +384,87 @@ export const deleteSession = async (id: string) =>
     SESSION_NOT_DELETED
   );
 
-export async function findOrphans(): Promise<{ uploadIds: string[] }> {
-  // An orphan is an Upload with no associated Item
-
-  const uploadsWithoutItem = await prisma.upload.findMany({
+/**
+ * Uploads with no Item, optionally only those created before `olderThan`
+ * (rows without `createdAt` predate it being set and count as old).
+ */
+export async function findOrphans(
+  olderThan?: Date,
+  db: Pick<Prisma.TransactionClient, 'upload'> = prisma
+): Promise<{ uploadIds: string[] }> {
+  const uploadsWithoutItem = await db.upload.findMany({
     where: {
-      items: {
-        none: {},
-      },
+      items: { none: {} },
+      ...(olderThan && {
+        OR: [{ createdAt: { lt: olderThan } }, { createdAt: null }],
+      }),
     },
-    select: {
-      id: true,
-    },
+    select: { id: true },
   });
-
-  return {
-    uploadIds: [...uploadsWithoutItem.map(({ id }) => id)],
-  };
+  return { uploadIds: uploadsWithoutItem.map(({ id }) => id) };
 }
 
-export async function deleteOrphans() {
-  const { uploadIds } = await findOrphans();
-  const errorUploadIds = [];
+export type OrphanDeleteResult = {
+  found: number;
+  deleted: number;
+  errors: number;
+  dryRun: boolean;
+  capped: boolean;
+};
 
-  for (const id of uploadIds) {
-    try {
-      await deleteUpload(id);
-    } catch (e) {
-      console.error(`[deleteOrphans] Could not delete upload ${id}`);
-      console.error(e);
-      errorUploadIds.push(id);
-    }
-  }
-
-  return {
-    errorUploadIds,
+/**
+ * Deletes orphaned uploads created before `olderThan`, at most `maxDeletes`
+ * attempts, starting none after `deadline`. The stored object goes first so a
+ * failed delete keeps the row for the next run. In a dry run `deleted` counts
+ * what would be deleted.
+ */
+export async function deleteOrphans(
+  {
+    olderThan,
+    dryRun,
+    maxDeletes,
+    deadline = Infinity,
+  }: {
+    olderThan: Date;
+    dryRun: boolean;
+    maxDeletes: number;
+    deadline?: number;
+  },
+  db: Pick<Prisma.TransactionClient, 'upload'> = prisma
+): Promise<OrphanDeleteResult> {
+  const { uploadIds } = await findOrphans(olderThan, db);
+  const result = {
+    found: uploadIds.length,
+    deleted: 0,
+    errors: 0,
+    dryRun,
+    capped: uploadIds.length > maxDeletes,
   };
+  const batch = uploadIds.slice(0, maxDeletes);
+  await mapLimit(batch, STORAGE_DELETE_CONCURRENCY, async (id: string) => {
+    if (Date.now() > deadline) {
+      result.capped = true;
+      return;
+    }
+    try {
+      if (!dryRun) {
+        // Re-read through `db`: skips an upload an item claimed since the
+        // query, and throws once the sweep lock's transaction is gone.
+        const orphan = await db.upload.count({
+          where: { id, items: { none: {} } },
+        });
+        if (!orphan) return;
+        await storage.del(id);
+        // Own connection: a failed row delete must not abort the lock's tx.
+        await deleteUpload(id);
+      }
+      result.deleted++;
+    } catch (e) {
+      console.warn(`[deleteOrphans] Could not delete upload ${id}`, e);
+      result.errors++;
+    }
+  });
+  return result;
 }
 
 const getUploadSizesForUser = async (userId: string) => {
