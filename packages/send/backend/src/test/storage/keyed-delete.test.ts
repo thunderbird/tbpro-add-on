@@ -1,7 +1,6 @@
 import {
   DeleteObjectCommand,
   ListObjectVersionsCommand,
-  ListObjectsV2Command,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { StorageType } from '@tweedegolf/storage-abstraction';
@@ -100,25 +99,40 @@ describe('FileStore.del', () => {
 });
 
 describe('FileStore.listObjects', () => {
-  it('lists one page after the cursor', async () => {
-    const lastModified = new Date('2026-01-01T00:00:00Z');
+  it('lists keys from the version listing, including hidden ones', async () => {
+    const older = new Date('2026-01-01T00:00:00Z');
+    const newer = new Date('2026-02-01T00:00:00Z');
     const send = stubSend(() => ({
-      Contents: [{ Key: 'a', LastModified: lastModified }, { Key: undefined }],
+      Versions: [
+        { Key: 'a', LastModified: older },
+        { Key: 'b', LastModified: older },
+      ],
+      DeleteMarkers: [{ Key: 'b', LastModified: newer }],
       IsTruncated: true,
+      NextKeyMarker: 'b',
     }));
 
     const page = await new FileStore(B2).listObjects('cursor', 1000);
 
     expect(page).toEqual({
-      objects: [{ key: 'a', lastModified }],
-      truncated: true,
+      objects: [
+        { key: 'a', lastModified: older },
+        { key: 'b', lastModified: newer },
+      ],
+      next: 'b',
     });
     const [command] = send.mock.calls[0];
-    expect(command).toBeInstanceOf(ListObjectsV2Command);
-    expect((command as ListObjectsV2Command).input).toEqual({
+    expect(command).toBeInstanceOf(ListObjectVersionsCommand);
+    expect((command as ListObjectVersionsCommand).input).toEqual({
       Bucket: 'bucket',
-      StartAfter: 'cursor',
+      KeyMarker: 'cursor',
       MaxKeys: 1000,
     });
+  });
+
+  it('has no next cursor on the last page', async () => {
+    stubSend(() => ({ Versions: [], IsTruncated: false }));
+
+    expect(await new FileStore(B2).listObjects()).toEqual({ objects: [] });
   });
 });

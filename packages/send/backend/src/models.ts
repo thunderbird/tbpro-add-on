@@ -14,6 +14,7 @@ import {
 import { fromPrismaV2, fromPrismaV3 } from './models/prisma-helper';
 import { getAllUserGroupContainers } from './models/users';
 import { addExpiryToContainer } from './utils';
+import { STORAGE_DELETE_CONCURRENCY, mapLimit } from './utils/mapLimit';
 import { verifyOwnedUploadId } from './utils/ownedUploadId';
 import storage from './storage';
 const prisma = new PrismaClient();
@@ -412,38 +413,47 @@ export type OrphanDeleteResult = {
 
 /**
  * Deletes orphaned uploads created before `olderThan`, at most `maxDeletes`
- * attempts. The stored object goes first so a failed delete keeps the row for
- * the next run. In a dry run `deleted` counts what would be deleted.
+ * attempts, starting none after `deadline`. The stored object goes first so a
+ * failed delete keeps the row for the next run. In a dry run `deleted` counts
+ * what would be deleted.
  */
 export async function deleteOrphans({
   olderThan,
   dryRun,
   maxDeletes,
+  deadline = Infinity,
 }: {
   olderThan: Date;
   dryRun: boolean;
   maxDeletes: number;
+  deadline?: number;
 }): Promise<OrphanDeleteResult> {
   const { uploadIds } = await findOrphans(olderThan);
-  const result = { found: uploadIds.length, deleted: 0, errors: 0, dryRun };
+  const result = {
+    found: uploadIds.length,
+    deleted: 0,
+    errors: 0,
+    dryRun,
+    capped: uploadIds.length > maxDeletes,
+  };
   const batch = uploadIds.slice(0, maxDeletes);
-
-  for (const id of batch) {
-    if (dryRun) {
-      result.deleted++;
-      continue;
+  await mapLimit(batch, STORAGE_DELETE_CONCURRENCY, async (id: string) => {
+    if (Date.now() > deadline) {
+      result.capped = true;
+      return;
     }
     try {
-      await storage.del(id);
-      await deleteUpload(id);
+      if (!dryRun) {
+        await storage.del(id);
+        await deleteUpload(id);
+      }
       result.deleted++;
     } catch (e) {
       console.warn(`[deleteOrphans] Could not delete upload ${id}`, e);
       result.errors++;
     }
-  }
-
-  return { ...result, capped: uploadIds.length > batch.length };
+  });
+  return result;
 }
 
 const getUploadSizesForUser = async (userId: string) => {

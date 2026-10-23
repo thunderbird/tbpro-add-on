@@ -10,7 +10,7 @@ import {
   createS3Client,
   deleteObjectVersions,
   getObjectSize,
-  listObjectsPage,
+  listKeysPage,
   getSignedUrl,
   getSignedUrlforDownload,
 } from './s3b2';
@@ -240,15 +240,15 @@ export class FileStore {
     return true;
   }
 
-  /** One page (at most `maxKeys`) of the bucket's keys after `startAfter`. */
+  /** One page (at most `maxKeys` versions) of the bucket's keys after `cursor`. */
   async listObjects(
-    startAfter?: string,
+    cursor?: string,
     maxKeys = 1000
-  ): Promise<{ objects: BucketObject[]; truncated: boolean }> {
+  ): Promise<{ objects: BucketObject[]; next?: string }> {
     const { client, bucket } = this.bucketApi();
-    return listObjectsPage(client, {
+    return listKeysPage(client, {
       Bucket: bucket,
-      StartAfter: startAfter,
+      KeyMarker: cursor,
       MaxKeys: maxKeys,
     });
   }

@@ -6,11 +6,9 @@ import {
   USER_NOT_UPDATED,
 } from '../errors/models';
 import storage from '../storage';
-import { mapLimit } from '../utils/mapLimit';
+import { STORAGE_DELETE_CONCURRENCY, mapLimit } from '../utils/mapLimit';
 import { fromPrismaV2, itemsIncludeOptions } from './prisma-helper';
 const prisma = new PrismaClient();
-
-const STORAGE_DELETE_CONCURRENCY = 5;
 
 export async function createUser(
   publicKey: string,
@@ -565,7 +563,7 @@ export async function deleteUser(id: string) {
     return { user, uploadIds: uploads.map((upload) => upload.id) };
   });
 
-  await mapLimit(uploadIds, STORAGE_DELETE_CONCURRENCY, (uploadId) =>
+  await mapLimit(uploadIds, STORAGE_DELETE_CONCURRENCY, (uploadId: string) =>
     storage.del(uploadId).catch((e) => {
       console.warn(`[deleteUser] storage.del(${uploadId}) failed`, e);
       return false;

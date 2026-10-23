@@ -1,3 +1,6 @@
+/** Parallel storage deletes per batch. */
+export const STORAGE_DELETE_CONCURRENCY = 5;
+
 /**
  * Maps `items` through `fn` with at most `limit` calls in flight, keeping the
  * input order in the result. Bounded so a cleanup batch cannot exhaust the

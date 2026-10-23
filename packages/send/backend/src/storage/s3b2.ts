@@ -3,11 +3,11 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectVersionsCommand,
-  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl as getSignedUrlCommand } from '@aws-sdk/s3-request-presigner';
+import { STORAGE_DELETE_CONCURRENCY, mapLimit } from '../utils/mapLimit';
 
 /**
  * The S3 data plane, used for presigned URLs and keyed size reads.
@@ -146,48 +146,62 @@ export async function getSignedUrlforDownload(
  */
 export async function deleteObjectVersions(
   s3Client: S3Client,
-  { Bucket, Key }: { Bucket: string; Key: string }
+  { Bucket, Key }: { Bucket: string; Key: string },
+  markers: { KeyMarker?: string; VersionIdMarker?: string } = {}
 ): Promise<void> {
-  let KeyMarker: string | undefined;
-  let VersionIdMarker: string | undefined;
-  let truncated = true;
-  while (truncated) {
-    const page = await s3Client.send(
-      new ListObjectVersionsCommand({
-        Bucket,
-        Prefix: Key,
-        KeyMarker,
-        VersionIdMarker,
-      })
+  const page = await s3Client.send(
+    new ListObjectVersionsCommand({ Bucket, Prefix: Key, ...markers })
+  );
+  const versions = [
+    ...(page.Versions ?? []),
+    ...(page.DeleteMarkers ?? []),
+  ].filter((v) => v.Key === Key);
+  await mapLimit(versions, STORAGE_DELETE_CONCURRENCY, ({ VersionId }) =>
+    s3Client.send(new DeleteObjectCommand({ Bucket, Key, VersionId }))
+  );
+  if (page.IsTruncated) {
+    await deleteObjectVersions(
+      s3Client,
+      { Bucket, Key },
+      {
+        KeyMarker: page.NextKeyMarker,
+        VersionIdMarker: page.NextVersionIdMarker,
+      }
     );
-    const versions = [...(page.Versions ?? []), ...(page.DeleteMarkers ?? [])];
-    for (const version of versions.filter((v) => v.Key === Key)) {
-      await s3Client.send(
-        new DeleteObjectCommand({ Bucket, Key, VersionId: version.VersionId })
-      );
-    }
-    truncated = page.IsTruncated === true;
-    KeyMarker = page.NextKeyMarker;
-    VersionIdMarker = page.NextVersionIdMarker;
   }
 }
 
 export type BucketObject = { key: string; lastModified: Date };
 
-/** One page of the bucket listing, in key order, after `StartAfter`. */
-export async function listObjectsPage(
+/**
+ * One page of the bucket's keys after `KeyMarker`, from the version listing so
+ * keys hidden by a delete marker are included; `lastModified` is that of the
+ * key's newest version. `next` is unset on the last page.
+ */
+export async function listKeysPage(
   s3Client: S3Client,
   {
     Bucket,
-    StartAfter,
+    KeyMarker,
     MaxKeys,
-  }: { Bucket: string; StartAfter?: string; MaxKeys: number }
-): Promise<{ objects: BucketObject[]; truncated: boolean }> {
+  }: { Bucket: string; KeyMarker?: string; MaxKeys: number }
+): Promise<{ objects: BucketObject[]; next?: string }> {
   const page = await s3Client.send(
-    new ListObjectsV2Command({ Bucket, StartAfter, MaxKeys })
+    new ListObjectVersionsCommand({ Bucket, KeyMarker, MaxKeys })
   );
-  const objects = (page.Contents ?? []).flatMap(({ Key, LastModified }) =>
-    Key && LastModified ? [{ key: Key, lastModified: LastModified }] : []
-  );
-  return { objects, truncated: page.IsTruncated === true };
+  const newest = new Map<string, Date>();
+  for (const { Key, LastModified } of [
+    ...(page.Versions ?? []),
+    ...(page.DeleteMarkers ?? []),
+  ]) {
+    const seen = Key && newest.get(Key);
+    if (Key && LastModified && !(seen && seen >= LastModified)) {
+      newest.set(Key, LastModified);
+    }
+  }
+  const objects = [...newest].map(([key, lastModified]) => ({
+    key,
+    lastModified,
+  }));
+  return { objects, next: page.IsTruncated ? page.NextKeyMarker : undefined };
 }

@@ -49,7 +49,12 @@ describe('deleteOrphans', () => {
       dryRun: false,
       capped: false,
     });
-    expect(h.order).toEqual(['object:a', 'row:a', 'object:b', 'row:b']);
+    for (const id of ['a', 'b']) {
+      expect(h.order.indexOf(`object:${id}`)).toBeLessThan(
+        h.order.indexOf(`row:${id}`)
+      );
+    }
+    expect(h.order).toHaveLength(4);
   });
 
   it('only looks at uploads older than the minimum age', async () => {
@@ -82,6 +87,13 @@ describe('deleteOrphans', () => {
     expect(result).toMatchObject({ found: 2, deleted: 2, dryRun: true });
     expect(h.del).not.toHaveBeenCalled();
     expect(h.prisma.upload.delete).not.toHaveBeenCalled();
+  });
+
+  it('starts no deletes after the deadline', async () => {
+    const result = await deleteOrphans({ ...options, deadline: 0 });
+
+    expect(result).toMatchObject({ deleted: 0, capped: true });
+    expect(h.del).not.toHaveBeenCalled();
   });
 
   it('stops at the delete budget', async () => {

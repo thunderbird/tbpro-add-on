@@ -4,9 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // lock, and the schedule switch. Storage, Prisma and the row pass are mocked.
 
 const h = vi.hoisted(() => {
-  const tx = { $queryRaw: vi.fn() };
+  const upload = { findMany: vi.fn() };
+  const tx = { $queryRaw: vi.fn(), upload };
   const prisma = {
-    upload: { findMany: vi.fn() },
+    upload,
     $transaction: vi.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
   };
   const storage = {
@@ -35,7 +36,12 @@ import {
 const OLD = new Date('2026-10-01T00:00:00Z');
 const YOUNG = new Date('2026-10-23T00:00:00Z');
 const olderThan = new Date('2026-10-22T00:00:00Z');
-const options = { olderThan, dryRun: false, maxDeletes: 100 };
+const options = {
+  olderThan,
+  dryRun: false,
+  maxDeletes: 100,
+  deadline: Infinity,
+};
 
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -45,7 +51,7 @@ function bucket(...pages: { key: string; lastModified: Date }[][]) {
   pages.forEach((objects, i) =>
     h.storage.listObjects.mockResolvedValueOnce({
       objects,
-      truncated: i < pages.length - 1,
+      next: i < pages.length - 1 ? objects.slice(-1)[0]?.key : undefined,
     })
   );
 }
@@ -87,6 +93,13 @@ describe('deleteBucketOrphans', () => {
 
     expect(h.storage.listObjects.mock.calls).toEqual([[undefined], [id(1)]]);
     expect(deletedKeys()).toEqual([id(1), id(2)]);
+  });
+
+  it('starts no work after the deadline', async () => {
+    const result = await deleteBucketOrphans({ ...options, deadline: 0 });
+
+    expect(result.capped).toBe(true);
+    expect(h.storage.listObjects).not.toHaveBeenCalled();
   });
 
   it('deletes nothing in a dry run', async () => {
@@ -152,6 +165,23 @@ describe('runSweepIfLeader', () => {
     });
     const [sql] = h.tx.$queryRaw.mock.calls[0];
     expect(sql.join('')).toContain('pg_try_advisory_xact_lock(');
+    expect(h.deleteOrphans).toHaveBeenCalledWith(
+      expect.objectContaining({ deadline: expect.any(Number) })
+    );
+  });
+
+  it('ignores a negative delete budget from the environment', async () => {
+    vi.stubEnv('ORPHAN_SWEEP_MAX_DELETES', '-1');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    h.tx.$queryRaw.mockResolvedValue([{ locked: true }]);
+    bucket([]);
+
+    await runSweepIfLeader();
+
+    expect(h.deleteOrphans).toHaveBeenCalledWith(
+      expect.objectContaining({ maxDeletes: 10000 })
+    );
+    vi.unstubAllEnvs();
   });
 });
 
