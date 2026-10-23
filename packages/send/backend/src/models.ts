@@ -383,42 +383,67 @@ export const deleteSession = async (id: string) =>
     SESSION_NOT_DELETED
   );
 
-export async function findOrphans(): Promise<{ uploadIds: string[] }> {
-  // An orphan is an Upload with no associated Item
-
+/**
+ * Uploads with no Item, optionally only those created before `olderThan`
+ * (rows without `createdAt` predate it being set and count as old).
+ */
+export async function findOrphans(
+  olderThan?: Date
+): Promise<{ uploadIds: string[] }> {
   const uploadsWithoutItem = await prisma.upload.findMany({
     where: {
-      items: {
-        none: {},
-      },
+      items: { none: {} },
+      ...(olderThan && {
+        OR: [{ createdAt: { lt: olderThan } }, { createdAt: null }],
+      }),
     },
-    select: {
-      id: true,
-    },
+    select: { id: true },
   });
-
-  return {
-    uploadIds: [...uploadsWithoutItem.map(({ id }) => id)],
-  };
+  return { uploadIds: uploadsWithoutItem.map(({ id }) => id) };
 }
 
-export async function deleteOrphans() {
-  const { uploadIds } = await findOrphans();
-  const errorUploadIds = [];
+export type OrphanDeleteResult = {
+  found: number;
+  deleted: number;
+  errors: number;
+  dryRun: boolean;
+  capped: boolean;
+};
 
-  for (const id of uploadIds) {
+/**
+ * Deletes orphaned uploads created before `olderThan`, at most `maxDeletes`
+ * attempts. The stored object goes first so a failed delete keeps the row for
+ * the next run. In a dry run `deleted` counts what would be deleted.
+ */
+export async function deleteOrphans({
+  olderThan,
+  dryRun,
+  maxDeletes,
+}: {
+  olderThan: Date;
+  dryRun: boolean;
+  maxDeletes: number;
+}): Promise<OrphanDeleteResult> {
+  const { uploadIds } = await findOrphans(olderThan);
+  const result = { found: uploadIds.length, deleted: 0, errors: 0, dryRun };
+  const batch = uploadIds.slice(0, maxDeletes);
+
+  for (const id of batch) {
+    if (dryRun) {
+      result.deleted++;
+      continue;
+    }
     try {
+      await storage.del(id);
       await deleteUpload(id);
+      result.deleted++;
     } catch (e) {
-      console.error(`[deleteOrphans] Could not delete upload ${id}`);
-      console.error(e);
-      errorUploadIds.push(id);
+      console.warn(`[deleteOrphans] Could not delete upload ${id}`, e);
+      result.errors++;
     }
   }
 
-  return {
-    errorUploadIds,
-  };
+  return { ...result, capped: uploadIds.length > batch.length };
 }
 
 const getUploadSizesForUser = async (userId: string) => {
