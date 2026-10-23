@@ -268,9 +268,9 @@ export const useBackupAndRestore = () => {
   }
 
   async function saveBackup(passphrase: string) {
-    keychain.storePassPhrase(passphrase);
-
     try {
+      // Awaited: backupKeys encrypts with the stored phrase, not `passphrase`.
+      await keychain.storePassPhrase(passphrase);
       // Scratch status ref: backupKeys writes "✅ Backup complete" into it,
       // which must not show up as the overlay's error.
       await backupKeys(keychain, api, ref(''));

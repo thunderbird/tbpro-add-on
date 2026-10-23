@@ -247,9 +247,15 @@ describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)'
     expect(store.passphraseString).toBe('new phrase 1');
     expect(store.errorMessage).toContain('could not be saved on this device');
 
-    // Retrying must not swap a second key in.
+    // Retrying must not swap a second key in, nor back up under the old
+    // stored phrase while the new one still can't be saved.
+    state.keychain.storePassPhrase.mockRejectedValueOnce(
+      new Error('QuotaExceededError')
+    );
     await composable.makeBackup();
     expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+    expect(state.backupKeys).not.toHaveBeenCalled();
+    expect(store.justReset).toBe(true);
   });
 
   it('a backup failure after the swap keeps the overlay and phrase up', async () => {
