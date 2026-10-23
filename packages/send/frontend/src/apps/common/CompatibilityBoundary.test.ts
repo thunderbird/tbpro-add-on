@@ -11,7 +11,7 @@ const { query, settingsQuery, config, prefersDark } = vi.hoisted(() => ({
     options?: { queryFn: () => Promise<unknown> };
   },
   settingsQuery: vi.fn(),
-  config: { isTbproExtension: false, isDev: false },
+  config: { isTbproExtension: false, isThunderbirdHost: false, isDev: false },
   prefersDark: { value: false },
 }));
 
@@ -56,18 +56,27 @@ describe('CompatibilityBoundary', () => {
     query.data = null;
     query.error = null;
     config.isTbproExtension = false;
+    config.isThunderbirdHost = false;
     config.isDev = false;
     prefersDark.value = false;
   });
 
-  it('asks the server with this build’s version and app name', async () => {
-    mountBoundary();
-    await query.options?.queryFn();
-    expect(settingsQuery).toHaveBeenCalledWith({
-      version: __APP_VERSION__,
-      appName: __APP_NAME__,
-    });
-  });
+  it.each([
+    [false, 'browser'],
+    [true, 'thunderbird'],
+  ])(
+    'asks the server with this build’s version, app name and runtime (Thunderbird host: %s)',
+    async (isThunderbirdHost, runtime) => {
+      config.isThunderbirdHost = isThunderbirdHost;
+      mountBoundary();
+      await query.options?.queryFn();
+      expect(settingsQuery).toHaveBeenCalledWith({
+        version: __APP_VERSION__,
+        appName: __APP_NAME__,
+        runtime,
+      });
+    }
+  );
 
   it('renders the app while settings are loading', () => {
     const wrapper = mountBoundary();

@@ -1,16 +1,28 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { useClientGate } from './useClientGate';
 
-const { query } = vi.hoisted(() => ({
-  query: { data: null as unknown, error: null as unknown },
+const { query, settingsQuery, config } = vi.hoisted(() => ({
+  query: { data: null, error: null } as {
+    data: unknown;
+    error: unknown;
+    options?: { queryFn: () => Promise<unknown> };
+  },
+  settingsQuery: vi.fn(),
+  config: { isThunderbirdHost: false },
 }));
 
 vi.mock('@send-frontend/lib/trpc', () => ({
-  trpc: { settings: { query: vi.fn() } },
+  trpc: { settings: { query: settingsQuery } },
 }));
 vi.mock('@tanstack/vue-query', () => ({
-  useQuery: () => ({ data: ref(query.data), error: ref(query.error) }),
+  useQuery: (options: typeof query.options) => {
+    query.options = options;
+    return { data: ref(query.data), error: ref(query.error) };
+  },
+}));
+vi.mock('@send-frontend/apps/send/stores/config-store', () => ({
+  useConfigStore: () => config,
 }));
 
 function gateFor(clientGate: unknown, error: unknown = null) {
@@ -20,6 +32,29 @@ function gateFor(clientGate: unknown, error: unknown = null) {
 }
 
 describe('useClientGate', () => {
+  beforeEach(() => {
+    settingsQuery.mockClear();
+    config.isThunderbirdHost = false;
+  });
+
+  it.each([
+    [true, 'thunderbird'],
+    [false, 'browser'],
+  ])(
+    'tells the server where it runs (Thunderbird host: %s)',
+    async (isThunderbirdHost, runtime) => {
+      config.isThunderbirdHost = isThunderbirdHost;
+      const { isThunderbirdHost: reported } = useClientGate();
+      await query.options?.queryFn();
+      expect(settingsQuery).toHaveBeenCalledWith({
+        version: __APP_VERSION__,
+        appName: __APP_NAME__,
+        runtime,
+      });
+      expect(reported).toBe(isThunderbirdHost);
+    }
+  );
+
   it('passes through string title and message', () => {
     expect(
       gateFor({
