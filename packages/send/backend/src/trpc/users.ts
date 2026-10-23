@@ -8,6 +8,7 @@ import {
   getUploadsOwnedByUser,
 } from '@send-backend/models';
 import {
+  CLIENT_RUNTIMES,
   getClientGate,
   toLegacyCompatibilityResult,
 } from '@send-backend/utils/compatibility';
@@ -84,6 +85,14 @@ export const usersRouter = router({
    *             version:
    *               type: string
    *               description: Client version to check compatibility against
+   *             appName:
+   *               type: string
+   *               nullable: true
+   *               description: Client build (`addon` or the web app)
+   *             runtime:
+   *               type: string
+   *               enum: [thunderbird, browser]
+   *               description: Where the client runs; omitted or unknown means browser
    *     responses:
    *       200:
    *         description: API settings and compatibility information
@@ -129,6 +138,8 @@ export const usersRouter = router({
       z.object({
         version: z.string(),
         appName: z.string().nullable(),
+        // Optional for clients that predate it; an unknown value is ignored.
+        runtime: z.enum(CLIENT_RUNTIMES).default('browser').catch('browser'),
       })
     )
     .query(({ input: { version: clientVersion, appName } }) => {

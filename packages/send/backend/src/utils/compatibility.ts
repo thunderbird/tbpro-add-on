@@ -3,6 +3,10 @@ import { logger } from './logger';
 
 export type ClientGateAction = 'none' | 'banner' | 'block';
 
+/** Where the client runs, as reported in the `settings` query. */
+export const CLIENT_RUNTIMES = ['thunderbird', 'browser'] as const;
+export type ClientRuntime = (typeof CLIENT_RUNTIMES)[number];
+
 export type ClientGate = {
   action: ClientGateAction;
   minVersion: string | null;

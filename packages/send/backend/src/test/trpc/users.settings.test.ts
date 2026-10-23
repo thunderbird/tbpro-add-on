@@ -15,9 +15,17 @@ const anonymousCtx = {
   user: null,
 };
 
-function settings(version: string, appName: string | null) {
-  //@ts-ignore
-  return usersRouter.createCaller(anonymousCtx).settings({ version, appName });
+function settings(
+  version: string,
+  appName: string | null,
+  extra: Record<string, unknown> = {}
+) {
+  return (
+    usersRouter
+      .createCaller(anonymousCtx as never)
+      // @ts-ignore -- old clients send no runtime; unknown values are tested too
+      .settings({ version, appName, ...extra })
+  );
 }
 
 describe('settings: client update gate', () => {
@@ -82,5 +90,19 @@ describe('settings: client update gate', () => {
 
     expect(result.clientGate.action).toBe('none');
     expect(result.compatibility.result).toBe('COMPATIBLE');
+  });
+
+  it.each([
+    ['without a runtime (old clients)', {}],
+    ['with runtime thunderbird', { runtime: 'thunderbird' }],
+    ['with runtime browser', { runtime: 'browser' }],
+    ['with an unknown runtime', { runtime: 'toaster' }],
+    ['with extra fields', { runtime: 'browser', future: true }],
+  ])('accepts a request %s', async (_, extra) => {
+    vi.stubEnv('CLIENT_MIN_VERSION_WEB', '');
+
+    await expect(
+      settings('1.0.0', 'send-frontend', extra)
+    ).resolves.toMatchObject({ clientGate: { action: 'none' } });
   });
 });

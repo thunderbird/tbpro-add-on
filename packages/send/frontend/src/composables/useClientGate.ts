@@ -1,3 +1,4 @@
+import { useConfigStore } from '@send-frontend/apps/send/stores/config-store';
 import { trpc } from '@send-frontend/lib/trpc';
 import { useQuery } from '@tanstack/vue-query';
 import { computed } from 'vue';
@@ -14,12 +15,14 @@ const asString = (value: unknown) => (typeof value === 'string' ? value : null);
  * action is `none` and the app renders.
  */
 export function useClientGate() {
+  const { isThunderbirdHost } = useConfigStore();
   const { data, error } = useQuery({
     queryKey: ['settingsQuery'],
     queryFn: async () =>
       await trpc.settings.query({
         version: __APP_VERSION__,
         appName: __APP_NAME__,
+        runtime: isThunderbirdHost ? 'thunderbird' : 'browser',
       }),
   });
 
@@ -37,5 +40,5 @@ export function useClientGate() {
     };
   });
 
-  return { gate, clientVersion: __APP_VERSION__, error };
+  return { gate, clientVersion: __APP_VERSION__, error, isThunderbirdHost };
 }
