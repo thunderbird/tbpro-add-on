@@ -117,7 +117,7 @@ export function getClientGateEnv() {
   const { env } = process;
   return {
     mode: env.CLIENT_GATE_MODE,
-    // Deprecated fallback for both apps; use the per-app message keys.
+    // Deprecated fallback for both; use the per-app/runtime message keys.
     message: env.CLIENT_GATE_MESSAGE,
     addon: {
       minVersion: env.CLIENT_MIN_VERSION_ADDON,

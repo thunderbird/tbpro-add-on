@@ -93,6 +93,21 @@ describe('settings: client update gate', () => {
   });
 
   it.each([
+    ['thunderbird', 'Add-on copy'],
+    ['browser', 'Web copy'],
+    [undefined, 'Web copy'],
+  ])('picks the web app’s text by runtime %s', async (runtime, message) => {
+    vi.stubEnv('CLIENT_MIN_VERSION_WEB', '9.9.9');
+    vi.stubEnv('CLIENT_GATE_MODE', 'block');
+    vi.stubEnv('CLIENT_GATE_MESSAGE_ADDON', 'Add-on copy');
+    vi.stubEnv('CLIENT_GATE_MESSAGE_WEB', 'Web copy');
+
+    const result = await settings('8.0.19', 'send-frontend', { runtime });
+
+    expect(result.clientGate).toMatchObject({ action: 'block', message });
+  });
+
+  it.each([
     ['without a runtime (old clients)', {}],
     ['with runtime thunderbird', { runtime: 'thunderbird' }],
     ['with runtime browser', { runtime: 'browser' }],
