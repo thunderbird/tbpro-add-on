@@ -70,6 +70,7 @@ describe('ExtensionPage client gate', () => {
     expect(sendMessage).toHaveBeenCalledWith({
       type: ALL_UPLOADS_ABORTED,
       aborted: true,
+      blocked: true,
     });
   });
 

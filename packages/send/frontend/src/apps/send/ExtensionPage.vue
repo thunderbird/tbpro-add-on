@@ -34,6 +34,7 @@ async function abortPendingUploads() {
     await browser.runtime.sendMessage({
       type: ALL_UPLOADS_ABORTED,
       aborted: true,
+      blocked: true,
     });
   } catch {
     // Not running as an extension, or no background listener.
