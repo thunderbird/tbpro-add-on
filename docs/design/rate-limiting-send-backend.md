@@ -21,11 +21,18 @@ reading on:
   limited routes" therefore describes deployed environments, not every
   environment. #1187 fixed the original wiring, which 503'd forever because the
   client was never created.
-- **Tiers as shipped:** `auth` → `GET /api/auth/refresh`; `read` → container
-  reads, `/oidc/me`, share-link reads; `sensitive` → container/item mutations,
-  share-link creation, `POST /api/uploads` and `/api/uploads/signed`.
-  Defaults are unchanged (10 / 100 / 30 per minute), overridable with
-  `RL_<TIER>_MAX` / `RL_<TIER>_WINDOW_MS`.
+- **Tiers as shipped:** `auth` → `GET /api/auth/refresh` only; `read` →
+  authenticated container reads (`GET /api/containers/:id`, `/:id/links`,
+  `/:id/info`), `GET /api/auth/oidc/me`, and the owner-facing share-link
+  checks (`GET /api/sharing/:containerId/canCreateAccessLink`,
+  `GET /api/sharing/:uploadId/links`); `sensitive` → container/item mutations,
+  `POST /api/sharing` (share-link creation), `POST /api/uploads` and
+  `/api/uploads/signed`. Everything else is **unlimited**, notably the public
+  share-link routes (`GET /api/sharing/:linkId`, `GET`/`POST
+  /api/sharing/:linkId/challenge`, `/exists/:linkId`), OIDC sign-in
+  (`/api/auth/oidc/authenticate`), password `login`/`register`, and the
+  download routes. Defaults are unchanged (10 / 100 / 30 per minute),
+  overridable with `RL_<TIER>_MAX` / `RL_<TIER>_WINDOW_MS`.
 - **Keying** is the OIDC `sub`, then the JWT user id, then
   `ipKeyGenerator(ip)` + SHA-256 of the cookie header for the pre-auth refresh
   route. The IP is normalised so IPv6 clients cannot rotate within their prefix.

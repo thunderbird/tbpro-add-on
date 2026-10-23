@@ -70,9 +70,11 @@ never chat or email. See the commented entry in `backend/.env.sample`.
 
 #### Rate limiting
 
-Sensitive backend routes (auth and token refresh, container and item mutations, share-link
-creation, upload creation) are rate limited per user, with the counters kept in Redis so the limit
-means the same thing across every backend instance. It is **opt-in through `REDIS_URL`**: the
+A subset of backend routes (token refresh, authenticated container reads, container and item
+mutations, share-link creation and the owner's share-link lookups, upload creation) are rate
+limited per user, with the counters kept in Redis so the limit means the same thing across every
+backend instance. Sign-in itself and the public share-link/download routes are not limited — see
+the design doc for the exact list. It is **opt-in through `REDIS_URL`**: the
 sample leaves it empty and `compose.yml` runs no Redis, so locally (and in E2E/CI) the limiter is
 a no-op and requests are unlimited. Set `REDIS_URL` to exercise it; once configured, an
 unreachable Redis fails closed with `503` rather than letting requests through unlimited. Limits

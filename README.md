@@ -146,9 +146,11 @@ and hands the resulting bearer token to the backend, which introspects it
 (`OIDC_TOKEN_INTROSPECTION_URL`), finds or creates the matching Send user, and issues its own jwt
 tokens: an access token and a refresh token, each stored as a secure, http-only cookie. Those
 cookies ride along on every request to the backend automatically, and decoding the access token
-is how the backend knows who is making the request (userId, email, tier). The access token is
-valid for a bounded time, aligned with the OIDC token's expiry; `GET /api/auth/refresh` mints a new
-one from the refresh cookie, and once that expires too the user has to log in again.
+is how the backend knows who is making the request (userId, email, tier). The access cookie lives
+for a fixed `JWT_EXPIRY_IN_MILLISECONDS` (one hour) regardless of the OIDC token; the refresh cookie
+defaults to `JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS` (one week) but, on OIDC sign-in, is cut down to the
+OIDC token's own expiry when the introspection response carries one. `GET /api/auth/refresh` mints
+a new access cookie from the refresh cookie, and once that expires too the user has to log in again.
 
 A local stack also accepts password login (`ALLOW_PUBLIC_LOGIN` / `VITE_ALLOW_PUBLIC_LOGIN`, on in
 the samples), which skips OIDC and sets the same cookies — that is what "Or register" on the
