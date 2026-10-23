@@ -1,13 +1,11 @@
 import { getUsedStorage } from '@send-backend/models';
 import {
-  getAccessLinksForContainer as getAccessLinks,
   getContainerWithoutAncestors,
   getDefaultContainerForOwner,
   setContainerAsDefault,
 } from '@send-backend/models/containers';
 import { getStorageLimitForTier } from '@send-backend/utils/storageLimits';
 import { TRPCError } from '@trpc/server';
-import { z } from 'zod';
 import { router, publicProcedure as t } from '../trpc';
 import { isAuthed } from './middlewares';
 
@@ -63,37 +61,6 @@ export const containersRouter = router({
     }
     return response;
   }),
-
-  /**
-   * @openapi
-   * /trpc/getAccessLinksForContainer:
-   *   get:
-   *     tags:
-   *       - Containers
-   *     summary: Get access links for a container
-   *     description: Returns all access links associated with a specific container
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: query
-   *         name: input
-   *         schema:
-   *           type: object
-   *           properties:
-   *             containerId:
-   *               type: number
-   *               description: ID of the container
-   *     responses:
-   *       200:
-   *         description: List of access links for the container
-   */
-  getAccessLinksForContainer: t
-    .use(isAuthed)
-    .input(z.object({ containerId: z.string() }))
-    .query(async ({ input }) => {
-      const accessLinks = await getAccessLinks(input.containerId);
-      return accessLinks;
-    }),
 
   /**
    * @openapi

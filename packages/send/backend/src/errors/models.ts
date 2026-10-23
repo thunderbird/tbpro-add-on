@@ -11,6 +11,8 @@ export const SHARE_NOT_DELETED = 'SHARE_NOT_DELETED';
 
 export const ACCESSLINK_NOT_FOUND = 'ACCESSLINK_NOT_FOUND';
 export const ACCESSLINK_NOT_DELETED = 'ACCESSLINK_NOT_DELETED';
+export const ACCESSLINK_CHALLENGE_INCORRECT = 'ACCESSLINK_CHALLENGE_INCORRECT';
+export const ACCESSLINK_LOCKED = 'ACCESSLINK_LOCKED';
 
 export const ITEM_NOT_CREATED = 'ITEM_NOT_CREATED';
 export const ITEM_NOT_FOUND = 'ITEM_NOT_FOUND';
@@ -51,5 +53,17 @@ export class BaseError extends Error {
     // Restore the prototype chain per
     // https://www.typescriptlang.org/docs/handbook/2/classes.html#extends-clauses
     Object.setPrototypeOf(this, BaseError.prototype);
+  }
+}
+
+// A refused access-link challenge: incorrect answer, locked link, or a link
+// that is missing or expired. `attemptsRemaining` is set for incorrect answers.
+export class AccessLinkChallengeError extends BaseError {
+  constructor(
+    errorType: string,
+    readonly attemptsRemaining?: number
+  ) {
+    super(errorType);
+    Object.setPrototypeOf(this, AccessLinkChallengeError.prototype);
   }
 }

@@ -17,7 +17,6 @@ const { sharingModel } = vi.hoisted(() => ({
     getContainerForAccessLink: vi.fn(),
     isAccessLinkValid: vi.fn(),
     removeAccessLink: vi.fn(),
-    resetAccessLinkRetryCount: vi.fn(),
   },
 }));
 

@@ -11,6 +11,7 @@ const emit = defineEmits(['acceptAccessLinkComplete']);
 
 const password = ref('');
 const error = ref('');
+const attemptsHint = ref('');
 const passwordInput = ref<HTMLInputElement | null>(null);
 const isLocked = ref(false);
 
@@ -18,9 +19,21 @@ const route = useRoute();
 
 const sharingStore = useSharingStore();
 
+const INCORRECT_MESSAGE = 'This password is incorrect';
+const LOCKED_MESSAGE =
+  'This link has been locked after too many incorrect attempts.';
+
+function attemptsText(attemptsRemaining?: number) {
+  if (!attemptsRemaining) return '';
+  return attemptsRemaining === 1
+    ? '1 attempt remaining.'
+    : `${attemptsRemaining} attempts remaining.`;
+}
+
 async function accept() {
   if (isLocked.value) return;
   error.value = ''; // Clear previous errors
+  attemptsHint.value = '';
   const linkId = route.params.linkId as string;
   const isValid = await sharingStore.isAccessLinkValid(linkId);
   const canRetry = await getCanRetry(linkId);
@@ -32,11 +45,21 @@ async function accept() {
   }
 
   try {
-    const success = await sharingStore.acceptAccessLink(linkId, password.value);
-    if (success) {
-      emit('acceptAccessLinkComplete');
-    } else {
-      error.value = 'This password is incorrect';
+    const result = await sharingStore.acceptAccessLink(linkId, password.value);
+    switch (result.status) {
+      case 'accepted':
+        emit('acceptAccessLinkComplete');
+        break;
+      case 'locked':
+        error.value = LOCKED_MESSAGE;
+        isLocked.value = true;
+        break;
+      case 'incorrect':
+        error.value = INCORRECT_MESSAGE;
+        attemptsHint.value = attemptsText(result.attemptsRemaining);
+        break;
+      default:
+        error.value = INCORRECT_MESSAGE;
     }
   } catch (e) {
     console.error(e);
@@ -73,12 +96,22 @@ onMounted(() => {
           autocomplete="section-main password"
           type="password"
           required
+          :disabled="isLocked"
         />
       </label>
       <p class="prompt">Enter the password provided by the sender</p>
 
-      <div v-if="error" class="error-message" style="color: red">
-        {{ error }}
+      <div
+        v-if="error"
+        class="error-message"
+        data-testid="access-link-error"
+        role="alert"
+        style="color: red"
+      >
+        <p>{{ error }}</p>
+        <p v-if="attemptsHint" data-testid="attempts-remaining">
+          {{ attemptsHint }}
+        </p>
       </div>
       <div>
         <BtnComponent
@@ -87,6 +120,7 @@ onMounted(() => {
           size="medium"
           class="btn-primary"
           type="submit"
+          :disabled="isLocked"
           >Continue</BtnComponent
         >
       </div>

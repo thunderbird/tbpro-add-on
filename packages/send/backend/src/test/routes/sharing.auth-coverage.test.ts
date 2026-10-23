@@ -44,7 +44,8 @@ const PUBLIC_EXPRESS_ROUTES = new Set([
   'POST /:linkId/add-password',
 ]);
 const PUBLIC_TRPC_MUTATIONS = new Set([
-  // Link recipients hit this while entering the link password.
+  // Legacy no-op kept for older clients: writes nothing and returns the
+  // current retry count (counting moved into POST /:linkId/challenge).
   'incrementPasswordRetryCount',
   // Compatibility no-op: performs no writes and returns only the link id.
   'addPasswordToAccessLink',
