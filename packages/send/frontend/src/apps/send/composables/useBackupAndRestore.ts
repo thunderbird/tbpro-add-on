@@ -51,6 +51,7 @@ export const useBackupAndRestore = () => {
     shouldReset,
     justReset,
     pendingReset,
+    savingBackup,
     passphraseString,
   } = storeToRefs(backupStore);
   const { sendMessageToBridge, configureExtension } = useExtensionStore();
@@ -125,12 +126,9 @@ export const useBackupAndRestore = () => {
     router.push('/send/profile?showDashboard=true');
   }
 
-  // Set while "Download and Continue" runs; a double click must not swap twice.
-  let backupInFlight = false;
-
   /** Leaving the overlay before "Download and Continue" cancels the reset. */
   function abandonPendingReset() {
-    if (!pendingReset.value || backupInFlight) return;
+    if (!pendingReset.value || savingBackup.value) return;
     backupStore.setPendingReset(false);
     backupStore.setJustReset(false);
   }
@@ -190,11 +188,18 @@ export const useBackupAndRestore = () => {
     },
   });
 
+  // Locked while saving and once the reset key is on the server: the phrase
+  // shown must stay the one that opens the server backup (#1355).
+  const canRegenerate = computed(
+    () => !savingBackup.value && !(justReset.value && !pendingReset.value)
+  );
+
   /**
    * Regenerates a random passphrase and updates the store with the new words.
    * Used when the user wants a new random passphrase during backup setup.
    */
   const regeneratePassphrase = () => {
+    if (!canRegenerate.value) return;
     backupStore.setWords(generatePassphrase(PHRASE_SIZE));
   };
 
@@ -252,10 +257,9 @@ export const useBackupAndRestore = () => {
    * On failure the overlay stays up with an error, still showing the phrase.
    */
   async function makeBackup() {
-    if (backupInFlight) return;
-    backupInFlight = true;
+    if (savingBackup.value) return;
+    backupStore.setSavingBackup(true);
     backupStore.setErrorMessage('');
-    // Read once: Regenerate must not change the phrase mid-save.
     const passphrase = passphraseString.value;
     try {
       if (pendingReset.value && !(await swapInResetKey(passphrase))) {
@@ -263,7 +267,7 @@ export const useBackupAndRestore = () => {
       }
       await saveBackup(passphrase);
     } finally {
-      backupInFlight = false;
+      backupStore.setSavingBackup(false);
     }
   }
 
@@ -338,6 +342,7 @@ export const useBackupAndRestore = () => {
     backupData,
     // Methods
     regeneratePassphrase,
+    canRegenerate,
     setPassphrase,
     makeBackup,
     restoreFromBackup,

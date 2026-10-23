@@ -220,6 +220,32 @@ describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)'
     expect(state.storedPassphrase).toBe('new phrase 2');
   });
 
+  it('Regenerate is locked while saving and once the reset key is installed', async () => {
+    state.keychain.storePassPhrase.mockRejectedValueOnce(new Error('quota'));
+    composable.resetKeys();
+    const saving = composable.makeBackup();
+    expect(composable.canRegenerate.value).toBe(false);
+    composable.regeneratePassphrase();
+    await saving;
+
+    // Swap done, local save failed: the installed phrase must stay on screen.
+    expect(store.passphraseString).toBe('new phrase 1');
+    expect(composable.canRegenerate.value).toBe(false);
+    composable.regeneratePassphrase();
+    expect(store.passphraseString).toBe('new phrase 1');
+  });
+
+  it('a remounted dashboard cannot start a second swap while one is running', async () => {
+    composable.resetKeys();
+    const first = composable;
+    const saving = first.makeBackup();
+    mountComposable();
+    await composable.makeBackup();
+    await saving;
+
+    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+  });
+
   it('a rejected swap changes nothing locally and keeps the overlay up with an error', async () => {
     state.resetKeysMutate.mockRejectedValueOnce(new Error('422'));
     composable.resetKeys();

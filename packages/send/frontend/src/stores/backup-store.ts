@@ -8,11 +8,14 @@ export const useBackupStore = defineStore('backup', () => {
   const shouldUnlock = ref(false);
   const shouldReset = ref(false);
   // Forces the BackupKeys overlay from "Create new encryption key" until the
-  // new recovery key is saved (#1116).
+  // new recovery key is saved or the reset is abandoned (#1116, #1355).
   const justReset = ref(false);
   // The server still holds the old key: "Download and Continue" swaps it in.
   // In-memory on purpose, so leaving before that click changes nothing (#1355).
   const pendingReset = ref(false);
+  // "Download and Continue" is running; shared so a remounted dashboard can't
+  // start a second swap.
+  const savingBackup = ref(false);
 
   const passphraseString = computed(() => {
     return words.value.join(' ');
@@ -46,6 +49,10 @@ export const useBackupStore = defineStore('backup', () => {
     pendingReset.value = value;
   }
 
+  function setSavingBackup(value: boolean) {
+    savingBackup.value = value;
+  }
+
   function resetBackupState() {
     backupCompleted.value = false;
     words.value = [];
@@ -54,6 +61,7 @@ export const useBackupStore = defineStore('backup', () => {
     shouldReset.value = false;
     justReset.value = false;
     pendingReset.value = false;
+    savingBackup.value = false;
   }
 
   return {
@@ -64,6 +72,7 @@ export const useBackupStore = defineStore('backup', () => {
     shouldReset,
     justReset,
     pendingReset,
+    savingBackup,
     passphraseString,
     setBackupCompleted,
     setWords,
@@ -72,6 +81,7 @@ export const useBackupStore = defineStore('backup', () => {
     setShouldReset,
     setJustReset,
     setPendingReset,
+    setSavingBackup,
     resetBackupState,
   };
 });

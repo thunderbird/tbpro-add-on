@@ -25,6 +25,7 @@ type Props = {
   regeneratePassphrase: () => void;
   logOutAuth: () => Promise<void>;
   errorMessage?: string;
+  canRegenerate?: boolean;
 };
 
 const {
@@ -32,6 +33,7 @@ const {
   words,
   logOutAuth,
   errorMessage = '',
+  canRegenerate = true,
 } = defineProps<Props>();
 
 const { isExtension } = useConfigStore();
@@ -152,6 +154,7 @@ onMounted(async () => {
                 type="button"
                 class="icon-button"
                 title="Regenerate"
+                :disabled="!canRegenerate"
                 @click="regeneratePassphrase"
               >
                 <RefreshIcon />
@@ -309,12 +312,20 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: #6b7280;
-  transition: all 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    transform 0.2s;
 }
 
 .icon-button:hover {
   background: #f3f4f6;
   color: #1f2937;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .icon-button:active {
@@ -335,7 +346,10 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .download-button:hover {

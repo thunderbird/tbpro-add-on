@@ -29,6 +29,7 @@ const {
   backupData,
   errorMessage,
   regeneratePassphrase,
+  canRegenerate,
   makeBackup,
   shouldUnlock,
   justReset,
@@ -71,6 +72,7 @@ onUnmounted(abandonPendingReset);
       :regenerate-passphrase="regeneratePassphrase"
       :log-out-auth="logOutAuth"
       :error-message="errorMessage"
+      :can-regenerate="canRegenerate"
     />
 
     <div class="row">
