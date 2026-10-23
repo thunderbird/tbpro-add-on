@@ -111,4 +111,25 @@ export const RATE_LIMITS: Record<
   sensitive: rateLimitFromEnv('sensitive', 30),
 };
 
+// Server-controlled client update gate (see utils/compatibility.ts). Read on
+// every call so a config change needs no code change; unset means no gate.
+export function getClientGateEnv() {
+  const { env } = process;
+  return {
+    mode: env.CLIENT_GATE_MODE,
+    // Deprecated fallback for both; use the per-app/runtime message keys.
+    message: env.CLIENT_GATE_MESSAGE,
+    addon: {
+      minVersion: env.CLIENT_MIN_VERSION_ADDON,
+      title: env.CLIENT_GATE_TITLE_ADDON,
+      message: env.CLIENT_GATE_MESSAGE_ADDON,
+    },
+    web: {
+      minVersion: env.CLIENT_MIN_VERSION_WEB,
+      title: env.CLIENT_GATE_TITLE_WEB,
+      message: env.CLIENT_GATE_MESSAGE_WEB,
+    },
+  };
+}
+
 export default appConfig;
