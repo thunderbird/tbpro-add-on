@@ -318,7 +318,7 @@ onMounted(async () => {
     transform 0.2s;
 }
 
-.icon-button:hover {
+.icon-button:hover:not(:disabled) {
   background: #f3f4f6;
   color: #1f2937;
 }
@@ -360,6 +360,13 @@ onMounted(async () => {
 
 .download-button:active {
   transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-button,
+  .download-button {
+    transition: none;
+  }
 }
 
 .button-icon {
