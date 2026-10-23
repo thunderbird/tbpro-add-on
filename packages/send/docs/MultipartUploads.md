@@ -35,8 +35,9 @@ Defined in `frontend/src/lib/const.ts`:
 
 - `SPLIT_SIZE = VITE_SPLIT_SIZE_IN_MB × 1,000,000` bytes (note: 1 MB = 1,000,000,
   decimal). Default 100 MB in code; overridable per environment via the
-  `VITE_SPLIT_SIZE_IN_MB` build-time env var.
-- `MAX_CONCURRENT_PARTS` — how many parts upload at once.
+  `VITE_SPLIT_SIZE_IN_MB` build-time env var (the frontend `.env.sample` sets
+  500, so a local stack splits far less often than production).
+- `MAX_CONCURRENT_PARTS` — how many parts upload at once (4).
 - A file is split only when `fileBlob.size > SPLIT_SIZE` (`shouldSplit`).
 
 ## Upload flow (frontend → backend → storage)
@@ -120,8 +121,8 @@ service in `compose.yml`, which needs no credentials.
 > `FileStore.length()` reads an object's size back through the **same S3 API**
 > that wrote it (`HeadObject` via the direct S3 client) rather than the native
 > `sizeOf`, so the create-entry size check and the `/stat` poll see the object
-> immediately. See
-> [UploadReliabilityOptimizations.md](./UploadReliabilityOptimizations.md).
+> immediately. The reasoning is written up next to the code, in
+> `backend/src/storage/index.ts`.
 
 ## Sequence (one part, bucket storage)
 

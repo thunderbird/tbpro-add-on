@@ -60,8 +60,13 @@ to Send tabs when the prefs change. `token-bridge.js` relays both between
 `window.postMessage` and `browser.runtime.sendMessage`. Message types live in
 `packages/send/frontend/src/lib/const.ts`.
 
-> Related: #953 tracks hardening the `token-bridge.js` relay (validate
-> `event.origin`/`event.source`).
+> The relay only accepts messages whose `event.source` is the page's own
+> `window` and whose `event.origin` matches it (#953); anything from a frame or
+> another origin is dropped before it reaches the background.
+
+The add-on also injects `token-bridge.js` only on the Send origins listed in
+`manifest.json`, and the production build strips the `localhost` matches, so a
+released build never trusts a local page.
 
 ### Sentry & PostHog
 
@@ -85,8 +90,13 @@ to Send tabs when the prefs change. `token-bridge.js` relays both between
     adoption per version (#1330). Re-enabling telemetry at runtime starts a new
     session explicitly (`startSession` / `captureSession`), since the session
     integration only does so on the first init per page.
-- `posthog.js` — `init()` is deferred until first opt-in; `setPosthogConsent()`
-  opts in/out at runtime.
+- `plugins/posthog.js` — `init()` is deferred until first opt-in;
+  `setPosthogConsent()` opts in/out at runtime. PostHog is also kept off
+  `window.localStorage` entirely (#1279): its consent manager is replaced with an
+  in-memory one and `init()`/`reset()` run with `localStorage` stubbed out,
+  because a synchronous `localStorage` read on Thunderbird's main thread can
+  hang startup. Consent is re-derived from the telemetry pref on every load
+  instead of being persisted.
 
 ## Verification
 

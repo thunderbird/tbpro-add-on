@@ -3,8 +3,8 @@
 Guide for running the Thunderbird Send E2E tests. The E2E tests run automatically in CI on PRs/branches, and nightly on production. You can also run the E2E tests yourself against your local dev stack.
 
 Currently there are two sets of E2E tests:
-- One set of tests that run against a local dev stack. You can run these tests on your machine against your local dev stack, and they also run in CI against PRs/branches (on a dev stack running on a Github Actions worker). These dev E2E tests are found in `/e2e/tests/dev/`.
-- A separate new set of tests that can run against production (in the nightly E2E tests GHA job that runs on BrowserStack). These test are found in `/e2e/tests/*.spec.ts`.
+- One set of tests that run against a local dev stack. You can run these tests on your machine against your local dev stack, and they also run in CI against PRs/branches (on a dev stack running on a Github Actions worker). These dev E2E tests are found in `/e2e/tests/dev/`, with their own `playwright.config.dev.ts`.
+- A separate new set of tests that can run against production (in the nightly E2E tests GHA job that runs on BrowserStack). These test are found in `/e2e/tests/*.spec.ts` (`playwright.config.ts`) and cover sign-in, the dashboard, settings, encrypted files and sharing a file.
 
 Eventually in the future we will just have one set of E2E tests that will run on all environments, but for now we have these two sets of tests until we build out the new set of tests further.
 
@@ -83,8 +83,9 @@ already 22.x you don't need mise at all.
 
 #### Reading the results
 
-A clean run is currently 12 passed and 1 skipped; the only expected skip is `oidc.spec.ts`, which
-runs in CI only.
+A clean run is currently 12 passed and 1 skipped: the 8 tests in `send.spec.ts`, the 4 unit-style
+guards in `sharelinks-guard.spec.ts`, and `oidc.spec.ts` as the only expected skip — it needs the
+OIDC test account and runs in CI only.
 
 Every test in `send.spec.ts` works on the one account that `Register and log in` creates, so that
 file runs in serial mode: **a red run reports one failure and skips everything behind it.** The
@@ -92,11 +93,14 @@ failure you see is the real one, and a retry re-runs the chain from registration
 way a retry can pass. The config already reports with `line`, so the console output is in execution
 order — read it top-down rather than the html report's list.
 
-One intermittent failure is known and is test-side, not a product bug: `Download workflow` times
-out on `download-button-0` because the test looks up access links by index over a backend query
-with no ordering (#930). A failure anywhere else is worth investigating — `Register and log in`
-usually means the backend's CORS origins don't include the frontend's URL, and `Upload workflow`
-usually means `S3_PUBLIC_ENDPOINT` doesn't match the port MinIO is published on.
+The share-link steps used to be the flaky part (#930): the download and delete steps looked links
+up by index over a query with no ordering, so a stale or missing link cascaded into unrelated
+failures. They now go through `requireShareLink(name)`, which throws an error naming the missing
+link instead, and the map is reset before the file-workflow block — so a failure there points at
+the step that didn't produce the link, not at the one that consumed it. A failure anywhere is
+worth investigating — `Register and log in` usually means the backend's CORS origins don't include
+the frontend's URL, and `Upload workflow` usually means `S3_PUBLIC_ENDPOINT` doesn't match the port
+MinIO is published on.
 
 ### Clean up
 
