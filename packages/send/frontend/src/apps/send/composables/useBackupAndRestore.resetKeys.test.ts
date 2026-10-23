@@ -1,62 +1,45 @@
 import { mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 
+import useBackupStore from '@send-frontend/stores/backup-store';
+
 /**
- * Regression test for the "Reset keys" e2e (issue #1116).
- *
- * The safe reset performs a server-side write-new-then-swap (it never nulls the
- * recovery blob), so after a reset the account DOES have a valid server backup.
- * That means the old signal that used to render the BackupKeys overlay
- * ("server has no backup" => SHOULD_ENCRYPT_AND_BACKUP) no longer fires.
- *
- * To keep prompting the user to SAVE their freshly generated recovery key, the
- * reset flow must instead:
- *   - build the new keypair + blob on a scratch keychain (live keychain
- *     untouched until the server confirms),
- *   - swap it in on the server via trpc.resetKeys,
- *   - only then adopt the new keypair + passphrase into the live keychain,
- *   - flip `justReset` and surface the new passphrase in `words`,
- *   - stay in-session (NO logout / reload) and land on the dashboard so the
- *     overlay shows.
- *
- * These tests pin that behavior so the overlay-based e2e can't silently regress
- * again.
+ * Reset Encryption Key swaps the key on the server only on "Download and
+ * Continue" (#1355); confirming the reset just shows the overlay. Uses the real
+ * backup store so `words` / overlay flags are what the components render.
  */
 
 const { state } = vi.hoisted(() => {
+  const calls: string[] = [];
   const state = {
+    calls,
     routerPush: vi.fn(),
-    // backup-store spies
-    setWords: vi.fn(),
-    setJustReset: vi.fn(),
-    setShouldReset: vi.fn(),
-    setErrorMessage: vi.fn(),
-    words: [] as string[],
-    // live keychain (shared instance so tests can inspect it afterwards)
-    storePassPhrase: vi.fn(),
-    keychainStore: vi.fn(),
-    storedPassphrase: null as string | null,
+    storedPassphrase: 'old stored phrase' as string,
     keychain: {
       locked: false,
       keys: {} as Record<string, string>,
       rsa: {
-        setPrivateKeyFromJwk: vi.fn(),
+        setPrivateKeyFromJwk: vi.fn(async () => {
+          calls.push('adopt');
+        }),
         setPublicKeyFromJwk: vi.fn(),
       },
       getPassphraseValue: () => state.storedPassphrase,
-      storePassPhrase: (p: string) => {
+      storePassPhrase: vi.fn(async (p: string) => {
         state.storedPassphrase = p;
-        return state.storePassPhrase(p);
-      },
-      store: () => state.keychainStore(),
+      }),
+      store: vi.fn(),
     },
-    // keychain lib
     generateResetKeyBlob: vi.fn(),
-    // trpc
     resetKeysMutate: vi.fn(),
-    // refetch
+    backupKeys: vi.fn(),
+    downloadPassPhrase: vi.fn(),
+    sendMessageToBridge: vi.fn(),
+    dbUserSetup: vi.fn(),
     refetch: vi.fn(),
+    phraseCount: 0,
   };
   return { state };
 });
@@ -67,7 +50,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@send-frontend/apps/send/stores/extension-store', () => ({
   useExtensionStore: () => ({
-    sendMessageToBridge: vi.fn(),
+    sendMessageToBridge: state.sendMessageToBridge,
     configureExtension: vi.fn(),
   }),
 }));
@@ -76,29 +59,8 @@ vi.mock('@send-frontend/stores/keychain-store', () => ({
   default: () => ({ keychain: state.keychain }),
 }));
 
-vi.mock('@send-frontend/stores/backup-store', () => ({
-  default: () => ({
-    setWords: state.setWords,
-    setBackupCompleted: vi.fn(),
-    setErrorMessage: state.setErrorMessage,
-    setJustReset: state.setJustReset,
-    setShouldReset: state.setShouldReset,
-    words: ref(state.words),
-    errorMessage: ref(''),
-    shouldUnlock: ref(false),
-    shouldReset: ref(false),
-    justReset: ref(false),
-    passphraseString: ref(''),
-  }),
-}));
-
 vi.mock('@send-frontend/stores/user-store', () => ({
-  default: () => ({
-    getBackup: vi.fn(),
-    user: { email: 'a@b.co' },
-    clearUserFromStorage: vi.fn(),
-    populateFromBackend: vi.fn(),
-  }),
+  default: () => ({ getBackup: vi.fn(), user: { email: 'a@b.co' } }),
 }));
 
 vi.mock('@send-frontend/apps/send/stores/folder-store', () => ({
@@ -114,20 +76,24 @@ vi.mock('@send-frontend/stores/metrics', () => ({
 }));
 
 vi.mock('@send-frontend/lib/passphrase', () => ({
-  generatePassphrase: () => ['new', 'reset', 'phrase'],
+  generatePassphrase: () => {
+    state.phraseCount += 1;
+    return ['new', 'phrase', String(state.phraseCount)];
+  },
 }));
 
-vi.mock('@send-frontend/lib/helpers', () => ({ dbUserSetup: vi.fn() }));
+vi.mock('@send-frontend/lib/helpers', () => ({
+  dbUserSetup: (...a: unknown[]) => state.dbUserSetup(...a),
+}));
 
 vi.mock('@send-frontend/lib/keychain', () => ({
-  backupKeys: vi.fn(),
+  backupKeys: (...a: unknown[]) => state.backupKeys(...a),
   restoreKeys: vi.fn(),
-  generateResetKeyBlob: (...args: unknown[]) =>
-    state.generateResetKeyBlob(...args),
+  generateResetKeyBlob: (...a: unknown[]) => state.generateResetKeyBlob(...a),
 }));
 
 vi.mock('@send-frontend/lib/passphraseUtils', () => ({
-  downloadPassPhrase: vi.fn(),
+  downloadPassPhrase: (...a: unknown[]) => state.downloadPassPhrase(...a),
   parsePassphrase: (s: string) => s,
 }));
 
@@ -138,28 +104,14 @@ vi.mock('@send-frontend/lib/trpc', () => ({
   },
 }));
 
-// Use a light but REAL useMutation so we exercise the actual mutationFn +
-// onSuccess/onError wiring (that's the code under test). useQuery is stubbed.
 vi.mock('@tanstack/vue-query', () => ({
   useQuery: () => ({
     isLoading: ref(false),
     data: ref('KEYS_IN_LOCAL_STORAGE'),
     refetch: state.refetch,
   }),
-  useMutation: (opts: {
-    mutationFn: (v?: unknown) => Promise<unknown>;
-    onSuccess?: (d: unknown) => Promise<void> | void;
-    onError?: (e: unknown) => Promise<void> | void;
-  }) => ({
-    mutate: async (vars?: unknown) => {
-      try {
-        const data = await opts.mutationFn(vars);
-        if (opts.onSuccess) await opts.onSuccess(data);
-      } catch (e) {
-        if (opts.onError) await opts.onError(e);
-        else throw e;
-      }
-    },
+  useMutation: () => ({
+    mutate: vi.fn(),
     isSuccess: ref(false),
     isError: ref(false),
     reset: vi.fn(),
@@ -168,131 +120,204 @@ vi.mock('@tanstack/vue-query', () => ({
 
 import { useBackupAndRestore } from './useBackupAndRestore';
 
-let composable: ReturnType<typeof useBackupAndRestore>;
-
-const Host = defineComponent({
-  setup() {
-    composable = useBackupAndRestore();
-    return () => h('div');
-  },
-});
-
-const BLOB = {
-  publicKey: 'pk',
-  backupKeypair: 'kp',
-  backupKeystring: 'ks',
-  backupSalt: 'salt',
-  backupContainerKeys: '{}',
-};
+const BLOB = { publicKey: 'pk', backupKeypair: 'kp' };
 const KEYPAIR = { publicKey: 'pk', privateKey: 'sk' };
 const OLD_KEYS = { 'old-container': 'wrapped-with-old-key' };
 
-describe('useBackupAndRestore -> safe reset shows the backup overlay (#1116)', () => {
+let composable: ReturnType<typeof useBackupAndRestore>;
+const mountComposable = () =>
+  mount(
+    defineComponent({
+      setup() {
+        composable = useBackupAndRestore();
+        return () => h('div');
+      },
+    })
+  );
+
+describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)', () => {
+  let store: ReturnType<typeof useBackupStore>;
+
   beforeEach(() => {
-    state.words = [];
-    state.storedPassphrase = null;
-    state.keychain.locked = true; // a locked-out user is the common reset case
+    setActivePinia(createPinia());
+    store = useBackupStore();
+    state.calls.length = 0;
+    state.phraseCount = 0;
+    state.storedPassphrase = 'old stored phrase';
+    state.keychain.locked = false;
     state.keychain.keys = { ...OLD_KEYS };
-    state.generateResetKeyBlob.mockResolvedValue({
-      blob: BLOB,
-      keypair: KEYPAIR,
+    state.generateResetKeyBlob.mockImplementation(async () => {
+      state.calls.push('blob');
+      return { blob: BLOB, keypair: KEYPAIR };
     });
-    state.resetKeysMutate.mockResolvedValue({ success: true });
-    mount(Host);
+    state.resetKeysMutate.mockImplementation(async () => {
+      state.calls.push('swap');
+      return { success: true };
+    });
+    state.backupKeys.mockImplementation(async () => {
+      state.calls.push('backup');
+    });
+    state.downloadPassPhrase.mockImplementation(async () => {
+      state.calls.push('download');
+    });
+    mountComposable();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('builds the replacement on a scratch keychain, not the live one', async () => {
-    await composable.resetKeys();
-    // Called with the passphrase only — no live keychain handed in to mutate.
-    expect(state.generateResetKeyBlob).toHaveBeenCalledTimes(1);
-    expect(state.generateResetKeyBlob.mock.calls[0]).toEqual([
-      'new reset phrase',
+  it('confirming the reset only shows the overlay: no network, keychain untouched', () => {
+    composable.resetKeys();
+
+    expect(state.generateResetKeyBlob).not.toHaveBeenCalled();
+    expect(state.resetKeysMutate).not.toHaveBeenCalled();
+    expect(state.keychain.storePassPhrase).not.toHaveBeenCalled();
+    expect(state.keychain.keys).toEqual(OLD_KEYS);
+    expect(store.justReset).toBe(true);
+    expect(store.pendingReset).toBe(true);
+    expect(store.words).toEqual(['new', 'phrase', '1']);
+    expect(state.routerPush).toHaveBeenCalledWith(
+      '/send/profile?showDashboard=true'
+    );
+  });
+
+  it('a remount during the pending reset keeps the new phrase, not the stored old one', () => {
+    composable.resetKeys();
+    // The dashboard re-runs the composable after the route change.
+    mountComposable();
+
+    expect(store.passphraseString).toBe('new phrase 1');
+  });
+
+  it('Download and Continue swaps on the server, adopts locally, then backs up', async () => {
+    composable.resetKeys();
+    await composable.makeBackup();
+
+    expect(state.calls).toEqual([
+      'blob',
+      'swap',
+      'adopt',
+      'backup',
+      'download',
     ]);
-  });
-
-  it('sends the server exactly the blob (not the keypair)', async () => {
-    await composable.resetKeys();
+    expect(state.generateResetKeyBlob).toHaveBeenCalledWith('new phrase 1');
     expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
-    expect(state.resetKeysMutate.mock.calls[0][0]).toEqual(BLOB);
-  });
-
-  it('adopts the new keypair + passphrase into the live keychain after the swap', async () => {
-    await composable.resetKeys();
-    expect(state.keychain.rsa.setPrivateKeyFromJwk).toHaveBeenCalledWith('sk');
-    expect(state.keychain.rsa.setPublicKeyFromJwk).toHaveBeenCalledWith('pk');
-    // Old wrapped container keys can't be opened by the new keypair.
+    expect(state.resetKeysMutate).toHaveBeenCalledWith(BLOB);
     expect(state.keychain.keys).toEqual({});
-    expect(state.keychain.locked).toBe(false);
-    expect(state.storePassPhrase).toHaveBeenCalledWith('new reset phrase');
-    expect(state.keychainStore).toHaveBeenCalledTimes(1);
+    expect(state.storedPassphrase).toBe('new phrase 1');
+    expect(state.sendMessageToBridge).toHaveBeenCalledWith('new phrase 1');
+    expect(store.justReset).toBe(false);
+    expect(store.pendingReset).toBe(false);
   });
 
-  it('leaves the live keychain untouched when the server rejects the swap', async () => {
-    state.resetKeysMutate.mockRejectedValueOnce(new Error('422'));
+  it('Regenerate before Download and Continue swaps in the regenerated phrase', async () => {
+    composable.resetKeys();
+    composable.regeneratePassphrase();
+    await composable.makeBackup();
 
-    await composable.resetKeys();
+    expect(state.generateResetKeyBlob).toHaveBeenCalledWith('new phrase 2');
+    expect(state.storedPassphrase).toBe('new phrase 2');
+  });
+
+  it('Regenerate is locked while saving and once the reset key is installed', async () => {
+    state.keychain.storePassPhrase.mockRejectedValueOnce(new Error('quota'));
+    composable.resetKeys();
+    const saving = composable.makeBackup();
+    expect(composable.canRegenerate.value).toBe(false);
+    composable.regeneratePassphrase();
+    await saving;
+
+    // Swap done, local save failed: the installed phrase must stay on screen.
+    expect(store.passphraseString).toBe('new phrase 1');
+    expect(composable.canRegenerate.value).toBe(false);
+    composable.regeneratePassphrase();
+    expect(store.passphraseString).toBe('new phrase 1');
+  });
+
+  it('a remounted dashboard cannot start a second swap while one is running', async () => {
+    composable.resetKeys();
+    const first = composable;
+    const saving = first.makeBackup();
+    mountComposable();
+    await composable.makeBackup();
+    await saving;
+
+    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('a rejected swap changes nothing locally and keeps the overlay up with an error', async () => {
+    state.resetKeysMutate.mockRejectedValueOnce(new Error('422'));
+    composable.resetKeys();
+    await composable.makeBackup();
 
     expect(state.keychain.rsa.setPrivateKeyFromJwk).not.toHaveBeenCalled();
-    expect(state.keychain.rsa.setPublicKeyFromJwk).not.toHaveBeenCalled();
     expect(state.keychain.keys).toEqual(OLD_KEYS);
-    expect(state.keychain.locked).toBe(true);
-    expect(state.storePassPhrase).not.toHaveBeenCalled();
-    expect(state.keychainStore).not.toHaveBeenCalled();
-    expect(state.setJustReset).not.toHaveBeenCalled();
-    // (A locked keychain redirects to /passphrase-changed on mount; that is
-    // unrelated to reset. Only the post-reset dashboard route must be absent.)
-    expect(state.routerPush).not.toHaveBeenCalledWith(
-      '/send/profile?showDashboard=true'
-    );
-    // ...and the user is told, rather than failing silently.
-    expect(state.setErrorMessage).toHaveBeenCalledWith(
-      expect.stringContaining('Could not reset')
-    );
+    expect(state.storedPassphrase).toBe('old stored phrase');
+    expect(state.backupKeys).not.toHaveBeenCalled();
+    expect(store.justReset).toBe(true);
+    expect(store.pendingReset).toBe(true);
+    expect(store.errorMessage).toContain('Could not reset');
   });
 
-  it('still shows the new passphrase when saving it locally fails after the swap', async () => {
-    // Browser storage full / unavailable. The server has already replaced the
-    // keys, so the phrase on screen is the only way back in; it must appear
-    // even though local persistence failed.
-    state.storePassPhrase.mockImplementationOnce(() => {
-      throw new Error('QuotaExceededError');
-    });
-
-    await composable.resetKeys();
+  it('a local save failure after the swap keeps the overlay and phrase up', async () => {
+    state.keychain.storePassPhrase.mockRejectedValueOnce(
+      new Error('QuotaExceededError')
+    );
+    composable.resetKeys();
+    await composable.makeBackup();
 
     expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
-    expect(state.setWords).toHaveBeenLastCalledWith(['new', 'reset', 'phrase']);
-    expect(state.setJustReset).toHaveBeenCalledWith(true);
-    expect(state.routerPush).toHaveBeenCalledWith(
-      '/send/profile?showDashboard=true'
+    expect(store.justReset).toBe(true);
+    expect(store.pendingReset).toBe(false);
+    expect(store.passphraseString).toBe('new phrase 1');
+    expect(store.errorMessage).toContain('could not be saved on this device');
+
+    // Retrying must not swap a second key in, nor back up under the old
+    // stored phrase while the new one still can't be saved.
+    state.keychain.storePassPhrase.mockRejectedValueOnce(
+      new Error('QuotaExceededError')
     );
-    // The in-memory keychain was still adopted, so this session keeps working.
-    expect(state.keychain.rsa.setPrivateKeyFromJwk).toHaveBeenCalledWith('sk');
-    // ...and the user is told the phrase was not saved on this device.
-    expect(state.setErrorMessage).toHaveBeenCalledWith(
-      expect.stringContaining('could not be saved on this device')
-    );
+    await composable.makeBackup();
+    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+    expect(state.backupKeys).not.toHaveBeenCalled();
+    expect(store.justReset).toBe(true);
   });
 
-  it('flips justReset and surfaces the new passphrase so the overlay appears', async () => {
-    await composable.resetKeys();
-    expect(state.setJustReset).toHaveBeenCalledWith(true);
-    expect(state.setWords).toHaveBeenLastCalledWith(['new', 'reset', 'phrase']);
+  it('a backup failure after the swap keeps the overlay and phrase up', async () => {
+    state.backupKeys.mockRejectedValueOnce(new Error('500'));
+    composable.resetKeys();
+    await composable.makeBackup();
+
+    expect(store.justReset).toBe(true);
+    expect(store.passphraseString).toBe('new phrase 1');
+    expect(store.errorMessage).toContain('Could not finish saving');
   });
 
-  it('stays in-session and lands on the profile dashboard (no logout / reload)', async () => {
-    await composable.resetKeys();
-    // Must target the dashboard host of the BackupKeys overlay (ProfileView),
-    // not the folder view at /send.
-    expect(state.routerPush).toHaveBeenCalledWith(
-      '/send/profile?showDashboard=true'
-    );
-    // The safe reset must NOT bounce the user through a login round-trip.
-    expect(state.routerPush).not.toHaveBeenCalledWith('/login');
-    expect(state.routerPush).not.toHaveBeenCalledWith('/send');
+  it('a double click swaps the key only once', async () => {
+    composable.resetKeys();
+    await Promise.all([composable.makeBackup(), composable.makeBackup()]);
+
+    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaving the overlay before Download and Continue abandons the reset', () => {
+    composable.resetKeys();
+    composable.abandonPendingReset();
+
+    expect(store.justReset).toBe(false);
+    expect(store.pendingReset).toBe(false);
+    expect(state.resetKeysMutate).not.toHaveBeenCalled();
+  });
+
+  it('leaving while Download and Continue runs keeps the overlay state', async () => {
+    composable.resetKeys();
+    const saving = composable.makeBackup();
+    composable.abandonPendingReset();
+    state.backupKeys.mockRejectedValueOnce(new Error('500'));
+    await saving;
+
+    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+    expect(store.justReset).toBe(true);
   });
 });

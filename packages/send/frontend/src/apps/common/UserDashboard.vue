@@ -2,7 +2,7 @@
 import { useAuth } from '@send-frontend/lib/auth';
 import { useAuthStore } from '@send-frontend/stores';
 import useUserStore from '@send-frontend/stores/user-store';
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useBackupAndRestore } from '../send/composables/useBackupAndRestore';
 import AccessLocked from '../send/views/AccessLocked.vue';
 import BackupKeys from '../send/views/BackupKeys.vue';
@@ -27,14 +27,20 @@ onMounted(async () => {
 
 const {
   backupData,
+  errorMessage,
   regeneratePassphrase,
+  canRegenerate,
   makeBackup,
   shouldUnlock,
   justReset,
   resetKeys,
+  abandonPendingReset,
   routeToKeyRestore,
   words,
 } = useBackupAndRestore();
+
+// Navigating away before "Download and Continue" keeps the old key (#1355).
+onUnmounted(abandonPendingReset);
 </script>
 <template>
   <section class="content-layout">
@@ -65,6 +71,8 @@ const {
       :words="words"
       :regenerate-passphrase="regeneratePassphrase"
       :log-out-auth="logOutAuth"
+      :error-message="errorMessage"
+      :can-regenerate="canRegenerate"
     />
 
     <div class="row">

@@ -24,9 +24,17 @@ type Props = {
   makeBackup?: () => void;
   regeneratePassphrase: () => void;
   logOutAuth: () => Promise<void>;
+  errorMessage?: string;
+  canRegenerate?: boolean;
 };
 
-const { makeBackup, words, logOutAuth } = defineProps<Props>();
+const {
+  makeBackup,
+  words,
+  logOutAuth,
+  errorMessage = '',
+  canRegenerate = true,
+} = defineProps<Props>();
 
 const { isExtension } = useConfigStore();
 const { validators } = useStatusStore();
@@ -146,6 +154,7 @@ onMounted(async () => {
                 type="button"
                 class="icon-button"
                 title="Regenerate"
+                :disabled="!canRegenerate"
                 @click="regeneratePassphrase"
               >
                 <RefreshIcon />
@@ -161,6 +170,15 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+
+        <p
+          v-if="errorMessage"
+          class="error-field"
+          role="alert"
+          data-testid="backup-keys-error-overlay"
+        >
+          {{ errorMessage }}
+        </p>
 
         <button
           type="button"
@@ -245,6 +263,11 @@ onMounted(async () => {
   color: #ef4444;
 }
 
+.error-field {
+  color: var(--colour-danger-default);
+  margin-bottom: 1rem;
+}
+
 .input-container {
   position: relative;
   display: flex;
@@ -289,12 +312,20 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: #6b7280;
-  transition: all 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    transform 0.2s;
 }
 
-.icon-button:hover {
+.icon-button:hover:not(:disabled) {
   background: #f3f4f6;
   color: #1f2937;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .icon-button:active {
@@ -315,7 +346,10 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .download-button:hover {
@@ -326,6 +360,13 @@ onMounted(async () => {
 
 .download-button:active {
   transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-button,
+  .download-button {
+    transition: none;
+  }
 }
 
 .button-icon {
