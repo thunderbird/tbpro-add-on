@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 import { useConfigStore } from '../send/stores/config-store';
 import CloseButton from './CloseButton.vue';
 
-const { isProd, isTbproExtension } = useConfigStore();
+const { isProd, isThunderbirdHost } = useConfigStore();
 const prefersDark = usePreferredDark();
 const { gate } = useClientGate();
 const isTestingDismissed = ref(false);
@@ -16,7 +16,7 @@ const showUpdate = computed(
   () => gate.value.action === 'banner' && !isUpdateDismissed.value
 );
 
-const defaultMessage = isTbproExtension
+const defaultMessage = isThunderbirdHost
   ? 'A new version of Send is available. Update Thunderbird and its add-ons to get it.'
   : 'A new version of Send is available. Reload the page to get it.';
 

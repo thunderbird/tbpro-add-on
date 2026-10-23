@@ -40,5 +40,5 @@ export function useClientGate() {
     };
   });
 
-  return { gate, clientVersion: __APP_VERSION__, error, isThunderbirdHost };
+  return { gate, clientVersion: __APP_VERSION__, error };
 }

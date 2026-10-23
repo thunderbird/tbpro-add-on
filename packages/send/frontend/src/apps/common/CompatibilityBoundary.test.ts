@@ -11,7 +11,7 @@ const { query, settingsQuery, config, prefersDark } = vi.hoisted(() => ({
     options?: { queryFn: () => Promise<unknown> };
   },
   settingsQuery: vi.fn(),
-  config: { isTbproExtension: false, isThunderbirdHost: false, isDev: false },
+  config: { isThunderbirdHost: false, isDev: false },
   prefersDark: { value: false },
 }));
 
@@ -55,7 +55,6 @@ describe('CompatibilityBoundary', () => {
     vi.clearAllMocks();
     query.data = null;
     query.error = null;
-    config.isTbproExtension = false;
     config.isThunderbirdHost = false;
     config.isDev = false;
     prefersDark.value = false;
@@ -144,7 +143,7 @@ describe('CompatibilityBoundary', () => {
       expect(wrapper.emitted('blocked')).toHaveLength(1);
     });
 
-    it('replaces the app with the web update screen', () => {
+    it('replaces the app with the browser update screen', () => {
       const wrapper = mountBoundary();
       const block = wrapper.find(getByTestId('force-update-banner'));
 
@@ -153,6 +152,9 @@ describe('CompatibilityBoundary', () => {
       expect(block.text()).toContain(
         `You are using version ${__APP_VERSION__}; version 9.9.9 or newer is required.`
       );
+      expect(
+        wrapper.find(getByTestId('client-gate-how-to-update')).exists()
+      ).toBe(false);
       expect(wrapper.findComponent({ name: 'FeedbackBox' }).exists()).toBe(
         true
       );
@@ -174,8 +176,40 @@ describe('CompatibilityBoundary', () => {
       vi.restoreAllMocks();
     });
 
-    it('shows add-on update instructions on demand', async () => {
-      config.isTbproExtension = true;
+    it('shows the Thunderbird screen without a version line', () => {
+      config.isThunderbirdHost = true;
+      const wrapper = mountBoundary();
+      const block = wrapper.find(getByTestId('force-update-banner'));
+
+      expect(block.find(getByTestId('client-gate-versions')).exists()).toBe(
+        false
+      );
+      expect(block.text()).not.toContain('You are using version');
+      expect(block.find(getByTestId('refresh-button')).exists()).toBe(false);
+      expect(
+        block.find(getByTestId('client-gate-how-to-update')).exists()
+      ).toBe(true);
+      expect(wrapper.findComponent({ name: 'FeedbackBox' }).exists()).toBe(
+        true
+      );
+      expect(
+        block.html().replaceAll(__APP_VERSION__, '<client-version>')
+      ).toMatchSnapshot();
+    });
+
+    it.each([false, true])(
+      'renders the message bold (Thunderbird host: %s)',
+      (isThunderbirdHost) => {
+        config.isThunderbirdHost = isThunderbirdHost;
+        const wrapper = mountBoundary();
+        expect(
+          wrapper.find(getByTestId('client-gate-message')).classes()
+        ).toContain('emphasis');
+      }
+    );
+
+    it('shows Thunderbird update instructions on demand', async () => {
+      config.isThunderbirdHost = true;
       const wrapper = mountBoundary();
 
       expect(wrapper.text()).toContain(
@@ -195,9 +229,9 @@ describe('CompatibilityBoundary', () => {
     });
 
     it.each([false, true])(
-      'shows the server title and message instead of the default copy (add-on: %s)',
-      (isTbproExtension) => {
-        config.isTbproExtension = isTbproExtension;
+      'shows the server title and message instead of the default copy (Thunderbird host: %s)',
+      (isThunderbirdHost) => {
+        config.isThunderbirdHost = isThunderbirdHost;
         query.data = gate('block', '9.9.9', 'Please update today.', 'Stop');
         const wrapper = mountBoundary();
         expect(wrapper.find(getByTestId('client-gate-title')).text()).toBe(
@@ -210,7 +244,7 @@ describe('CompatibilityBoundary', () => {
     );
 
     it('shows the default add-on title and message without server text', () => {
-      config.isTbproExtension = true;
+      config.isThunderbirdHost = true;
       const wrapper = mountBoundary();
       expect(wrapper.find(getByTestId('client-gate-title')).text()).toBe(
         'Update Thunderbird to continue using Send'
