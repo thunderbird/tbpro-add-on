@@ -1,7 +1,8 @@
-import { expect } from "@playwright/test";
+import { expect, Page } from "@playwright/test";
 import { dashboardLocators, fileLocators } from "./locators";
 import { PlaywrightProps } from "../../utils/dev/fixtures";
 import { playwrightConfig, saveStorage } from "../../utils/dev/testUtils";
+import { emptystatePath } from "../../utils/dev/paths";
 
 const { email, password } = playwrightConfig;
 
@@ -44,14 +45,8 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
  * the empty storage state — that empty session *is* the thing under test.
  */
 export async function log_out_restore_keys({ page }: PlaywrightProps) {
-  const {
-    emailField,
-    passwordField,
-    submitLogin,
-    restoreKeysButton,
-    restorekeyInput,
-    recoverAccessButton,
-  } = dashboardLocators(page);
+  const { emailField, passwordField, submitLogin, restoreKeysButton, restorekeyInput, recoverAccessButton } =
+    dashboardLocators(page);
   const { firstFolderRow } = fileLocators(page);
 
   page.on("dialog", (dialog) => dialog.accept());
@@ -86,13 +81,8 @@ export async function log_out_restore_keys({ page }: PlaywrightProps) {
 }
 
 export async function reset_keys({ page }: PlaywrightProps) {
-  const {
-    backupKeysButtonOverlay,
-    passphraseInputOverlay,
-    showReset,
-    understandCheckbox,
-    dangerButton,
-  } = dashboardLocators(page);
+  const { backupKeysButtonOverlay, passphraseInputOverlay, showReset, understandCheckbox, dangerButton } =
+    dashboardLocators(page);
 
   const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
 
@@ -133,4 +123,87 @@ export async function reset_keys({ page }: PlaywrightProps) {
   // `empty-folder` is a hidden marker element (FolderView.vue renders it with
   // `display: none`), so this is a weak check by construction.
   await expect(emptyFolderIndicator).toBeHidden();
+}
+
+/**
+ * #1355: leaving the reset overlay before "Download and Continue" must keep the
+ * old key working everywhere; completing it swaps the key exactly once.
+ * Starts from empty storage: the saved state predates `reset_keys`.
+ */
+export async function reset_keys_abandoned_then_completed({ page }: PlaywrightProps) {
+  const { passphraseInputOverlay, backupKeysButtonOverlay, showReset } = dashboardLocators(page);
+  const oldPhrase = playwrightConfig.recoveredPassphrase;
+  if (!oldPhrase) throw new Error("reset_keys must run first");
+
+  let swaps = 0;
+  page.on("request", (req) => {
+    if (req.url().includes("resetKeys")) swaps++;
+  });
+  await login_and_restore(page, oldPhrase);
+
+  const startReset = async () => {
+    await page.goto("/send/security-and-privacy");
+    await showReset.click();
+    await page.getByTestId("understand-checkbox").click();
+    await page.getByTestId("danger-button").click();
+    const phrase = await passphraseInputOverlay.inputValue();
+    if (!phrase) throw new Error("Passphrase not found");
+    return phrase;
+  };
+
+  // Abandon: confirm the reset, then reload instead of saving.
+  await startReset();
+  await page.reload();
+  await page.waitForLoadState("networkidle");
+  await expect(passphraseInputOverlay).toBeHidden();
+  expect(swaps).toBe(0);
+  await in_fresh_context(page, (fresh) => login_and_restore(fresh, oldPhrase));
+
+  // Complete: a fresh phrase is swapped in on Download and Continue.
+  const newPhrase = await startReset();
+  await backupKeysButtonOverlay.click();
+  await expect(backupKeysButtonOverlay).toBeHidden();
+  expect(swaps).toBe(1);
+  playwrightConfig.recoveredPassphrase = newPhrase;
+
+  await in_fresh_context(page, (fresh) => login_and_restore(fresh, newPhrase, oldPhrase));
+}
+
+/** Run `action` in a new, empty browser context (another device). */
+async function in_fresh_context(page: Page, action: (fresh: Page) => Promise<void>) {
+  const context = await page.context().browser()!.newContext({
+    storageState: emptystatePath,
+  });
+  try {
+    await action(await context.newPage());
+  } finally {
+    await context.close();
+  }
+}
+
+/** Log in on an empty session and restore with `phrase` (after `rejected` fails). */
+async function login_and_restore(page: Page, phrase: string, rejected?: string) {
+  const { emailField, passwordField, submitLogin, recoverAccessButton, restorekeyInput, restoreKeysButton } =
+    dashboardLocators(page);
+  const restoreError = page.getByText(/Could not restore keys/);
+  page.on("dialog", (dialog) => dialog.accept());
+
+  await page.goto("/login");
+  await emailField.fill(email);
+  await passwordField.fill(password);
+  await submitLogin.click();
+  await page.waitForLoadState("networkidle");
+  await recoverAccessButton.click();
+
+  if (rejected) {
+    await restorekeyInput.fill(rejected);
+    await restoreKeysButton.click();
+    await expect(restoreError).toBeVisible();
+  }
+  await restorekeyInput.fill(phrase);
+  await restoreKeysButton.click();
+  await expect(restoreError).toBeHidden();
+
+  await page.goto("/send");
+  await expect(fileLocators(page).dropZone).toBeVisible();
 }

@@ -62,6 +62,8 @@ vi.mock('@send-frontend/stores/backup-store', () => ({
     errorMessage: ref(''),
     shouldUnlock: ref(false),
     shouldReset: ref(false),
+    justReset: ref(false),
+    pendingReset: ref(false),
     passphraseString: ref(''),
   }),
 }));
@@ -115,7 +117,11 @@ vi.mock('@send-frontend/lib/trpc', () => ({
   },
 }));
 vi.mock('@tanstack/vue-query', () => ({
-  useQuery: () => ({ isLoading: ref(false), data: ref(undefined), refetch: vi.fn() }),
+  useQuery: () => ({
+    isLoading: ref(false),
+    data: ref(undefined),
+    refetch: vi.fn(),
+  }),
   useMutation: () => ({
     mutate: vi.fn(),
     isSuccess: ref(false),

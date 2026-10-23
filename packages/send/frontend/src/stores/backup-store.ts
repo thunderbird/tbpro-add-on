@@ -7,13 +7,12 @@ export const useBackupStore = defineStore('backup', () => {
   const errorMessage = ref('');
   const shouldUnlock = ref(false);
   const shouldReset = ref(false);
-  // True immediately after a "Reset Access → Create new encryption key" swap,
-  // until the user saves the freshly generated recovery key via the backup
-  // overlay. It forces the BackupKeys overlay to appear even though the account
-  // now has a valid server backup (issue #1116: the safe reset installs a new
-  // blob, so the old "server has no backup" signal that used to trigger the
-  // overlay no longer fires — we drive it explicitly instead).
+  // Forces the BackupKeys overlay from "Create new encryption key" until the
+  // new recovery key is saved (#1116).
   const justReset = ref(false);
+  // The server still holds the old key: "Download and Continue" swaps it in.
+  // In-memory on purpose, so leaving before that click changes nothing (#1355).
+  const pendingReset = ref(false);
 
   const passphraseString = computed(() => {
     return words.value.join(' ');
@@ -43,6 +42,10 @@ export const useBackupStore = defineStore('backup', () => {
     justReset.value = value;
   }
 
+  function setPendingReset(value: boolean) {
+    pendingReset.value = value;
+  }
+
   function resetBackupState() {
     backupCompleted.value = false;
     words.value = [];
@@ -50,6 +53,7 @@ export const useBackupStore = defineStore('backup', () => {
     shouldUnlock.value = false;
     shouldReset.value = false;
     justReset.value = false;
+    pendingReset.value = false;
   }
 
   return {
@@ -59,6 +63,7 @@ export const useBackupStore = defineStore('backup', () => {
     shouldUnlock,
     shouldReset,
     justReset,
+    pendingReset,
     passphraseString,
     setBackupCompleted,
     setWords,
@@ -66,6 +71,7 @@ export const useBackupStore = defineStore('backup', () => {
     setShouldUnlock,
     setShouldReset,
     setJustReset,
+    setPendingReset,
     resetBackupState,
   };
 });

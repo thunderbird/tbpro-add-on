@@ -24,9 +24,15 @@ type Props = {
   makeBackup?: () => void;
   regeneratePassphrase: () => void;
   logOutAuth: () => Promise<void>;
+  errorMessage?: string;
 };
 
-const { makeBackup, words, logOutAuth } = defineProps<Props>();
+const {
+  makeBackup,
+  words,
+  logOutAuth,
+  errorMessage = '',
+} = defineProps<Props>();
 
 const { isExtension } = useConfigStore();
 const { validators } = useStatusStore();
@@ -162,6 +168,15 @@ onMounted(async () => {
           </div>
         </div>
 
+        <p
+          v-if="errorMessage"
+          class="error-field"
+          role="alert"
+          data-testid="backup-keys-error-overlay"
+        >
+          {{ errorMessage }}
+        </p>
+
         <button
           type="button"
           class="download-button"
@@ -243,6 +258,11 @@ onMounted(async () => {
 
 .required {
   color: #ef4444;
+}
+
+.error-field {
+  color: var(--colour-danger-default);
+  margin-bottom: 1rem;
 }
 
 .input-container {
