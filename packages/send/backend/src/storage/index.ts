@@ -5,9 +5,12 @@ import {
   StorageType,
 } from '@tweedegolf/storage-abstraction';
 import {
+  BucketObject,
   S3Settings,
   createS3Client,
+  deleteObjectVersions,
   getObjectSize,
+  listObjectsPage,
   getSignedUrl,
   getSignedUrlforDownload,
 } from './s3b2';
@@ -217,21 +220,36 @@ export class FileStore {
   }
 
   /**
-   * Removes a file from storage.
-   * @param id: string - The unique identifier for the file.
-   * @returns True if the file was successfully removed; otherwise false.
-   *
-   * No error is thrown if the file is not found.
+   * Removes every stored version of the object at key `id`. No error is thrown
+   * if it is not found. Goes over the S3 API by key: the adapters find the
+   * object by scanning the first page of the bucket listing, so in a bucket
+   * of more than a page they report success and delete nothing.
    */
-  del(id: string): Promise<boolean> {
-    // eslint-disable-next-line no-async-promise-executor
-    return new Promise(async (resolve, reject) => {
-      const result = await this.client.removeFile(id);
-      if (result.value === 'ok') {
-        resolve(true);
-      } else {
-        reject(result.error);
-      }
+  async del(id: string): Promise<boolean> {
+    if (this.s3) {
+      await deleteObjectVersions(this.s3.client, {
+        Bucket: this.s3.bucket,
+        Key: id,
+      });
+      return true;
+    }
+    const result = await this.client.removeFile(id);
+    if (result.value !== 'ok') {
+      throw new Error(result.error);
+    }
+    return true;
+  }
+
+  /** One page (at most `maxKeys`) of the bucket's keys after `startAfter`. */
+  async listObjects(
+    startAfter?: string,
+    maxKeys = 1000
+  ): Promise<{ objects: BucketObject[]; truncated: boolean }> {
+    const { client, bucket } = this.bucketApi();
+    return listObjectsPage(client, {
+      Bucket: bucket,
+      StartAfter: startAfter,
+      MaxKeys: maxKeys,
     });
   }
 }

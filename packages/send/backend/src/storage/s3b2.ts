@@ -1,6 +1,9 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectVersionsCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -134,4 +137,57 @@ export async function getSignedUrlforDownload(
     expiresIn: 3600,
   });
   return signedUrl;
+}
+
+/**
+ * Erases every version and delete marker of exactly `Key`. A plain DeleteObject
+ * on a versioned bucket (B2 always is) only hides the bytes. An absent key is
+ * not an error.
+ */
+export async function deleteObjectVersions(
+  s3Client: S3Client,
+  { Bucket, Key }: { Bucket: string; Key: string }
+): Promise<void> {
+  let KeyMarker: string | undefined;
+  let VersionIdMarker: string | undefined;
+  let truncated = true;
+  while (truncated) {
+    const page = await s3Client.send(
+      new ListObjectVersionsCommand({
+        Bucket,
+        Prefix: Key,
+        KeyMarker,
+        VersionIdMarker,
+      })
+    );
+    const versions = [...(page.Versions ?? []), ...(page.DeleteMarkers ?? [])];
+    for (const version of versions.filter((v) => v.Key === Key)) {
+      await s3Client.send(
+        new DeleteObjectCommand({ Bucket, Key, VersionId: version.VersionId })
+      );
+    }
+    truncated = page.IsTruncated === true;
+    KeyMarker = page.NextKeyMarker;
+    VersionIdMarker = page.NextVersionIdMarker;
+  }
+}
+
+export type BucketObject = { key: string; lastModified: Date };
+
+/** One page of the bucket listing, in key order, after `StartAfter`. */
+export async function listObjectsPage(
+  s3Client: S3Client,
+  {
+    Bucket,
+    StartAfter,
+    MaxKeys,
+  }: { Bucket: string; StartAfter?: string; MaxKeys: number }
+): Promise<{ objects: BucketObject[]; truncated: boolean }> {
+  const page = await s3Client.send(
+    new ListObjectsV2Command({ Bucket, StartAfter, MaxKeys })
+  );
+  const objects = (page.Contents ?? []).flatMap(({ Key, LastModified }) =>
+    Key && LastModified ? [{ key: Key, lastModified: LastModified }] : []
+  );
+  return { objects, truncated: page.IsTruncated === true };
 }
