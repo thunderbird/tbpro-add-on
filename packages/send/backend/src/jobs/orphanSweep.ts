@@ -45,11 +45,11 @@ export async function deleteBucketOrphans({
     const known = new Set(rows.map(({ id }) => id));
 
     for (const key of candidates.filter((k) => !known.has(k))) {
+      result.found++;
       if (result.deleted + result.errors >= maxDeletes) {
         result.capped = true;
-        break;
+        continue;
       }
-      result.found++;
       if (dryRun) {
         result.deleted++;
         continue;
