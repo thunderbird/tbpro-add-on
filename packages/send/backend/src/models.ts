@@ -389,9 +389,10 @@ export const deleteSession = async (id: string) =>
  * (rows without `createdAt` predate it being set and count as old).
  */
 export async function findOrphans(
-  olderThan?: Date
+  olderThan?: Date,
+  db: Pick<Prisma.TransactionClient, 'upload'> = prisma
 ): Promise<{ uploadIds: string[] }> {
-  const uploadsWithoutItem = await prisma.upload.findMany({
+  const uploadsWithoutItem = await db.upload.findMany({
     where: {
       items: { none: {} },
       ...(olderThan && {
@@ -417,18 +418,21 @@ export type OrphanDeleteResult = {
  * failed delete keeps the row for the next run. In a dry run `deleted` counts
  * what would be deleted.
  */
-export async function deleteOrphans({
-  olderThan,
-  dryRun,
-  maxDeletes,
-  deadline = Infinity,
-}: {
-  olderThan: Date;
-  dryRun: boolean;
-  maxDeletes: number;
-  deadline?: number;
-}): Promise<OrphanDeleteResult> {
-  const { uploadIds } = await findOrphans(olderThan);
+export async function deleteOrphans(
+  {
+    olderThan,
+    dryRun,
+    maxDeletes,
+    deadline = Infinity,
+  }: {
+    olderThan: Date;
+    dryRun: boolean;
+    maxDeletes: number;
+    deadline?: number;
+  },
+  db: Pick<Prisma.TransactionClient, 'upload'> = prisma
+): Promise<OrphanDeleteResult> {
+  const { uploadIds } = await findOrphans(olderThan, db);
   const result = {
     found: uploadIds.length,
     deleted: 0,
@@ -445,7 +449,7 @@ export async function deleteOrphans({
     try {
       if (!dryRun) {
         await storage.del(id);
-        await deleteUpload(id);
+        await db.upload.delete({ where: { id } });
       }
       result.deleted++;
     } catch (e) {

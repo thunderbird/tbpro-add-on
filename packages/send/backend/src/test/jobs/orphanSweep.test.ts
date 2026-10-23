@@ -166,7 +166,8 @@ describe('runSweepIfLeader', () => {
     const [sql] = h.tx.$queryRaw.mock.calls[0];
     expect(sql.join('')).toContain('pg_try_advisory_xact_lock(');
     expect(h.deleteOrphans).toHaveBeenCalledWith(
-      expect.objectContaining({ deadline: expect.any(Number) })
+      expect.objectContaining({ deadline: expect.any(Number) }),
+      h.tx
     );
   });
 
@@ -179,7 +180,8 @@ describe('runSweepIfLeader', () => {
     await runSweepIfLeader();
 
     expect(h.deleteOrphans).toHaveBeenCalledWith(
-      expect.objectContaining({ maxDeletes: 10000 })
+      expect.objectContaining({ maxDeletes: 10000 }),
+      h.tx
     );
     vi.unstubAllEnvs();
   });
