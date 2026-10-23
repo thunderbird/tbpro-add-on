@@ -6,7 +6,7 @@ import CompatibilityBanner from './CompatibilityBanner.vue';
 
 const { query, config } = vi.hoisted(() => ({
   query: { data: null as unknown },
-  config: { isProd: true, isTbproExtension: false },
+  config: { isProd: true, isThunderbirdHost: false },
 }));
 
 vi.mock('@send-frontend/lib/trpc', () => ({
@@ -32,7 +32,7 @@ describe('CompatibilityBanner', () => {
   beforeEach(() => {
     query.data = null;
     config.isProd = true;
-    config.isTbproExtension = false;
+    config.isThunderbirdHost = false;
   });
 
   it('renders nothing while settings are loading', () => {
@@ -56,8 +56,8 @@ describe('CompatibilityBanner', () => {
     );
   });
 
-  it('uses add-on copy in the add-on', () => {
-    config.isTbproExtension = true;
+  it('uses add-on copy inside Thunderbird', () => {
+    config.isThunderbirdHost = true;
     query.data = gate('banner');
     const wrapper = mount(CompatibilityBanner);
     expect(wrapper.find(getByTestId('prompt-update-message')).text()).toContain(
@@ -65,13 +65,17 @@ describe('CompatibilityBanner', () => {
     );
   });
 
-  it('shows the server message', () => {
-    query.data = gate('banner', 'Version 3 is out.');
-    const wrapper = mount(CompatibilityBanner);
-    expect(wrapper.find(getByTestId('prompt-update-message')).text()).toBe(
-      'Version 3 is out.'
-    );
-  });
+  it.each([false, true])(
+    'shows the server message, not bold (Thunderbird host: %s)',
+    (isThunderbirdHost) => {
+      config.isThunderbirdHost = isThunderbirdHost;
+      query.data = gate('banner', 'Version 3 is out.');
+      const wrapper = mount(CompatibilityBanner);
+      const message = wrapper.find(getByTestId('prompt-update-message'));
+      expect(message.text()).toBe('Version 3 is out.');
+      expect(message.classes()).not.toContain('emphasis');
+    }
+  );
 
   it('falls back to the default copy for a non-string message', () => {
     query.data = gate('banner', ['Version 3 is out.']);

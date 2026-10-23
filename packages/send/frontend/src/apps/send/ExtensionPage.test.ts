@@ -36,7 +36,7 @@ vi.mock('@send-frontend/apps/common/mixins/metrics', () => ({
 }));
 vi.mock('../send/stores/config-store', () => ({
   useConfigStore: () => ({
-    isTbproExtension: true,
+    isThunderbirdHost: true,
     isDev: false,
     isProd: true,
   }),

@@ -1,10 +1,21 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`CompatibilityBoundary > block > replaces the app with the web update screen 1`] = `
+exports[`CompatibilityBoundary > block > replaces the app with the browser update screen 1`] = `
 "<section data-v-7bcf8737="" class="client-gate-block" role="alert" data-testid="force-update-banner">
   <h2 data-v-7bcf8737="" class="title" data-testid="client-gate-title">Reload to continue using Send</h2>
-  <p data-v-7bcf8737="" class="description" data-testid="client-gate-message">This version of Send is out of date. Reload the page to get the latest version; if that does not help, clear your browser cache.</p>
+  <p data-v-7bcf8737="" class="description emphasis" data-testid="client-gate-message">This version of Send is out of date. Reload the page to get the latest version; if that does not help, clear your browser cache.</p>
   <p data-v-7bcf8737="" class="versions" data-testid="client-gate-versions"> You are using version <client-version>; version 9.9.9 or newer is required. </p><button data-v-7bcf8737="" data-testid="refresh-button"> Reload </button>
+  <section data-v-ae10d7fd="" data-v-7bcf8737="" class="mx-4 mb-4" data-testid="feedback-box"><a data-v-ae10d7fd="" href="https://support.tb.pro">
+      <p data-v-ae10d7fd="" class="text">Need help? Visit Support</p>
+    </a></section>
+</section>"
+`;
+
+exports[`CompatibilityBoundary > block > shows the Thunderbird screen without a version line 1`] = `
+"<section data-v-7bcf8737="" class="client-gate-block" role="alert" data-testid="force-update-banner">
+  <h2 data-v-7bcf8737="" class="title" data-testid="client-gate-title">Update Thunderbird to continue using Send</h2>
+  <p data-v-7bcf8737="" class="description emphasis" data-testid="client-gate-message">This version of the Send add-on is no longer supported.</p><button data-v-7bcf8737="" data-testid="client-gate-how-to-update" aria-expanded="false"> How to update </button>
+  <!--v-if-->
   <section data-v-ae10d7fd="" data-v-7bcf8737="" class="mx-4 mb-4" data-testid="feedback-box"><a data-v-ae10d7fd="" href="https://support.tb.pro">
       <p data-v-ae10d7fd="" class="text">Need help? Visit Support</p>
     </a></section>

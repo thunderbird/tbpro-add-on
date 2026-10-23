@@ -8,7 +8,9 @@ import FeedbackBox from './FeedbackBox.vue';
 
 const emit = defineEmits<{ blocked: [] }>();
 
-const { isTbproExtension, isDev } = useConfigStore();
+// Inside Thunderbird (popup, management page or a tab) the fix is updating
+// Thunderbird and its add-ons; in a browser it is reloading the page.
+const { isThunderbirdHost, isDev } = useConfigStore();
 const prefersDark = usePreferredDark();
 const { gate, clientVersion, error } = useClientGate();
 const showInstructions = ref(false);
@@ -26,10 +28,10 @@ const isLocalCertError = computed(
   () => isDev && Boolean(error.value?.message?.includes('Failed to fetch'))
 );
 
-const defaultTitle = isTbproExtension
+const defaultTitle = isThunderbirdHost
   ? 'Update Thunderbird to continue using Send'
   : 'Reload to continue using Send';
-const defaultMessage = isTbproExtension
+const defaultMessage = isThunderbirdHost
   ? 'This version of the Send add-on is no longer supported.'
   : 'This version of Send is out of date. Reload the page to get the latest version; if that does not help, clear your browser cache.';
 
@@ -52,17 +54,11 @@ const toggleInstructions = () => {
     <h2 class="title" data-testid="client-gate-title">
       {{ gate.title ?? defaultTitle }}
     </h2>
-    <p class="description" data-testid="client-gate-message">
+    <p class="description emphasis" data-testid="client-gate-message">
       {{ gate.message ?? defaultMessage }}
     </p>
-    <p class="versions" data-testid="client-gate-versions">
-      You are using version {{ clientVersion
-      }}<template v-if="gate.minVersion"
-        >; version {{ gate.minVersion }} or newer is required</template
-      >.
-    </p>
 
-    <template v-if="isTbproExtension">
+    <template v-if="isThunderbirdHost">
       <PrimaryButton
         data-testid="client-gate-how-to-update"
         :aria-expanded="showInstructions"
@@ -85,9 +81,17 @@ const toggleInstructions = () => {
         <li>Restart Thunderbird.</li>
       </ol>
     </template>
-    <PrimaryButton v-else data-testid="refresh-button" @click="reload">
-      Reload
-    </PrimaryButton>
+    <template v-else>
+      <p class="versions" data-testid="client-gate-versions">
+        You are using version {{ clientVersion
+        }}<template v-if="gate.minVersion"
+          >; version {{ gate.minVersion }} or newer is required</template
+        >.
+      </p>
+      <PrimaryButton data-testid="refresh-button" @click="reload">
+        Reload
+      </PrimaryButton>
+    </template>
 
     <FeedbackBox />
   </section>
@@ -144,6 +148,7 @@ const toggleInstructions = () => {
   line-height: 1.4;
 }
 
+.emphasis,
 .versions {
   font-weight: 600;
 }

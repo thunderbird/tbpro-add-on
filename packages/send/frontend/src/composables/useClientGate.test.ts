@@ -44,14 +44,13 @@ describe('useClientGate', () => {
     'tells the server where it runs (Thunderbird host: %s)',
     async (isThunderbirdHost, runtime) => {
       config.isThunderbirdHost = isThunderbirdHost;
-      const { isThunderbirdHost: reported } = useClientGate();
+      useClientGate();
       await query.options?.queryFn();
       expect(settingsQuery).toHaveBeenCalledWith({
         version: __APP_VERSION__,
         appName: __APP_NAME__,
         runtime,
       });
-      expect(reported).toBe(isThunderbirdHost);
     }
   );
 
