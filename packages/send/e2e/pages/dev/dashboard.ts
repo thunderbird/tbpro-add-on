@@ -1,4 +1,4 @@
-import { expect, Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { dashboardLocators, fileLocators } from "./locators";
 import { PlaywrightProps } from "../../utils/dev/fixtures";
 import { playwrightConfig, saveStorage } from "../../utils/dev/testUtils";
@@ -45,8 +45,14 @@ export async function register_and_login({ page, context }: PlaywrightProps) {
  * the empty storage state — that empty session *is* the thing under test.
  */
 export async function log_out_restore_keys({ page }: PlaywrightProps) {
-  const { emailField, passwordField, submitLogin, restoreKeysButton, restorekeyInput, recoverAccessButton } =
-    dashboardLocators(page);
+  const {
+    emailField,
+    passwordField,
+    submitLogin,
+    restoreKeysButton,
+    restorekeyInput,
+    recoverAccessButton,
+  } = dashboardLocators(page);
   const { firstFolderRow } = fileLocators(page);
 
   page.on("dialog", (dialog) => dialog.accept());
@@ -81,8 +87,13 @@ export async function log_out_restore_keys({ page }: PlaywrightProps) {
 }
 
 export async function reset_keys({ page }: PlaywrightProps) {
-  const { backupKeysButtonOverlay, passphraseInputOverlay, showReset, understandCheckbox, dangerButton } =
-    dashboardLocators(page);
+  const {
+    backupKeysButtonOverlay,
+    passphraseInputOverlay,
+    showReset,
+    understandCheckbox,
+    dangerButton,
+  } = dashboardLocators(page);
 
   const { folderRowSelector, emptyFolderIndicator } = fileLocators(page);
 
@@ -131,7 +142,8 @@ export async function reset_keys({ page }: PlaywrightProps) {
  * Starts from empty storage: the saved state predates `reset_keys`.
  */
 export async function reset_keys_abandoned_then_completed({ page }: PlaywrightProps) {
-  const { passphraseInputOverlay, backupKeysButtonOverlay, showReset } = dashboardLocators(page);
+  const { passphraseInputOverlay, backupKeysButtonOverlay, showReset, understandCheckbox, dangerButton } =
+    dashboardLocators(page);
   const oldPhrase = playwrightConfig.recoveredPassphrase;
   if (!oldPhrase) throw new Error("reset_keys must run first");
 
@@ -144,8 +156,8 @@ export async function reset_keys_abandoned_then_completed({ page }: PlaywrightPr
   const startReset = async () => {
     await page.goto("/send/security-and-privacy");
     await showReset.click();
-    await page.getByTestId("understand-checkbox").click();
-    await page.getByTestId("danger-button").click();
+    await understandCheckbox.click();
+    await dangerButton.click();
     const phrase = await passphraseInputOverlay.inputValue();
     if (!phrase) throw new Error("Passphrase not found");
     return phrase;
@@ -202,7 +214,8 @@ async function login_and_restore(page: Page, phrase: string, rejected?: string) 
   }
   await restorekeyInput.fill(phrase);
   await restoreKeysButton.click();
-  await expect(restoreError).toBeHidden();
+  // The form only goes away once the keys are restored and stored locally.
+  await expect(restorekeyInput).toBeHidden();
 
   await page.goto("/send");
   await expect(fileLocators(page).dropZone).toBeVisible();
