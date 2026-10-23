@@ -139,19 +139,23 @@ export async function reset_keys({ page }: PlaywrightProps) {
 /**
  * #1355: leaving the reset overlay before "Download and Continue" must keep the
  * old key working everywhere; completing it swaps the key exactly once.
- * Starts from empty storage: the saved state predates `reset_keys`.
+ * Uses its own account so it does not depend on what `reset_keys` installed.
  */
 export async function reset_keys_abandoned_then_completed({ page }: PlaywrightProps) {
   const { passphraseInputOverlay, backupKeysButtonOverlay, showReset, understandCheckbox, dangerButton } =
     dashboardLocators(page);
-  const oldPhrase = playwrightConfig.recoveredPassphrase;
-  if (!oldPhrase) throw new Error("reset_keys must run first");
+  const account = { email: `reset-abandon${Date.now()}@tb.pro`, password };
 
   let swaps = 0;
   page.on("request", (req) => {
     if (req.url().includes("resetKeys")) swaps++;
   });
-  await login_and_restore(page, oldPhrase);
+  page.on("dialog", (dialog) => dialog.accept());
+
+  // First-time setup: the overlay's phrase becomes the account's key.
+  const oldPhrase = await register_account(page, account);
+  await backupKeysButtonOverlay.click();
+  await expect(backupKeysButtonOverlay).toBeHidden({ timeout: 30_000 });
 
   const startReset = async () => {
     await page.goto("/send/security-and-privacy");
@@ -169,16 +173,32 @@ export async function reset_keys_abandoned_then_completed({ page }: PlaywrightPr
   await page.waitForLoadState("networkidle");
   await expect(passphraseInputOverlay).toBeHidden();
   expect(swaps).toBe(0);
-  await in_fresh_context(page, (fresh) => login_and_restore(fresh, oldPhrase));
+  await in_fresh_context(page, (fresh) => login_and_restore(fresh, account, oldPhrase));
 
-  // Complete: a fresh phrase is swapped in on Download and Continue.
+  // Complete: the overlay closes only once the swap and backup have finished.
   const newPhrase = await startReset();
   await backupKeysButtonOverlay.click();
-  await expect(backupKeysButtonOverlay).toBeHidden();
+  await expect(backupKeysButtonOverlay).toBeHidden({ timeout: 30_000 });
   expect(swaps).toBe(1);
-  playwrightConfig.recoveredPassphrase = newPhrase;
 
-  await in_fresh_context(page, (fresh) => login_and_restore(fresh, newPhrase, oldPhrase));
+  await in_fresh_context(page, (fresh) => login_and_restore(fresh, account, newPhrase, oldPhrase));
+}
+
+type Account = { email: string; password: string };
+
+/** Register `account` and return the phrase shown in the first-time overlay. */
+async function register_account(page: Page, account: Account) {
+  const { registerButton, emailField, passwordField, confirmPasswordField, submitButton, passphraseInputOverlay } =
+    dashboardLocators(page);
+  await page.goto("/login");
+  await registerButton.click();
+  await emailField.fill(account.email);
+  await passwordField.fill(account.password);
+  await confirmPasswordField.fill(account.password);
+  await submitButton.click();
+  const phrase = await passphraseInputOverlay.inputValue();
+  if (!phrase) throw new Error("Passphrase not found");
+  return phrase;
 }
 
 /** Run `action` in a new, empty browser context (another device). */
@@ -194,15 +214,15 @@ async function in_fresh_context(page: Page, action: (fresh: Page) => Promise<voi
 }
 
 /** Log in on an empty session and restore with `phrase` (after `rejected` fails). */
-async function login_and_restore(page: Page, phrase: string, rejected?: string) {
+async function login_and_restore(page: Page, account: Account, phrase: string, rejected?: string) {
   const { emailField, passwordField, submitLogin, recoverAccessButton, restorekeyInput, restoreKeysButton } =
     dashboardLocators(page);
   const restoreError = page.getByText(/Could not restore keys/);
   page.on("dialog", (dialog) => dialog.accept());
 
   await page.goto("/login");
-  await emailField.fill(email);
-  await passwordField.fill(password);
+  await emailField.fill(account.email);
+  await passwordField.fill(account.password);
   await submitLogin.click();
   await page.waitForLoadState("networkidle");
   await recoverAccessButton.click();
