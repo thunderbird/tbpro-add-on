@@ -6,7 +6,7 @@ import { computed, ref, watch } from 'vue';
 import { useConfigStore } from '../send/stores/config-store';
 import FeedbackBox from './FeedbackBox.vue';
 
-const emit = defineEmits<{ blocked: [] }>();
+const emit = defineEmits<{ blocked: []; unblocked: [] }>();
 
 // Inside Thunderbird (popup, management page or a tab) the fix is updating
 // Thunderbird and its add-ons; in a browser it is reloading the page.
@@ -19,8 +19,9 @@ const showInstructions = ref(false);
 const isBlocked = computed(() => gate.value.action === 'block');
 watch(
   isBlocked,
-  (blocked) => {
+  (blocked, wasBlocked) => {
     if (blocked) emit('blocked');
+    else if (wasBlocked) emit('unblocked');
   },
   { immediate: true }
 );

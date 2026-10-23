@@ -14,6 +14,7 @@ import { BASE_URL } from '@send-frontend/apps/common/constants';
 import {
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
+  CLIENT_GATE_UNBLOCKED,
   FILE_LIST,
   FORCE_CLOSE_WINDOW,
   GET_LOGIN_STATE,
@@ -618,6 +619,11 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       console.log(`[onMessage] User aborted all uploads.`);
       popupBlocked = Boolean(message.blocked);
       rejectAllInQueue(new Error('User aborted the operation.'));
+      break;
+
+    // The popup's update screen cleared and its upload page is back.
+    case CLIENT_GATE_UNBLOCKED:
+      popupBlocked = false;
       break;
   }
 

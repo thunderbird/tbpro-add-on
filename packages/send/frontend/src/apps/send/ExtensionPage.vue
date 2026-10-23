@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
-import { ALL_UPLOADS_ABORTED } from '@send-frontend/lib/const';
+import {
+  ALL_UPLOADS_ABORTED,
+  CLIENT_GATE_UNBLOCKED,
+} from '@send-frontend/lib/const';
 import init from '@send-frontend/lib/init';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
@@ -27,24 +30,27 @@ onMounted(async () => {
 
 useMetricsUpdate();
 
-// The update screen replaces the upload UI, so release Thunderbird's pending
-// uploads instead of leaving them waiting for a popup that can't finish them.
-async function abortPendingUploads() {
+async function notifyBackground(message: object) {
   try {
-    await browser.runtime.sendMessage({
-      type: ALL_UPLOADS_ABORTED,
-      aborted: true,
-      blocked: true,
-    });
+    await browser.runtime.sendMessage(message);
   } catch {
     // Not running as an extension, or no background listener.
   }
 }
+// The update screen replaces the upload UI, so release Thunderbird's pending
+// uploads instead of leaving them waiting for a popup that can't finish them.
+const abortPendingUploads = () =>
+  notifyBackground({ type: ALL_UPLOADS_ABORTED, aborted: true, blocked: true });
+// A refetch cleared the block: the upload page is back, so accept files again.
+const resumeUploads = () => notifyBackground({ type: CLIENT_GATE_UNBLOCKED });
 </script>
 
 <template>
   <div id="send-page" class="container">
-    <CompatibilityBoundary @blocked="abortPendingUploads">
+    <CompatibilityBoundary
+      @blocked="abortPendingUploads"
+      @unblocked="resumeUploads"
+    >
       <CompatibilityBanner />
       <PopupView />
     </CompatibilityBoundary>
