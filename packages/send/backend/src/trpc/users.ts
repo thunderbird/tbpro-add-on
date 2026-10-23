@@ -142,8 +142,8 @@ export const usersRouter = router({
         runtime: z.enum(CLIENT_RUNTIMES).default('browser').catch('browser'),
       })
     )
-    .query(({ input: { version: clientVersion, appName } }) => {
-      const clientGate = getClientGate(clientVersion, appName);
+    .query(({ input: { version: clientVersion, appName, runtime } }) => {
+      const clientGate = getClientGate(clientVersion, appName, runtime);
       // Clients without `clientGate` read only `compatibility.result`.
       const compatibility = {
         resolvedCompatibility: true,

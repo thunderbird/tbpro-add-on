@@ -239,6 +239,63 @@ describe('getClientGate', () => {
       });
     });
 
+    it.each([
+      ['addon', 'thunderbird', 'Add-on'],
+      ['send-frontend', 'thunderbird', 'Add-on'],
+      ['send-frontend', 'browser', 'Web'],
+      ['addon', 'browser', 'Add-on'],
+      ['send-frontend', undefined, 'Web'],
+      ['addon', undefined, 'Add-on'],
+    ] as const)(
+      'resolves %s in runtime %s to the %s text',
+      (appName, runtime, copy) => {
+        setEnv({ ...PER_APP, CLIENT_GATE_MODE: 'block' });
+        expect(getClientGate('8.0.0', appName, runtime)).toEqual({
+          action: 'block',
+          minVersion: '9.0.0',
+          title: `${copy} title`,
+          message: `${copy} message`,
+        });
+      }
+    );
+
+    it('falls back to the generic message for the runtime’s text', () => {
+      setEnv({
+        ...PER_APP,
+        CLIENT_GATE_MESSAGE_ADDON: '',
+        CLIENT_GATE_MESSAGE_WEB: '',
+      });
+      expect(getClientGate('8.0.0', 'send-frontend', 'thunderbird')).toEqual(
+        expect.objectContaining({
+          title: 'Add-on title',
+          message: 'Generic message',
+        })
+      );
+      expect(getClientGate('8.0.0', 'send-frontend', 'browser')).toEqual(
+        expect.objectContaining({
+          title: 'Web title',
+          message: 'Generic message',
+        })
+      );
+    });
+
+    it('keeps the gate decision on the app, not the runtime', () => {
+      setEnv({
+        ...PER_APP,
+        CLIENT_MIN_VERSION_ADDON: '',
+        CLIENT_GATE_MODE: 'block',
+      });
+      expect(getClientGate('8.0.0', 'send-frontend', 'thunderbird')).toEqual({
+        action: 'block',
+        minVersion: '9.0.0',
+        title: 'Add-on title',
+        message: 'Add-on message',
+      });
+      expect(getClientGate('8.0.0', 'addon', 'thunderbird').action).toBe(
+        'none'
+      );
+    });
+
     it('is returned only when gated', () => {
       setEnv(PER_APP);
       expect(getClientGate('9.0.0', 'addon')).toMatchObject({

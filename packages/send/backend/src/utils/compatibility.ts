@@ -115,11 +115,13 @@ const text = (value: string | undefined) => value?.trim() || null;
 
 /**
  * Server-controlled update gate. `none` unless a valid minimum is configured
- * for the client type and the client's version is below it.
+ * for the client type (`appName`) and the client's version is below it. The
+ * text follows where the client runs: Thunderbird gets the add-on copy.
  */
 export function getClientGate(
   clientVersion: string,
-  appName: string | null | undefined
+  appName: string | null | undefined,
+  runtime: ClientRuntime = 'browser'
 ): ClientGate {
   const env = getClientGateEnv();
   const isAddon = Boolean(appName?.includes('addon'));
@@ -150,12 +152,13 @@ export function getClientGate(
     return { ...NO_GATE, minVersion };
   }
 
-  // Per-app text wins over the deprecated generic message; unset → null.
+  // Per-runtime text wins over the deprecated generic message; unset → null.
+  const copy = runtime === 'thunderbird' ? env.addon : app;
   return {
     action: mode,
     minVersion,
-    title: text(app.title),
-    message: text(app.message) ?? text(env.message),
+    title: text(copy.title),
+    message: text(copy.message) ?? text(env.message),
   };
 }
 
