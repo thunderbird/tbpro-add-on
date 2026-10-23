@@ -131,17 +131,19 @@ model Item {
 }
 
 model Upload {
-  id         String    @id @default(uuid()) @db.Uuid
-  size       BigInt
-  ownerId    String    @db.Uuid
-  type       String
-  createdAt  DateTime?
-  reported   Boolean   @default(false)
-  reportedAt DateTime?
-  part       Int?
-  fileHash   String?
-  items      Item[]
-  owner      User      @relation(fields: [ownerId], references: [id])
+  id            String    @id @default(uuid()) @db.Uuid
+  size          BigInt
+  ownerId       String    @db.Uuid
+  type          String
+  createdAt     DateTime?
+  reported      Boolean   @default(false)
+  reportedAt    DateTime?
+  // A user report awaiting admin review; only `reported` blocks the file.
+  reportPending Boolean   @default(false)
+  part          Int?
+  fileHash      String?
+  items         Item[]
+  owner         User      @relation(fields: [ownerId], references: [id])
 }
 
 model SuspiciousFile {

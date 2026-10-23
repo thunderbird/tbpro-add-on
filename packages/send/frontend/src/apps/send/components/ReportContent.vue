@@ -3,6 +3,7 @@ import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import useApiStore from '@send-frontend/stores/api-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { FolderResponse } from '../stores/folder-store.types';
 
 type ReportProps = {
@@ -12,13 +13,19 @@ type ReportProps = {
 
 const { api } = useApiStore();
 const { metrics } = useMetricsStore();
+const route = useRoute();
 
 const hasClicked = ref(false);
 const hasReported = ref(false);
 
 async function reportContent({ uploadId, containerId }: ReportProps) {
-  console.log('reporting content', { uploadId, containerId });
-  await api.call(`containers/${containerId}/report`, { uploadId }, 'POST');
+  // The share link is the reporter's proof of access when logged out (#1008).
+  const linkId = route?.params?.linkId;
+  await api.call(
+    `containers/${containerId}/report`,
+    { uploadId, ...(typeof linkId === 'string' && linkId ? { linkId } : {}) },
+    'POST'
+  );
   metrics.capture(ANALYTICS_EVENTS.CONTENT_REPORT_COMPLETED, {
     upload_id: uploadId,
     container_id: containerId,
@@ -38,14 +45,6 @@ function handleClickReport({ uploadId, containerId }: ReportProps) {
   hasClicked.value = true;
 }
 
-async function markAsSuspicious({ uploadId }: ReportProps) {
-  metrics.capture(ANALYTICS_EVENTS.CONTENT_REPORT_FLAGGED);
-  await api.call('uploads/report', { uploadId }, 'POST');
-  hasReported.value = true;
-  setTimeout(() => {
-    location.reload();
-  }, 2000);
-}
 defineProps<ReportProps>();
 </script>
 
@@ -63,7 +62,7 @@ defineProps<ReportProps>();
             @click.prevent="handleClickReport({ uploadId, containerId })"
           >
             Report it</a
-          ><span class="transparent">transparent text</span>
+          >
         </p>
       </div>
       <div v-else class="report-content">
@@ -74,13 +73,6 @@ defineProps<ReportProps>();
             @click.prevent="reportContent({ uploadId, containerId })"
           >
             here</a
-          >
-          <!--This is a temporary pre-MVP way for us to test suspicious files  -->
-          <span
-            class="link transparent"
-            @click.prevent="markAsSuspicious({ uploadId, containerId })"
-          >
-            transparent text</span
           >
         </p>
       </div>
@@ -122,9 +114,5 @@ defineProps<ReportProps>();
 
 .link:hover {
   text-decoration: underline;
-}
-
-.transparent {
-  color: transparent;
 }
 </style>

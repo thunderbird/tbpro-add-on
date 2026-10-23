@@ -201,24 +201,32 @@ export async function getUploadMetadata(id: string) {
   return { size, type };
 }
 
-// Report an upload as suspicious by its uploadId
-export async function reportSuspiciousFile(uploadId: string) {
-  // find all parts of the upload
-  const parts = await getUploadParts(uploadId);
-  const reportPromises = await Promise.all(
-    parts.map(async ({ id }) => {
-      // We need to get the fileHash from the uploadId to store it in the suspiciousFile table
-      const { fileHash } = await prisma.upload.findUnique({
-        where: { id },
-        select: { fileHash: true },
-      });
-      return await prisma.suspiciousFile.create({
-        data: { fileHash },
-        select: { id: true },
-      });
-    })
-  );
-  return reportPromises;
+// Admin verdict on a reported upload, applied to every part (#1008).
+// confirmed: add the parts' hashes to `SuspiciousFile` (downloads blocked) and
+// flag them `reported`; otherwise remove those hashes and clear both flags.
+export async function setReportVerdict(uploadId: string, confirmed: boolean) {
+  const ids = (await getUploadParts(uploadId)).map(({ id }) => id);
+  const parts = await prisma.upload.findMany({
+    where: { id: { in: ids } },
+    select: { fileHash: true },
+  });
+  const hashes = parts.map(({ fileHash }) => fileHash).filter(Boolean);
+
+  await prisma.$transaction([
+    confirmed
+      ? prisma.suspiciousFile.createMany({
+          data: hashes.map((fileHash) => ({ fileHash })),
+          skipDuplicates: true,
+        })
+      : prisma.suspiciousFile.deleteMany({
+          where: { fileHash: { in: hashes } },
+        }),
+    prisma.upload.updateMany({
+      where: { id: { in: ids } },
+      data: { reported: confirmed, reportPending: false },
+    }),
+  ]);
+  return [...new Set(ids)];
 }
 
 // Check if a fileHash is in the suspiciousFile table and return a boolean
@@ -235,10 +243,14 @@ export async function checkHashAgainstSuspiciousFiles(fileHash: string) {
 
 export async function checkIdAgainstSuspiciousFiles(id: string) {
   // Get the fileHash from the uploadId
-  const { fileHash } = await prisma.upload.findUnique({
+  const { fileHash, reported } = await prisma.upload.findUnique({
     where: { id },
-    select: { fileHash: true },
+    select: { fileHash: true, reported: true },
   });
+  // Only an admin `confirm` sets `reported`; it blocks even without a hash.
+  if (reported) {
+    return true;
+  }
   if (!fileHash) {
     return false;
   }

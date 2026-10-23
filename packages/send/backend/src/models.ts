@@ -51,6 +51,8 @@ export async function updateItemName(
   }
 }
 
+// A user report only queues the upload for admin review (#1008); blocking it
+// is `setReportVerdict` in models/uploads.ts.
 export async function reportUpload(uploadId: string) {
   try {
     return await prisma.upload.update({
@@ -58,14 +60,61 @@ export async function reportUpload(uploadId: string) {
         id: uploadId,
       },
       data: {
-        reported: true,
+        reportPending: true,
         reportedAt: new Date(),
       },
+      select: { id: true },
     });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     throw new Error(UPLOAD_NOT_REPORTED);
   }
+}
+
+async function isUploadInContainerMatching(
+  uploadId: string,
+  containerId: string | undefined,
+  container: Prisma.ContainerWhereInput
+) {
+  const item = await prisma.item.findFirst({
+    where: { uploadId, ...(containerId ? { containerId } : {}), container },
+    select: { id: true },
+  });
+  return item !== null;
+}
+
+// True when `linkId` is a live (unexpired, unlocked) access link to a container
+// holding the upload, optionally a specific container.
+export async function isUploadSharedByLink(
+  uploadId: string,
+  linkId: string,
+  containerId?: string
+) {
+  return isUploadInContainerMatching(uploadId, containerId, {
+    shares: {
+      some: {
+        accessLinks: {
+          some: {
+            id: linkId,
+            locked: false,
+            OR: [{ expiryDate: null }, { expiryDate: { gt: new Date() } }],
+          },
+        },
+      },
+    },
+  });
+}
+
+// True when `userId` is a member of a container holding the upload, optionally
+// a specific container.
+export async function isUploadInMemberContainer(
+  uploadId: string,
+  userId: string,
+  containerId?: string
+) {
+  return isUploadInContainerMatching(uploadId, containerId, {
+    group: { members: { some: { userId } } },
+  });
 }
 
 export async function createItem(

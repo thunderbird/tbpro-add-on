@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { z } from 'zod';
 import { getDataFromAuthenticatedRequest } from './auth/client';
 import { validateJWT } from './auth/jwt';
 import {
@@ -10,7 +11,11 @@ import {
 } from './auth/oidc';
 import { VERSION, X_LOGOUT_HEADER } from './config';
 import { wrapAsyncHandler } from './errors/routes';
-import { getUsedStorage } from './models';
+import {
+  getUsedStorage,
+  isUploadInMemberContainer,
+  isUploadSharedByLink,
+} from './models';
 import { fromPrismaV2 } from './models/prisma-helper';
 import { getAdminStatus, getUserByOIDCSubject } from './models/users';
 import {
@@ -419,6 +424,50 @@ export function requireSharePermission(req, res, next) {
   }
   next();
 }
+
+const uuidSchema = z.string().uuid();
+
+// Abuse reports need proof of access to `body.uploadId` (#1008): a live access
+// link to a container holding it (`body.linkId`, for logged-out recipients) or
+// membership of such a container. A `:containerId` in the path must be one of
+// those containers.
+export const requireUploadAccess: RequestHandler = wrapAsyncHandler(
+  async function requireUploadAccess(req, res, next) {
+    const { uploadId, linkId } = req.body ?? {};
+    const { containerId } = req.params;
+    if (
+      !uuidSchema.safeParse(uploadId).success ||
+      (containerId !== undefined && !uuidSchema.safeParse(containerId).success)
+    ) {
+      return reject(res, 400, 'Invalid uploadId or containerId');
+    }
+
+    if (
+      typeof linkId === 'string' &&
+      linkId &&
+      (await isUploadSharedByLink(uploadId, linkId, containerId))
+    ) {
+      return next();
+    }
+
+    let authenticated = false;
+    await requireAuth(req as AuthenticatedRequest, res, (err?: unknown) => {
+      authenticated = !err;
+    });
+    if (!authenticated) {
+      return reject(res);
+    }
+
+    const user = getAuthenticatedUserData(req as AuthenticatedRequest);
+    if (
+      user &&
+      (await isUploadInMemberContainer(uploadId, user.id, containerId))
+    ) {
+      return next();
+    }
+    return reject(res);
+  }
+);
 
 export function requirePublicLogin(
   req: Request,

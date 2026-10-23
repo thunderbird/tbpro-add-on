@@ -37,6 +37,7 @@ vi.mock('../../middleware', () => ({
   requireWritePermission: named('requireWritePermission'),
   requireAdminPermission: named('requireAdminPermission'),
   requireSharePermission: named('requireSharePermission'),
+  requireUploadAccess: named('requireUploadAccess'),
 }));
 
 vi.mock('../../middleware/rate-limit', () => ({
@@ -101,9 +102,17 @@ import sharingRouter from '../../routes/sharing';
 
 const MUTATING_METHODS = ['post', 'put', 'patch', 'delete'];
 const GUARD_NAME =
-  /^(requireJWT|requireAuth|getGroupMemberPermissions|require(Read|Write|Admin|Share)Permission|rateLimiter\(.+\))$/;
-const AUTH_GUARDS = ['requireJWT', 'requireAuth', 'getGroupMemberPermissions'];
+  /^(requireJWT|requireAuth|getGroupMemberPermissions|requireUploadAccess|require(Read|Write|Admin|Share)Permission|rateLimiter\(.+\))$/;
+// `requireUploadAccess` authenticates (live share link or signed-in member) and
+// authorizes (that link/membership covers the upload) in one step.
+const AUTH_GUARDS = [
+  'requireJWT',
+  'requireAuth',
+  'getGroupMemberPermissions',
+  'requireUploadAccess',
+];
 const PERMISSION_GUARDS = [
+  'requireUploadAccess',
   'requireReadPermission',
   'requireWritePermission',
   'requireAdminPermission',
@@ -178,7 +187,10 @@ const EXPECTED_CONTAINERS: Record<string, string[]> = {
     'requireWritePermission',
     'rateLimiter(sensitive)',
   ],
-  'POST /:containerId/report': [],
+  'POST /:containerId/report': [
+    'rateLimiter(sensitive)',
+    'requireUploadAccess',
+  ],
 };
 
 // Routes intentionally or historically without an authentication guard.
@@ -189,8 +201,6 @@ const AUTH_EXEMPT: Record<string, string> = {
     'public by design: recipients answer the link challenge before login',
   'POST /:linkId/add-password':
     'compatibility no-op: accepts and ignores the body, writes nothing',
-  'POST /:containerId/report':
-    'abuse reporting is reachable without an account',
 };
 
 // Routes without a permission middleware. Same companion rule as above:
@@ -200,8 +210,6 @@ const PERMISSION_EXEMPT: Record<string, string> = {
     'public by design: the challenge answer is itself the proof of access',
   'POST /:linkId/add-password':
     'compatibility no-op: accepts and ignores the body, writes nothing',
-  'POST /:containerId/report':
-    'abuse reporting is reachable without an account',
 };
 
 describe('mutating route guards', () => {
