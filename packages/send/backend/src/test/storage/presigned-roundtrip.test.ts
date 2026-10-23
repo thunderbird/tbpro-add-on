@@ -331,10 +331,8 @@ describe(SUITE, () => {
         new ListObjectVersionsCommand({ Bucket: bucket, Prefix: key })
       );
       // A plain DeleteObject on a versioned bucket writes a hide marker and
-      // leaves the payload -- still stored, still billed. The S3 adapter
-      // already deletes per VersionId, so this pins behaviour rather than
-      // driving a fix. Production runs B2, whose native adapter removes only
-      // the most recent version; that path has no coverage here.
+      // leaves the payload -- still stored, still billed. `del` deletes per
+      // VersionId over the S3 API, the same path B2 takes in production.
       expect(Versions.filter(({ Key }) => Key === key)).toHaveLength(0);
     },
     NETWORK_TEST_TIMEOUT_MS

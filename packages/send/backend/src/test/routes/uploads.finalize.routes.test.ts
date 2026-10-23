@@ -63,7 +63,7 @@ import { errorHandler } from '../../errors/routes';
 const app = express();
 app.use(express.json());
 app.use('/api/uploads', router);
-app.use((err, req, res, _next) => errorHandler(err, req, res));
+app.use((err, req, res, next) => errorHandler(err, req, res, next));
 
 const ID = '11111111-2222-4333-8444-555555555555';
 const BODY = {
