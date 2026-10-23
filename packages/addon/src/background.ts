@@ -200,12 +200,20 @@ let popupTimer = null;
 // Prevents multiple popups from opening.
 let popupWindowId = null;
 
+// The open popup shows the update screen and can't upload; reject new files
+// instead of queueing them for it. Cleared when that popup closes.
+let popupBlocked = false;
+
 browser.cloudFile.onFileUpload.addListener(
   // We disregard the third (tab) arg, and aren't following the cb return type.
   //@ts-expect-error
   async (_, fileInfo) => {
     const { id, name, data } = fileInfo;
     console.log(`[onFileUpload] Received file: ${name} (ID: ${id})`);
+
+    if (popupBlocked && popupWindowId) {
+      throw new Error('Send must be updated before uploading.');
+    }
 
     // Clear the timer
     if (popupTimer) {
@@ -272,6 +280,7 @@ async function openUnifiedPopup() {
     });
 
     popupWindowId = popup.id;
+    popupBlocked = false;
   } catch (error) {
     console.error(`[openUnifiedPopup] Error creating popup:`, error);
 
@@ -607,6 +616,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     // Popup reports that the user cancelled the entire process.
     case ALL_UPLOADS_ABORTED:
       console.log(`[onMessage] User aborted all uploads.`);
+      popupBlocked = Boolean(message.blocked);
       rejectAllInQueue(new Error('User aborted the operation.'));
       break;
   }
@@ -623,6 +633,7 @@ browser.windows.onRemoved.addListener((windowId) => {
   if (windowId === popupWindowId) {
     console.log(`[onRemoved] Popup window closed.`);
     popupWindowId = null;
+    popupBlocked = false;
     // If the window is closed before uploads complete, we consider it an abort.
     rejectAllInQueue(new Error('Popup window was closed prematurely.'));
   }
