@@ -8,6 +8,7 @@ import {
   getUploadsOwnedByUser,
 } from '@send-backend/models';
 import { checkCompatibility } from '@send-backend/utils/compatibility';
+import { publicKeyJwkSchema } from '@send-backend/utils/publicKeyJwk';
 import { TRPCError } from '@trpc/server';
 import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -163,7 +164,7 @@ export const usersRouter = router({
     // and hoping setup completes before the user closes the tab (issue #1116).
     .input(
       z.object({
-        publicKey: z.string().min(1),
+        publicKey: publicKeyJwkSchema,
         backupKeypair: z.string().min(1),
         backupKeystring: z.string().min(1),
         backupSalt: z.string().min(1),
