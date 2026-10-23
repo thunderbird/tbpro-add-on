@@ -26,7 +26,7 @@ vi.mock('../../storage', () => ({
 }));
 // Only the lock is under test; the row pass would race other suites' rows.
 vi.mock('../../models', () => ({
-  deleteOrphans: async () => ({
+  deleteOrphans: vi.fn().mockResolvedValue({
     found: 0,
     deletedUploadIds: [],
     errorUploadIds: [],
@@ -34,7 +34,7 @@ vi.mock('../../models', () => ({
 }));
 vi.mock('../../models/pendingUploads', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  sweepExpiredPendingUploads: async () => ({
+  sweepExpiredPendingUploads: vi.fn().mockResolvedValue({
     found: 0,
     deletedIds: [],
     errorIds: [],

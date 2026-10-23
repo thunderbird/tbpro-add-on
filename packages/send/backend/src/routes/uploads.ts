@@ -126,7 +126,7 @@ router.post(
 
       // Keeps cleanup off this upload's bytes while it is finalized; refused
       // when cleanup already claimed them.
-      if (!(await holdPendingUpload(id))) {
+      if (!(await holdPendingUpload(id, requesterId))) {
         return res.status(409).json({ message: 'Upload expired' });
       }
 

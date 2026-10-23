@@ -87,7 +87,7 @@ describe('POST /api/uploads (finalize)', () => {
   it('holds the reservation before checking the stored object', async () => {
     await request(app).post('/api/uploads').send(BODY);
 
-    expect(h.holdPendingUpload).toHaveBeenCalledWith(ID);
+    expect(h.holdPendingUpload).toHaveBeenCalledWith(ID, 'user-1');
     expect(h.holdPendingUpload.mock.invocationCallOrder[0]).toBeLessThan(
       h.createUpload.mock.invocationCallOrder[0]
     );

@@ -148,29 +148,43 @@ export async function getSignedUrlforDownload(
  */
 export async function deleteObjectVersions(
   s3Client: S3Client,
-  { Bucket, Key }: { Bucket: string; Key: string }
+  {
+    Bucket,
+    Key,
+    KeyMarker,
+    VersionIdMarker,
+  }: {
+    Bucket: string;
+    Key: string;
+    KeyMarker?: string;
+    VersionIdMarker?: string;
+  }
 ): Promise<void> {
-  let KeyMarker: string | undefined;
-  let VersionIdMarker: string | undefined;
-  let truncated = true;
-  while (truncated) {
-    const page = await s3Client.send(
-      new ListObjectVersionsCommand({
-        Bucket,
-        Prefix: Key,
-        KeyMarker,
-        VersionIdMarker,
-      })
-    );
-    const versions = [...(page.Versions ?? []), ...(page.DeleteMarkers ?? [])];
-    for (const version of versions.filter((v) => v.Key === Key)) {
-      await s3Client.send(
-        new DeleteObjectCommand({ Bucket, Key, VersionId: version.VersionId })
-      );
-    }
-    truncated = page.IsTruncated === true;
-    KeyMarker = page.NextKeyMarker;
-    VersionIdMarker = page.NextVersionIdMarker;
+  const page = await s3Client.send(
+    new ListObjectVersionsCommand({
+      Bucket,
+      Prefix: Key,
+      KeyMarker,
+      VersionIdMarker,
+    })
+  );
+  const versions = [...(page.Versions ?? []), ...(page.DeleteMarkers ?? [])];
+  await Promise.all(
+    versions
+      .filter((v) => v.Key === Key)
+      .map((v) =>
+        s3Client.send(
+          new DeleteObjectCommand({ Bucket, Key, VersionId: v.VersionId })
+        )
+      )
+  );
+  if (page.IsTruncated === true) {
+    await deleteObjectVersions(s3Client, {
+      Bucket,
+      Key,
+      KeyMarker: page.NextKeyMarker,
+      VersionIdMarker: page.NextVersionIdMarker,
+    });
   }
 }
 

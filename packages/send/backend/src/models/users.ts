@@ -564,7 +564,7 @@ export async function deleteUser(id: string) {
     return { user, uploadIds: uploads.map((upload) => upload.id) };
   });
 
-  await mapLimit(uploadIds, CLEANUP_CONCURRENCY, (uploadId) =>
+  await mapLimit(uploadIds, CLEANUP_CONCURRENCY, (uploadId: string) =>
     storage.del(uploadId).catch((e) => {
       console.warn(`[deleteUser] storage.del(${uploadId}) failed`, e);
       return false;

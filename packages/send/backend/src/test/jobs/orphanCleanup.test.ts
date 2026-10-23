@@ -86,9 +86,12 @@ beforeEach(() => {
       if (mine) h.state.lockHeld = false;
     }
   });
-  h.prisma.storageSweep.findFirst.mockImplementation(
-    async () => h.sweeps[h.sweeps.length - 1] ?? null
-  );
+  h.prisma.storageSweep.findFirst.mockImplementation(async ({ where } = {}) => {
+    const rows = h.sweeps.filter(
+      (r) => where?.dryRun === undefined || Boolean(r.dryRun) === where.dryRun
+    );
+    return rows[rows.length - 1] ?? null;
+  });
   h.prisma.storageSweep.create.mockImplementation(async ({ data }) => {
     const row = { id: h.sweeps.length + 1, startedAt: new Date(), ...data };
     h.sweeps.push(row);
@@ -356,6 +359,74 @@ describe('runStorageSweep: the sweep', () => {
       where: { id: 1 },
       data: { cursor: 'page-1-end', bucketOrphans: 1 },
     });
+  });
+});
+
+describe('runStorageSweep: dry runs', () => {
+  it('never resumes a real sweep from a dry run cursor', async () => {
+    h.sweeps.push(
+      {
+        id: 1,
+        startedAt: new Date(Date.now() - 50 * HOUR_MS),
+        finishedAt: new Date(Date.now() - 50 * HOUR_MS),
+        dryRun: false,
+        cursor: 'real-cursor',
+      },
+      {
+        id: 2,
+        startedAt: new Date(Date.now() - 25 * HOUR_MS),
+        finishedAt: new Date(Date.now() - 25 * HOUR_MS),
+        dryRun: true,
+        cursor: 'dry-cursor',
+      }
+    );
+
+    await runStorageSweep();
+
+    expect(h.sweepBucket.mock.calls[0][0].cursor).toBe('real-cursor');
+  });
+
+  it('resumes a dry run from the last dry run cursor', async () => {
+    process.env.ORPHAN_CLEANUP_DRY_RUN = 'true';
+    h.sweeps.push({
+      id: 1,
+      startedAt: new Date(Date.now() - 25 * HOUR_MS),
+      finishedAt: new Date(Date.now() - 25 * HOUR_MS),
+      dryRun: true,
+      cursor: 'dry-cursor',
+    });
+
+    await runStorageSweep();
+
+    expect(h.sweepBucket.mock.calls[0][0].cursor).toBe('dry-cursor');
+  });
+
+  it('pages the row pass by id in a dry run, like a real run would delete', async () => {
+    process.env.ORPHAN_CLEANUP_DRY_RUN = 'true';
+    h.deleteOrphans
+      .mockResolvedValueOnce({
+        found: 1000,
+        lastId: 'id-1000',
+        deletedUploadIds: [],
+        errorUploadIds: [],
+      })
+      .mockResolvedValueOnce({
+        found: 5,
+        lastId: 'id-1005',
+        deletedUploadIds: [],
+        errorUploadIds: [],
+      });
+
+    const result = await runStorageSweep();
+
+    expect(h.deleteOrphans).toHaveBeenCalledTimes(2);
+    expect(h.deleteOrphans.mock.calls[0][1].after).toBeUndefined();
+    expect(h.deleteOrphans.mock.calls[1][1]).toMatchObject({
+      dryRun: true,
+      after: 'id-1000',
+    });
+    expect(result).toMatchObject({ rowOrphans: 1005 });
+    expect(h.sweepBucket.mock.calls[0][0].budget).toBe(10_000 - 1005);
   });
 });
 

@@ -137,7 +137,7 @@ describe('reservePendingUpload', () => {
 
 describe('holdPendingUpload', () => {
   it('pushes the expiry of an unclaimed reservation out', async () => {
-    expect(await holdPendingUpload('id-1')).toBe(true);
+    expect(await holdPendingUpload('id-1', 'o')).toBe(true);
     const { where, data } = h.prisma.pendingUpload.updateMany.mock.calls[0][0];
     expect(where).toEqual({ id: 'id-1', sweptAt: null });
     expect(data.expiresAt.getTime()).toBeGreaterThan(Date.now());
@@ -147,13 +147,37 @@ describe('holdPendingUpload', () => {
     h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
     h.prisma.pendingUpload.count.mockResolvedValue(1);
 
-    expect(await holdPendingUpload('id-1')).toBe(false);
+    expect(await holdPendingUpload('id-1', 'o')).toBe(false);
   });
 
-  it('allows an id with no reservation (minted before reservations)', async () => {
+  it('creates a hold record for an id with no reservation', async () => {
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+    const id = '11111111-2222-4333-8444-555555555555';
+
+    expect(await holdPendingUpload(id, 'o')).toBe(true);
+    const { data, skipDuplicates } =
+      h.prisma.pendingUpload.createMany.mock.calls[0][0];
+    expect(skipDuplicates).toBe(true);
+    expect(data[0]).toMatchObject({ id, ownerId: 'o' });
+    expect(data[0].size).toBeUndefined();
+    expect(data[0].expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it('refuses an id with no reservation that cleanup claimed meanwhile', async () => {
+    h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
+    h.prisma.pendingUpload.createMany.mockResolvedValue({ count: 0 });
+    h.prisma.pendingUpload.count.mockResolvedValue(1);
+
+    expect(
+      await holdPendingUpload('11111111-2222-4333-8444-555555555555', 'o')
+    ).toBe(false);
+  });
+
+  it('does not record a hold for a non-uuid id', async () => {
     h.prisma.pendingUpload.updateMany.mockResolvedValue({ count: 0 });
 
-    expect(await holdPendingUpload('id-1')).toBe(true);
+    expect(await holdPendingUpload('not-a-uuid', 'o')).toBe(true);
+    expect(h.prisma.pendingUpload.createMany).not.toHaveBeenCalled();
   });
 });
 
@@ -181,23 +205,21 @@ describe('releasePendingUploads', () => {
 });
 
 describe('quota counts reservations', () => {
-  it('counts only unexpired reservations of the owner', async () => {
-    h.prisma.pendingUpload.aggregate.mockResolvedValue({
-      _sum: { size: 300n },
-    });
+  it('counts unexpired reservations of the owner not yet finalized', async () => {
+    h.prisma.$queryRaw.mockResolvedValue([{ reserved: 300n }]);
 
     expect(await getReservedBytes('owner-1')).toBe(300);
-    const { where } = h.prisma.pendingUpload.aggregate.mock.calls[0][0];
-    expect(where.ownerId).toBe('owner-1');
-    expect(where.expiresAt.gt.getTime()).toBeLessThanOrEqual(Date.now());
-    expect(where.id).toBeUndefined();
+    const [strings, ...values] = h.prisma.$queryRaw.mock.calls[0];
+    const sql = strings.join('?');
+    expect(sql).toContain('"expiresAt" > (NOW()');
+    // A finalized reservation is counted as its Upload row only.
+    expect(sql).toContain('NOT EXISTS (SELECT 1 FROM "Upload"');
+    expect(values).toEqual(['owner-1', null, null]);
   });
 
   it('adds reserved bytes to active storage', async () => {
     h.prisma.upload.aggregate.mockResolvedValue({ _sum: { size: 1000n } });
-    h.prisma.pendingUpload.aggregate.mockResolvedValue({
-      _sum: { size: 500n },
-    });
+    h.prisma.$queryRaw.mockResolvedValue([{ reserved: 500n }]);
 
     expect(await getUsedStorage('owner-1')).toEqual({
       active: 1500,
@@ -208,8 +230,8 @@ describe('quota counts reservations', () => {
   it('leaves out the reservation being finalized', async () => {
     await getUsedStorage('owner-1', false, 'id-final');
 
-    const { where } = h.prisma.pendingUpload.aggregate.mock.calls[0][0];
-    expect(where.id).toEqual({ not: 'id-final' });
+    const [, ...values] = h.prisma.$queryRaw.mock.calls[0];
+    expect(values).toEqual(['owner-1', 'id-final', 'id-final']);
   });
 });
 
@@ -367,15 +389,36 @@ describe('row pass options', () => {
 
     expect(orphans).toEqual({
       found: 1,
+      lastId: 'a',
       deletedUploadIds: [],
       errorUploadIds: [],
     });
-    expect(pending).toEqual({ found: 1, deletedIds: [], errorIds: [] });
+    expect(pending).toEqual({
+      found: 1,
+      lastId: 'p',
+      deletedIds: [],
+      errorIds: [],
+    });
     expect(h.prisma.$transaction).not.toHaveBeenCalled();
     expect(h.prisma.pendingUpload.updateMany).not.toHaveBeenCalled();
     expect(h.storageDel).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(expect.stringContaining('would delete 1'));
     log.mockRestore();
+  });
+
+  it('pages dry runs by id after the given one', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await deleteOrphans(24, { dryRun: true, after: 'x' });
+    await sweepExpiredPendingUploads(24, { dryRun: true, after: 'y' });
+
+    const rows = h.prisma.upload.findMany.mock.calls[0][0];
+    expect(rows.where.id).toEqual({ gt: 'x' });
+    expect(rows.orderBy).toEqual({ id: 'asc' });
+    const pending = h.prisma.pendingUpload.findMany.mock.calls[0][0];
+    expect(pending.where.id).toEqual({ gt: 'y' });
+    expect(pending.orderBy).toEqual({ id: 'asc' });
+    vi.mocked(console.log).mockRestore();
   });
 
   it('logs a failed delete as a warning, not an error', async () => {
@@ -505,7 +548,7 @@ describe('finalize vs sweep race', () => {
   }
 
   it('finalize holds first: the sweep claim loses and the bytes stay', async () => {
-    expect(await holdPendingUpload('r')).toBe(true);
+    expect(await holdPendingUpload('r', 'o')).toBe(true);
     // The finalize's Upload row exists by the time the sweep runs.
     h.prisma.upload.count.mockResolvedValue(1);
 
@@ -520,7 +563,7 @@ describe('finalize vs sweep race', () => {
     const sweep = sweepExpiredPendingUploads(24);
     // Finalize arrives while the sweep is still deleting the bytes.
     h.storageDel.mockImplementation(async () => {
-      expect(await holdPendingUpload('r')).toBe(false);
+      expect(await holdPendingUpload('r', 'o')).toBe(false);
       return true;
     });
 
@@ -532,6 +575,6 @@ describe('finalize vs sweep race', () => {
     h.storageDel.mockRejectedValue(new Error('bucket down'));
 
     expect((await sweepExpiredPendingUploads(24)).errorIds).toEqual(['r']);
-    expect(await holdPendingUpload('r')).toBe(false);
+    expect(await holdPendingUpload('r', 'o')).toBe(false);
   });
 });

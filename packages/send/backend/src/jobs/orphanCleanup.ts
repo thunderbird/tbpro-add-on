@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-import { hostname } from 'os';
+import { hostname } from 'node:os';
 import { deleteOrphans } from '../models';
 import {
   CLEANUP_BATCH_SIZE,
@@ -68,9 +68,20 @@ function sweepConfig() {
   };
 }
 
+// The bucket cursor of the last sweep in the same mode: a dry run's progress
+// must not make a real sweep skip objects it only logged.
+async function resumeCursor(dryRun: boolean): Promise<string | null> {
+  const last = await prisma.storageSweep.findFirst({
+    where: { dryRun },
+    orderBy: { startedAt: 'desc' },
+  });
+  return last?.cursor ?? null;
+}
+
 // Why this instance must not start a sweep now, or the cursor to resume from.
 async function claimTurn(
-  force: boolean
+  force: boolean,
+  dryRun: boolean
 ): Promise<{ skip: string } | { cursor: string | null }> {
   const latest = await prisma.storageSweep.findFirst({
     orderBy: { startedAt: 'desc' },
@@ -85,25 +96,31 @@ async function claimTurn(
       where: { id: latest.id },
       data: { finishedAt: new Date(), error: 'abandoned; taken over' },
     });
-    return { cursor: latest.cursor };
+    return { cursor: await resumeCursor(dryRun) };
   }
   const gapMs = Math.max(getIntervalHours() - 1, 0) * HOUR_MS;
   if (!force && latest.finishedAt.getTime() > Date.now() - gapMs) {
     return { skip: `sweep ${latest.id} finished recently` };
   }
-  return { cursor: latest.cursor };
+  return { cursor: await resumeCursor(dryRun) };
 }
 
 type RowPassStep = (
   minAgeHours: number,
-  options: { limit: number; dryRun: boolean }
-) => Promise<{ found: number; deleted: number; errors: number }>;
+  options: { limit: number; dryRun: boolean; after?: string }
+) => Promise<{
+  found: number;
+  deleted: number;
+  errors: number;
+  lastId?: string;
+}>;
 
 const ROW_PASS_STEPS: RowPassStep[] = [
   async (minAgeHours, options) => {
     const r = await deleteOrphans(minAgeHours, options);
     return {
       found: r.found,
+      lastId: r.lastId,
       deleted: r.deletedUploadIds.length,
       errors: r.errorUploadIds.length,
     };
@@ -112,36 +129,45 @@ const ROW_PASS_STEPS: RowPassStep[] = [
     const r = await sweepExpiredPendingUploads(minAgeHours, options);
     return {
       found: r.found,
+      lastId: r.lastId,
       deleted: r.deletedIds.length,
       errors: r.errorIds.length,
     };
   },
 ];
 
-// Item-less Upload rows, then expired reservations, batch by batch until each
-// runs dry, stops making progress, or the budget is spent.
-async function rowPass(
-  budget: number,
-  minAgeHours: number,
-  dryRun: boolean,
-  keepAlive: () => Promise<unknown>
-): Promise<PassTotals> {
+type RowPassContext = {
+  budget: number;
+  minAgeHours: number;
+  dryRun: boolean;
+  keepAlive: () => Promise<unknown>;
+};
+
+// Runs one step batch by batch until it runs dry, stops making progress, or
+// the budget is spent. A dry run pages by id, since it deletes nothing.
+async function runStep(
+  step: RowPassStep,
+  ctx: RowPassContext,
+  totals: PassTotals,
+  after?: string
+): Promise<void> {
+  const limit = Math.min(ctx.budget - totals.orphans, CLEANUP_BATCH_SIZE);
+  if (limit <= 0) return;
+  const r = await step(ctx.minAgeHours, { limit, dryRun: ctx.dryRun, after });
+  await ctx.keepAlive();
+  totals.orphans += r.found;
+  totals.deleted += r.deleted;
+  totals.errors += r.errors;
+  totals.kept += ctx.dryRun ? 0 : r.found - r.deleted - r.errors;
+  const more = r.found === limit && (ctx.dryRun || r.deleted > 0);
+  if (more) await runStep(step, ctx, totals, ctx.dryRun ? r.lastId : undefined);
+}
+
+// Item-less Upload rows, then expired reservations.
+async function rowPass(ctx: RowPassContext): Promise<PassTotals> {
   const totals = emptyTotals();
   for (const step of ROW_PASS_STEPS) {
-    for (;;) {
-      const limit = Math.min(budget - totals.orphans, CLEANUP_BATCH_SIZE);
-      if (limit <= 0) return totals;
-      const { found, deleted, errors } = await step(minAgeHours, {
-        limit,
-        dryRun,
-      });
-      await keepAlive();
-      totals.orphans += found;
-      totals.deleted += deleted;
-      totals.errors += errors;
-      totals.kept += dryRun ? 0 : found - deleted - errors;
-      if (dryRun || found < limit || deleted === 0) break;
-    }
+    await runStep(step, ctx, totals);
   }
   return totals;
 }
@@ -172,7 +198,12 @@ async function sweep(
   const save = (data: Prisma.StorageSweepUpdateInput) =>
     prisma.storageSweep.update({ where: { id: row.id }, data });
   try {
-    const rows = await rowPass(maxDeletes, minAgeHours, dryRun, keepAlive);
+    const rows = await rowPass({
+      budget: maxDeletes,
+      minAgeHours,
+      dryRun,
+      keepAlive,
+    });
     const bucket = await sweepBucket({
       cursor,
       minAgeHours,
@@ -223,7 +254,7 @@ function countersOf(s: SweepSummary) {
  * for the whole sweep, so it is released when the sweep ends or the process
  * dies; StorageSweep rows record each run and the bucket cursor.
  */
-export async function runStorageSweep(force = false): Promise<SweepResult> {
+export function runStorageSweep(force = false): Promise<SweepResult> {
   return prisma.$transaction(
     async (lock) => {
       const [{ locked }] = await lock.$queryRaw<{ locked: boolean }[]>`
@@ -231,7 +262,7 @@ export async function runStorageSweep(force = false): Promise<SweepResult> {
       if (!locked) {
         return skipped('another instance holds the sweep lock');
       }
-      const turn = await claimTurn(force);
+      const turn = await claimTurn(force, sweepConfig().dryRun);
       if ('skip' in turn) return skipped(turn.skip);
       return { status: 'completed', ...(await sweep(lock, turn.cursor)) };
     },

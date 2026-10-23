@@ -28,7 +28,16 @@ export function hoursAgo(hours: number): Date {
 }
 
 /** Per-run bound on the rows a cleanup step handles, and report-only mode. */
-export type CleanupOptions = { limit?: number; dryRun?: boolean };
+export type CleanupOptions = {
+  limit?: number;
+  dryRun?: boolean;
+  // Dry runs page by id: only ids after this one.
+  after?: string;
+};
+
+export function lastIdOf(rows: { id: string }[]): string | undefined {
+  return rows.slice(-1)[0]?.id;
+}
 
 export function logDryRun(what: string, rows: { id: string }[]) {
   if (rows.length === 0) return;
@@ -38,27 +47,36 @@ export function logDryRun(what: string, rows: { id: string }[]) {
   );
 }
 
+const UPLOAD_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** True for a string shaped like an upload id (every storage key is one). */
+export function isUploadId(value: string): boolean {
+  return UPLOAD_ID.test(value);
+}
+
 function urlExpiry(): Date {
   return new Date(Date.now() + UPLOAD_URL_TTL_SECONDS * 1000);
 }
 
 /**
  * Bytes reserved by the owner's unexpired presigned URLs. `excludeId` leaves
- * out the reservation being finalized, whose bytes the caller adds itself.
+ * out the reservation being finalized, whose bytes the caller adds itself. A
+ * reservation whose Upload row already exists is counted as that row only.
  */
 export async function getReservedBytes(
   ownerId: string,
   excludeId?: string
 ): Promise<number> {
-  const result = await prisma.pendingUpload.aggregate({
-    where: {
-      ownerId,
-      expiresAt: { gt: new Date() },
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-    },
-    _sum: { size: true },
-  });
-  return Number(result._sum.size ?? 0);
+  const exclude = excludeId ?? null;
+  const [{ reserved }] = await prisma.$queryRaw<{ reserved: bigint }[]>`
+    SELECT COALESCE(SUM(p."size"), 0)::bigint AS reserved
+    FROM "PendingUpload" p
+    WHERE p."ownerId" = ${ownerId}::uuid
+      AND p."expiresAt" > (NOW() AT TIME ZONE 'UTC')
+      AND (${exclude}::uuid IS NULL OR p."id" <> ${exclude}::uuid)
+      AND NOT EXISTS (SELECT 1 FROM "Upload" u WHERE u."id" = p."id")`;
+  return Number(reserved ?? 0);
 }
 
 /**
@@ -82,9 +100,10 @@ export function reservePendingUpload(
         SELECT (
           (SELECT COALESCE(SUM("size"), 0) FROM "Upload"
             WHERE "ownerId" = ${ownerId}::uuid)
-          + (SELECT COALESCE(SUM("size"), 0) FROM "PendingUpload"
-            WHERE "ownerId" = ${ownerId}::uuid
-              AND "expiresAt" > (NOW() AT TIME ZONE 'UTC'))
+          + (SELECT COALESCE(SUM(p."size"), 0) FROM "PendingUpload" p
+            WHERE p."ownerId" = ${ownerId}::uuid
+              AND p."expiresAt" > (NOW() AT TIME ZONE 'UTC')
+              AND NOT EXISTS (SELECT 1 FROM "Upload" u WHERE u."id" = p."id"))
         )::bigint AS used`;
       if (Number(used) + size >= limit) return false;
     }
@@ -99,14 +118,26 @@ export function reservePendingUpload(
  * Called before finalizing: pushes the reservation's expiry out so cleanup
  * cannot claim it meanwhile. False when cleanup already claimed it, i.e. its
  * bytes are being deleted. An id with no reservation (minted before
- * reservations existed) is not held and returns true.
+ * reservations existed) gets a size-less hold record, so the bucket sweep
+ * coordinates with it the same way.
  */
-export async function holdPendingUpload(id: string): Promise<boolean> {
+export async function holdPendingUpload(
+  id: string,
+  ownerId: string
+): Promise<boolean> {
+  const expiresAt = urlExpiry();
   const { count } = await prisma.pendingUpload.updateMany({
     where: { id, sweptAt: null },
-    data: { expiresAt: urlExpiry() },
+    data: { expiresAt },
   });
   if (count > 0) return true;
+  if (isUploadId(id)) {
+    const created = await prisma.pendingUpload.createMany({
+      data: [{ id, ownerId, expiresAt }],
+      skipDuplicates: true,
+    });
+    if (created.count > 0) return true;
+  }
   const claimed = await prisma.pendingUpload.count({
     where: { id, sweptAt: { not: null } },
   });
@@ -189,22 +220,30 @@ async function sweepOne(
  */
 export async function sweepExpiredPendingUploads(
   hoursSinceExpiry = getOrphanMinAgeHours(),
-  { limit = CLEANUP_BATCH_SIZE, dryRun = false }: CleanupOptions = {}
+  { limit = CLEANUP_BATCH_SIZE, dryRun = false, after }: CleanupOptions = {}
 ) {
   const cutoff = hoursAgo(hoursSinceExpiry);
   const take = Math.min(limit, CLEANUP_BATCH_SIZE);
   const expired =
     take > 0
       ? await prisma.pendingUpload.findMany({
-          where: { expiresAt: { lt: cutoff } },
+          where: {
+            expiresAt: { lt: cutoff },
+            ...(after ? { id: { gt: after } } : {}),
+          },
           select: { id: true, ownerId: true },
-          orderBy: { expiresAt: 'asc' },
+          orderBy: dryRun ? { id: 'asc' } : { expiresAt: 'asc' },
           take,
         })
       : [];
   if (dryRun) {
     logDryRun('expired reservations', expired);
-    return { found: expired.length, deletedIds: [], errorIds: [] };
+    return {
+      found: expired.length,
+      lastId: lastIdOf(expired),
+      deletedIds: [],
+      errorIds: [],
+    };
   }
 
   const outcomes = await mapLimit(expired, CLEANUP_CONCURRENCY, (row) =>

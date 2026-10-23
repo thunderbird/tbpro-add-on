@@ -100,64 +100,78 @@ async function removeObject({ key, id }: Candidate): Promise<Outcome> {
   }
 }
 
+type PageResult = { scanned: number; cut: boolean; lastKey?: string };
+
+// Acts on one listed page: deletes (or, in a dry run, logs) its orphans within
+// what is left of the budget and adds to `totals`.
+async function sweepPage(
+  objects: BucketObject[],
+  cutoff: Date,
+  options: BucketPassOptions,
+  totals: PassTotals
+): Promise<PageResult> {
+  const candidates = await findCandidates(objects, cutoff);
+  const taken = candidates.slice(0, options.budget - totals.orphans);
+  const cut = taken.length < candidates.length;
+  // A capped page resumes after the last object acted on.
+  const lastTaken = taken.slice(-1)[0]?.key;
+  const scanned = cut
+    ? objects.slice(0, objects.findIndex(({ key }) => key === lastTaken) + 1)
+    : objects;
+  totals.orphans += taken.length;
+  totals.kept += scanned.length - taken.length;
+
+  if (options.dryRun) {
+    if (taken.length > 0) {
+      const keys = taken.map(({ key }) => key).join(', ');
+      console.log(
+        `[orphanCleanup] dry run: would delete ${taken.length} bucket objects: ${keys}`
+      );
+    }
+  } else {
+    const outcomes = await mapLimit(taken, CLEANUP_CONCURRENCY, removeObject);
+    totals.deleted += outcomes.filter((o) => o === 'deleted').length;
+    totals.kept += outcomes.filter((o) => o === 'kept').length;
+    totals.errors += outcomes.filter((o) => o === 'error').length;
+  }
+  return { scanned: scanned.length, cut, lastKey: scanned.slice(-1)[0]?.key };
+}
+
+type BucketPassResult = PassTotals & { cursor: string | null; capped: boolean };
+
+async function sweepFrom(
+  after: string | undefined,
+  cutoff: Date,
+  options: BucketPassOptions,
+  totals: PassTotals
+): Promise<BucketPassResult> {
+  const { objects, truncated } = await storage.listObjects(
+    after,
+    BUCKET_PAGE_SIZE
+  );
+  const page = await sweepPage(objects, cutoff, options, totals);
+  const next = page.lastKey ?? after;
+  const done = objects.length === 0 || (!truncated && !page.cut);
+  const capped = totals.orphans >= options.budget;
+  const cursor = done ? null : (next ?? null);
+  await options.onPage?.(cursor, totals);
+  const outOfTime = Date.now() > (options.deadline ?? Infinity);
+  if (capped || done || outOfTime) return { ...totals, cursor, capped };
+  return sweepFrom(next, cutoff, options, totals);
+}
+
 /**
- * Deletes stored objects that no Upload row or reservation accounts for and
- * that are older than `minAgeHours`, paging the bucket in key order from
+ * Deletes stored objects that no Upload row or live reservation accounts for
+ * and that are older than `minAgeHours`, paging the bucket in key order from
  * `cursor`. Returns the cursor to resume from, or null once the listing ends.
  */
-export async function sweepBucket({
-  cursor,
-  minAgeHours,
-  dryRun,
-  budget,
-  deadline = Infinity,
-  onPage,
-}: BucketPassOptions): Promise<
-  PassTotals & { cursor: string | null; capped: boolean }
-> {
+export async function sweepBucket(
+  options: BucketPassOptions
+): Promise<BucketPassResult> {
   const totals = emptyTotals();
-  if (budget <= 0) return { ...totals, cursor, capped: true };
-  const cutoff = hoursAgo(minAgeHours);
-  let next = cursor ?? undefined;
-  for (;;) {
-    const { objects, truncated } = await storage.listObjects(
-      next,
-      BUCKET_PAGE_SIZE
-    );
-    const candidates = await findCandidates(objects, cutoff);
-    const taken = candidates.slice(0, budget - totals.orphans);
-    const cut = taken.length < candidates.length;
-    // A capped page resumes after the last object acted on.
-    const lastKey = taken.length > 0 ? taken[taken.length - 1].key : null;
-    const scanned = cut
-      ? objects.slice(0, objects.findIndex(({ key }) => key === lastKey) + 1)
-      : objects;
-    totals.orphans += taken.length;
-    totals.kept += scanned.length - taken.length;
-
-    if (dryRun) {
-      if (taken.length > 0) {
-        const keys = taken.map(({ key }) => key).join(', ');
-        console.log(
-          `[orphanCleanup] dry run: would delete ${taken.length} bucket objects: ${keys}`
-        );
-      }
-    } else {
-      const outcomes = await mapLimit(taken, CLEANUP_CONCURRENCY, removeObject);
-      for (const outcome of outcomes) {
-        if (outcome === 'deleted') totals.deleted++;
-        else if (outcome === 'kept') totals.kept++;
-        else totals.errors++;
-      }
-    }
-
-    if (scanned.length > 0) next = scanned[scanned.length - 1].key;
-    const done = objects.length === 0 || (!truncated && !cut);
-    const capped = totals.orphans >= budget;
-    const resumeAt = done ? null : (next ?? null);
-    await onPage?.(resumeAt, totals);
-    if (capped || done || Date.now() > deadline) {
-      return { ...totals, cursor: resumeAt, capped };
-    }
+  if (options.budget <= 0) {
+    return { ...totals, cursor: options.cursor, capped: true };
   }
+  const cutoff = hoursAgo(options.minAgeHours);
+  return sweepFrom(options.cursor ?? undefined, cutoff, options, totals);
 }

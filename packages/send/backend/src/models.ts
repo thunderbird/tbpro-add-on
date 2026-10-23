@@ -22,6 +22,7 @@ import {
   getOrphanMinAgeHours,
   getReservedBytes,
   hoursAgo,
+  lastIdOf,
   logDryRun,
   releasePendingUploads,
 } from './models/pendingUploads';
@@ -407,7 +408,11 @@ export const deleteSession = async (id: string) =>
 // An orphan is an Upload with no Item, older than `hoursSinceCreation` so an
 // in-flight upload (items are created after every part is stored) is never
 // matched (#117). Rows without a createdAt predate it being set and count as old.
-function findOrphanRows(hoursSinceCreation: number, take = CLEANUP_BATCH_SIZE) {
+function findOrphanRows(
+  hoursSinceCreation: number,
+  take = CLEANUP_BATCH_SIZE,
+  after?: string
+) {
   return prisma.upload.findMany({
     where: {
       items: { none: {} },
@@ -415,8 +420,10 @@ function findOrphanRows(hoursSinceCreation: number, take = CLEANUP_BATCH_SIZE) {
         { createdAt: { lt: hoursAgo(hoursSinceCreation) } },
         { createdAt: null },
       ],
+      ...(after ? { id: { gt: after } } : {}),
     },
     select: { id: true, ownerId: true },
+    orderBy: { id: 'asc' },
     take,
   });
 }
@@ -476,13 +483,19 @@ async function deleteOrphan({
  */
 export async function deleteOrphans(
   hoursSinceCreation = getOrphanMinAgeHours(),
-  { limit = CLEANUP_BATCH_SIZE, dryRun = false }: CleanupOptions = {}
+  { limit = CLEANUP_BATCH_SIZE, dryRun = false, after }: CleanupOptions = {}
 ) {
   const take = Math.min(limit, CLEANUP_BATCH_SIZE);
-  const rows = take > 0 ? await findOrphanRows(hoursSinceCreation, take) : [];
+  const rows =
+    take > 0 ? await findOrphanRows(hoursSinceCreation, take, after) : [];
   if (dryRun) {
     logDryRun('orphaned uploads', rows);
-    return { found: rows.length, deletedUploadIds: [], errorUploadIds: [] };
+    return {
+      found: rows.length,
+      lastId: lastIdOf(rows),
+      deletedUploadIds: [],
+      errorUploadIds: [],
+    };
   }
   const outcomes = await mapLimit(rows, CLEANUP_CONCURRENCY, deleteOrphan);
   const idsWith = (outcome: OrphanOutcome) =>

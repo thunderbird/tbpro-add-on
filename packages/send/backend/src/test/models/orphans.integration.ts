@@ -361,7 +361,7 @@ describe('findOrphans', () => {
     // The retried finalize arrives while cleanup is deleting the bytes.
     let retryHeld: boolean | undefined;
     storageDel.mockImplementationOnce(async () => {
-      retryHeld = await holdPendingUpload(orphan.id);
+      retryHeld = await holdPendingUpload(orphan.id, user.id);
       return true;
     });
 
@@ -378,7 +378,7 @@ describe('findOrphans', () => {
     await prisma.pendingUpload.create({
       data: { id: orphan.id, ownerId: user.id, size: 1000, expiresAt: OLD },
     });
-    expect(await holdPendingUpload(orphan.id)).toBe(true);
+    expect(await holdPendingUpload(orphan.id, user.id)).toBe(true);
 
     expect((await deleteOrphans()).deletedUploadIds).toEqual([]);
     expect(storageDel).not.toHaveBeenCalledWith(orphan.id);
@@ -399,7 +399,7 @@ describe('findOrphans', () => {
       })),
     });
 
-    expect(await holdPendingUpload(held)).toBe(true);
+    expect(await holdPendingUpload(held, user.id)).toBe(true);
     const result = await sweepExpiredPendingUploads(24);
 
     expect(result.deletedIds).toEqual([swept]);
@@ -408,6 +408,6 @@ describe('findOrphans', () => {
     await prisma.pendingUpload.create({
       data: { id: swept, ownerId: user.id, expiresAt: OLD, sweptAt: OLD },
     });
-    expect(await holdPendingUpload(swept)).toBe(false);
+    expect(await holdPendingUpload(swept, user.id)).toBe(false);
   });
 });
