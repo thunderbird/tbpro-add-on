@@ -320,18 +320,19 @@ router.post(
  * @openapi
  * /api/uploads/reconcile:
  *   post:
- *     summary: Run orphaned-upload cleanup now (admin only)
+ *     summary: Run the orphaned-storage sweep now (admin only)
  *     description: >-
- *       Deletes uploads that never got an item and the stored bytes of
- *       presigned uploads that were never finalized, both older than
- *       ORPHAN_MIN_AGE_HOURS. The same job runs on a timer when
- *       ORPHAN_CLEANUP_INTERVAL_HOURS is set.
+ *       Manual trigger for the sweep that also runs every
+ *       ORPHAN_CLEANUP_INTERVAL_HOURS: deletes uploads that never got an item,
+ *       the bytes of presigned uploads never finalized, and bucket objects no
+ *       upload accounts for, all older than ORPHAN_MIN_AGE_HOURS. Skipped when
+ *       another instance is sweeping.
  *     tags: [Uploads]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Cleanup finished; lists deleted and failed ids
+ *         description: The sweep summary, or why it was skipped
  *       403:
  *         description: Forbidden - admin permissions required
  */
@@ -342,7 +343,7 @@ router.post(
   createRateLimiter('sensitive'),
   addErrorHandling(UPLOAD_ERRORS.RECONCILE_FAILED),
   wrapAsyncHandler(async (_req, res) => {
-    const result = await runOrphanCleanup();
+    const result = await runOrphanCleanup(true);
     return res.status(200).json(result);
   })
 );

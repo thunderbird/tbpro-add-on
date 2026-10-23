@@ -16,10 +16,13 @@ import { getAllUserGroupContainers } from './models/users';
 import {
   CLEANUP_BATCH_SIZE,
   CLEANUP_CONCURRENCY,
+  CleanupOptions,
+  claimBytes,
   clearPendingUploads,
   getOrphanMinAgeHours,
   getReservedBytes,
   hoursAgo,
+  logDryRun,
   releasePendingUploads,
 } from './models/pendingUploads';
 import { addExpiryToContainer } from './utils';
@@ -404,7 +407,7 @@ export const deleteSession = async (id: string) =>
 // An orphan is an Upload with no Item, older than `hoursSinceCreation` so an
 // in-flight upload (items are created after every part is stored) is never
 // matched (#117). Rows without a createdAt predate it being set and count as old.
-function findOrphanRows(hoursSinceCreation: number) {
+function findOrphanRows(hoursSinceCreation: number, take = CLEANUP_BATCH_SIZE) {
   return prisma.upload.findMany({
     where: {
       items: { none: {} },
@@ -414,7 +417,7 @@ function findOrphanRows(hoursSinceCreation: number) {
       ],
     },
     select: { id: true, ownerId: true },
-    take: CLEANUP_BATCH_SIZE,
+    take,
   });
 }
 
@@ -447,27 +450,13 @@ async function deleteOrphan({
         where: { id, items: { none: {} } },
       });
       if (count === 0) return false;
-      const sweptAt = new Date();
-      const existing = await tx.pendingUpload.updateMany({
-        where: { id, sweptAt: null, expiresAt: { lt: sweptAt } },
-        data: { sweptAt },
-      });
-      if (existing.count > 0) return true;
-      const created = await tx.pendingUpload.createMany({
-        data: [{ id, ownerId, expiresAt: new Date(0), sweptAt }],
-        skipDuplicates: true,
-      });
-      if (created.count > 0) return true;
-      const held = await tx.pendingUpload.count({
-        where: { id, sweptAt: null },
-      });
-      if (held > 0) throw new OrphanHeld();
+      if (!(await claimBytes(tx, id, ownerId))) throw new OrphanHeld();
       return true;
     });
     if (!claimed) return 'kept';
   } catch (e) {
     if (e instanceof OrphanHeld) return 'kept';
-    console.error(`[deleteOrphans] Could not delete upload ${id}`, e);
+    console.warn(`[deleteOrphans] Could not delete upload ${id}`, e);
     return 'error';
   }
 
@@ -476,20 +465,30 @@ async function deleteOrphan({
     await clearPendingUploads(ownerId, [id]);
   } catch (e) {
     // The sweep record stays; the next sweep retries.
-    console.error(`[deleteOrphans] storage cleanup of ${id} failed`, e);
+    console.warn(`[deleteOrphans] storage cleanup of ${id} failed`, e);
   }
   return 'deleted';
 }
 
-/** Deletes orphaned Upload rows and their stored bytes. */
+/**
+ * Deletes up to `limit` orphaned Upload rows and their stored bytes. A dry run
+ * only reports them.
+ */
 export async function deleteOrphans(
-  hoursSinceCreation = getOrphanMinAgeHours()
+  hoursSinceCreation = getOrphanMinAgeHours(),
+  { limit = CLEANUP_BATCH_SIZE, dryRun = false }: CleanupOptions = {}
 ) {
-  const rows = await findOrphanRows(hoursSinceCreation);
+  const take = Math.min(limit, CLEANUP_BATCH_SIZE);
+  const rows = take > 0 ? await findOrphanRows(hoursSinceCreation, take) : [];
+  if (dryRun) {
+    logDryRun('orphaned uploads', rows);
+    return { found: rows.length, deletedUploadIds: [], errorUploadIds: [] };
+  }
   const outcomes = await mapLimit(rows, CLEANUP_CONCURRENCY, deleteOrphan);
   const idsWith = (outcome: OrphanOutcome) =>
     rows.filter((_, i) => outcomes[i] === outcome).map(({ id }) => id);
   return {
+    found: rows.length,
     deletedUploadIds: idsWith('deleted'),
     errorUploadIds: idsWith('error'),
   };

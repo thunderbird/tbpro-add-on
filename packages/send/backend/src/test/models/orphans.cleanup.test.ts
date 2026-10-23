@@ -250,7 +250,7 @@ describe('deleteOrphans', () => {
 
     const result = await deleteOrphans();
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       deletedUploadIds: ['a', 'b'],
       errorUploadIds: [],
     });
@@ -311,7 +311,7 @@ describe('deleteOrphans', () => {
 
     const result = await deleteOrphans();
 
-    expect(result).toEqual({ deletedUploadIds: [], errorUploadIds: [] });
+    expect(result).toMatchObject({ deletedUploadIds: [], errorUploadIds: [] });
     expect(h.storageDel).not.toHaveBeenCalled();
   });
 
@@ -348,6 +348,51 @@ describe('deleteOrphans', () => {
   });
 });
 
+describe('row pass options', () => {
+  it('takes at most `limit` orphan rows', async () => {
+    await deleteOrphans(24, { limit: 7 });
+
+    expect(h.prisma.upload.findMany.mock.calls[0][0].take).toBe(7);
+  });
+
+  it('deletes nothing in a dry run, but reports what it found', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
+    h.prisma.pendingUpload.findMany.mockResolvedValue([
+      { id: 'p', ownerId: 'o' },
+    ]);
+
+    const orphans = await deleteOrphans(24, { dryRun: true });
+    const pending = await sweepExpiredPendingUploads(24, { dryRun: true });
+
+    expect(orphans).toEqual({
+      found: 1,
+      deletedUploadIds: [],
+      errorUploadIds: [],
+    });
+    expect(pending).toEqual({ found: 1, deletedIds: [], errorIds: [] });
+    expect(h.prisma.$transaction).not.toHaveBeenCalled();
+    expect(h.prisma.pendingUpload.updateMany).not.toHaveBeenCalled();
+    expect(h.storageDel).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('would delete 1'));
+    log.mockRestore();
+  });
+
+  it('logs a failed delete as a warning, not an error', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    h.prisma.upload.findMany.mockResolvedValue([{ id: 'a', ownerId: 'o' }]);
+    h.storageDel.mockRejectedValue(new Error('bucket down'));
+
+    await deleteOrphans();
+
+    expect(warn).toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+    warn.mockRestore();
+    error.mockRestore();
+  });
+});
+
 describe('sweepExpiredPendingUploads', () => {
   it('claims, then deletes the bytes and record of a never-finalized upload', async () => {
     h.prisma.pendingUpload.findMany.mockResolvedValue([
@@ -356,7 +401,7 @@ describe('sweepExpiredPendingUploads', () => {
 
     const result = await sweepExpiredPendingUploads(24);
 
-    expect(result).toEqual({ deletedIds: ['gone'], errorIds: [] });
+    expect(result).toMatchObject({ deletedIds: ['gone'], errorIds: [] });
     const claim = h.prisma.pendingUpload.updateMany.mock.calls[0][0];
     expect(claim.where.id).toBe('gone');
     expect(claim.data.sweptAt).toBeInstanceOf(Date);
@@ -414,7 +459,7 @@ describe('sweepExpiredPendingUploads', () => {
   it('does nothing when no reservation has expired', async () => {
     const result = await sweepExpiredPendingUploads(24);
 
-    expect(result).toEqual({ deletedIds: [], errorIds: [] });
+    expect(result).toMatchObject({ deletedIds: [], errorIds: [] });
     expect(h.prisma.pendingUpload.updateMany).not.toHaveBeenCalled();
   });
 });
@@ -466,7 +511,7 @@ describe('finalize vs sweep race', () => {
 
     const result = await sweepExpiredPendingUploads(24);
 
-    expect(result).toEqual({ deletedIds: [], errorIds: [] });
+    expect(result).toMatchObject({ deletedIds: [], errorIds: [] });
     expect(h.storageDel).not.toHaveBeenCalled();
     expect(row?.sweptAt).toBeNull();
   });
@@ -479,7 +524,7 @@ describe('finalize vs sweep race', () => {
       return true;
     });
 
-    expect(await sweep).toEqual({ deletedIds: ['r'], errorIds: [] });
+    expect(await sweep).toMatchObject({ deletedIds: ['r'], errorIds: [] });
     expect(h.storageDel).toHaveBeenCalledWith('r');
   });
 

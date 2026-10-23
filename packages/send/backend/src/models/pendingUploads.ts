@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import storage from '../storage';
 import { UPLOAD_URL_TTL_SECONDS } from '../storage/s3b2';
 import { mapLimit } from '../utils/mapLimit';
@@ -25,6 +25,17 @@ export function getOrphanMinAgeHours(): number {
 
 export function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * HOUR_MS);
+}
+
+/** Per-run bound on the rows a cleanup step handles, and report-only mode. */
+export type CleanupOptions = { limit?: number; dryRun?: boolean };
+
+export function logDryRun(what: string, rows: { id: string }[]) {
+  if (rows.length === 0) return;
+  const ids = rows.map(({ id }) => id).join(', ');
+  console.log(
+    `[orphanCleanup] dry run: would delete ${rows.length} ${what}: ${ids}`
+  );
 }
 
 function urlExpiry(): Date {
@@ -126,6 +137,30 @@ export async function releasePendingUploads(ownerId: string, ids: string[]) {
   });
 }
 
+/**
+ * Marks the bytes stored under `id` as being deleted, so a finalize arriving
+ * later is refused: claims an expired reservation, or records a claimed one.
+ * False when a finalize holds an unexpired reservation for the id.
+ */
+export async function claimBytes(
+  db: Prisma.TransactionClient,
+  id: string,
+  ownerId: string
+): Promise<boolean> {
+  const sweptAt = new Date();
+  const existing = await db.pendingUpload.updateMany({
+    where: { id, sweptAt: null, expiresAt: { lt: sweptAt } },
+    data: { sweptAt },
+  });
+  if (existing.count > 0) return true;
+  const created = await db.pendingUpload.createMany({
+    data: [{ id, ownerId, expiresAt: new Date(0), sweptAt }],
+    skipDuplicates: true,
+  });
+  if (created.count > 0) return true;
+  return (await db.pendingUpload.count({ where: { id, sweptAt: null } })) === 0;
+}
+
 type SweepOutcome = 'deleted' | 'kept' | 'error';
 
 async function sweepOne(
@@ -147,28 +182,42 @@ async function sweepOne(
 }
 
 /**
- * Removes the storage objects of reservations that expired more than
- * `hoursSinceExpiry` ago without being finalized, then the reservations.
+ * Removes the storage objects of up to `limit` reservations that expired more
+ * than `hoursSinceExpiry` ago without being finalized, then the reservations.
  * A reservation whose Upload row exists only loses the record; its bytes stay.
+ * A dry run only reports them.
  */
 export async function sweepExpiredPendingUploads(
-  hoursSinceExpiry = getOrphanMinAgeHours()
+  hoursSinceExpiry = getOrphanMinAgeHours(),
+  { limit = CLEANUP_BATCH_SIZE, dryRun = false }: CleanupOptions = {}
 ) {
   const cutoff = hoursAgo(hoursSinceExpiry);
-  const expired = await prisma.pendingUpload.findMany({
-    where: { expiresAt: { lt: cutoff } },
-    select: { id: true, ownerId: true },
-    orderBy: { expiresAt: 'asc' },
-    take: CLEANUP_BATCH_SIZE,
-  });
+  const take = Math.min(limit, CLEANUP_BATCH_SIZE);
+  const expired =
+    take > 0
+      ? await prisma.pendingUpload.findMany({
+          where: { expiresAt: { lt: cutoff } },
+          select: { id: true, ownerId: true },
+          orderBy: { expiresAt: 'asc' },
+          take,
+        })
+      : [];
+  if (dryRun) {
+    logDryRun('expired reservations', expired);
+    return { found: expired.length, deletedIds: [], errorIds: [] };
+  }
 
   const outcomes = await mapLimit(expired, CLEANUP_CONCURRENCY, (row) =>
     sweepOne(row, cutoff).catch((e): SweepOutcome => {
-      console.error(`[sweepExpiredPendingUploads] ${row.id}`, e);
+      console.warn(`[sweepExpiredPendingUploads] ${row.id}`, e);
       return 'error';
     })
   );
   const idsWith = (outcome: SweepOutcome) =>
     expired.filter((_, i) => outcomes[i] === outcome).map(({ id }) => id);
-  return { deletedIds: idsWith('deleted'), errorIds: idsWith('error') };
+  return {
+    found: expired.length,
+    deletedIds: idsWith('deleted'),
+    errorIds: idsWith('error'),
+  };
 }

@@ -160,6 +160,27 @@ model PendingUpload {
   @@index([expiresAt])
 }
 
+// One run of the orphaned-storage sweep. Instances coordinate through these
+// rows and an advisory lock; `cursor` is the last bucket key handled, so the
+// next sweep resumes the listing there.
+model StorageSweep {
+  id            Int       @id @default(autoincrement())
+  instanceId    String
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  cursor        String?
+  dryRun        Boolean   @default(false)
+  capped        Boolean   @default(false)
+  rowOrphans    Int       @default(0)
+  bucketOrphans Int       @default(0)
+  deleted       Int       @default(0)
+  kept          Int       @default(0)
+  errors        Int       @default(0)
+  error         String?
+
+  @@index([startedAt])
+}
+
 model SuspiciousFile {
   id       String @id @unique @default(uuid()) @db.Uuid
   fileHash String @unique
