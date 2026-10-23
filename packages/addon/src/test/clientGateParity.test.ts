@@ -1,8 +1,10 @@
-// The popup and the management page must show the same block screen for the
-// same `settings` response: both bundles report appName 'addon' and render the
-// shared CompatibilityBoundary. Only the transport and page bodies are mocked.
+// Inside Thunderbird the popup, the management page and the web app opened in a
+// Thunderbird tab must show the same block screen: all report runtime
+// 'thunderbird' and render the shared CompatibilityBoundary. The fake server
+// answers by runtime, like the real one. Only transport and page bodies are mocked.
 import AddonManagementPage from '@addon/apps/AddonManagementPage.vue';
 import ExtensionPage from '@send-frontend/apps/send/ExtensionPage.vue';
+import SendPage from '@send-frontend/apps/send/SendPage.vue';
 import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,7 +30,10 @@ vi.mock('@send-frontend/stores/metrics', () => ({
   default: () => ({ initializeClientMetrics: vi.fn() }),
 }));
 vi.mock('@send-frontend/apps/common/mixins/metrics', () => ({
-  useMetricsUpdate: vi.fn(),
+  useMetricsUpdate: vi.fn(() => ({ updateMetricsIdentity: vi.fn() })),
+}));
+vi.mock('@send-frontend/apps/send/views/SendTemplate.vue', () => ({
+  default: { template: '<div><slot /></div>' },
 }));
 vi.mock('@send-frontend/lib/auth', () => ({
   useAuth: () => ({
@@ -47,17 +52,46 @@ const stubs = {
   AuthButtons: true,
   TbproLogo: true,
   VersionTag: true,
+  ModalsContainer: true,
+  RouterView: true,
   PrimaryButton: { template: '<button><slot /></button>' },
 };
+
+const THUNDERBIRD_UA =
+  'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Thunderbird/140.0';
+const FIREFOX_UA =
+  'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0';
+
+function useUserAgent(userAgent: string) {
+  vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+}
+
+// Mirrors the server: Thunderbird gets the add-on text, a browser the web text.
+function serveBlock(addon: object, web: object) {
+  settingsQuery.mockImplementation(async ({ runtime }) => ({
+    clientGate: {
+      action: 'block',
+      minVersion: '9.9.9',
+      ...(runtime === 'thunderbird' ? addon : web),
+    },
+  }));
+}
 
 async function blockText(page: unknown) {
   const wrapper = mountWithPlugins(page, { stubs });
   await flushPromises();
-  const text = (id: string) =>
-    wrapper.find(`[data-testid="${id}"]`).text().trim();
+  const find = (id: string) => wrapper.find(`[data-testid="${id}"]`);
+  const message = find('client-gate-message');
   return {
-    title: text('client-gate-title'),
-    message: text('client-gate-message'),
+    title: find('client-gate-title').text().trim(),
+    message: message.text().trim(),
+    bold: message.classes().includes('emphasis'),
+    button: find('client-gate-how-to-update').exists()
+      ? 'How to update'
+      : find('refresh-button').exists()
+        ? 'Reload'
+        : null,
+    versionLine: find('client-gate-versions').exists(),
   };
 }
 
@@ -71,6 +105,7 @@ describe('client gate parity across add-on pages', () => {
   });
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it.each([
@@ -95,19 +130,44 @@ describe('client gate parity across add-on pages', () => {
         message: 'This version of the Send add-on is no longer supported.',
       },
     },
-  ])('shows the same block title and message for $case', async (c) => {
-    settingsQuery.mockResolvedValue({
-      clientGate: { action: 'block', minVersion: '9.9.9', ...c.gate },
-    });
+  ])('shows the same Thunderbird block screen for $case', async (c) => {
+    useUserAgent(THUNDERBIRD_UA);
+    serveBlock(c.gate, { title: 'Web title', message: 'Web message' });
 
     const popup = await blockText(ExtensionPage);
     const management = await blockText(AddonManagementPage);
+    const webInThunderbird = await blockText(SendPage);
 
-    expect(popup).toEqual(c.expected);
+    expect(popup).toEqual({
+      ...c.expected,
+      bold: true,
+      button: 'How to update',
+      versionLine: false,
+    });
     expect(management).toEqual(popup);
-    expect(settingsQuery).toHaveBeenCalledTimes(2);
+    expect(webInThunderbird).toEqual(popup);
+    expect(settingsQuery).toHaveBeenCalledTimes(3);
     for (const [input] of settingsQuery.mock.calls) {
-      expect(input).toMatchObject({ appName: 'addon' });
+      expect(input).toMatchObject({ runtime: 'thunderbird' });
     }
+  });
+
+  it('shows the browser block screen to the web app outside Thunderbird', async () => {
+    useUserAgent(FIREFOX_UA);
+    serveBlock(
+      { title: 'Add-on title', message: 'Add-on message' },
+      { title: 'Web title', message: 'Web message' }
+    );
+
+    expect(await blockText(SendPage)).toEqual({
+      title: 'Web title',
+      message: 'Web message',
+      bold: true,
+      button: 'Reload',
+      versionLine: true,
+    });
+    expect(settingsQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ runtime: 'browser' })
+    );
   });
 });
