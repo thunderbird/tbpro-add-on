@@ -36,7 +36,8 @@ export type CleanupOptions = {
 };
 
 export function lastIdOf(rows: { id: string }[]): string | undefined {
-  return rows[rows.length - 1]?.id;
+  const [last] = rows.slice(-1);
+  return last?.id;
 }
 
 export function logDryRun(what: string, rows: { id: string }[]) {
