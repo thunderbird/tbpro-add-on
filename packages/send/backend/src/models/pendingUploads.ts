@@ -36,7 +36,7 @@ export type CleanupOptions = {
 };
 
 export function lastIdOf(rows: { id: string }[]): string | undefined {
-  return rows.slice(-1)[0]?.id;
+  return rows[rows.length - 1]?.id;
 }
 
 export function logDryRun(what: string, rows: { id: string }[]) {
@@ -68,15 +68,24 @@ export async function getReservedBytes(
   ownerId: string,
   excludeId?: string
 ): Promise<number> {
-  const exclude = excludeId ?? null;
-  const [{ reserved }] = await prisma.$queryRaw<{ reserved: bigint }[]>`
-    SELECT COALESCE(SUM(p."size"), 0)::bigint AS reserved
-    FROM "PendingUpload" p
-    WHERE p."ownerId" = ${ownerId}::uuid
-      AND p."expiresAt" > (NOW() AT TIME ZONE 'UTC')
-      AND (${exclude}::uuid IS NULL OR p."id" <> ${exclude}::uuid)
-      AND NOT EXISTS (SELECT 1 FROM "Upload" u WHERE u."id" = p."id")`;
-  return Number(reserved ?? 0);
+  const pending = await prisma.pendingUpload.findMany({
+    where: {
+      ownerId,
+      expiresAt: { gt: new Date() },
+      size: { not: null },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true, size: true },
+  });
+  if (pending.length === 0) return 0;
+  const finalized = await prisma.upload.findMany({
+    where: { id: { in: pending.map(({ id }) => id) } },
+    select: { id: true },
+  });
+  const finalizedIds = new Set(finalized.map(({ id }) => id));
+  return pending
+    .filter(({ id }) => !finalizedIds.has(id))
+    .reduce((sum, { size }) => sum + Number(size), 0);
 }
 
 /**

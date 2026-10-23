@@ -115,26 +115,25 @@ type RowPassStep = (
   lastId?: string;
 }>;
 
-const ROW_PASS_STEPS: RowPassStep[] = [
-  async (minAgeHours, options) => {
-    const r = await deleteOrphans(minAgeHours, options);
-    return {
-      found: r.found,
-      lastId: r.lastId,
-      deleted: r.deletedUploadIds.length,
-      errors: r.errorUploadIds.length,
-    };
-  },
-  async (minAgeHours, options) => {
-    const r = await sweepExpiredPendingUploads(minAgeHours, options);
-    return {
-      found: r.found,
-      lastId: r.lastId,
-      deleted: r.deletedIds.length,
-      errors: r.errorIds.length,
-    };
-  },
-];
+const orphanRowsStep: RowPassStep = async (minAgeHours, options) => {
+  const r = await deleteOrphans(minAgeHours, options);
+  return {
+    found: r.found,
+    lastId: r.lastId,
+    deleted: r.deletedUploadIds.length,
+    errors: r.errorUploadIds.length,
+  };
+};
+
+const expiredReservationsStep: RowPassStep = async (minAgeHours, options) => {
+  const r = await sweepExpiredPendingUploads(minAgeHours, options);
+  return {
+    found: r.found,
+    lastId: r.lastId,
+    deleted: r.deletedIds.length,
+    errors: r.errorIds.length,
+  };
+};
 
 type RowPassContext = {
   budget: number;
@@ -163,12 +162,11 @@ async function runStep(
   if (more) await runStep(step, ctx, totals, ctx.dryRun ? r.lastId : undefined);
 }
 
-// Item-less Upload rows, then expired reservations.
+// Item-less Upload rows, then expired reservations: in turn, sharing the budget.
 async function rowPass(ctx: RowPassContext): Promise<PassTotals> {
   const totals = emptyTotals();
-  for (const step of ROW_PASS_STEPS) {
-    await runStep(step, ctx, totals);
-  }
+  await runStep(orphanRowsStep, ctx, totals);
+  await runStep(expiredReservationsStep, ctx, totals);
   return totals;
 }
 

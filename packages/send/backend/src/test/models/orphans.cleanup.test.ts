@@ -206,20 +206,36 @@ describe('releasePendingUploads', () => {
 
 describe('quota counts reservations', () => {
   it('counts unexpired reservations of the owner not yet finalized', async () => {
-    h.prisma.$queryRaw.mockResolvedValue([{ reserved: 300n }]);
+    h.prisma.pendingUpload.findMany.mockResolvedValue([
+      { id: 'p-1', size: 300n },
+      { id: 'p-2', size: 200n },
+    ]);
+    // p-2 already has its Upload row, so it is counted as that row only.
+    h.prisma.upload.findMany.mockResolvedValue([{ id: 'p-2' }]);
 
     expect(await getReservedBytes('owner-1')).toBe(300);
-    const [strings, ...values] = h.prisma.$queryRaw.mock.calls[0];
-    const sql = strings.join('?');
-    expect(sql).toContain('"expiresAt" > (NOW()');
-    // A finalized reservation is counted as its Upload row only.
-    expect(sql).toContain('NOT EXISTS (SELECT 1 FROM "Upload"');
-    expect(values).toEqual(['owner-1', null, null]);
+    const { where } = h.prisma.pendingUpload.findMany.mock.calls[0][0];
+    expect(where).toMatchObject({
+      ownerId: 'owner-1',
+      expiresAt: { gt: expect.any(Date) },
+      size: { not: null },
+    });
+    expect(where.id).toBeUndefined();
+    expect(h.prisma.upload.findMany.mock.calls[0][0].where).toEqual({
+      id: { in: ['p-1', 'p-2'] },
+    });
+  });
+
+  it('skips the Upload lookup when nothing is reserved', async () => {
+    expect(await getReservedBytes('owner-1')).toBe(0);
+    expect(h.prisma.upload.findMany).not.toHaveBeenCalled();
   });
 
   it('adds reserved bytes to active storage', async () => {
     h.prisma.upload.aggregate.mockResolvedValue({ _sum: { size: 1000n } });
-    h.prisma.$queryRaw.mockResolvedValue([{ reserved: 500n }]);
+    h.prisma.pendingUpload.findMany.mockResolvedValue([
+      { id: 'p-1', size: 500n },
+    ]);
 
     expect(await getUsedStorage('owner-1')).toEqual({
       active: 1500,
@@ -230,8 +246,8 @@ describe('quota counts reservations', () => {
   it('leaves out the reservation being finalized', async () => {
     await getUsedStorage('owner-1', false, 'id-final');
 
-    const [, ...values] = h.prisma.$queryRaw.mock.calls[0];
-    expect(values).toEqual(['owner-1', 'id-final', 'id-final']);
+    const { where } = h.prisma.pendingUpload.findMany.mock.calls[0][0];
+    expect(where.id).toEqual({ not: 'id-final' });
   });
 });
 

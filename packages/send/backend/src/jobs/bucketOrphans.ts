@@ -114,7 +114,7 @@ async function sweepPage(
   const taken = candidates.slice(0, options.budget - totals.orphans);
   const cut = taken.length < candidates.length;
   // A capped page resumes after the last object acted on.
-  const lastTaken = taken.slice(-1)[0]?.key;
+  const lastTaken = taken[taken.length - 1]?.key;
   const scanned = cut
     ? objects.slice(0, objects.findIndex(({ key }) => key === lastTaken) + 1)
     : objects;
@@ -134,7 +134,11 @@ async function sweepPage(
     totals.kept += outcomes.filter((o) => o === 'kept').length;
     totals.errors += outcomes.filter((o) => o === 'error').length;
   }
-  return { scanned: scanned.length, cut, lastKey: scanned.slice(-1)[0]?.key };
+  return {
+    scanned: scanned.length,
+    cut,
+    lastKey: scanned[scanned.length - 1]?.key,
+  };
 }
 
 type BucketPassResult = PassTotals & { cursor: string | null; capped: boolean };
