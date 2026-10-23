@@ -386,6 +386,22 @@ describe('runStorageSweep: dry runs', () => {
     expect(h.sweepBucket.mock.calls[0][0].cursor).toBe('real-cursor');
   });
 
+  it('starts a real sweep from the beginning after only dry runs', async () => {
+    process.env.ORPHAN_CLEANUP_DRY_RUN = 'true';
+    h.sweepBucket.mockResolvedValueOnce({ ...BUCKET, cursor: 'dry-cursor' });
+    await runStorageSweep(true);
+    expect(h.sweeps[0]).toMatchObject({ dryRun: true, cursor: 'dry-cursor' });
+
+    delete process.env.ORPHAN_CLEANUP_DRY_RUN;
+    await runStorageSweep(true);
+
+    expect(h.sweepBucket.mock.calls[1][0]).toMatchObject({
+      dryRun: false,
+      cursor: null,
+    });
+    expect(h.sweeps[1]).toMatchObject({ dryRun: false });
+  });
+
   it('resumes a dry run from the last dry run cursor', async () => {
     process.env.ORPHAN_CLEANUP_DRY_RUN = 'true';
     h.sweeps.push({
@@ -401,32 +417,28 @@ describe('runStorageSweep: dry runs', () => {
     expect(h.sweepBucket.mock.calls[0][0].cursor).toBe('dry-cursor');
   });
 
-  it('pages the row pass by id in a dry run, like a real run would delete', async () => {
+  it('pages the row pass by id in a dry run and reports every batch', async () => {
     process.env.ORPHAN_CLEANUP_DRY_RUN = 'true';
+    const batch = (found: number, lastId: string) => ({
+      found,
+      lastId,
+      deletedUploadIds: [],
+      errorUploadIds: [],
+    });
     h.deleteOrphans
-      .mockResolvedValueOnce({
-        found: 1000,
-        lastId: 'id-1000',
-        deletedUploadIds: [],
-        errorUploadIds: [],
-      })
-      .mockResolvedValueOnce({
-        found: 5,
-        lastId: 'id-1005',
-        deletedUploadIds: [],
-        errorUploadIds: [],
-      });
+      .mockResolvedValueOnce(batch(1000, 'id-1000'))
+      .mockResolvedValueOnce(batch(1000, 'id-2000'))
+      .mockResolvedValueOnce(batch(5, 'id-2005'));
 
     const result = await runStorageSweep();
 
-    expect(h.deleteOrphans).toHaveBeenCalledTimes(2);
-    expect(h.deleteOrphans.mock.calls[0][1].after).toBeUndefined();
-    expect(h.deleteOrphans.mock.calls[1][1]).toMatchObject({
-      dryRun: true,
-      after: 'id-1000',
-    });
-    expect(result).toMatchObject({ rowOrphans: 1005 });
-    expect(h.sweepBucket.mock.calls[0][0].budget).toBe(10_000 - 1005);
+    expect(h.deleteOrphans).toHaveBeenCalledTimes(3);
+    expect(
+      h.deleteOrphans.mock.calls.map(([, options]) => options.after)
+    ).toEqual([undefined, 'id-1000', 'id-2000']);
+    expect(h.deleteOrphans.mock.calls[2][1]).toMatchObject({ dryRun: true });
+    expect(result).toMatchObject({ rowOrphans: 2005 });
+    expect(h.sweepBucket.mock.calls[0][0].budget).toBe(10_000 - 2005);
   });
 });
 
