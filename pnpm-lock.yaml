@@ -75,7 +75,7 @@ importers:
         version: 1.6.0
       '@sentry/vite-plugin':
         specifier: ^5.2.1
-        version: 5.2.1(rollup@4.60.2)
+        version: 5.2.1(encoding@0.1.13)(rollup@4.60.2)
       '@sentry/vue':
         specifier: ^8.55.2
         version: 8.55.2(pinia@2.3.1(typescript@5.9.3)(vue@3.5.43(typescript@5.9.3)))(vue@3.5.43(typescript@5.9.3))
@@ -120,7 +120,7 @@ importers:
         version: 6.1.1
       send-frontend:
         specifier: workspace:*
-        version: link:../send/frontend
+        version: file:packages/send/frontend(@trpc/server@11.17.0(typescript@5.9.3))(@vue/compiler-dom@3.5.43)(@vue/server-renderer@3.5.43)(@vueuse/core@10.11.1(vue@3.5.43(typescript@5.9.3)))(@vueuse/integrations@13.0.0(axios@1.20.0)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.43(typescript@5.9.3)))(encoding@0.1.13)(focus-trap@7.6.4)(rollup@4.60.2)(typescript@5.9.3)
       ua-parser-js:
         specifier: ^1.0.41
         version: 1.0.41
@@ -281,9 +281,6 @@ importers:
       vitest-localstorage-mock:
         specifier: ^0.0.1
         version: 0.0.1(vitest@4.1.11)
-      vitest-websocket-mock:
-        specifier: ^0.4.0
-        version: 0.4.0(vitest@4.1.11)
       vue-eslint-parser:
         specifier: ^10.4.0
         version: 10.4.0(eslint@10.2.1(jiti@1.21.7))
@@ -337,7 +334,7 @@ importers:
         version: 2.2.1
       axios:
         specifier: ^1.20.0
-        version: 1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+        version: 1.20.0
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -441,9 +438,6 @@ importers:
       '@types/swagger-ui-express':
         specifier: ^4.1.8
         version: 4.1.8
-      '@types/websocket':
-        specifier: npm:@types/ws@^8.18.1
-        version: '@types/ws@8.18.1'
       '@typescript-eslint/parser':
         specifier: ^8.59.1
         version: 8.59.1(eslint@10.2.1(jiti@1.21.7))(typescript@5.9.3)
@@ -527,7 +521,7 @@ importers:
         version: 1.6.0
       '@sentry/vite-plugin':
         specifier: ^5.2.1
-        version: 5.2.1(rollup@4.60.2)
+        version: 5.2.1(encoding@0.1.13)(rollup@4.60.2)
       '@sentry/vue':
         specifier: ^8.55.2
         version: 8.55.2(pinia@2.3.1(typescript@5.9.3)(vue@3.5.43(typescript@5.9.3)))(vue@3.5.43(typescript@5.9.3))
@@ -712,9 +706,6 @@ importers:
       vitest-localstorage-mock:
         specifier: ^0.0.1
         version: 0.0.1(vitest@4.1.11)
-      vitest-websocket-mock:
-        specifier: ^0.4.0
-        version: 0.4.0(vitest@4.1.11)
       vue-eslint-parser:
         specifier: ^10.4.0
         version: 10.4.0(eslint@10.2.1(jiti@1.21.7))
@@ -3214,9 +3205,6 @@ packages:
       vite:
         optional: true
 
-  '@vitest/pretty-format@2.1.9':
-    resolution: {integrity: sha512-KhRIdGV2U9HOUzxfiHmY8IFHTdqtOhIzCpd8WRdJiE7D/HUcZVD0EgQCVjm+Q9gkUXWgBvMmTtZgIG48wq7sOQ==}
-
   '@vitest/pretty-format@4.1.11':
     resolution: {integrity: sha512-yiZzPbGTS9Sr/JpFl8zHrcIkAofNbFV6k21vIgQN/cY/oxZeXhJv5sc/MBJ5jFKWmWs+oJHw0UXLZjmf931+Vw==}
 
@@ -3228,9 +3216,6 @@ packages:
 
   '@vitest/spy@4.1.11':
     resolution: {integrity: sha512-apNa/prQy2qCeywhnixOHPRCgGNhvg7T4Dapfl1GahLp/R+uhBm5cPyFoNVyqsNd2h1nJxL6BqqdIjiABL60YA==}
-
-  '@vitest/utils@2.1.9':
-    resolution: {integrity: sha512-v0psaMSkNJ3A2NMrUEHFRzJtDPFn+/VWZ5WxImB21T9fjucJRmS7xCS3ppEnARb9y11OAzaD+P2Ps+b+BGX5iQ==}
 
   '@vitest/utils@4.1.11':
     resolution: {integrity: sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==}
@@ -5920,9 +5905,6 @@ packages:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
 
-  loupe@3.2.1:
-    resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
-
   lowercase-keys@2.0.0:
     resolution: {integrity: sha512-tqNXrS78oMOE73NMxK4EMLQsQowWf8jKooH9g7xPavRT706R6bkQJ6DY2Te7QukaZsulxa30wQ7bk0pm4XiHmA==}
     engines: {node: '>=8'}
@@ -7098,6 +7080,10 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  send-frontend@file:packages/send/frontend:
+    resolution: {directory: packages/send/frontend, type: directory}
+    engines: {node: '>=22.11.0'}
+
   send@0.19.2:
     resolution: {integrity: sha512-VMbMxbDeehAxpOtWJXlcUS5E8iXh6QmN+BkRX1GARS3wRaXEEgzCcB10gTQazO42tpNIya8xIyNx8fll1OFPrg==}
     engines: {node: '>= 0.8.0'}
@@ -7505,10 +7491,6 @@ packages:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
 
-  tinyrainbow@1.2.0:
-    resolution: {integrity: sha512-weEDEq7Z5eTHPDh4xjX789+fHfF+P8boiFB+0vbWzpbnbsEr/GRaohi/uMKxg8RZMXnl1ItAi/IUHWMsjDV7kQ==}
-    engines: {node: '>=14.0.0'}
-
   tinyrainbow@3.1.0:
     resolution: {integrity: sha512-Bf+ILmBgretUrdJxzXM0SgXLZ3XfiaUuOj/IKQHuTXip+05Xn+uyEYdVg0kYDipTBcLrCVyUzAPz7QmArb0mmw==}
     engines: {node: '>=14.0.0'}
@@ -7832,11 +7814,6 @@ packages:
     resolution: {integrity: sha512-jt8/URLM+aJWObVPWxDZwt/ZSl/JOKafYuITozDVoFHlgl99jjZ7Wdvsu8ryalFChlgsg1lOBicTQsHXJCpXuw==}
     peerDependencies:
       vitest: '*'
-
-  vitest-websocket-mock@0.4.0:
-    resolution: {integrity: sha512-tGnOwE2nC8jfioQXDrX+lZ8EVrF+IO2NVqe1vV9h945W/hlR0S6ZYbMqCJGG3Nyd//c5XSe1IGLD2ZgE2D1I7Q==}
-    peerDependencies:
-      vitest: '>=2'
 
   vitest@4.1.11:
     resolution: {integrity: sha512-fhACrNXUidIbGSBr5FlbuBkO7VWC1ZyLl0DO4CU2DrQoAPxX84Ysxs+HeGQpii5lZWV1Q4gBZTTu49mF+A6Edw==}
@@ -8711,7 +8688,7 @@ snapshots:
       '@babel/types': 7.29.8
       '@jridgewell/remapping': 2.3.5
       convert-source-map: 2.0.0
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -8783,7 +8760,7 @@ snapshots:
       '@babel/parser': 7.29.9
       '@babel/template': 7.29.7
       '@babel/types': 7.29.8
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -8978,7 +8955,7 @@ snapshots:
   '@eslint/config-array@0.23.5':
     dependencies:
       '@eslint/object-schema': 3.0.5
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       minimatch: 10.2.6
     transitivePeerDependencies:
       - supports-color
@@ -9359,7 +9336,7 @@ snapshots:
 
   '@nichoth/backblaze-b2@1.7.1':
     dependencies:
-      axios: 1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+      axios: 1.20.0
       axios-retry: 3.9.1
       lodash: 4.18.1
     transitivePeerDependencies:
@@ -10257,7 +10234,7 @@ snapshots:
       '@sentry-internal/replay-canvas': 8.55.2
       '@sentry/core': 8.55.2
 
-  '@sentry/bundler-plugin-core@5.2.1':
+  '@sentry/bundler-plugin-core@5.2.1(encoding@0.1.13)':
     dependencies:
       '@babel/core': 7.29.7
       '@sentry/babel-plugin-component-annotate': 5.2.1
@@ -10296,7 +10273,7 @@ snapshots:
 
   '@sentry/cli@2.58.5(encoding@0.1.13)':
     dependencies:
-      https-proxy-agent: 5.0.1(supports-color@7.2.0)
+      https-proxy-agent: 5.0.1
       node-fetch: 2.7.0(encoding@0.1.13)
       progress: 2.0.3
       proxy-from-env: 1.1.0
@@ -10375,9 +10352,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@sentry/rollup-plugin@5.2.1(rollup@4.60.2)':
+  '@sentry/rollup-plugin@5.2.1(encoding@0.1.13)(rollup@4.60.2)':
     dependencies:
-      '@sentry/bundler-plugin-core': 5.2.1
+      '@sentry/bundler-plugin-core': 5.2.1(encoding@0.1.13)
       magic-string: 0.30.21
     optionalDependencies:
       rollup: 4.60.2
@@ -10385,10 +10362,10 @@ snapshots:
       - encoding
       - supports-color
 
-  '@sentry/vite-plugin@5.2.1(rollup@4.60.2)':
+  '@sentry/vite-plugin@5.2.1(encoding@0.1.13)(rollup@4.60.2)':
     dependencies:
-      '@sentry/bundler-plugin-core': 5.2.1
-      '@sentry/rollup-plugin': 5.2.1(rollup@4.60.2)
+      '@sentry/bundler-plugin-core': 5.2.1(encoding@0.1.13)
+      '@sentry/rollup-plugin': 5.2.1(encoding@0.1.13)(rollup@4.60.2)
     transitivePeerDependencies:
       - encoding
       - rollup
@@ -11164,7 +11141,7 @@ snapshots:
       '@typescript-eslint/types': 8.59.1
       '@typescript-eslint/typescript-estree': 8.59.1(typescript@5.9.3)
       '@typescript-eslint/visitor-keys': 8.59.1
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       eslint: 10.2.1(jiti@1.21.7)
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -11174,7 +11151,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/tsconfig-utils': 8.59.1(typescript@5.9.3)
       '@typescript-eslint/types': 8.60.1
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
@@ -11193,7 +11170,7 @@ snapshots:
       '@typescript-eslint/types': 8.59.1
       '@typescript-eslint/typescript-estree': 8.59.1(typescript@5.9.3)
       '@typescript-eslint/utils': 8.59.1(eslint@10.2.1(jiti@1.21.7))(typescript@5.9.3)
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       eslint: 10.2.1(jiti@1.21.7)
       ts-api-utils: 2.5.0(typescript@5.9.3)
       typescript: 5.9.3
@@ -11210,7 +11187,7 @@ snapshots:
       '@typescript-eslint/tsconfig-utils': 8.59.1(typescript@5.9.3)
       '@typescript-eslint/types': 8.59.1
       '@typescript-eslint/visitor-keys': 8.59.1
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       minimatch: 10.2.6
       semver: 7.8.5
       tinyglobby: 0.2.17
@@ -11282,10 +11259,6 @@ snapshots:
       msw: 2.14.2(@types/node@25.6.0)(typescript@5.9.3)
       vite: 8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.44.0)(tsx@4.23.1)(yaml@2.9.0)
 
-  '@vitest/pretty-format@2.1.9':
-    dependencies:
-      tinyrainbow: 1.2.0
-
   '@vitest/pretty-format@4.1.11':
     dependencies:
       tinyrainbow: 3.1.0
@@ -11303,12 +11276,6 @@ snapshots:
       pathe: 2.0.3
 
   '@vitest/spy@4.1.11': {}
-
-  '@vitest/utils@2.1.9':
-    dependencies:
-      '@vitest/pretty-format': 2.1.9
-      loupe: 3.2.1
-      tinyrainbow: 1.2.0
 
   '@vitest/utils@4.1.11':
     dependencies:
@@ -11404,7 +11371,7 @@ snapshots:
       '@vueuse/shared': 13.0.0(vue@3.5.43(typescript@5.9.3))
       vue: 3.5.43(typescript@5.9.3)
     optionalDependencies:
-      axios: 1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+      axios: 1.20.0
       focus-trap: 7.6.4
       jwt-decode: 4.0.0
 
@@ -11455,6 +11422,12 @@ snapshots:
       acorn: 8.19.0
 
   acorn@8.19.0: {}
+
+  agent-base@6.0.2:
+    dependencies:
+      debug: 4.4.3(supports-color@5.5.0)
+    transitivePeerDependencies:
+      - supports-color
 
   agent-base@6.0.2(supports-color@7.2.0):
     dependencies:
@@ -11657,6 +11630,16 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.2
       is-retry-allowed: 2.2.0
+
+  axios@1.20.0:
+    dependencies:
+      follow-redirects: 1.16.0
+      form-data: 4.0.6
+      https-proxy-agent: 5.0.1
+      proxy-from-env: 2.1.0
+    transitivePeerDependencies:
+      - debug
+      - supports-color
 
   axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0):
     dependencies:
@@ -12679,7 +12662,7 @@ snapshots:
       '@es-joy/resolve.exports': 1.2.0
       are-docs-informative: 0.0.2
       comment-parser: 1.4.7
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       escape-string-regexp: 4.0.0
       eslint: 10.2.1(jiti@1.21.7)
       espree: 11.2.0
@@ -12800,7 +12783,7 @@ snapshots:
       '@types/estree': 1.0.9
       ajv: 6.15.0
       cross-spawn: 7.0.6
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       escape-string-regexp: 4.0.0
       eslint-scope: 9.1.2
       eslint-visitor-keys: 5.0.1
@@ -12914,7 +12897,7 @@ snapshots:
 
   express-rate-limit@8.6.2(express@4.22.1):
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       express: 4.22.1
       ip-address: 10.7.3
     transitivePeerDependencies:
@@ -13078,6 +13061,8 @@ snapshots:
   focus-trap@7.6.4:
     dependencies:
       tabbable: 6.5.0
+
+  follow-redirects@1.16.0: {}
 
   follow-redirects@1.16.0(debug@4.4.3(supports-color@7.2.0)):
     optionalDependencies:
@@ -13553,7 +13538,7 @@ snapshots:
   http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.4
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -13576,6 +13561,13 @@ snapshots:
       quick-lru: 5.1.1
       resolve-alpn: 1.2.1
 
+  https-proxy-agent@5.0.1:
+    dependencies:
+      agent-base: 6.0.2
+      debug: 4.4.3(supports-color@5.5.0)
+    transitivePeerDependencies:
+      - supports-color
+
   https-proxy-agent@5.0.1(supports-color@7.2.0):
     dependencies:
       agent-base: 6.0.2(supports-color@7.2.0)
@@ -13586,7 +13578,7 @@ snapshots:
   https-proxy-agent@7.0.6:
     dependencies:
       agent-base: 7.1.4
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -13702,7 +13694,7 @@ snapshots:
     dependencies:
       '@ioredis/commands': 1.10.0
       cluster-key-slot: 1.1.1
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       denque: 2.1.0
       redis-errors: 1.2.0
       redis-parser: 3.0.0
@@ -14332,7 +14324,7 @@ snapshots:
     dependencies:
       chalk: 5.6.2
       commander: 13.1.0
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       execa: 8.0.1
       lilconfig: 3.1.3
       listr2: 8.3.3
@@ -14415,8 +14407,6 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
-
-  loupe@3.2.1: {}
 
   lowercase-keys@2.0.0: {}
 
@@ -15358,7 +15348,7 @@ snapshots:
 
   posthog-node@4.18.0:
     dependencies:
-      axios: 1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+      axios: 1.20.0
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -15584,7 +15574,7 @@ snapshots:
 
   require-in-the-middle@7.5.2:
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       module-details-from-path: 1.0.4
       resolve: 1.22.12
     transitivePeerDependencies:
@@ -15799,6 +15789,44 @@ snapshots:
   semver@7.8.4: {}
 
   semver@7.8.5: {}
+
+  send-frontend@file:packages/send/frontend(@trpc/server@11.17.0(typescript@5.9.3))(@vue/compiler-dom@3.5.43)(@vue/server-renderer@3.5.43)(@vueuse/core@10.11.1(vue@3.5.43(typescript@5.9.3)))(@vueuse/integrations@13.0.0(axios@1.20.0)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.43(typescript@5.9.3)))(encoding@0.1.13)(focus-trap@7.6.4)(rollup@4.60.2)(typescript@5.9.3):
+    dependencies:
+      '@scure/bip39': 1.6.0
+      '@sentry/vite-plugin': 5.2.1(encoding@0.1.13)(rollup@4.60.2)
+      '@sentry/vue': 8.55.2(pinia@2.3.1(typescript@5.9.3)(vue@3.5.43(typescript@5.9.3)))(vue@3.5.43(typescript@5.9.3))
+      '@tabler/icons-vue': 2.47.0(vue@3.5.43(typescript@5.9.3))
+      '@tanstack/vue-query': 5.100.6(vue@3.5.43(typescript@5.9.3))
+      '@thunderbirdops/services-ui': 1.7.0(@vue/compiler-dom@3.5.43)(@vue/server-renderer@3.5.43)(typescript@5.9.3)
+      '@trpc/client': 11.17.0(@trpc/server@11.17.0(typescript@5.9.3))(typescript@5.9.3)
+      '@types/ua-parser-js': 0.7.39
+      dayjs: 1.11.20
+      floating-vue: 5.2.2(vue@3.5.43(typescript@5.9.3))
+      get-random-values: 3.0.0
+      install: 0.13.0
+      jszip: 3.10.1
+      oidc-client-ts: 3.5.0
+      pinia: 2.3.1(typescript@5.9.3)(vue@3.5.43(typescript@5.9.3))
+      posthog-js: 1.372.5
+      pretty-bytes: 6.1.1
+      ua-parser-js: 1.0.41
+      vue: 3.5.43(typescript@5.9.3)
+      vue-final-modal: 4.5.5(@vueuse/core@10.11.1(vue@3.5.43(typescript@5.9.3)))(@vueuse/integrations@13.0.0(axios@1.20.0)(focus-trap@7.6.4)(jwt-decode@4.0.0)(vue@3.5.43(typescript@5.9.3)))(focus-trap@7.6.4)(vue@3.5.43(typescript@5.9.3))
+      vue-i18n: 11.4.9(vue@3.5.43(typescript@5.9.3))
+      vue-router: 4.6.4(vue@3.5.43(typescript@5.9.3))
+    transitivePeerDependencies:
+      - '@nuxt/kit'
+      - '@trpc/server'
+      - '@vue/compiler-dom'
+      - '@vue/composition-api'
+      - '@vue/server-renderer'
+      - '@vueuse/core'
+      - '@vueuse/integrations'
+      - encoding
+      - focus-trap
+      - rollup
+      - supports-color
+      - typescript
 
   send@0.19.2:
     dependencies:
@@ -16172,7 +16200,7 @@ snapshots:
     dependencies:
       component-emitter: 1.3.1
       cookiejar: 2.1.4
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       fast-safe-stringify: 2.1.1
       form-data: 4.0.6
       formidable: 3.5.4
@@ -16364,8 +16392,6 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-
-  tinyrainbow@1.2.0: {}
 
   tinyrainbow@3.1.0: {}
 
@@ -16688,12 +16714,6 @@ snapshots:
     dependencies:
       vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.11)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.14.2(@types/node@25.6.0)(typescript@5.9.3))(vite@8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.44.0)(tsx@4.23.1)(yaml@2.9.0))
 
-  vitest-websocket-mock@0.4.0(vitest@4.1.11):
-    dependencies:
-      '@vitest/utils': 2.1.9
-      mock-socket: 9.3.1
-      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.11)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.14.2(@types/node@25.6.0)(typescript@5.9.3))(vite@8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.44.0)(tsx@4.23.1)(yaml@2.9.0))
-
   vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.17)(@vitest/coverage-v8@4.1.11)(happy-dom@20.9.0)(jsdom@24.1.3)(msw@2.14.2(@types/node@22.19.17)(typescript@5.9.3))(vite@8.0.16(@types/node@22.19.17)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.44.0)(tsx@4.23.1)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.11
@@ -16775,7 +16795,7 @@ snapshots:
 
   vue-eslint-parser@10.4.0(eslint@10.2.1(jiti@1.21.7)):
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3(supports-color@5.5.0)
       eslint: 10.2.1(jiti@1.21.7)
       eslint-scope: 9.1.2
       eslint-visitor-keys: 5.0.1
