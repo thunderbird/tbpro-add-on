@@ -13,9 +13,9 @@ Both are end-to-end encrypted.
 
 ## Tooling
 
-- Node.js 22.x (`engines` requires `>=22.11.0`)
-- `pnpm` (v10.6.4 or later) — this is a pnpm workspace, so `npm` and `yarn` will not resolve it
-- `bun` — a few package scripts run through it
+- Node.js 22.x, `pnpm` and `bun` — exact versions are pinned in the repo-root `mise.toml`, and
+  `mise install` sets all three up. This is a pnpm workspace, so `npm` and `yarn` will not
+  resolve it; `bun` only runs a few package scripts.
 - `docker` with the `compose` plugin
 
 ## Quick start

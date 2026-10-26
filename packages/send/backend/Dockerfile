@@ -2,7 +2,7 @@
 # We use these to add contitional build differences.
 ARG BUILD_ENV=production
 
-FROM node:22.14.0 AS base
+FROM node:22.23.4 AS base
 
 # Update packages
 RUN apt update -y && apt upgrade -y

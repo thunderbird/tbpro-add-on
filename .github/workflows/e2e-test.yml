@@ -214,7 +214,7 @@ jobs:
           rm -f /etc/apt/apt.conf.d/docker-clean
           pnpm --filter send-suite-e2e exec playwright install-deps
 
-      # Pin the Node version used to install/run Playwright (see packages/send/e2e/.tool-versions).
+      # Pin the Node version used to install/run Playwright (see mise.toml at the repo root).
       # The container's default Node (24.x) hits a stream regression (nodejs/node#63487) that
       # hangs `playwright install` during zip extraction; Node 22 LTS avoids it. We keep
       # @playwright/test at 1.59.1 for BrowserStack Automate compatibility.
