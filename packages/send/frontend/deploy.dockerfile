@@ -20,7 +20,7 @@
 FROM node:22.14.0 AS build
 
 WORKDIR /app
-RUN npm install -g pnpm@10
+RUN npm install -g --ignore-scripts pnpm@12.16.1
 
 # Dependency manifests first so a source-only change does not bust the install
 # layer. Every workspace member's package.json is needed: --frozen-lockfile

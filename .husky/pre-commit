@@ -21,11 +21,11 @@ if git diff --cached --name-only | grep './manifest\.json'; then
   fi
 fi
 cd ..
-pnpx lint-staged
+pnpm exec lint-staged
 cd ..
 
 # Run lint-staged on backend
-cd backend && pnpx lint-staged
+cd backend && pnpm exec lint-staged
 # Type check the backend, but do NOT block the commit on pre-existing errors in
 # unrelated/unchanged files. Warns instead of failing so unrelated commits pass.
 pnpm typecheck:precommit

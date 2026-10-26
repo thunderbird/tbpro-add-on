@@ -26,13 +26,14 @@
     "vite": "^8.3.4",
     "vitest": "^4.1.12"
   },
+  "packageManager": "pnpm@12.16.1",
   "engines": {
     "bun": "1.1.13",
     "node": ">=22.11.0",
-    "pnpm": ">=10.6.4"
+    "pnpm": ">=12.16.1"
   },
   "volta": {
-    "node": "22.14.0"
+    "node": "22.23.4"
   },
   "dependencies": {
     "@tanstack/vue-query": "^5.100.6",

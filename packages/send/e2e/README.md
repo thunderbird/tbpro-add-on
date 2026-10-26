@@ -77,9 +77,9 @@ lerna run test:e2e:headless --scope=send-suite-e2e
 #### Toolchain note
 
 `playwright install` has to run under Node 22 — on Node 24 it hangs while unpacking the browser
-archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)). `.tool-versions` in
-this folder pins Node for [mise](https://mise.jdx.dev/), which CI uses; if your default Node is
-already 22.x you don't need mise at all.
+archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)). The `mise.toml` at the repo
+root pins Node for [mise](https://mise.jdx.dev/), which CI uses; if your default Node is already
+22.x you don't need mise at all.
 
 #### Reading the results
 
