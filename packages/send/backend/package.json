@@ -10,7 +10,7 @@
     "bootstrap": "pnpm i --filter send-backend && pnpm db:generate && pnpm build:image",
     "build": "pnpm exec tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "build:image": "./scripts/build.sh",
-    "ci:validate": "pnpm run lint:all; pnpm run test",
+    "ci:validate": "pnpm run lint:all && pnpm run test",
     "db:browse": "prisma studio",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
