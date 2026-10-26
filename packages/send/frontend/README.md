@@ -30,7 +30,7 @@ so local development falls through to `.env`; if you put values in it, they win.
 Run `pnpm i && pnpm build`
 
 This generates the extension file at `packages/send`, named after the version in this package's
-`package.json` with the dots replaced by hyphens — at 8.0.19, `send-suite-8-0-19.xpi`. Additionally, it will generate a `dist` folder with the extension files, a `dist-web` folder with the web files.
+`package.json` with the dots replaced by hyphens — at 8.0.6, `send-suite-8-0-6.xpi`. Additionally, it will generate a `dist` folder with the extension files, a `dist-web` folder with the web files.
 
 That `send-suite-*.xpi` is the **legacy standalone add-on, and it does not work** — its background
 script fails to build and the packaged add-on is missing it, so there is no reason to load it. The

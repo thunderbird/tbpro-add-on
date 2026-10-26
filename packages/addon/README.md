@@ -14,7 +14,7 @@ lerna run build:dev --scope=addon
 ```
 
 This outputs an xpi file at `packages/addon`, named after the version in `package.json` with the
-dots replaced by hyphens — at 2.0.24, `tbpro-addon-2-0-24.xpi`.
+dots replaced by hyphens — at 2.0.11, `tbpro-addon-2-0-11.xpi`.
 
 You can use this xpi file to install the addon in your Thunderbird for testing: **Add-ons and
 Themes** → gear icon → **Debug Add-ons** → **Load Temporary Add-on…**, then pick the xpi.

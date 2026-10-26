@@ -1,8 +1,8 @@
 ## Thunderbird Send
 
-Thunderbird Send is an end-to-end encrypted file sharing solution, allowing you to safely encrypt, password-protect and send files through our [website](https://send.tb.pro/) or from inside Thunderbird Desktop, where it ships as part of the built-in Thunderbird Pro add-on (built from [`packages/addon`](../addon/README.md)).
+Thunderbird Send is an end-to-end encrypted file sharing solution, allowing you to safely encrypt, password-protect and send files through our [website](https://send.tb.pro/) or from inside Thunderbird Desktop, where it ships as part of the built-in Thundermail add-on (built from [`packages/addon`](../addon/README.md)).
 
-Send is part of [Thunderbird Pro](https://tb.pro/) — or feel free to follow the guide below to run a local or self-hosted version for yourself!
+Send is part of [Thundermail](https://thundermail.com/) — or feel free to follow the guide below to run a local or self-hosted version for yourself!
 
 ## Getting started
 

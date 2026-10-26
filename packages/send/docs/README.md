@@ -3,7 +3,7 @@
 Two applications that extend the functionality of Thunderbird:
 
 - Send extension: email attachments using the CloudFile API. It ships as part of the built-in
-  Thunderbird Pro add-on, built from `packages/addon`
+  Thundermail add-on, built from `packages/addon`
 - Send web: file storage and sharing
 
 Both are end-to-end encrypted.
@@ -83,4 +83,4 @@ way someone else gets access.
   (#913, not yet implemented)
 - [TelemetryOptOut.md](./TelemetryOptOut.md) — how Sentry and PostHog honour Thunderbird's
   telemetry pref
-- [Lockbox.md](./Lockbox.md) — the original setup notes, kept for the database commands
+- [Send.md](./Send.md) — the original setup notes, kept for the database commands

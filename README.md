@@ -7,7 +7,7 @@ The packages inside this monorepo are:
 - `send-frontend`: The frontend code for the Thunderbird Send webapp. It is a Vite app that uses Vite as a build tool.
 - `send-backend`: The backend code for the Thunderbird Send webapp. It is a Node.js app that uses Express as a web server and postgres as a database.
 - `send-suite-e2e`: The Playwright E2E suites (`packages/send/e2e`) — one set runs against a local dev stack, the other against production from BrowserStack.
-- `addon`: The Thunderbird Pro add-on code. This puts everything together and outputs a single xpi (addon package). It depends on `send-frontend` to build.
+- `addon`: The Thundermail add-on code. This puts everything together and outputs a single xpi (addon package). It depends on `send-frontend` to build.
 
 This includes the Thunderbird Send webapp and the Thunderbird Send extension.
 This monorepo is managed using [Lerna](https://lerna.js.org/) and [pnpm](https://pnpm.io/).
@@ -140,7 +140,7 @@ If for some reason you're confident on a change and would like to skip pre-commi
 
 ### Authentication
 
-Users sign in with their Thunderbird Pro account. The frontend runs an OIDC flow against the
+Users sign in with their Thundermail account. The frontend runs an OIDC flow against the
 Thunderbird Accounts identity provider (Keycloak — `VITE_OIDC_ROOT_URL` / `VITE_OIDC_CLIENT_ID`)
 and hands the resulting bearer token to the backend, which introspects it
 (`OIDC_TOKEN_INTROSPECTION_URL`), finds or creates the matching Send user, and issues its own jwt

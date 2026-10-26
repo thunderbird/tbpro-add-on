@@ -2,10 +2,10 @@
 
 ## Overview
 
-Lockbox is the working name for what shipped as Thunderbird Send; this document uses the two interchangeably. It is a web application and Thunderbird Extension that gives paid users the ability to:
+Thunderbird Send is a web application and Thunderbird Extension that gives paid users the ability to:
 
-- store and manage encrypted files in Lockbox's cloud storage
-- create encrypted email attachments in Thunderbird, either uploaded from their filesystem or directly from Lockbox
+- store and manage encrypted files in Send's cloud storage
+- create encrypted email attachments in Thunderbird, either uploaded from their filesystem or directly from Send
 - send end-to-end encrypted files to other paid users or to anonymous users
 - protect access to files with a password
 - create access links that expire after a period of time
@@ -14,7 +14,7 @@ Lockbox is the working name for what shipped as Thunderbird Send; this document 
 
 A previous Mozilla product, Firefox Send allowed anonymous users encrypt and share files. It was shut down due to abuse by cybercriminals and a lack of reporting mechanisms.
 
-Lockbox intends to address these issues and expand to use cases beyond simple file sharing.
+Send intends to address these issues and expand to use cases beyond simple file sharing.
 
 ## Goals
 
@@ -73,7 +73,7 @@ graph LR
 The `Client` is one of two frontend User Interfaces:
 
 - The Web interface is a Vue.js application running in any modern browser.
-- The Thunderbird Extension is the same Vue.js application, packaged into the built-in ("system") Thunderbird Pro add-on that ships inside Thunderbird (`packages/addon`).
+- The Thunderbird Extension is the same Vue.js application, packaged into the built-in ("system") Thundermail add-on that ships inside Thunderbird (`packages/addon`).
 
 Thunderbird Accounts (an OIDC identity provider, Keycloak) serves as the authentication mechanism. The Client signs in there and presents the resulting bearer token to the Backend, which introspects it, finds or creates the matching User, and from then on tracks the session with its own JWT cookies. A local stack can also be run with password login enabled, which skips the identity provider; nothing below depends on which of the two was used.
 
@@ -125,7 +125,7 @@ The Client does not share Containers with other Users directly: it has no way to
 
 ## File Upload and Encryption
 
-When adding a file to a User's Lockbox, the Client handles key generation and storage, while the Backend acts as an API for the database and object storage layers.
+When adding a file to a User's Send storage, the Client handles key generation and storage, while the Backend acts as an API for the database and object storage layers.
 
 ### Uploading to a new Container
 
@@ -214,7 +214,7 @@ A User following an Access Link does the same, except the Items come from `GET /
 
 ## Sharing Folder Access
 
-Folder access is shared by generating an Access Link and sending it through another means of communication (e.g., via email). Users cannot invite other Users to become members of their folders.
+Folder access is shared by generating an Access Link and sending it through another means of communication (e.g., via email).
 
 ### Access Links
 
@@ -249,4 +249,4 @@ The full URL is not stored in the backend (TODO: reconsider this, if we're going
 
 When the URL for an AccessLink has a `hash`, the Client automatically puts this in the password field and submits the form.
 
-The reason for this is to ensure that all Content stored in Lockbox is end-to-end encrypted, even if the user has no intention of "protecting" it with a password.
+The reason for this is to ensure that all Content stored in Send is end-to-end encrypted, even if the user has no intention of "protecting" it with a password.

@@ -1,8 +1,8 @@
 # Setup
 
-Lockbox was the working name for what shipped as Thunderbird Send: a web application and Thunderbird extension built with Node.js and Vue.js.
+Thunderbird Send is a web application and Thunderbird extension built with Node.js and Vue.js.
 
-It provides end-to-end encrypted cloud file management and sharing. Lockbox integrates with Thunderbird, letting the user manage and share files from the embedded Lockbox UI. In addition, the extension facilitates encrypted attachments via the CloudFile API.
+It provides end-to-end encrypted cloud file management and sharing. Send integrates with Thunderbird, letting the user manage and share files from the embedded Send UI. In addition, the extension facilitates encrypted attachments via the CloudFile API.
 
 > These are the original setup notes. The maintained setup instructions are in the
 > [repo README](../../../README.md) and the [Send README](../README.md); what is still worth
