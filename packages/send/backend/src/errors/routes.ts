@@ -85,9 +85,19 @@ export const SHARING_ERRORS = {
     statusCode: 404,
     message: 'Could not find access link.',
   },
-  CHALLENGE_FAILED: {
-    statusCode: 403,
-    message: 'Failed access link challenge.',
+  CHALLENGE_NOT_PROCESSED: {
+    statusCode: 500,
+    message: 'Could not process access link challenge.',
+  },
+  CHALLENGE_INCORRECT: {
+    statusCode: 401,
+    code: 'INCORRECT_PASSWORD',
+    message: 'Incorrect password.',
+  },
+  ACCESS_LINK_LOCKED: {
+    statusCode: 423,
+    code: 'ACCESS_LINK_LOCKED',
+    message: 'This link has been locked after too many incorrect attempts.',
   },
   CHALLENGE_NOT_FOUND: {
     statusCode: 404,
@@ -170,6 +180,12 @@ const REQ_VAR_STATUS_CODE = 'REQ_VAR_STATUS_CODE';
 const REQ_VAR_USER_MESSAGE = 'REQ_VAR_USER_MESSAGE';
 const REQ_VAR_OVERRIDES = 'REQ_VAR_OVERRIDES';
 
+// Sets the status and message the global error handler responds with.
+export function setErrorInfo(req: Request, err: ErrorRespInfo) {
+  req[REQ_VAR_STATUS_CODE] = err.statusCode;
+  req[REQ_VAR_USER_MESSAGE] = err.message;
+}
+
 // Returns a middleware function that adds error information to the request object.
 // `overrides` maps a model error type (the message of a thrown `BaseError`)
 // to the response that should be sent for it instead of `err`.
@@ -177,10 +193,8 @@ export function addErrorHandling(
   err: ErrorRespInfo,
   overrides?: Record<string, ErrorRespInfo>
 ): RequestHandler {
-  const { statusCode, message } = err;
   return (req, res, next) => {
-    req[REQ_VAR_STATUS_CODE] = statusCode;
-    req[REQ_VAR_USER_MESSAGE] = message;
+    setErrorInfo(req, err);
     req[REQ_VAR_OVERRIDES] = overrides;
     next();
   };

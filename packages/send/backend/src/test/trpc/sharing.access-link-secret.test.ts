@@ -6,7 +6,6 @@ const { sharingModel } = vi.hoisted(() => ({
   sharingModel: {
     deleteAccessLink: vi.fn(),
     getAccessLinkRetryCount: vi.fn(),
-    incrementAccessLinkRetryCount: vi.fn(),
   },
 }));
 

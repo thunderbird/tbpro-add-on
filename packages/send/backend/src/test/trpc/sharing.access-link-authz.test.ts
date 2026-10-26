@@ -14,7 +14,6 @@ const { containersModel } = vi.hoisted(() => ({
 vi.mock('@send-backend/models/sharing', () => ({
   deleteAccessLink: vi.fn(),
   getAccessLinkRetryCount: vi.fn(),
-  incrementAccessLinkRetryCount: vi.fn(),
 }));
 vi.mock('../../models/containers', () => containersModel);
 vi.mock('../../trpc/middlewares', () => ({

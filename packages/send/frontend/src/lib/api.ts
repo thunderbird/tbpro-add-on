@@ -248,7 +248,7 @@ export class ApiConnection {
         console.error('Forced-logout handling failed:', error);
         return null;
       }
-    } else if (resp.status === 401) {
+    } else if (resp.status === 401 && !options?.skipAuthRetry) {
       // If we're using OIDC and get 401, try to refresh the token
       if (requestHeaders['Authorization']) {
         try {
@@ -366,4 +366,9 @@ type Options = {
    * cause that would otherwise be discarded.
    */
   onFailure?: (failure: ApiCallFailure) => void;
+  /**
+   * Treat a 401 as the endpoint's answer instead of an expired session: no
+   * token refresh and no retry. For public endpoints that use 401 themselves.
+   */
+  skipAuthRetry?: boolean;
 };

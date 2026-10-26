@@ -23,7 +23,6 @@ vi.mock('@prisma/client', () => ({
 vi.mock('@send-backend/models/sharing', () => ({
   deleteAccessLink: vi.fn(),
   getAccessLinkRetryCount: vi.fn(),
-  incrementAccessLinkRetryCount: vi.fn(),
   updateAccessLink: vi.fn(),
 }));
 

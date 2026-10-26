@@ -484,3 +484,41 @@ describe('ApiConnection.call — x-logout session recovery (#960/#974)', () => {
     expect(result).toEqual({ ok: true });
   });
 });
+
+describe('ApiConnection.call — skipAuthRetry', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    mockGetAccessToken.mockReset().mockResolvedValue(null);
+    mockRefreshToken.mockReset().mockResolvedValue(null);
+  });
+
+  it('reports a 401 once without refreshing or replaying the request', async () => {
+    mockGetAccessToken.mockResolvedValueOnce('token');
+    const fetchFn = mockFetch(
+      () =>
+        ({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          headers: { get: () => null },
+          text: async () => '{"code":"INCORRECT_PASSWORD"}',
+        }) as unknown as Response
+    );
+
+    const api = new ApiConnection(SERVER);
+    let failure: ApiCallFailure | undefined;
+    const result = await api.call(
+      'sharing/link-1/challenge',
+      { challengePlaintext: '' },
+      'POST',
+      {},
+      { skipAuthRetry: true, onFailure: (f) => (failure = f) }
+    );
+
+    expect(result).toBeNull();
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+    expect(failure).toMatchObject({ kind: 'http', status: 401 });
+  });
+});
