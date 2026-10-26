@@ -13,30 +13,43 @@ This monorepo is managed using [Lerna](https://lerna.js.org/) and [pnpm](https:/
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/en/download/) 22.x — `engines` requires `>=22.11.0`. Stay on 22: on Node 24 `playwright install` hangs unpacking the browser archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)).
-- [pnpm](https://pnpm.io/installation) (v10.6.4 or later)
-- [bun](https://bun.sh/) (v1.1.13) — a handful of package scripts run through it (`compare_envs`, the frontend and add-on build scripts), so the repo needs it even though it is not the package manager
+- [Node.js](https://nodejs.org/en/download/), [pnpm](https://pnpm.io/installation) and
+  [bun](https://bun.sh/). The exact versions live in [`mise.toml`](./mise.toml) at the repo root,
+  and [mise](https://mise.jdx.dev/) installs all three for you (see below).
 - [Docker](https://www.docker.com/get-started/) with the [Compose](https://docs.docker.com/compose/install/) plugin
 - `rsync`, `jq` and `zip` — the backend's Docker build context and the add-on/frontend builds shell out to these (preinstalled on macOS and most Linux distros)
 
 ## Environment setup
 
-Install the package managers `bun` and `pnpm` globally. You can do this using npm:
+### Toolchain: Node, pnpm and bun
+
+The recommended way to get the right versions of Node, pnpm and bun is [mise](https://mise.jdx.dev/).
+Once it is hooked into your shell, `cd`-ing into this repo makes the pinned versions from
+`mise.toml` active automatically, and any other project you work on keeps its own.
 
 ```sh
-npm install -g bun
-npm install -g pnpm
-# lerna is a dev dependency of the repo, so `pnpm exec lerna ...` always works. Installing it
-# globally just lets you type the bare `lerna ...` commands used throughout these docs.
+# 1. Install mise (or: brew install mise / your package manager — https://mise.jdx.dev/installing-mise.html)
+curl https://mise.run | sh
+
+# 2. Hook it into your shell, then open a new shell
+#    bash:
+echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc
+#    fish:
+echo '~/.local/bin/mise activate fish | source' > ~/.config/fish/conf.d/mise.fish
+#    (zsh and others: https://mise.jdx.dev/installing-mise.html#shells)
+
+# 3. From the repo root, install the pinned toolchain
+mise install
+```
+
+`lerna` is a dev dependency of the repo, so `pnpm exec lerna ...` always works. Installing it
+globally just lets you type the bare `lerna ...` commands used throughout these docs:
+
+```sh
 pnpm install -g lerna
 ```
 
-Or alternatively
-
-```sh
-curl -fsSL https://bun.sh/install | bash
-curl -fsSL https://get.pnpm.io/install.sh | sh -
-```
+### Dependencies and the Send stack
 
 To get started, you need to install the dependencies for the monorepo. You can do this by running the following command from the root of the monorepo:
 

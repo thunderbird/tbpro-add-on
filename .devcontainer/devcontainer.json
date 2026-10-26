@@ -16,7 +16,12 @@
     "ghcr.io/devcontainers/features/aws-cli:1": {},
     "ghcr.io/guiyomh/features/vim:0": {},
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      // Keep in step with mise.toml. Unset, this installs the current LTS (24), which breaks
+      // `playwright install` (nodejs/node#63487) and drifts the pnpm version from the lockfile.
+      "version": "22",
+      "pnpmVersion": "10.34.7"
+    },
     "ghcr.io/devcontainers-extra/features/mise:1": {},
     "ghcr.io/devcontainers-extra/features/lerna-npm:1": {},
     "ghcr.io/shyim/devcontainers-features/bun:0": {},
