@@ -43,6 +43,10 @@ export const TOTAL_STORAGE_LIMIT = ONE_TB_IN_BYTES;
 // JWT expiry
 export const JWT_EXPIRY_IN_MILLISECONDS = ONE_HOUR;
 export const JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS = ONE_WEEK;
+// jsonwebtoken expresses `exp`/`iat`, `expiresIn` and `maxAge` in seconds.
+export const JWT_EXPIRY_IN_SECONDS = JWT_EXPIRY_IN_MILLISECONDS / 1000;
+export const JWT_REFRESH_TOKEN_EXPIRY_IN_SECONDS =
+  JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS * 24 * 60 * 60;
 
 // Determines how many times a file can be attempted to be downloaded with the wrong password before it gets locked
 export const MAX_ACCESS_LINK_RETRIES = 5;
