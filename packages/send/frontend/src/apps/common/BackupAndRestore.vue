@@ -5,10 +5,10 @@ import { LoadingSkeleton } from '@thunderbirdops/services-ui';
 import { useBackupAndRestore } from '../send/composables/useBackupAndRestore';
 import AccessLocked from '../send/views/AccessLocked.vue';
 import BackupKeys from '../send/views/BackupKeys.vue';
-import ResetEncryptionKey from '../send/views/ResetEncryptionKey.vue';
+import ResetKeyModal from '../send/views/ResetKeyModal.vue';
 import RestoreKeys from '../send/views/RestoreKeys.vue';
 import SecurityAndPrivacy from '../send/views/SecurityAndPrivacy.vue';
-import { watchEffect } from 'vue';
+import { onUnmounted, watchEffect } from 'vue';
 
 const { logOutAuth } = useAuth();
 
@@ -27,10 +27,17 @@ const {
   shouldUnlock,
   shouldReset,
   justReset,
-  resetKeys,
+  beginReset,
+  confirmReset,
+  cancelReset,
+  canRegenerate,
+  savingBackup,
   words,
   keysInLocalStorage,
 } = useBackupAndRestore();
+
+// Leaving before "Download key and reset" keeps the old key (#1355).
+onUnmounted(cancelReset);
 
 watchEffect(() => {
   if (keysInLocalStorage.value) {
@@ -79,24 +86,25 @@ watchEffect(() => {
             :restore-from-backup="restoreFromBackup"
             :set-passphrase="setPassphrase"
             :message="errorMessage"
-            :on-reset="
-              () => {
-                shouldReset = true;
-              }
-            "
+            :on-reset="beginReset"
             @cancel="() => (shouldUnlock = false)"
           />
           <!-- RESET -->
-          <ResetEncryptionKey
+          <ResetKeyModal
             v-if="shouldReset"
-            @confirm="resetKeys"
-            @cancel="() => (shouldReset = false)"
+            :words="words"
+            :regenerate-passphrase="regeneratePassphrase"
+            :can-regenerate="canRegenerate"
+            :error-message="errorMessage"
+            :saving="savingBackup"
+            @confirm="confirmReset"
+            @cancel="cancelReset"
           />
 
           <!-- GOOD TO GO -->
           <SecurityAndPrivacy
             v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
-            :reset-keys="resetKeys"
+            :begin-reset="beginReset"
           />
         </section>
       </div>

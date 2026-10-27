@@ -10,7 +10,7 @@ type Props = {
   regeneratePassphrase: () => void;
   canRegenerate?: boolean;
   label?: string;
-  inputTestId?: string;
+  inputTestId: string;
 };
 
 const {

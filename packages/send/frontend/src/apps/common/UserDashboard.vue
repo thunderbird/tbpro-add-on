@@ -2,7 +2,7 @@
 import { useAuth } from '@send-frontend/lib/auth';
 import { useAuthStore } from '@send-frontend/stores';
 import useUserStore from '@send-frontend/stores/user-store';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useBackupAndRestore } from '../send/composables/useBackupAndRestore';
 import AccessLocked from '../send/views/AccessLocked.vue';
 import BackupKeys from '../send/views/BackupKeys.vue';
@@ -33,14 +33,9 @@ const {
   makeBackup,
   shouldUnlock,
   justReset,
-  resetKeys,
-  abandonPendingReset,
   routeToKeyRestore,
   words,
 } = useBackupAndRestore();
-
-// Navigating away before "Download and Continue" keeps the old key (#1355).
-onUnmounted(abandonPendingReset);
 </script>
 <template>
   <section class="content-layout">
@@ -64,7 +59,7 @@ onUnmounted(abandonPendingReset);
       "
       :on-recover="routeToKeyRestore"
     />
-    <!-- FIRST TIME USERS + post-reset (save your new recovery key, #1116) -->
+    <!-- FIRST TIME USERS + a reset whose new key could not be saved (#1116) -->
     <BackupKeys
       v-if="backupData === 'SHOULD_ENCRYPT_AND_BACKUP' || justReset"
       :make-backup="makeBackup"
@@ -82,12 +77,8 @@ onUnmounted(abandonPendingReset);
         <SecurityAndPrivacyV2
           v-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldUnlock"
           :on-recover="routeToKeyRestore"
-          :on-reset="resetKeys"
         />
-        <ManageEncryptionKeys
-          v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
-          :reset-keys="resetKeys"
-        />
+        <ManageEncryptionKeys v-if="backupData === 'KEYS_IN_LOCAL_STORAGE'" />
       </div>
       <div class="right-column alignleft">
         <SupportBox />
