@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCSP,
+  DEV_BACKEND_HOST,
   getCspConfig,
   getCSPForEnvironment,
+  getDevBackendUrl,
   getEnvironmentConfig,
 } from './csp.config.js';
 
@@ -117,6 +119,44 @@ describe('CSP Configuration', () => {
       );
     });
 
+    it('adds the docker backend origin in development only, overridable by env', () => {
+      expect(getDevBackendUrl({})).toBe(`http://${DEV_BACKEND_HOST}`);
+      expect(getDevBackendUrl(testEnv)).toBe('http://backend:8080');
+      expect(
+        getEnvironmentConfig('development', testEnv)['connect-src']
+      ).toContain('http://backend:8080');
+
+      const overridden = {
+        ...testEnv,
+        VITE_DEV_BACKEND_URL: 'http://host.docker.internal:9090',
+      };
+      const devSrc = getEnvironmentConfig('development', overridden)[
+        'connect-src'
+      ];
+      expect(devSrc).toContain('http://host.docker.internal:9090');
+      expect(devSrc).not.toContain('http://backend:8080');
+      const prodSrc = getEnvironmentConfig('production', overridden)[
+        'connect-src'
+      ];
+      expect(prodSrc).not.toContain('http://host.docker.internal:9090');
+      expect(prodSrc).not.toContain('http://backend:8080');
+    });
+
+    it('keeps the production backend even when the dev override points at the same URL', () => {
+      const sameHost = {
+        ...testEnv,
+        VITE_DEV_BACKEND_URL: testEnv.VITE_SEND_SERVER_URL,
+      };
+      const prodSrc = getEnvironmentConfig('production', sameHost)[
+        'connect-src'
+      ];
+      expect(prodSrc).toContain('https://api.example.com');
+      expect(prodSrc).toContain('wss://api.example.com');
+      expect(getCSPForEnvironment('production', sameHost)).toBe(
+        getCSPForEnvironment('production', testEnv)
+      );
+    });
+
     it('filters localhost sources in production', () => {
       const config = getEnvironmentConfig('production', testEnv);
       const localhostSources = config['connect-src'].filter(
@@ -130,6 +170,25 @@ describe('CSP Configuration', () => {
   });
 
   describe('getCSPForEnvironment', () => {
+    // Pinned production output. The dev-only backend origin must never change
+    // what production serves, so this is the exact string from before the dev
+    // origin became configurable (#1308).
+    it('produces byte-identical production CSP strings', () => {
+      expect(getCSPForEnvironment('production', testEnv)).toBe(
+        "default-src 'self'; script-src 'self' blob: https://us-assets.i.posthog.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; connect-src 'self' https://api.example.com wss://api.example.com https://posthog.example.com/* https://us-assets.i.posthog.com https://*.backblazeb2.com https://*.sentry.io https://*.posthog.com/* https://us.i.posthog.com https://auth.example.com"
+      );
+      expect(getCSPForEnvironment('production', {})).toBe(
+        "default-src 'self'; script-src 'self' blob: https://us-assets.i.posthog.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; connect-src 'self' https://us-assets.i.posthog.com https://*.backblazeb2.com https://*.posthog.com/* https://us.i.posthog.com"
+      );
+      // An env override for the dev origin is invisible in production.
+      expect(
+        getCSPForEnvironment('production', {
+          ...testEnv,
+          VITE_DEV_BACKEND_URL: 'http://host.docker.internal:9090',
+        })
+      ).toBe(getCSPForEnvironment('production', testEnv));
+    });
+
     it('returns valid CSP strings', () => {
       const devCSP = getCSPForEnvironment('development', testEnv);
       const prodCSP = getCSPForEnvironment('production', testEnv);
