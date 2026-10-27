@@ -5,6 +5,8 @@ import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { useAuth } from '@send-frontend/lib/auth';
 import AuthButtons from '@send-frontend/lib/auth/AuthButtons.vue';
 import { useAuthStore } from '@send-frontend/stores';
+import CompatibilityBanner from '@send-frontend/apps/common/CompatibilityBanner.vue';
+import CompatibilityBoundary from '@send-frontend/apps/common/CompatibilityBoundary.vue';
 import VersionTag from '@send-frontend/apps/common/VersionTag.vue';
 import AdminPage from './AdminPage.vue';
 
@@ -27,20 +29,23 @@ async function openLoginPage() {
 <template>
   <div class="content">
     <TbproLogo />
-    <WithLoader :is-loading="isLoadingAuth">
-      <div v-if="!isLoggedIn" class="login-section">
-        <p class="description">
-          Sign in with Thundermail to use Send or restore access to your
-          encrypted files.
-        </p>
-        <AuthButtons
-          :is-extension="true"
-          :login-to-oidc="_loginToOIDC"
-          :login-to-oidc-for-extension="openLoginPage"
-        />
-      </div>
-      <AdminPage v-else />
-    </WithLoader>
+    <CompatibilityBoundary>
+      <CompatibilityBanner />
+      <WithLoader :is-loading="isLoadingAuth">
+        <div v-if="!isLoggedIn" class="login-section">
+          <p class="description">
+            Sign in with Thundermail to use Send or restore access to your
+            encrypted files.
+          </p>
+          <AuthButtons
+            :is-extension="true"
+            :login-to-oidc="_loginToOIDC"
+            :login-to-oidc-for-extension="openLoginPage"
+          />
+        </div>
+        <AdminPage v-else />
+      </WithLoader>
+    </CompatibilityBoundary>
 
     <VersionTag />
   </div>

@@ -1,12 +1,15 @@
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
 import { useFolderStore } from '@send-frontend/stores';
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 
 export const useNavigation = () => {
   const { isRunningInsideThunderbird } = useIsExtension();
-  const { rootFolderId } = useFolderStore();
+  const folderStore = useFolderStore();
+  // Reactive: the nav renders before the default folder id has loaded.
   const rootFolderIdValue = computed(() =>
-    rootFolderId ? `/send/folder/${rootFolderId}` : '/send'
+    folderStore.rootFolderId
+      ? `/send/folder/${folderStore.rootFolderId}`
+      : '/send'
   );
 
   const settingsLink = {
@@ -21,16 +24,12 @@ export const useNavigation = () => {
     label: 'Dashboard',
   };
 
-  const filesLink = {
-    path: rootFolderIdValue.value,
+  const filesLink = reactive({
+    path: rootFolderIdValue,
     label: 'Manage Files',
-  };
+  });
 
-  const navLinkPaths = [
-    dashboardLink,
-    filesLink,
-    settingsLink,
-  ];
+  const navLinkPaths = [dashboardLink, filesLink, settingsLink];
 
   return {
     navLinkPaths,

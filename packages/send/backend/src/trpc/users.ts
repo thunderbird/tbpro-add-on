@@ -7,7 +7,11 @@ import {
   getContainersOwnedByUser,
   getUploadsOwnedByUser,
 } from '@send-backend/models';
-import { checkCompatibility } from '@send-backend/utils/compatibility';
+import {
+  CLIENT_RUNTIMES,
+  getClientGate,
+  toLegacyCompatibilityResult,
+} from '@send-backend/utils/compatibility';
 import { TRPCError } from '@trpc/server';
 import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -81,6 +85,14 @@ export const usersRouter = router({
    *             version:
    *               type: string
    *               description: Client version to check compatibility against
+   *             appName:
+   *               type: string
+   *               nullable: true
+   *               description: Client build (`addon` or the web app)
+   *             runtime:
+   *               type: string
+   *               enum: [thunderbird, browser]
+   *               description: Where the client runs; omitted or unknown means browser
    *     responses:
    *       200:
    *         description: API settings and compatibility information
@@ -104,34 +116,41 @@ export const usersRouter = router({
    *                 clientVersion:
    *                   type: string
    *                   description: Client version that was checked
+   *                 clientGate:
+   *                   type: object
+   *                   description: Server-controlled update gate for this client
+   *                   properties:
+   *                     action:
+   *                       type: string
+   *                       enum: [none, banner, block]
+   *                     minVersion:
+   *                       type: string
+   *                       nullable: true
+   *                     title:
+   *                       type: string
+   *                       nullable: true
+   *                     message:
+   *                       type: string
+   *                       nullable: true
    */
   settings: trpc
     .input(
       z.object({
         version: z.string(),
         appName: z.string().nullable(),
+        // Optional for clients that predate it; an unknown value is ignored.
+        runtime: z.enum(CLIENT_RUNTIMES).default('browser').catch('browser'),
       })
     )
-    .query(async ({ input: { version: clientVersion, appName } }) => {
+    .query(({ input: { version: clientVersion, appName, runtime } }) => {
+      const clientGate = getClientGate(clientVersion, appName, runtime);
+      // Clients without `clientGate` read only `compatibility.result`.
       const compatibility = {
-        resolvedCompatibility: false,
-        result: 'UNRESOLVED',
+        resolvedCompatibility: true,
+        result: toLegacyCompatibilityResult(clientGate.action),
       };
 
-      const compatibilityResult = checkCompatibility(clientVersion, VERSION!);
-
-      compatibility.result = compatibilityResult;
-      compatibility.resolvedCompatibility = true;
-
-      // When users use the tbpro addon, we don't want to check compatibility
-      if (appName && appName.includes('addon')) {
-        // If the client name includes 'addon', we don't want to check compatibility
-        compatibility.result = 'COMPATIBLE';
-        compatibility.resolvedCompatibility = true;
-      }
-
-      const apiVersion = VERSION;
-      return { apiVersion, compatibility, clientVersion };
+      return { apiVersion: VERSION, compatibility, clientVersion, clientGate };
     }),
 
   /**
