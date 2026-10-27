@@ -185,10 +185,10 @@ router.get(
  *         description: Failed to create container
  */
 // Create a container
-// When creating a subfolder in Lockbox, the front-end will pass in the parent folder id
+// When creating a subfolder, the front-end will pass in the parent folder id
 // as `req.body.parentId`. But, to use `getPermissions`, we need to rename that property
 // to `req.body.containerId`.
-// `renameBodyProperty` is a no-op when creating a top-level folder in Lockbox.
+// `renameBodyProperty` is a no-op when creating a top-level folder
 router.post(
   '/',
   requireJWT,
