@@ -3,7 +3,7 @@ import CopyIcon from '@send-frontend/apps/common/CopyIcon.vue';
 import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
 import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
 import RefreshIcon from '@send-frontend/apps/common/RefreshIcon.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 type Props = {
   words?: string[];
@@ -18,6 +18,8 @@ const {
   canRegenerate = true,
   label = 'Encryption Key',
 } = defineProps<Props>();
+
+const inputId = useId();
 
 const isVisible = ref(true);
 
@@ -38,11 +40,12 @@ const copyToClipboard = async () => {
 
 <template>
   <div class="input-group">
-    <label class="input-label">
+    <label class="input-label" :for="inputId">
       {{ label }} <span class="required">*</span>
     </label>
     <div class="input-container">
       <input
+        :id="inputId"
         :value="
           isVisible ? passphraseDisplay : '●'.repeat(passphraseDisplay.length)
         "
