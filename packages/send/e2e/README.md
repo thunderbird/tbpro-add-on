@@ -93,14 +93,11 @@ failure you see is the real one, and a retry re-runs the chain from registration
 way a retry can pass. The config already reports with `line`, so the console output is in execution
 order — read it top-down rather than the html report's list.
 
-The share-link steps used to be the flaky part (#930): the download and delete steps looked links
-up by index over a query with no ordering, so a stale or missing link cascaded into unrelated
-failures. They now go through `requireShareLink(name)`, which throws an error naming the missing
-link instead, and the map is reset before the file-workflow block — so a failure there points at
-the step that didn't produce the link, not at the one that consumed it. A failure anywhere is
-worth investigating — `Register and log in` usually means the backend's CORS origins don't include
-the frontend's URL, and `Upload workflow` usually means `S3_PUBLIC_ENDPOINT` doesn't match the port
-MinIO is published on.
+Known intermittent failure modes:
+
+* An `Register and log in` faiure usually means the backend's CORS origins don't include
+the frontend's URL
+* An `Upload workflow` failure usually means `S3_PUBLIC_ENDPOINT` doesn't match the port MinIO is published on.
 
 ### Clean up
 
