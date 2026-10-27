@@ -88,8 +88,7 @@ export async function log_out_restore_keys({ page }: PlaywrightProps) {
 
 export async function reset_keys({ page }: PlaywrightProps) {
   const {
-    backupKeysButtonOverlay,
-    passphraseInputOverlay,
+    resetKeyPassphrase,
     showReset,
     understandCheckbox,
     dangerButton,
@@ -113,24 +112,15 @@ export async function reset_keys({ page }: PlaywrightProps) {
 
   page.on("dialog", (dialog) => dialog.accept());
 
-  // Reset access -> create a new encryption key.
+  // Reset Encryption Key: one modal shows the new key and swaps it in on
+  // "Download key and reset" (write-new-then-swap, #1116), in-session (#1355).
   await showReset.click();
-  await understandCheckbox.click();
-  await dangerButton.click();
-
-  // Issue #1116: the safe reset performs a write-new-then-swap on the server
-  // (it never nulls the recovery blob), then keeps the user in-session and
-  // presents the BackupKeys overlay so they can SAVE their freshly generated
-  // recovery key. We no longer log out / log back in first: doing so used to
-  // rely on the server having NO backup (the old destructive wipe), which is
-  // exactly the permanent-lockout hazard #1116 fixed.
-  await page.waitForLoadState("networkidle");
-
-  // Back up (save) the new recovery key from the overlay.
-  const passPhrase = await passphraseInputOverlay.inputValue();
+  const passPhrase = await resetKeyPassphrase.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");
   playwrightConfig.recoveredPassphrase = passPhrase;
-  await backupKeysButtonOverlay.click();
+  await understandCheckbox.click();
+  await dangerButton.click();
+  await expect(dangerButton).toBeHidden({ timeout: 30_000 });
 
   // Follow the in-app link (no reload) to the new default folder (#1354).
   await expect(profileButton).not.toHaveAttribute("href", new RegExp(oldFolderId));
@@ -149,12 +139,12 @@ export async function reset_keys({ page }: PlaywrightProps) {
 }
 
 /**
- * #1355: leaving the reset overlay before "Download and Continue" must keep the
+ * #1355: leaving the reset modal before "Download key and reset" must keep the
  * old key working everywhere; completing it swaps the key exactly once.
  * Uses its own account so it does not depend on what `reset_keys` installed.
  */
 export async function reset_keys_abandoned_then_completed({ page }: PlaywrightProps) {
-  const { passphraseInputOverlay, backupKeysButtonOverlay, showReset, understandCheckbox, dangerButton } =
+  const { resetKeyPassphrase, backupKeysButtonOverlay, showReset, understandCheckbox, dangerButton } =
     dashboardLocators(page);
   const account = { email: `reset-abandon${Date.now()}@tb.pro`, password };
 
@@ -172,25 +162,24 @@ export async function reset_keys_abandoned_then_completed({ page }: PlaywrightPr
   const startReset = async () => {
     await page.goto("/send/security-and-privacy");
     await showReset.click();
-    await understandCheckbox.click();
-    await dangerButton.click();
-    const phrase = await passphraseInputOverlay.inputValue();
+    const phrase = await resetKeyPassphrase.inputValue();
     if (!phrase) throw new Error("Passphrase not found");
     return phrase;
   };
 
-  // Abandon: confirm the reset, then reload instead of saving.
+  // Abandon: open the reset modal, then reload instead of confirming.
   await startReset();
   await page.reload();
   await page.waitForLoadState("networkidle");
-  await expect(passphraseInputOverlay).toBeHidden();
+  await expect(resetKeyPassphrase).toBeHidden();
   expect(swaps).toBe(0);
   await in_fresh_context(page, (fresh) => login_and_restore(fresh, account, oldPhrase));
 
-  // Complete: the overlay closes only once the swap and backup have finished.
+  // Complete: the modal closes only once the swap and backup have finished.
   const newPhrase = await startReset();
-  await backupKeysButtonOverlay.click();
-  await expect(backupKeysButtonOverlay).toBeHidden({ timeout: 30_000 });
+  await understandCheckbox.click();
+  await dangerButton.click();
+  await expect(dangerButton).toBeHidden({ timeout: 30_000 });
   expect(swaps).toBe(1);
 
   await in_fresh_context(page, (fresh) => login_and_restore(fresh, account, newPhrase, oldPhrase));
