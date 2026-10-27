@@ -31,6 +31,7 @@ import {
   deleteBucketOrphans,
   runSweepIfLeader,
   startOrphanSweepSchedule,
+  sweepOptionsFromEnv,
 } from '../../jobs/orphanSweep';
 
 const OLD = new Date('2026-10-01T00:00:00Z');
@@ -184,6 +185,27 @@ describe('runSweepIfLeader', () => {
       h.tx
     );
     vi.unstubAllEnvs();
+  });
+});
+
+describe('sweepOptionsFromEnv', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('defaults to a dry run when ORPHAN_SWEEP_DRY_RUN is unset', () => {
+    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', '');
+    expect(sweepOptionsFromEnv().dryRun).toBe(true);
+  });
+
+  it('stays a dry run for anything other than "false"', () => {
+    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'yes');
+    expect(sweepOptionsFromEnv().dryRun).toBe(true);
+  });
+
+  it('deletes only when ORPHAN_SWEEP_DRY_RUN=false', () => {
+    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'false');
+    expect(sweepOptionsFromEnv().dryRun).toBe(false);
+    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', ' FALSE ');
+    expect(sweepOptionsFromEnv().dryRun).toBe(false);
   });
 });
 

@@ -104,7 +104,9 @@ export function sweepOptionsFromEnv(now = Date.now()): SweepOptions {
   const minAgeHours = envNumber('ORPHAN_MIN_AGE_HOURS', 24);
   return {
     olderThan: new Date(now - minAgeHours * HOUR_MS),
-    dryRun: process.env.ORPHAN_SWEEP_DRY_RUN === 'true',
+    // Dry run unless explicitly disabled, so a deploy without the variable
+    // deletes nothing. Set ORPHAN_SWEEP_DRY_RUN=false once the counts look right.
+    dryRun: process.env.ORPHAN_SWEEP_DRY_RUN?.trim().toLowerCase() !== 'false',
     maxDeletes: Math.floor(envNumber('ORPHAN_SWEEP_MAX_DELETES', 10000)),
     deadline: now + SWEEP_DEADLINE_MS,
   };
