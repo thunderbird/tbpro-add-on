@@ -124,7 +124,7 @@ router.post(
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           message: 'Invalid request body',
-          errors: error.errors,
+          errors: error.issues,
         });
       }
       console.error(error);
@@ -192,9 +192,12 @@ router.post(
 // Both schemas share the same `size` constraints; they differ only in whether
 // `size` is required (web client) or optional (add-on lenient path). Derive the
 // lenient one from the strict field so the constraint/message stay in lockstep.
-// The strict field keeps its custom `required_error` for the missing-size case.
+// The strict field keeps its custom message for the missing-size case.
 const strictSizeField = z
-  .number({ required_error: 'size is required' })
+  .number({
+    error: (issue) =>
+      issue.input === undefined ? 'size is required' : undefined,
+  })
   .int()
   .positive('size must be greater than 0');
 const signedSchemaStrict = z.object({
@@ -315,7 +318,7 @@ router.post('/cleanup', requireJWT, async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         message: 'Invalid request body',
-        errors: error.errors,
+        errors: error.issues,
       });
     }
     console.error('Error cleaning up uploads:', error);
@@ -670,7 +673,7 @@ router.post('/items', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         message: 'Invalid request body',
-        errors: error.errors,
+        errors: error.issues,
       });
     }
     console.error('Error fetching upload parts:', error);
