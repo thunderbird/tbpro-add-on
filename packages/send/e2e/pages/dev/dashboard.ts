@@ -112,8 +112,7 @@ export async function reset_keys({ page }: PlaywrightProps) {
 
   page.on("dialog", (dialog) => dialog.accept());
 
-  // Reset Encryption Key: one modal shows the new key and swaps it in on
-  // "Download key and reset" (write-new-then-swap, #1116), in-session (#1355).
+  // One modal shows the new key and swaps it in on "Download key and reset" (#1355).
   await showReset.click();
   const passPhrase = await resetKeyPassphrase.inputValue();
   if (!passPhrase) throw new Error("Passphrase not found");

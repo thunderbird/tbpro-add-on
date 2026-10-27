@@ -69,7 +69,7 @@ export const useBackupAndRestore = () => {
   });
 
   onMounted(() => {
-    // The reset overlay replaces a (possibly locked) key; don't bounce it.
+    // The post-reset BackupKeys fallback holds the new key; don't bounce it.
     if (keychain.locked && !justReset.value) {
       router.push('/passphrase-changed');
       return;
@@ -141,9 +141,9 @@ export const useBackupAndRestore = () => {
 
   /**
    * "Download key and reset": swaps the key in, saves and downloads it, then
-   * goes to the dashboard. A rejected swap keeps the modal up with the old key.
-   * If the swap went through but saving failed, the forced BackupKeys overlay
-   * (justReset) takes over so the installed phrase can't be lost.
+   * goes to the dashboard. A rejected swap keeps the modal up with the old key;
+   * a swap that went through but couldn't be saved hands over to the BackupKeys
+   * fallback (justReset).
    */
   async function confirmReset() {
     if (!pendingReset.value || savingBackup.value) return;
@@ -161,7 +161,8 @@ export const useBackupAndRestore = () => {
 
   /**
    * Swaps the pending reset key in on the server (write-new-then-swap, #1116),
-   * then adopts it locally. Returns false when the key could not be adopted.
+   * then adopts it locally. Returns false if the server rejected the swap or
+   * the new key could not be adopted locally.
    */
   async function swapInResetKey(passphrase: string): Promise<boolean> {
     let keypair: JwkKeyPair;
