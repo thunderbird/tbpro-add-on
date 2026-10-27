@@ -5,6 +5,18 @@ Status: **Draft for review** — design-first deliverable for
 No production code changes accompany this note; it exists to choose an
 approach before implementation.
 
+> **Where things stand (October 2026).** #913 is still open and none of the
+> options below has been implemented: an upload is still one PUT per part with
+> no resume, and `SPLIT_SIZE` is still 100 MB. What *has* changed since this was
+> written is the orchestration around the PUTs, so §2 no longer matches the code
+> on two points: the fixed `BATCH_SIZE = 5` / `Promise.all` batching was replaced
+> by a bounded worker pool (`MAX_CONCURRENT_PARTS = 4`, no per-batch barrier), and
+> a part that fails permanently now aborts its siblings and cleans up every
+> object the attempt wrote (`POST /api/uploads/cleanup`). The line-number
+> citations in §2 are from the code at the time and have drifted.
+> [MultipartUploads.md](./MultipartUploads.md) describes the current flow; the
+> analysis and recommendation here still stand.
+
 ## 1. Problem & root cause
 
 Production uploads to Backblaze B2 fail with `UPLOAD_FAILED` — Sentry

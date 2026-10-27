@@ -1,9 +1,50 @@
 # Design Doc: Redis-backed Rate Limiting for the Send Backend
 
 **Issue:** [thunderbird/tbpro-add-on#1072](https://github.com/thunderbird/tbpro-add-on/issues/1072)
-**Status:** Draft for review
+**Status:** Implemented (Approach A) — #1171, #1172, #1187
 **Author:** aaspinwall
-**Date:** 2026-08-27
+**Date:** 2026-08-27, outcome added 2026-10-23
+
+---
+
+## 0. Outcome (what shipped)
+
+The design below was implemented as proposed — `ioredis` + `express-rate-limit` +
+`rate-limit-redis`, per-user keys, three named tiers in `RATE_LIMITS`, `429` with
+`Retry-After`, Redis keyspace `rl:<tier>:` — with a few deltas worth knowing before
+reading on:
+
+- **Rate limiting is opt-in via `REDIS_URL`.** When it is unset (local dev,
+  E2E, CI — `compose.yml` runs no Redis) the limiter is a no-op and requests pass
+  through. Fail-closed (`503 rate_limiter_unavailable`) applies only once Redis
+  is configured and then becomes unreachable. §5's "strict fail-closed on all
+  limited routes" therefore describes deployed environments, not every
+  environment. #1187 fixed the original wiring, which 503'd forever because the
+  client was never created.
+- **Tiers as shipped:** `auth` → `GET /api/auth/refresh` only; `read` →
+  authenticated container reads (`GET /api/containers/:id`, `/:id/links`,
+  `/:id/info`), `GET /api/auth/oidc/me`, and the owner-facing share-link
+  checks (`GET /api/sharing/:containerId/canCreateAccessLink`,
+  `GET /api/sharing/:uploadId/links`); `sensitive` → container/item mutations,
+  `POST /api/sharing` (share-link creation), `POST /api/uploads` and
+  `/api/uploads/signed`. Everything else is **unlimited**, notably the public
+  share-link routes (`GET /api/sharing/:linkId`, `GET`/`POST
+  /api/sharing/:linkId/challenge`, `/exists/:linkId`), OIDC sign-in
+  (`/api/auth/oidc/authenticate`), password `login`/`register`, and the
+  download routes. Defaults are unchanged (10 / 100 / 30 per minute),
+  overridable with `RL_<TIER>_MAX` / `RL_<TIER>_WINDOW_MS`.
+- **Keying** is the OIDC `sub`, then the JWT user id, then
+  `ipKeyGenerator(ip)` + SHA-256 of the cookie header for the pre-auth refresh
+  route. The IP is normalised so IPv6 clients cannot rotate within their prefix.
+- **Frontend (Phase 4)** is done: `lib/api.ts` honours `Retry-After` on a `429`
+  (capped) and retries once before surfacing the error.
+- **`routes/tags.ts` no longer exists** (the unused tags API was removed in
+  #1322), so its alert is moot rather than fixed.
+- Not done from §5: there is no Redis readiness check on the health endpoint;
+  the rate limiter checks `isRedisHealthy()` per request instead.
+
+Code: `backend/src/redis.ts`, `backend/src/middleware/rate-limit.ts`,
+`RATE_LIMITS` in `backend/src/config.ts`.
 
 ---
 

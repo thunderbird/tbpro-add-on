@@ -43,12 +43,10 @@ standalone one. Removing this build path entirely is tracked in #1243.
 
 Prerequisite: If you have different values you want to use for a production build, it would be a good time to set them on your `frontend/.env`. If you're running a backend locally, that should be running.
 
-To build the frontend run from the root `lerna run build --scope=send-frontend`
-This will produce the static assets for deployment. It will generate the following directories:
-
-Web app: `frontend/dist-web`
-
-TB extension: `frontend/dist`
+To build the frontend run from the root `lerna run build:web --scope=send-frontend`
+This will produce the static assets for deployment in `frontend/dist-web` — the same thing CI
+deploys to S3/CloudFront. (`build` without `:web` also emits the dead extension build into
+`frontend/dist`; see above.)
 
 To test the web client locally, you can run
 `cd frontend`

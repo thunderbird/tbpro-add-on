@@ -29,8 +29,11 @@ temporary profile](#the-self-signed-cert-is-the-real-gotcha).
 
 ## Testing as the built-in / system add-on (local comm-central build)
 
-The standalone xpi above runs under the standalone add-on id (`tbpro-add-on@thunderbird.net`).
-To test the add-on the way Thunderbird ships it — as the **built-in / system add-on**
+The standalone xpi above runs under a standalone add-on id — the stage one
+(`tbpro-addon-stage@thunderbird.net`, which is what the source `public/manifest.json` carries) for a
+dev build, or the prod one (`tbpro-add-on@thunderbird.net`) when `build` rewrites the manifest for
+production. All three ids are defined once, in `src/addonIds.ts`. To test the add-on the way
+Thunderbird ships it — as the **built-in / system add-on**
 (id `tbpro-system-add-on@thunderbird.net`, loaded from `resource://builtin-addons/thundermail/`,
 enabled by default, no install flow) — sync a system-id build into a local comm-central checkout and
 rebuild Thunderbird.
@@ -112,12 +115,14 @@ pnpm --filter addon build:dev:system:local
 ```
 
 These set `ADDON_ENV=local`, which makes `scripts/build.sh` build in Vite's **development** mode
-(so `import.meta.env.MODE === 'development'` and prod Sentry stays off) and force the localhost
-URLs into the bundle:
+(so `import.meta.env.MODE === 'development'`) and force the localhost URLs into the bundle:
 
 - `VITE_SEND_SERVER_URL=https://localhost:8088`
 - `VITE_SEND_CLIENT_URL=http://localhost:5173`
-- `VITE_OIDC_ROOT_URL=https://auth-stage.tb.pro/realms/tbpro/` (no local Keycloak needed)
+- `VITE_OIDC_ROOT_URL=https://auth-stage.tb.pro/realms/tbpro/` and `VITE_OIDC_CLIENT_ID=desktop`
+  (no local Keycloak needed)
+- `VITE_SENTRY_DSN=` and `VITE_POSTHOG_PROJECT_KEY=` (blank, so a local build never reports into
+  the shared Sentry / PostHog projects), and `VITE_APP_ENV=development`
 
 They're exported as `VITE_*` process env vars, which Vite's `loadEnv` prioritizes over `.env`, so
 they win over the prod block your `.env` ends with. Override any of them inline if your local ports
@@ -176,9 +181,30 @@ cd "$TB_COMM_SRC"
 Notes:
 
 - `build:dev:system` rewrites only the built `dist/manifest.json` to the system id (via
-  `scripts/set-system-id.ts`); the source `public/manifest.json` keeps the standalone id.
+  `scripts/set-system-id.ts`); the source `public/manifest.json` keeps the standalone id. A dev
+  build's manifest carries the *stage* id, so the build passes `--allow-stage`; CI's prod repack
+  omits it and only accepts the prod id.
 - The absolute `url(/fonts/...)` → relative rewrite that the built-in CSS needs (Bug 2036665) is
   already handled by `scripts/build.sh`, so the synced build passes Thunderbird's
   `browser_parsable_css.js` static check.
 - Use `--temp-profile` after rebuilds; a stale `addonStartup.json.lz4` / startup cache can otherwise
   drop or mis-resolve the built-in (Bugs 1651838 / 1964408).
+
+## How CI builds the system add-on
+
+Two pipelines build the shipped artifact, and neither of them is the standalone xpi above:
+
+- **GitHub Actions** ([`merge.yml`](../../.github/workflows/merge.yml)): on every merge to `main`
+  that touches the add-on or the frontend, a prod `lerna run build --scope=addon` produces
+  `tbpro-addon-prod-*.xpi`, which is then repacked onto the system id with `set-system-id.ts` as
+  `tbpro-system-add-on-prod-*.xpi` and uploaded as an artifact. The standalone xpi is only the
+  input to that repack and is not archived. `create-release` attaches the system xpi to the GitHub
+  release — see the root [README](../../README.md#deployment).
+- **Taskcluster** ([`.taskcluster.yml`](../../.taskcluster.yml), [`taskcluster/`](../../taskcluster)),
+  via Mozilla's [`xpi-template`](https://github.com/mozilla-extensions/xpi-template): on every push
+  and pull request it runs the same `build` script with `ADDON_VARIANT=system` and
+  `XPI_OUTPUT_NAME=thundermail.xpi`, dev-signs the result, and keeps the version from
+  `package.json`. This is the build the Thunderbird side consumes.
+
+Both therefore depend on `scripts/build.sh` honouring `ADDON_VARIANT` and `XPI_OUTPUT_NAME`;
+keep that in mind when changing it.

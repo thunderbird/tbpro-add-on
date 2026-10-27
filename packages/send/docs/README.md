@@ -2,7 +2,8 @@
 
 Two applications that extend the functionality of Thunderbird:
 
-- Send extension: email attachments using the CloudFile API
+- Send extension: email attachments using the CloudFile API. It ships as part of the built-in
+  Thundermail add-on, built from `packages/addon`
 - Send web: file storage and sharing
 
 Both are end-to-end encrypted.
@@ -65,5 +66,21 @@ You can now:
 
 - create folders
 - upload files
-- share folders with other users
-- generate share links to send to other users or anonymous users
+- generate share links to send to other users or anonymous users, optionally protected with a
+  password and an expiry
+
+Folders are not shared user-to-user: a share link (and the password, if you set one) is the only
+way someone else gets access.
+
+## Further reading
+
+- [EngDesignDoc.md](./EngDesignDoc.md) — the system and encryption design: keys, containers,
+  items, access links
+- [Encryption.md](./Encryption.md) — the one-paragraph version of the key model
+- [MultipartUploads.md](./MultipartUploads.md) — how large files are split, uploaded in parallel
+  and reassembled
+- [ResumableUploadDesign.md](./ResumableUploadDesign.md) — design note for resumable uploads
+  (#913, not yet implemented)
+- [TelemetryOptOut.md](./TelemetryOptOut.md) — how Sentry and PostHog honour Thunderbird's
+  telemetry pref
+- [Send.md](./Send.md) — the original setup notes, kept for the database commands

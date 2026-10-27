@@ -3,10 +3,11 @@
 Welcome to the TB Pro Addon monorepo! It is meant to house all the projects that are combined to create the tbpro addon.
 The packages inside this monorepo are:
 
-- `send-suite`: The main package that contains the Thunderbird Send webapp and extension. It contains the dependencies to test the webapp using playwright and the backend using vitest.
+- `send-suite`: The umbrella package for Thunderbird Send (`packages/send`). It holds the scripts that set up and reset the Send `.env` files and the design docs under `docs/`.
 - `send-frontend`: The frontend code for the Thunderbird Send webapp. It is a Vite app that uses Vite as a build tool.
 - `send-backend`: The backend code for the Thunderbird Send webapp. It is a Node.js app that uses Express as a web server and postgres as a database.
-- `addon`: The Thunderbird Send extension code. This puts everything together and outputs a single xpi (addon package). It depends on `send-frontend` to build.
+- `send-suite-e2e`: The Playwright E2E suites (`packages/send/e2e`) — one set runs against a local dev stack, the other against production from BrowserStack.
+- `addon`: The Thundermail add-on code. This puts everything together and outputs a single xpi (addon package). It depends on `send-frontend` to build.
 
 This includes the Thunderbird Send webapp and the Thunderbird Send extension.
 This monorepo is managed using [Lerna](https://lerna.js.org/) and [pnpm](https://pnpm.io/).
@@ -97,10 +98,12 @@ pnpm install
 Build the addon
 
 ```sh
-lerna run build --scope=addon
+lerna run build:dev --scope=addon
 ```
 
-That produces an xpi you can load by hand. To test the add-on the way Thunderbird ships it — as the
+That produces an xpi you can load by hand. (`build`, without `:dev`, is the production build CI
+runs: it rewrites `public/manifest.json` for the environment in your `.env` before bundling, so
+reach for it only when you mean to.) To test the add-on the way Thunderbird ships it — as the
 built-in system add-on inside a local Thunderbird build — see
 [the add-on README](./packages/addon/README.md#testing-as-the-built-in--system-add-on-local-comm-central-build).
 
@@ -137,7 +140,24 @@ If for some reason you're confident on a change and would like to skip pre-commi
 
 ### Authentication
 
-We're using jwt tokens to authenticate users. Once they go through the login flow, they get a jwt token that is stored as a secure cookie. This is passed on every request to the backend automatically. We use this token to know who is making the request and by decoding it we get user data such as userId and email. We can set how many days the token is valid for and once it expires, the user has to log in again.
+Users sign in with their Thundermail account. The frontend runs an OIDC flow against the
+Thunderbird Accounts identity provider (Keycloak — `VITE_OIDC_ROOT_URL` / `VITE_OIDC_CLIENT_ID`)
+and hands the resulting bearer token to the backend, which introspects it
+(`OIDC_TOKEN_INTROSPECTION_URL`), finds or creates the matching Send user, and issues its own jwt
+tokens: an access token and a refresh token, each stored as a secure, http-only cookie. Those
+cookies ride along on every request to the backend automatically, and decoding the access token
+is how the backend knows who is making the request (userId, email, tier). The access cookie lives
+for a fixed `JWT_EXPIRY_IN_MILLISECONDS` (one hour) and the refresh cookie for
+`JWT_REFRESH_TOKEN_EXPIRY_IN_DAYS` (one week); neither follows the OIDC token's expiry. (OIDC
+sign-in passes the introspected `exp` to `registerTokens()` meaning to align the refresh token with
+it, but the cookie's `Max-Age` is always the one-week default and the `exp` arithmetic treats the
+epoch timestamp as a duration, so the override has no useful effect today.) `GET /api/auth/refresh`
+mints a new access cookie from the refresh cookie, and once that expires too the user has to log in
+again.
+
+A local stack also accepts password login (`ALLOW_PUBLIC_LOGIN` / `VITE_ALLOW_PUBLIC_LOGIN`, on in
+the samples), which skips OIDC and sets the same cookies — that is what "Or register" on the
+login screen uses, and what the E2E tests run on.
 
 # Deployment
 
@@ -165,6 +185,13 @@ when that part of the codebase did not change:
 The add-on is no longer published to ATN. The system add-on ships inside Thunderbird, so the
 `.xpi` on the release is the hand-off to comm-central rather than something CI uploads anywhere.
 
+Alongside the GitHub Actions above, the repo is also wired into Mozilla's Taskcluster through
+[`xpi-template`](https://github.com/mozilla-extensions/xpi-template) ([`.taskcluster.yml`](./.taskcluster.yml),
+[`taskcluster/`](./taskcluster)). On every push and pull request it builds the system add-on from
+source (`lerna run build --scope addon` with `ADDON_VARIANT=system`, output `thundermail.xpi`) and
+dev-signs it, which is the build pipeline the Thunderbird side consumes. It needs nothing from you
+beyond keeping `packages/addon` buildable.
+
 ### Release versioning
 
 We use semantic versioning for the packages, but a release is tagged from a single source of truth:
@@ -172,6 +199,12 @@ the version in [`packages/addon/public/manifest.json`](./packages/addon/public/m
 the file `create-release` reads to work out the tag. So before releasing, make sure that version is
 the one you mean, and that the packages you changed have had their own `package.json` versions bumped
 to match.
+
+You rarely have to bump by hand: the [`Bump Package Versions`](./.github/workflows/bump-versions.yml)
+workflow (run it from the Actions tab) runs [`scripts/bump-versions.js`](./scripts/bump-versions.js),
+which bumps the patch version of every package *and* both manifests together and opens a
+`chore: bump package and manifest versions` PR. Merging that PR is what keeps the versions in
+lockstep.
 
 ## Monorepo
 

@@ -2,10 +2,10 @@
 
 ## Overview
 
-Lockbox is a web application and Thunderbird Extension that gives paid users the ability to:
+Thunderbird Send is a web application and Thunderbird Extension that gives paid users the ability to:
 
-- store and manage encrypted files in Lockbox's cloud storage
-- create encrypted email attachments in Thunderbird, either uploaded from their filesystem or directly from Lockbox
+- store and manage encrypted files in Send's cloud storage
+- create encrypted email attachments in Thunderbird, either uploaded from their filesystem or directly from Send
 - send end-to-end encrypted files to other paid users or to anonymous users
 - protect access to files with a password
 - create access links that expire after a period of time
@@ -14,7 +14,7 @@ Lockbox is a web application and Thunderbird Extension that gives paid users the
 
 A previous Mozilla product, Firefox Send allowed anonymous users encrypt and share files. It was shut down due to abuse by cybercriminals and a lack of reporting mechanisms.
 
-Lockbox intends to address these issues and expand to use cases beyond simple file sharing.
+Send intends to address these issues and expand to use cases beyond simple file sharing.
 
 ## Goals
 
@@ -59,22 +59,25 @@ We will not guarantee that the system is secure against sophisticated attacks by
 
 ```mermaid
 graph LR
-  Client1(Web UI) -- HTTP Request --> AuthServer[Mozilla Acct Auth]
-  AuthServer -- Auth Request --> HTTP_API(Backend)
+  Client1(Web UI) -- OIDC login --> AuthServer[Thunderbird Accounts]
+  Client1 -- HTTP Request + bearer token --> HTTP_API(Backend)
+  HTTP_API -- Token introspection --> AuthServer
   HTTP_API -- DB Operations --> Database
-  HTTP_API -- Object Ops --> ObjectStorage[Object Storage]
+  HTTP_API -- Presigned URLs --> ObjectStorage[Object Storage]
+  Client1 -- PUT / GET ciphertext --> ObjectStorage
 
-  Client2(TB Extension) -- HTTP Request --> AuthServer[Mozilla Acct Auth]
+  Client2(TB Extension) -- OIDC login --> AuthServer
+  Client2 -- HTTP Request + bearer token --> HTTP_API
 ```
 
 The `Client` is one of two frontend User Interfaces:
 
 - The Web interface is a Vue.js application running in any modern browser.
-- The Thunderbird Extension is the same Vue.js application, packaged as a priviledged extension that is included with the "Pro" Thunderbird offering.
+- The Thunderbird Extension is the same Vue.js application, packaged into the built-in ("system") Thundermail add-on that ships inside Thunderbird (`packages/addon`).
 
-Mozilla Accounts (formerly Firefox Accounts) serves as the authentication mechanism.
+Thunderbird Accounts (an OIDC identity provider, Keycloak) serves as the authentication mechanism. The Client signs in there and presents the resulting bearer token to the Backend, which introspects it, finds or creates the matching User, and from then on tracks the session with its own JWT cookies. A local stack can also be run with password login enabled, which skips the identity provider; nothing below depends on which of the two was used.
 
-The Backend is a Express/Node.js application offering a RESTful HTTP API. File bytes do not pass through it: the browser asks for a presigned URL and moves them to object storage itself. It ensures that Users have the required permissions when attempting to access `Containers`, `Items`, and `Contents`.
+The Backend is a Express/Node.js application offering a RESTful HTTP API. File bytes do not pass through it: the browser asks for a presigned URL and moves them to object storage itself. It ensures that Users have the required permissions when attempting to access `Containers`, `Items`, and `Contents`, and rate limits the sensitive routes per User (see [the rate-limiting design](../../../docs/design/rate-limiting-send-backend.md)).
 
 In addition, the Backend stores data in a SQL database and cloud-based Object Storage.
 
@@ -122,14 +125,14 @@ The Client does not share Containers with other Users directly: it has no way to
 
 ## File Upload and Encryption
 
-When adding a file to a User's Lockbox, the Client handles key generation and storage, while the Backend acts as an API for the database and object storage layers.
+When adding a file to a User's Send storage, the Client handles key generation and storage, while the Backend acts as an API for the database and object storage layers.
 
 ### Uploading to a new Container
 
 ```mermaid
 sequenceDiagram
 Client ->> Client: Generate KEK
-Client ->> Backend: POST /api/container
+Client ->> Backend: POST /api/containers
 Backend -->> Client: Return new Container ID
 Client ->> Client: Store the KEK for Container ID
 Client ->> Client: Generate CEK
@@ -137,8 +140,9 @@ Client ->> Backend: POST /api/uploads/signed
 Backend -->> Client: Return Content ID + presigned PUT URL
 Client ->> Client: Encrypt Content with CEK
 Client ->> Storage: PUT encrypted Content
+Client ->> Backend: POST /api/uploads, with Content ID & size
 Client ->> Client: Wrap CEK with KEK
-Client ->> Backend: POST /api/item, with Content ID & Wrapped Key
+Client ->> Backend: POST /api/containers/{id}/item, with Content ID & Wrapped Key
 ```
 
 - Client generates Key Encryption Key (KEK)
@@ -148,8 +152,9 @@ Client ->> Backend: POST /api/item, with Content ID & Wrapped Key
 - Client generates Content Encryption Key (CEK)
 - Client sends POST to `/api/uploads/signed`, and the Backend returns a Content ID with a presigned PUT URL for it
 - Client uses CEK to encrypt the content, then PUTs the ciphertext straight to object storage
+- Client sends POST to `/api/uploads` to record the Content; the Backend checks that an object of at least that size has landed in storage before creating it
 - Client creates a "wrapped key" by encrypting the CEK with the KEK
-- Client sends POST to backend API to create a new Item, providing the Content ID and the wrapped key
+- Client sends POST to backend API to create a new Item in the Container, providing the Content ID and the wrapped key
 
 ### Upload to an existing Container
 
@@ -163,16 +168,20 @@ Client ->> Backend: POST /api/uploads/signed
 Backend -->> Client: Return Content ID + presigned PUT URL
 Client ->> Client: Encrypt Content with CEK
 Client ->> Storage: PUT encrypted Content
+Client ->> Backend: POST /api/uploads, with Content ID & size
 Client ->> Client: Wrap CEK with KEK
-Client ->> Backend: POST /api/item, with Content ID & Wrapped Key
+Client ->> Backend: POST /api/containers/{id}/item, with Content ID & Wrapped Key
 ```
 
 - Client retrieves KEK for existing Container from client storage
 - Client generates Content Encryption Key (CEK)
 - Client sends POST to `/api/uploads/signed`, and the Backend returns a Content ID with a presigned PUT URL for it
 - Client uses CEK to encrypt the content, then PUTs the ciphertext straight to object storage
+- Client sends POST to `/api/uploads` to record the Content
 - Client creates a "wrapped key" by encrypting the CEK with the KEK
-- Client sends POST to backend API to create a new Item, providing the Content ID and the wrapped key
+- Client sends POST to backend API to create a new Item in the Container, providing the Content ID and the wrapped key
+
+Files above the split size are uploaded as several Contents that share one CEK, one Item per part; [MultipartUploads.md](./MultipartUploads.md) covers that path.
 
 ## File Download and Decryption
 
@@ -180,28 +189,32 @@ Provided the User has permission to access the Container and the KEK has been tr
 
 ```mermaid
 sequenceDiagram
-Client ->> Backend: GET /api/item/{id}
-Client ->> Client: Extract Content ID and Wrapped Key
+Client ->> Backend: GET /api/containers/{id}
+Client ->> Client: Extract Content ID and Wrapped Key from the Item
 Client ->> Client: Retreive KEK
-Client ->> Backend: GET /api/item/{id}/metadata
+Client ->> Backend: GET /api/uploads/{contentId}/metadata
 Client ->> Client: Unwrap CEK
-Client ->> Backend: GET encrypted Content from backend API
+Client ->> Backend: GET /api/download/{contentId}/signed
+Backend -->> Client: Return presigned GET URL
+Client ->> Storage: GET encrypted Content
 Client ->> Client: Decrypts Content with CEK
 Client ->> Client: Store plaintext Content to filesystem
 ```
 
-- Client retrieves JSON payload for Item from backend API
-- Client gets ID and wrapped key for Content from Item's JSON payload
+- Client retrieves the Container's JSON payload, including its Items, from the backend API
+- Client gets ID and wrapped key for Content from the Item's JSON payload
 - Client retrieves KEK for existing Container from client storage
 - Client sends GET to backend API for file metadata (i.e., size and mime type)
 - Client obtains CEK for Content from wrapped key using the KEK
-- Client downloads encrypted Content from backend API
+- Client asks the backend for a presigned GET URL and downloads the encrypted Content straight from object storage
 - Client decrypts Content using CEK
 - Client stores decrypted file to User's filesystem
 
+A User following an Access Link does the same, except the Items come from `GET /api/sharing/{linkId}` and the KEK comes from the link (see below).
+
 ## Sharing Folder Access
 
-Folder access is shared by generating an Access Link and sending it through another means of communication (e.g., via email). Users cannot invite other Users to become members of their folders.
+Folder access is shared by generating an Access Link and sending it through another means of communication (e.g., via email).
 
 ### Access Links
 
@@ -220,9 +233,9 @@ When using password protection, the KEK for the Container is wrapped using the p
 
 When visiting the URL for the Access Link, the Client prompts the User for a password.
 
-This password is used to decrypt a ciphertext string (the "challenge text"). The resulting plaintext string is sent to the backend.
+This password is used to decrypt a ciphertext string (the "challenge text", fetched from `GET /api/sharing/{linkId}/challenge`). The resulting plaintext string is sent to the backend (`POST /api/sharing/{linkId}/challenge`).
 
-If the Backend determines that the plaintext matches the stored plaintext for the AccessLink, it sends the Wrapped Key to the Client.
+If the Backend determines that the plaintext matches the stored plaintext for the AccessLink, it sends the Wrapped Key (and its salt) to the Client. Repeated wrong answers increment a retry count and eventually lock the link.
 
 The Client then uses the same password to unwrap the KEK, allowing them to decrypt and download any Content associated in the Container.
 
@@ -236,4 +249,4 @@ The full URL is not stored in the backend (TODO: reconsider this, if we're going
 
 When the URL for an AccessLink has a `hash`, the Client automatically puts this in the password field and submits the form.
 
-The reason for this is to ensure that all Content stored in Lockbox is end-to-end encrypted, even if the user has no intention of "protecting" it with a password.
+The reason for this is to ensure that all Content stored in Send is end-to-end encrypted, even if the user has no intention of "protecting" it with a password.
