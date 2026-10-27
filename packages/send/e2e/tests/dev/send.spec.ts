@@ -11,6 +11,7 @@ import {
   log_out_restore_keys,
   register_and_login,
   reset_keys,
+  reset_keys_abandoned_then_completed,
 } from "../../pages/dev/dashboard"
 
 import {
@@ -98,5 +99,10 @@ test.describe("Key restore", {
 }, () => {
   test("Reset keys", async ({ sendHome }) => {
     await reset_keys(sendHome);
+  });
+
+  test("Abandoned reset keeps the old key (#1355)", async ({ openSendContext }) => {
+    const session = await openSendContext({ usesEmptyStorage: true });
+    await reset_keys_abandoned_then_completed(session);
   });
 });
