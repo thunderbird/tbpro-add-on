@@ -60,10 +60,6 @@ overrides:
   # vue: @thunderbirdops/services-ui pins vue@3.5.41 exactly; keep a single Vue
   #   copy that matches the app's vue and carries the @vue/server-renderer fix.
   '@thunderbirdops/services-ui>vue': ^3.5.44
-  # uuid: old majors pulled by browserstack-node-sdk (e2e) and google-gax.
-  uuid@<11.1.1: '>=11.1.1'
-  # basic-ftp: pulled by browserstack-node-sdk (e2e) via pac-proxy-agent / percy.
+  # basic-ftp: get-uri (via browserstack-node-sdk>pac-proxy-agent, e2e) still
+  #   declares ^5; the fix is in the 6.x line.
   basic-ftp@<=6.2.0: ^6.2.1
-  # Load-bearing (not a security floor): browserstack-node-sdk declares
-  # aws-sdk@^3.0.1 which does not exist (aws-sdk only publishes v2.x). See #958.
-  browserstack-node-sdk>aws-sdk: 2.1693.0

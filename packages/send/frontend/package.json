@@ -48,7 +48,7 @@
     "jszip": "^3.10.1",
     "oidc-client-ts": "^3.5.0",
     "pinia": "^2.3.1",
-    "posthog-js": "^1.372.5",
+    "posthog-js": "^1.438.12",
     "pretty-bytes": "^6.1.1",
     "ua-parser-js": "^1.0.41",
     "vue": "^3.5.44",
