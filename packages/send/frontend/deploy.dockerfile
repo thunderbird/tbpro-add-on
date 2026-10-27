@@ -17,7 +17,7 @@
 # would silently fall back to whatever was baked.
 
 # Pinned to the same Node the other Dockerfiles in this repo use.
-FROM node:22.14.0 AS build
+FROM node:22.22.2 AS build
 
 WORKDIR /app
 RUN npm install -g pnpm@10
@@ -80,7 +80,7 @@ RUN find dist-web -name '*.map' -delete \
        -exec sed -i 's|/\*# sourceMappingURL=[^*]*\*/||' {} +
 
 
-# Pinned like the build stage's node:22.14.0, and for a sharper reason here:
+# Pinned like the build stage's node:22.22.2, and for a sharper reason here:
 # `stable` jumps whole minor versions when upstream promotes one, this image
 # seds nginx.conf and relies on the base image's conf.d/docker-entrypoint.d
 # layout (which has already moved once -- see the pid-path note below), and the
