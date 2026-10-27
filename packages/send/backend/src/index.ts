@@ -25,6 +25,7 @@ import * as Sentry from '@sentry/node';
 
 import helmet from 'helmet';
 import { errorHandler } from './errors/routes';
+import { startOrphanSweepSchedule } from './jobs/orphanSweep';
 import { addVersionHeader } from './middleware';
 import { originsHandler } from './origins';
 import { getRedisClient, isRateLimitingEnabled } from './redis';
@@ -134,3 +135,5 @@ if (isRateLimitingEnabled()) {
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Server ready at: http://${HOST}:${PORT}`);
 });
+
+startOrphanSweepSchedule();
