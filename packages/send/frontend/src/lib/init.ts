@@ -112,6 +112,9 @@ async function _init(
       if (!createFolderResp?.id) {
         return INIT_ERRORS.COULD_NOT_CREATE_DEFAULT_FOLDER;
       }
+      // Refresh the cached default folder id so links stop pointing at a
+      // folder this run replaced (e.g. after Reset Encryption Key, #1354).
+      await folderStore.getDefaultFolderId();
     } finally {
       await releaseDefaultFolderLock(userStore.user?.id, lockToken);
     }

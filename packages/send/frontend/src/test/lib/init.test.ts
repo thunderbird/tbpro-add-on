@@ -55,6 +55,7 @@ function makeFolderStore({
       return _defaultFolder;
     },
     createFolder: vi.fn().mockResolvedValue(createFolderResult),
+    getDefaultFolderId: vi.fn().mockResolvedValue(createFolderResult?.id),
     deleteFolder: vi.fn().mockImplementation(async () => {
       _defaultFolder = null;
     }),
@@ -123,6 +124,19 @@ describe('init()', () => {
     expect(result).toBe(INIT_ERRORS.NONE);
   });
 
+  // #1354: links read the cached default folder id, so it must be refreshed
+  // once the new default folder exists.
+  it('refreshes the cached default folder id after creating the default folder', async () => {
+    folderStore = makeFolderStore({ defaultFolder: null });
+
+    await init(userStore as any, keychain as any, folderStore as any);
+
+    expect(folderStore.getDefaultFolderId).toHaveBeenCalledOnce();
+    expect(folderStore.createFolder.mock.invocationCallOrder[0]).toBeLessThan(
+      folderStore.getDefaultFolderId.mock.invocationCallOrder[0]
+    );
+  });
+
   it('returns COULD_NOT_CREATE_DEFAULT_FOLDER when createFolder returns null', async () => {
     folderStore = makeFolderStore({
       defaultFolder: null,
@@ -136,6 +150,7 @@ describe('init()', () => {
     );
 
     expect(result).toBe(INIT_ERRORS.COULD_NOT_CREATE_DEFAULT_FOLDER);
+    expect(folderStore.getDefaultFolderId).not.toHaveBeenCalled();
   });
 
   it('returns COULD_NOT_CREATE_DEFAULT_FOLDER when createFolder returns an object without id', async () => {

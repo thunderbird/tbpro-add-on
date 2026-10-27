@@ -433,6 +433,30 @@ describe('FolderStore — fetchSubtree null-guard & phantom-root recovery (#1115
     expect(folderStore.rootFolderId).toBe(ROOT_ID);
     expect(apiCallSpy).not.toHaveBeenCalledWith(`users/folders`);
   });
+
+  // #1354: a folder replaced by Reset Encryption Key 403s while unlocked; the
+  // status is returned so FolderView can move to the new default folder.
+  it('resolves to the failure status on an unlocked 403 for a non-root folder', async () => {
+    vi.mocked(trpc.getDefaultFolder.query).mockResolvedValue({
+      id: 'new-root',
+    } as never);
+    vi.spyOn(useApiStore().api, 'call').mockImplementation(
+      async (_path, _body, _method, _headers, options) => {
+        (options as { onFailure?: (f: unknown) => void })?.onFailure?.({
+          kind: 'http',
+          status: 403,
+          statusText: 'Forbidden',
+        });
+        return null;
+      }
+    );
+
+    const folderStore = useFolderStore();
+    await folderStore.getDefaultFolderId();
+
+    await expect(folderStore.fetchSubtree('deleted-root')).resolves.toBe(403);
+    expect(folderStore.rootFolderId).toBe('new-root');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -519,7 +543,7 @@ describe('FolderStore — 403 on a cached container while locked (cross-client l
     useKeychainStore().keychain.locked = false;
 
     // Unlocked: the lockout throw is skipped; the #1115 phantom recovery runs.
-    await expect(folderStore.fetchSubtree(PHANTOM_ID)).resolves.toBeUndefined();
+    await expect(folderStore.fetchSubtree(PHANTOM_ID)).resolves.toBe(403);
     expect(folderStore.rootFolderId).toBeNull();
     expect(apiCallSpy).toHaveBeenCalledWith(`users/folders`);
   });
