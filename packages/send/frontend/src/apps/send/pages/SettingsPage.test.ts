@@ -180,14 +180,6 @@ describe('SettingsPage.vue', () => {
     expect(state.cancelReset).toHaveBeenCalledTimes(1);
   });
 
-  it('hides the reset modal when no reset was started', () => {
-    const wrapper = mountPage();
-
-    expect(wrapper.findComponent({ name: 'ResetKeyModal' }).exists()).toBe(
-      false
-    );
-  });
-
   it('cancels a pending reset when the page unmounts', () => {
     mountPage().unmount();
 

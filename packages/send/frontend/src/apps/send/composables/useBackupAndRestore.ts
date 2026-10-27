@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watchEffect } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
@@ -62,6 +62,11 @@ export const useBackupAndRestore = () => {
   } = useUserStore();
   const { keychain } = useKeychainStore();
   const { metrics } = useMetricsStore();
+
+  let unmounted = false;
+  onUnmounted(() => {
+    unmounted = true;
+  });
 
   onMounted(() => {
     // The reset overlay replaces a (possibly locked) key; don't bounce it.
@@ -143,7 +148,12 @@ export const useBackupAndRestore = () => {
   async function confirmReset() {
     if (!pendingReset.value || savingBackup.value) return;
     const saved = await makeBackup();
-    if (!saved && pendingReset.value) return;
+    if (!saved && pendingReset.value) {
+      // Rejected after the user left: the unmount's cancelReset was skipped
+      // while saving, so drop the reset now instead of reopening it later.
+      if (unmounted) cancelReset();
+      return;
+    }
     if (!saved) backupStore.setJustReset(true);
     backupStore.setShouldReset(false);
     router.push('/send/profile?showDashboard=true');

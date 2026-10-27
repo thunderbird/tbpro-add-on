@@ -296,6 +296,21 @@ describe('useBackupAndRestore -> single-step reset modal (#1355)', () => {
     expect(composable.canRegenerate.value).toBe(true);
   });
 
+  it('leaving during a swap the server then rejects drops the pending reset', async () => {
+    state.resetKeysMutate.mockRejectedValueOnce(new Error('422'));
+    const view = mountComposable();
+    composable.beginReset();
+    const saving = composable.confirmReset();
+    view.unmount();
+    await saving;
+
+    expect(store.pendingReset).toBe(false);
+    expect(store.shouldReset).toBe(false);
+    expect(store.errorMessage).toBe('');
+    expect(state.keychain.keys).toEqual(OLD_KEYS);
+    expect(state.routerPush).not.toHaveBeenCalled();
+  });
+
   it('a local save failure after the swap hands over to the BackupKeys overlay', async () => {
     state.keychain.storePassPhrase.mockRejectedValueOnce(
       new Error('QuotaExceededError')
