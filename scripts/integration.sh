@@ -27,13 +27,28 @@ cleanup() {
 }
 trap cleanup INT TERM
 
+# The proxy's self-signed cert is generated at container start for localhost
+# only: copy it out of the container (trust comes from the local docker daemon,
+# not the network) and pin localhost to DOCKER_HOST instead of using -k.
+COMPOSE_ARGS=()
+[[ "$IS_CI_AUTOMATION" = "yes" ]] && COMPOSE_ARGS=(-f "$REPO_ROOT/compose.ci.yml")
+DEV_TLS_CERT="$(mktemp)"
+trap 'rm -f "$DEV_TLS_CERT"' EXIT
+RESOLVE_ARGS=()
+[[ "$DOCKER_HOST" != "localhost" ]] && RESOLVE_ARGS=(--resolve "localhost:8088:${DOCKER_HOST}")
+
 # Wait for servers to be ready
 echo "Waiting for HTTPS server..."
 START_TIME=$(date +%s)
 LAST_LOG_TIME=0
 MAX_WAIT=180  # 3-minute timeout
 while true; do
-  STATUS=$(curl -s -k -w "%{http_code}" --max-time 5 "https://${DOCKER_HOST}:8088/" -o /dev/null)
+  STATUS=000
+  if docker compose "${COMPOSE_ARGS[@]}" cp \
+      reverse-proxy:/etc/nginx/tls/localhost.crt "$DEV_TLS_CERT" >/dev/null 2>&1; then
+    STATUS=$(curl -s --cacert "$DEV_TLS_CERT" "${RESOLVE_ARGS[@]}" -w "%{http_code}" \
+      --max-time 5 "https://localhost:8088/" -o /dev/null)
+  fi
   if [ "$STATUS" = "200" ]; then
     break
   fi

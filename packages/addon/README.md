@@ -132,7 +132,8 @@ local backend has `SEND_BACKEND_CORS_ORIGINS` set (it throws on startup otherwis
 ### The self-signed cert is the real gotcha
 
 The Send dev stack serves `https://localhost:8088`
-through the tls-dev-proxy (`packages/send/backend/tls-dev-proxy/`) using a self-signed cert.
+through the tls-dev-proxy (`packages/send/backend/tls-dev-proxy/`) using a self-signed cert
+that the proxy generates on first start and keeps in the `dev-tls-certs` volume.
 Thunderbird's extension `fetch` can't skip cert validation and gets no interactive prompt at
 startup, so an untrusted cert fails the TLS handshake — and Gecko reports that as
 `CORS request did not succeed` with `Status code: (null)` (a misleading message: it is *not* a CORS
@@ -144,6 +145,9 @@ one of these:
   support per run:
 
   ```sh
+  mkdir -p packages/send/backend/tls-dev-proxy/certs
+  docker compose cp reverse-proxy:/etc/nginx/tls/localhost.crt \
+    packages/send/backend/tls-dev-proxy/certs/localhost.crt   # gitignored
   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain \
     packages/send/backend/tls-dev-proxy/certs/localhost.crt
   ./mach run --temp-profile --setpref security.enterprise_roots.enabled=true

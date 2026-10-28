@@ -51,3 +51,5 @@ packages/**/pnpm-lock.yaml
 
 # Test results
 **/test-results/**
+# Dev proxy TLS cert/key are generated at container start; never commit them.
+packages/send/backend/tls-dev-proxy/certs/

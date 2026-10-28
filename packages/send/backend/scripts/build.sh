@@ -21,9 +21,11 @@ rsync -a \
   "$SCRIPT_DIR/../" \
   "$CONTEXT_DIR/"
 
-# Copy the root workspace lockfile (available for reference but not used in Docker
-# install, since the container workspace layout differs from the monorepo root).
+# Copy the root workspace lockfile and workspace config. The Dockerfile rewrites
+# them into a single-project workspace (scripts/standalone-lockfile.sh) and
+# installs with --frozen-lockfile, so the image gets exactly the locked versions.
 cp "$REPO_ROOT/pnpm-lock.yaml" "$CONTEXT_DIR/pnpm-lock.yaml"
+cp "$REPO_ROOT/pnpm-workspace.yaml" "$CONTEXT_DIR/pnpm-workspace.yaml"
 
 # Exclude pre-installed node_modules; Docker re-installs for the target platform
 printf 'node_modules/\n' > "$CONTEXT_DIR/.dockerignore"
