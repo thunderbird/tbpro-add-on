@@ -260,9 +260,11 @@ export const useBackupAndRestore = () => {
   });
 
   // If there's a passphrase in local storage that differs from the store,
-  // sync it to the store (handles page refreshes). Not during a reset: `words`
-  // holds the new phrase, local storage may hold the old (#1355).
+  // sync it to the store (handles page refreshes). Not during a reset or
+  // while a save runs: `words` holds the new phrase, local storage may still
+  // hold the old (#1355).
   if (
+    !savingBackup.value &&
     !justReset.value &&
     !pendingReset.value &&
     !!passphraseFromLocalStorage &&

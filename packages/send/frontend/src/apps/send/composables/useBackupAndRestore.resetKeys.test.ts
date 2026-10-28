@@ -337,6 +337,20 @@ describe('useBackupAndRestore -> single-step reset modal (#1355)', () => {
     expect(store.justReset).toBe(true);
   });
 
+  it('a remount between the swap and the local save keeps the new phrase', async () => {
+    // storePassPhrase is where the new phrase is persisted; mount another view
+    // while it is still pending and make it fail, as a page change mid-save would.
+    state.keychain.storePassPhrase.mockImplementationOnce(async () => {
+      mountComposable();
+      throw new Error('QuotaExceededError');
+    });
+    composable.beginReset();
+    await composable.confirmReset();
+
+    expect(store.justReset).toBe(true);
+    expect(store.passphraseString).toBe('new phrase 1');
+  });
+
   it('a backup failure after the swap hands over to the BackupKeys overlay', async () => {
     state.backupKeys.mockRejectedValueOnce(new Error('500'));
     composable.beginReset();
