@@ -64,6 +64,7 @@ vi.mock('@send-frontend/stores/backup-store', () => ({
     shouldReset: ref(false),
     justReset: ref(false),
     pendingReset: ref(false),
+    savingBackup: ref(false),
     passphraseString: ref(''),
   }),
 }));
