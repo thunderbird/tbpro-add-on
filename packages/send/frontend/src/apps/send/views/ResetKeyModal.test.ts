@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import ResetKeyModal from './ResetKeyModal.vue';
 
@@ -13,11 +13,13 @@ const stubs = {
   },
 };
 
-function mountModal({
+// ModalDialog (services-ui) renders its content only after show(), which the
+// modal calls on mount, so every test flushes once before querying.
+async function mountModal({
   attachTo,
   ...props
 }: Record<string, unknown> & { attachTo?: Element } = {}) {
-  return mount(ResetKeyModal, {
+  const wrapper = mount(ResetKeyModal, {
     props: {
       words: ['brave', 'oil', 'hour'],
       regeneratePassphrase: vi.fn(),
@@ -26,17 +28,21 @@ function mountModal({
     global: { stubs },
     attachTo,
   });
+  await flushPromises();
+  return wrapper;
 }
 
-const dangerButton = (wrapper: ReturnType<typeof mountModal>) =>
+type Wrapper = Awaited<ReturnType<typeof mountModal>>;
+
+const dangerButton = (wrapper: Wrapper) =>
   wrapper.find('[data-testid="danger-button"]');
 
-const regenerateButton = (wrapper: ReturnType<typeof mountModal>) =>
+const regenerateButton = (wrapper: Wrapper) =>
   wrapper.find('button[title="Regenerate"]');
 
 describe('ResetKeyModal.vue', () => {
-  it('shows the new key, the warning and both actions', () => {
-    const wrapper = mountModal();
+  it('shows the new key, the warning and both actions', async () => {
+    const wrapper = await mountModal();
 
     expect(wrapper.find('h1').text()).toBe('Reset Encryption Key');
     expect(wrapper.text()).toContain('This is your new encryption key.');
@@ -57,7 +63,7 @@ describe('ResetKeyModal.vue', () => {
   });
 
   it('keeps Download key and reset disabled until the checkbox is checked', async () => {
-    const wrapper = mountModal();
+    const wrapper = await mountModal();
 
     expect(dangerButton(wrapper).attributes('disabled')).toBeDefined();
     await dangerButton(wrapper).trigger('click');
@@ -71,7 +77,7 @@ describe('ResetKeyModal.vue', () => {
   });
 
   it('locks confirm, cancel and regenerate while saving', async () => {
-    const wrapper = mountModal({ saving: true, canRegenerate: false });
+    const wrapper = await mountModal({ saving: true, canRegenerate: false });
     await wrapper.find('[data-testid="understand-checkbox"]').setValue(true);
 
     expect(dangerButton(wrapper).attributes('disabled')).toBeDefined();
@@ -83,7 +89,7 @@ describe('ResetKeyModal.vue', () => {
 
   it('regenerates the key on request', async () => {
     const regeneratePassphrase = vi.fn();
-    const wrapper = mountModal({ regeneratePassphrase });
+    const wrapper = await mountModal({ regeneratePassphrase });
 
     await regenerateButton(wrapper).trigger('click');
 
@@ -91,7 +97,7 @@ describe('ResetKeyModal.vue', () => {
   });
 
   it('emits cancel', async () => {
-    const wrapper = mountModal();
+    const wrapper = await mountModal();
 
     await wrapper.find('.cancel-button').trigger('click');
 
@@ -99,31 +105,48 @@ describe('ResetKeyModal.vue', () => {
   });
 
   it('is a labelled dialog that takes focus and closes on Escape', async () => {
-    const wrapper = mountModal({ attachTo: document.body });
+    const wrapper = await mountModal({ attachTo: document.body });
     const dialog = wrapper.find('[role="dialog"]');
+    const body = wrapper.find('.reset-key-body');
 
     expect(dialog.attributes('aria-modal')).toBe('true');
-    expect(dialog.attributes('aria-labelledby')).toBe('reset-key-title');
-    expect(wrapper.find('#reset-key-title').text()).toBe(
-      'Reset Encryption Key'
-    );
-    expect(document.activeElement).toBe(dialog.element);
+    expect(dialog.attributes('aria-labelledby')).toBe('title');
+    expect(wrapper.find('#title').text()).toBe('Reset Encryption Key');
+    expect(document.activeElement).toBe(body.element);
 
-    await dialog.trigger('keydown', { key: 'Escape' });
+    await body.trigger('keydown', { key: 'Escape' });
     expect(wrapper.emitted('cancel')).toHaveLength(1);
     wrapper.unmount();
   });
 
   it('ignores Escape while saving', async () => {
-    const wrapper = mountModal({ saving: true });
+    const wrapper = await mountModal({ saving: true });
 
-    await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Escape' });
+    await wrapper.find('.reset-key-body').trigger('keydown', { key: 'Escape' });
 
     expect(wrapper.emitted('cancel')).toBeUndefined();
   });
 
-  it('shows the error under the key', () => {
-    const wrapper = mountModal({
+  it('treats the × button as cancel', async () => {
+    const wrapper = await mountModal();
+
+    await wrapper.find('.modal-close').trigger('click');
+
+    expect(wrapper.emitted('cancel')).toHaveLength(1);
+  });
+
+  it('keeps the dialog open if × is pressed while saving', async () => {
+    const wrapper = await mountModal({ saving: true });
+
+    await wrapper.find('.modal-close').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.emitted('cancel')).toBeUndefined();
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+  });
+
+  it('shows the error under the key', async () => {
+    const wrapper = await mountModal({
       errorMessage: 'Could not reset your encryption key: 422',
     });
 

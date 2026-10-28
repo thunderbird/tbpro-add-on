@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { DangerButton } from '@thunderbirdops/services-ui';
-import { onMounted, ref, useTemplateRef } from 'vue';
-import KeysTemplate from './KeysTemplate.vue';
+import { DangerButton, ModalDialog } from '@thunderbirdops/services-ui';
+import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import PassphraseField from './PassphraseField.vue';
 
 type Props = {
@@ -25,11 +24,28 @@ const emit = defineEmits<{
 
 const understood = ref(false);
 
-const dialog = useTemplateRef<HTMLElement>('dialog');
-onMounted(() => dialog.value?.focus());
+// ModalDialog renders nothing until show() is called and closes itself on
+// the × button or an outside click; we translate that into our cancel event.
+const modal = useTemplateRef<InstanceType<typeof ModalDialog>>('modal');
+const body = useTemplateRef<HTMLElement>('body');
+
+onMounted(async () => {
+  modal.value?.show();
+  await nextTick();
+  body.value?.focus();
+});
 
 const cancel = () => {
   if (!saving) emit('cancel');
+};
+
+const onClosed = () => {
+  if (saving) {
+    // The swap is in flight; keep the dialog up until it settles.
+    modal.value?.show();
+    return;
+  }
+  emit('cancel');
 };
 
 const confirm = () => {
@@ -40,18 +56,18 @@ const confirm = () => {
 </script>
 
 <template>
-  <KeysTemplate :is-overlay="true">
-    <div
-      ref="dialog"
-      class="reset-key-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="reset-key-title"
-      tabindex="-1"
-      @keydown.esc="cancel"
-    >
-      <h1 id="reset-key-title" class="title">Reset Encryption Key</h1>
+  <ModalDialog
+    ref="modal"
+    :close-outside="!saving"
+    data-testid="reset-key-modal"
+    @closed="onClosed"
+  >
+    <template #header>
+      <!-- ModalDialog labels itself with aria-labelledby="title" -->
+      <h1 id="title" class="title">Reset Encryption Key</h1>
+    </template>
 
+    <div ref="body" class="reset-key-body" tabindex="-1" @keydown.esc="cancel">
       <div class="description">
         <p>
           This is your new encryption key. Save a copy in a safe place: it's
@@ -93,7 +109,9 @@ const confirm = () => {
           I understand I'll lose access to my old files.
         </label>
       </div>
+    </div>
 
+    <template #actions>
       <div class="actions">
         <button
           type="button"
@@ -111,16 +129,20 @@ const confirm = () => {
           Download key and reset
         </DangerButton>
       </div>
-    </div>
-  </KeysTemplate>
+    </template>
+  </ModalDialog>
 </template>
 
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
 
 /* Programmatic focus target only; the controls inside carry the visible ring. */
-.reset-key-dialog:focus {
+.reset-key-body:focus {
   outline: none;
+}
+
+.title {
+  margin: 0;
 }
 
 .description {
@@ -141,7 +163,6 @@ const confirm = () => {
 .checkbox-container {
   display: flex;
   align-items: center;
-  margin-bottom: 1.5rem;
 }
 
 .checkbox {
@@ -162,6 +183,7 @@ const confirm = () => {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
+  width: 100%;
 }
 
 .cancel-button {
@@ -179,7 +201,7 @@ const confirm = () => {
 }
 
 .cancel-button:disabled {
-  cursor: not-allowed;
   opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
