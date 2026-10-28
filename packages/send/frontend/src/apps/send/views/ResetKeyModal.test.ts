@@ -44,7 +44,7 @@ describe('ResetKeyModal.vue', () => {
   it('shows the new key, the warning and both actions', async () => {
     const wrapper = await mountModal();
 
-    expect(wrapper.find('h1').text()).toBe('Reset Encryption Key');
+    expect(wrapper.find('#title').text()).toBe('Reset Encryption Key');
     expect(wrapper.text()).toContain('This is your new encryption key.');
     expect(wrapper.text()).toContain(
       'Your current key stays active until you click Download key and reset.'

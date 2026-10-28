@@ -63,8 +63,8 @@ const confirm = () => {
     @closed="onClosed"
   >
     <template #header>
-      <!-- ModalDialog labels itself with aria-labelledby="title" -->
-      <h1 id="title" class="title">Reset Encryption Key</h1>
+      <!-- ModalDialog styles the header and labels itself with aria-labelledby="title" -->
+      <span id="title">Reset Encryption Key</span>
     </template>
 
     <div ref="body" class="reset-key-body" tabindex="-1" @keydown.esc="cancel">
@@ -139,10 +139,6 @@ const confirm = () => {
 /* Programmatic focus target only; the controls inside carry the visible ring. */
 .reset-key-body:focus {
   outline: none;
-}
-
-.title {
-  margin: 0;
 }
 
 .description {
