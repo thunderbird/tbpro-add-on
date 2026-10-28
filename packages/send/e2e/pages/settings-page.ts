@@ -62,7 +62,7 @@ export class SettingsPage {
     this.resetKeyButton = page.getByTestId('show-reset');
     this.resetKeyDialogHeading = page.getByRole('heading', { name: 'Reset Encryption Key' }).last();
     this.resetKeyWarning = page.getByText(
-      /Creating a new key will replace your existing one\.[\s\S]*files encrypted with your previous key will no longer be accessible\./
+      /Your current key stays active until you click[\s\S]*files encrypted with your previous key will no longer be accessible\./
     );
     this.resetKeyUnderstandCheckbox = page.getByTestId('understand-checkbox');
     this.resetKeyCancelButton = page.getByRole('button', { name: 'Cancel' });

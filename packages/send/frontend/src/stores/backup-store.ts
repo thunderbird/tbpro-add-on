@@ -6,15 +6,16 @@ export const useBackupStore = defineStore('backup', () => {
   const words = ref<string[]>([]);
   const errorMessage = ref('');
   const shouldUnlock = ref(false);
+  // Shows the Reset Encryption Key modal.
   const shouldReset = ref(false);
-  // Forces the BackupKeys overlay from "Create new encryption key" until the
-  // new recovery key is saved or the reset is abandoned (#1116, #1355).
+  // Forces the BackupKeys overlay when a reset swapped the key on the server
+  // but the new recovery key could not be saved yet (#1116, #1355).
   const justReset = ref(false);
-  // The server still holds the old key: "Download and Continue" swaps it in.
+  // The server still holds the old key: "Download key and reset" swaps it in.
   // In-memory on purpose, so leaving before that click changes nothing (#1355).
   const pendingReset = ref(false);
-  // "Download and Continue" is running; shared so a remounted dashboard can't
-  // start a second swap.
+  // A backup or key swap is running; shared so a remounted view can't start a
+  // second swap.
   const savingBackup = ref(false);
 
   const passphraseString = computed(() => {

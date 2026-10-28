@@ -3,15 +3,13 @@ import ProButton from '@send-frontend/apps/common/ProButton.vue';
 import { ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 import ManageKeys from './ManageKeys.vue';
-import ResetEncryptionKey from './ResetEncryptionKey.vue';
 
-const { resetKeys, showKeysByDefault } = defineProps<{
-  resetKeys: () => void;
+const { beginReset, showKeysByDefault } = defineProps<{
+  beginReset: () => void;
   showKeysByDefault?: boolean;
 }>();
 
 const showKeys = ref(!!showKeysByDefault);
-const willReset = ref(false);
 </script>
 
 <template>
@@ -30,13 +28,7 @@ const willReset = ref(false);
     </ProButton>
   </KeysTemplate>
 
-  <ManageKeys v-if="showKeys" @confirm="() => (willReset = true)" />
-
-  <ResetEncryptionKey
-    v-if="willReset"
-    @confirm="resetKeys"
-    @cancel="() => (willReset = false)"
-  />
+  <ManageKeys v-if="showKeys" @confirm="beginReset" />
 </template>
 
 <style scoped>

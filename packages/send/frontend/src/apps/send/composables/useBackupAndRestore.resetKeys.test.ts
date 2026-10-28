@@ -6,9 +6,9 @@ import { defineComponent, h, ref } from 'vue';
 import useBackupStore from '@send-frontend/stores/backup-store';
 
 /**
- * Reset Encryption Key swaps the key on the server only on "Download and
- * Continue" (#1355); confirming the reset just shows the overlay. Uses the real
- * backup store so `words` / overlay flags are what the components render.
+ * The Reset Encryption Key modal swaps the key on the server only on "Download
+ * key and reset" (#1355); opening it just prepares a new phrase. Uses the real
+ * backup store so `words` / modal flags are what the components render.
  */
 
 const { state } = vi.hoisted(() => {
@@ -135,7 +135,9 @@ const mountComposable = () =>
     })
   );
 
-describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)', () => {
+const DASHBOARD = '/send/profile?showDashboard=true';
+
+describe('useBackupAndRestore -> single-step reset modal (#1355)', () => {
   let store: ReturnType<typeof useBackupStore>;
 
   beforeEach(() => {
@@ -167,32 +169,42 @@ describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)'
     vi.clearAllMocks();
   });
 
-  it('confirming the reset only shows the overlay: no network, keychain untouched', () => {
-    composable.resetKeys();
+  it('opening the modal only prepares a phrase: no network, no route, keychain untouched', () => {
+    composable.beginReset();
 
     expect(state.generateResetKeyBlob).not.toHaveBeenCalled();
     expect(state.resetKeysMutate).not.toHaveBeenCalled();
     expect(state.keychain.storePassPhrase).not.toHaveBeenCalled();
     expect(state.keychain.keys).toEqual(OLD_KEYS);
-    expect(store.justReset).toBe(true);
+    expect(state.routerPush).not.toHaveBeenCalled();
+    expect(store.shouldReset).toBe(true);
     expect(store.pendingReset).toBe(true);
+    expect(store.justReset).toBe(false);
     expect(store.words).toEqual(['new', 'phrase', '1']);
-    expect(state.routerPush).toHaveBeenCalledWith(
-      '/send/profile?showDashboard=true'
-    );
   });
 
   it('a remount during the pending reset keeps the new phrase, not the stored old one', () => {
-    composable.resetKeys();
-    // The dashboard re-runs the composable after the route change.
+    composable.beginReset();
     mountComposable();
 
     expect(store.passphraseString).toBe('new phrase 1');
   });
 
-  it('Download and Continue swaps on the server, adopts locally, then backs up', async () => {
-    composable.resetKeys();
-    await composable.makeBackup();
+  it('Cancel closes the modal and keeps the old key', () => {
+    composable.beginReset();
+    composable.cancelReset();
+
+    expect(store.shouldReset).toBe(false);
+    expect(store.pendingReset).toBe(false);
+    expect(store.justReset).toBe(false);
+    expect(state.resetKeysMutate).not.toHaveBeenCalled();
+    expect(state.keychain.keys).toEqual(OLD_KEYS);
+    expect(state.routerPush).not.toHaveBeenCalled();
+  });
+
+  it('Download key and reset swaps, adopts, backs up, downloads, then routes', async () => {
+    composable.beginReset();
+    await composable.confirmReset();
 
     expect(state.calls).toEqual([
       'blob',
@@ -207,14 +219,16 @@ describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)'
     expect(state.keychain.keys).toEqual({});
     expect(state.storedPassphrase).toBe('new phrase 1');
     expect(state.sendMessageToBridge).toHaveBeenCalledWith('new phrase 1');
-    expect(store.justReset).toBe(false);
+    expect(store.shouldReset).toBe(false);
     expect(store.pendingReset).toBe(false);
+    expect(store.justReset).toBe(false);
+    expect(state.routerPush).toHaveBeenCalledWith(DASHBOARD);
   });
 
-  it('Regenerate before Download and Continue swaps in the regenerated phrase', async () => {
-    composable.resetKeys();
+  it('Regenerate before confirming swaps in the regenerated phrase', async () => {
+    composable.beginReset();
     composable.regeneratePassphrase();
-    await composable.makeBackup();
+    await composable.confirmReset();
 
     expect(state.generateResetKeyBlob).toHaveBeenCalledWith('new phrase 2');
     expect(state.storedPassphrase).toBe('new phrase 2');
@@ -222,8 +236,9 @@ describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)'
 
   it('Regenerate is locked while saving and once the reset key is installed', async () => {
     state.keychain.storePassPhrase.mockRejectedValueOnce(new Error('quota'));
-    composable.resetKeys();
-    const saving = composable.makeBackup();
+    composable.beginReset();
+    const saving = composable.confirmReset();
+    expect(composable.savingBackup.value).toBe(true);
     expect(composable.canRegenerate.value).toBe(false);
     composable.regeneratePassphrase();
     await saving;
@@ -235,46 +250,84 @@ describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)'
     expect(store.passphraseString).toBe('new phrase 1');
   });
 
-  it('a remounted dashboard cannot start a second swap while one is running', async () => {
-    composable.resetKeys();
+  it('Cancel is ignored while the swap runs', async () => {
+    composable.beginReset();
+    const saving = composable.confirmReset();
+    composable.cancelReset();
+    expect(store.shouldReset).toBe(true);
+    await saving;
+
+    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+    expect(state.routerPush).toHaveBeenCalledWith(DASHBOARD);
+  });
+
+  it('a remounted view cannot start a second swap while one is running', async () => {
+    composable.beginReset();
     const first = composable;
-    const saving = first.makeBackup();
+    const saving = first.confirmReset();
     mountComposable();
-    await composable.makeBackup();
+    await composable.confirmReset();
     await saving;
 
     expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
   });
 
-  it('a rejected swap changes nothing locally and keeps the overlay up with an error', async () => {
+  it('a double click swaps the key only once', async () => {
+    composable.beginReset();
+    await Promise.all([composable.confirmReset(), composable.confirmReset()]);
+
+    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('a rejected swap keeps the modal up with an error and the old key intact', async () => {
     state.resetKeysMutate.mockRejectedValueOnce(new Error('422'));
-    composable.resetKeys();
-    await composable.makeBackup();
+    composable.beginReset();
+    await composable.confirmReset();
 
     expect(state.keychain.rsa.setPrivateKeyFromJwk).not.toHaveBeenCalled();
     expect(state.keychain.keys).toEqual(OLD_KEYS);
     expect(state.storedPassphrase).toBe('old stored phrase');
     expect(state.backupKeys).not.toHaveBeenCalled();
-    expect(store.justReset).toBe(true);
+    expect(store.shouldReset).toBe(true);
     expect(store.pendingReset).toBe(true);
+    expect(store.justReset).toBe(false);
     expect(store.errorMessage).toContain('Could not reset');
+    expect(state.routerPush).not.toHaveBeenCalled();
+    expect(composable.canRegenerate.value).toBe(true);
   });
 
-  it('a local save failure after the swap keeps the overlay and phrase up', async () => {
+  it('leaving during a swap the server then rejects drops the pending reset', async () => {
+    state.resetKeysMutate.mockRejectedValueOnce(new Error('422'));
+    const view = mountComposable();
+    composable.beginReset();
+    const saving = composable.confirmReset();
+    view.unmount();
+    await saving;
+
+    expect(store.pendingReset).toBe(false);
+    expect(store.shouldReset).toBe(false);
+    expect(store.errorMessage).toBe('');
+    expect(state.keychain.keys).toEqual(OLD_KEYS);
+    expect(state.routerPush).not.toHaveBeenCalled();
+  });
+
+  it('a local save failure after the swap hands over to the BackupKeys overlay', async () => {
     state.keychain.storePassPhrase.mockRejectedValueOnce(
       new Error('QuotaExceededError')
     );
-    composable.resetKeys();
-    await composable.makeBackup();
+    composable.beginReset();
+    await composable.confirmReset();
 
     expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
-    expect(store.justReset).toBe(true);
+    expect(store.shouldReset).toBe(false);
     expect(store.pendingReset).toBe(false);
+    expect(store.justReset).toBe(true);
     expect(store.passphraseString).toBe('new phrase 1');
     expect(store.errorMessage).toContain('could not be saved on this device');
+    expect(state.routerPush).toHaveBeenCalledWith(DASHBOARD);
 
-    // Retrying must not swap a second key in, nor back up under the old
-    // stored phrase while the new one still can't be saved.
+    // Retrying from the overlay must not swap a second key in, nor back up
+    // under the old stored phrase while the new one still can't be saved.
     state.keychain.storePassPhrase.mockRejectedValueOnce(
       new Error('QuotaExceededError')
     );
@@ -284,40 +337,51 @@ describe('useBackupAndRestore -> reset swaps on "Download and Continue" (#1355)'
     expect(store.justReset).toBe(true);
   });
 
-  it('a backup failure after the swap keeps the overlay and phrase up', async () => {
-    state.backupKeys.mockRejectedValueOnce(new Error('500'));
-    composable.resetKeys();
-    await composable.makeBackup();
+  it('a remount between the swap and the local save keeps the new phrase', async () => {
+    // storePassPhrase is where the new phrase is persisted; mount another view
+    // while it is still pending and make it fail, as a page change mid-save would.
+    state.keychain.storePassPhrase.mockImplementationOnce(async () => {
+      mountComposable();
+      throw new Error('QuotaExceededError');
+    });
+    composable.beginReset();
+    await composable.confirmReset();
 
     expect(store.justReset).toBe(true);
     expect(store.passphraseString).toBe('new phrase 1');
-    expect(store.errorMessage).toContain('Could not finish saving');
   });
 
-  it('a double click swaps the key only once', async () => {
-    composable.resetKeys();
-    await Promise.all([composable.makeBackup(), composable.makeBackup()]);
-
-    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
-  });
-
-  it('leaving the overlay before Download and Continue abandons the reset', () => {
-    composable.resetKeys();
-    composable.abandonPendingReset();
-
-    expect(store.justReset).toBe(false);
-    expect(store.pendingReset).toBe(false);
-    expect(state.resetKeysMutate).not.toHaveBeenCalled();
-  });
-
-  it('leaving while Download and Continue runs keeps the overlay state', async () => {
-    composable.resetKeys();
-    const saving = composable.makeBackup();
-    composable.abandonPendingReset();
+  it('a backup failure after the swap hands over to the BackupKeys overlay', async () => {
     state.backupKeys.mockRejectedValueOnce(new Error('500'));
-    await saving;
+    composable.beginReset();
+    await composable.confirmReset();
 
-    expect(state.resetKeysMutate).toHaveBeenCalledTimes(1);
+    expect(store.shouldReset).toBe(false);
     expect(store.justReset).toBe(true);
+    expect(store.passphraseString).toBe('new phrase 1');
+    expect(store.errorMessage).toContain('Could not finish saving');
+    expect(state.routerPush).toHaveBeenCalledWith(DASHBOARD);
+  });
+
+  it('cannot start a new reset over a swapped-in key that is not saved yet', async () => {
+    state.backupKeys.mockRejectedValueOnce(new Error('500'));
+    composable.beginReset();
+    await composable.confirmReset();
+    composable.beginReset();
+
+    expect(store.shouldReset).toBe(false);
+    expect(store.pendingReset).toBe(false);
+    expect(store.passphraseString).toBe('new phrase 1');
+  });
+
+  it('first-time Download and Continue backs up without a swap', async () => {
+    store.setWords(['first', 'time']);
+    const saved = await composable.makeBackup();
+
+    expect(saved).toBe(true);
+    expect(state.resetKeysMutate).not.toHaveBeenCalled();
+    expect(state.calls).toEqual(['backup', 'download']);
+    expect(state.storedPassphrase).toBe('first time');
+    expect(state.routerPush).not.toHaveBeenCalled();
   });
 });

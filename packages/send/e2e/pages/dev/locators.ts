@@ -68,6 +68,7 @@ export const dashboardLocators = (page: Page) => {
   const resetAccessButton = page.getByTestId("reset-access");
   const dangerButton = page.getByTestId("danger-button");
   const showReset = page.getByTestId("show-reset");
+  const resetKeyPassphrase = page.getByTestId("reset-key-passphrase");
 
   return {
     registerButton,
@@ -91,5 +92,6 @@ export const dashboardLocators = (page: Page) => {
     resetAccessButton,
     dangerButton,
     showReset,
+    resetKeyPassphrase,
   };
 };

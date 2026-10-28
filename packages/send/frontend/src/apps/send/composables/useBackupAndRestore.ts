@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watchEffect } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
@@ -63,8 +63,13 @@ export const useBackupAndRestore = () => {
   const { keychain } = useKeychainStore();
   const { metrics } = useMetricsStore();
 
+  let unmounted = false;
+  onUnmounted(() => {
+    unmounted = true;
+  });
+
   onMounted(() => {
-    // The reset overlay replaces a (possibly locked) key; don't bounce it.
+    // The post-reset BackupKeys fallback holds the new key; don't bounce it.
     if (keychain.locked && !justReset.value) {
       router.push('/passphrase-changed');
       return;
@@ -113,29 +118,51 @@ export const useBackupAndRestore = () => {
   });
 
   /**
-   * "Create new encryption key": only prepares a new passphrase and shows the
-   * BackupKeys overlay. The server keeps the old key until "Download and
-   * Continue" (makeBackup), so leaving before that click changes nothing (#1355).
+   * Opens the Reset Encryption Key modal with a fresh passphrase. The server
+   * keeps the old key until "Download key and reset" (confirmReset), so
+   * cancelling or leaving before that click changes nothing (#1355).
    */
-  function resetKeys() {
+  function beginReset() {
+    // A swapped-in key still waiting to be saved must stay on screen.
+    if (justReset.value || savingBackup.value) return;
     backupStore.setWords(generatePassphrase(PHRASE_SIZE));
     backupStore.setPendingReset(true);
-    backupStore.setJustReset(true);
-    backupStore.setShouldReset(false);
     backupStore.setErrorMessage('');
-    router.push('/send/profile?showDashboard=true');
+    backupStore.setShouldReset(true);
   }
 
-  /** Leaving the overlay before "Download and Continue" cancels the reset. */
-  function abandonPendingReset() {
+  /** Cancel or leaving the page before the swap keeps the old key. */
+  function cancelReset() {
     if (!pendingReset.value || savingBackup.value) return;
     backupStore.setPendingReset(false);
-    backupStore.setJustReset(false);
+    backupStore.setShouldReset(false);
+    backupStore.setErrorMessage('');
+  }
+
+  /**
+   * "Download key and reset": swaps the key in, saves and downloads it, then
+   * goes to the dashboard. A rejected swap keeps the modal up with the old key;
+   * a swap that went through but couldn't be saved hands over to the BackupKeys
+   * fallback (justReset).
+   */
+  async function confirmReset() {
+    if (!pendingReset.value || savingBackup.value) return;
+    const saved = await makeBackup();
+    if (!saved && pendingReset.value) {
+      // Rejected after the user left: the unmount's cancelReset was skipped
+      // while saving, so drop the reset now instead of reopening it later.
+      if (unmounted) cancelReset();
+      return;
+    }
+    if (!saved) backupStore.setJustReset(true);
+    backupStore.setShouldReset(false);
+    router.push('/send/profile?showDashboard=true');
   }
 
   /**
    * Swaps the pending reset key in on the server (write-new-then-swap, #1116),
-   * then adopts it locally. Returns false when the overlay must stay up.
+   * then adopts it locally. Returns false if the server rejected the swap or
+   * the new key could not be adopted locally.
    */
   async function swapInResetKey(passphrase: string): Promise<boolean> {
     let keypair: JwkKeyPair;
@@ -233,10 +260,13 @@ export const useBackupAndRestore = () => {
   });
 
   // If there's a passphrase in local storage that differs from the store,
-  // sync it to the store (handles page refreshes). Not while the reset overlay
-  // is up: `words` holds the new phrase, local storage may hold the old (#1355).
+  // sync it to the store (handles page refreshes). Not during a reset or
+  // while a save runs: `words` holds the new phrase, local storage may still
+  // hold the old (#1355).
   if (
+    !savingBackup.value &&
     !justReset.value &&
+    !pendingReset.value &&
     !!passphraseFromLocalStorage &&
     passphraseFromLocalStorage !== passphraseString.value
   ) {
@@ -254,24 +284,24 @@ export const useBackupAndRestore = () => {
    * 5. Sets up the user's database with the keys
    * 6. Refetches the backup state
    *
-   * On failure the overlay stays up with an error, still showing the phrase.
+   * Resolves true once saved; on failure the phrase stays up with an error.
    */
-  async function makeBackup() {
-    if (savingBackup.value) return;
+  async function makeBackup(): Promise<boolean> {
+    if (savingBackup.value) return false;
     backupStore.setSavingBackup(true);
     backupStore.setErrorMessage('');
     const passphrase = passphraseString.value;
     try {
       if (pendingReset.value && !(await swapInResetKey(passphrase))) {
-        return;
+        return false;
       }
-      await saveBackup(passphrase);
+      return await saveBackup(passphrase);
     } finally {
       backupStore.setSavingBackup(false);
     }
   }
 
-  async function saveBackup(passphrase: string) {
+  async function saveBackup(passphrase: string): Promise<boolean> {
     try {
       // Awaited: backupKeys encrypts with the stored phrase, not `passphrase`.
       await keychain.storePassPhrase(passphrase);
@@ -284,12 +314,14 @@ export const useBackupAndRestore = () => {
       // The user has now saved their (possibly post-reset) recovery key, so the
       // forced overlay can stand down (issue #1116).
       backupStore.setJustReset(false);
+      return true;
     } catch (e) {
       console.error('Error backing up keys', e);
       backupStore.setErrorMessage(
         `Could not finish saving your recovery key (${String(e)}). ` +
           `Keep the phrase shown and try again.`
       );
+      return false;
     } finally {
       await refetch();
     }
@@ -336,6 +368,7 @@ export const useBackupAndRestore = () => {
     shouldUnlock,
     shouldReset,
     justReset,
+    savingBackup,
     keysInLocalStorage,
     // Human readable backup state for conditional rendering
 
@@ -347,8 +380,9 @@ export const useBackupAndRestore = () => {
     makeBackup,
     restoreFromBackup,
     routeToKeyRestore,
-    resetKeys,
-    abandonPendingReset,
+    beginReset,
+    confirmReset,
+    cancelReset,
     deleteFiles,
     filesDeleted,
     deleteFailed,

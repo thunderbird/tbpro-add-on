@@ -8,6 +8,10 @@ const { state } = vi.hoisted(() => ({
   state: {
     query: {} as Record<string, string>,
     filesDeleted: false,
+    shouldReset: false,
+    beginReset: vi.fn(),
+    confirmReset: vi.fn(),
+    cancelReset: vi.fn(),
     // Assigned by the useBackupAndRestore mock below so tests can flip it.
     keysInLocalStorage: null as unknown as Ref<boolean>,
   },
@@ -30,8 +34,14 @@ vi.mock('@send-frontend/apps/send/composables/useBackupAndRestore', () => {
       errorMessage: '',
       setPassphrase: vi.fn(),
       restoreFromBackup: vi.fn(),
-      shouldReset: false,
-      resetKeys: vi.fn(),
+      shouldReset: state.shouldReset,
+      beginReset: state.beginReset,
+      confirmReset: state.confirmReset,
+      cancelReset: state.cancelReset,
+      words: ['brave', 'oil'],
+      regeneratePassphrase: vi.fn(),
+      canRegenerate: true,
+      savingBackup: false,
       deleteFiles: vi.fn(),
       filesDeleted: state.filesDeleted,
       deleteFailed: false,
@@ -45,7 +55,7 @@ const stubs = {
   DeleteSendDataCard: true,
   DeleteSendDataSuccessCard: true,
   RestoreKeys: true,
-  ResetEncryptionKeyV2: true,
+  ResetKeyModal: true,
   SecurityAndPrivacy: true,
   SupportBox: true,
 };
@@ -58,8 +68,11 @@ describe('SettingsPage.vue', () => {
   enableAutoUnmount(afterEach);
 
   beforeEach(() => {
+    // The previous test's auto-unmount runs after afterEach's clear.
+    vi.clearAllMocks();
     state.query = {};
     state.filesDeleted = false;
+    state.shouldReset = false;
     state.keysInLocalStorage.value = false;
   });
 
@@ -140,5 +153,36 @@ describe('SettingsPage.vue', () => {
 
     expect(postMessage).not.toHaveBeenCalled();
     expect(close).not.toHaveBeenCalled();
+  });
+
+  it('shows the reset modal in place, next to the settings content', () => {
+    state.shouldReset = true;
+
+    const wrapper = mountPage();
+
+    const modal = wrapper.findComponent({ name: 'ResetKeyModal' });
+    expect(modal.exists()).toBe(true);
+    expect(modal.props('words')).toEqual(['brave', 'oil']);
+    expect(modal.props('saving')).toBe(false);
+    expect(wrapper.findComponent({ name: 'SecurityAndPrivacy' }).exists()).toBe(
+      true
+    );
+  });
+
+  it('wires the modal to confirmReset and cancelReset', async () => {
+    state.shouldReset = true;
+    const modal = mountPage().findComponent({ name: 'ResetKeyModal' });
+
+    modal.vm.$emit('confirm');
+    modal.vm.$emit('cancel');
+
+    expect(state.confirmReset).toHaveBeenCalledTimes(1);
+    expect(state.cancelReset).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels a pending reset when the page unmounts', () => {
+    mountPage().unmount();
+
+    expect(state.cancelReset).toHaveBeenCalledTimes(1);
   });
 });

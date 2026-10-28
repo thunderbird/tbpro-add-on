@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { forceCloseWindow } from '@send-frontend/lib/login';
-import { computed, watch } from 'vue';
+import { computed, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBackupAndRestore } from '../composables/useBackupAndRestore';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import DeleteSendDataCard from '../views/DeleteSendDataCard.vue';
 import DeleteSendDataSuccessCard from '../views/DeleteSendDataSuccessCard.vue';
-import ResetEncryptionKeyV2 from '../views/ResetEncryptionKeyV2.vue';
+import ResetKeyModal from '../views/ResetKeyModal.vue';
 import RestoreKeys from '../views/RestoreKeys.vue';
 import SecurityAndPrivacy from '../views/SecurityAndPrivacy.vue';
 import SupportBox from '../views/SupportBox.vue';
@@ -21,13 +21,22 @@ const {
   setPassphrase,
   restoreFromBackup,
   shouldReset,
-  resetKeys,
+  beginReset,
+  confirmReset,
+  cancelReset,
+  words,
+  regeneratePassphrase,
+  canRegenerate,
+  savingBackup,
   deleteFiles,
   filesDeleted,
   deleteFailed,
   resetDeleteFiles,
   keysInLocalStorage,
 } = useBackupAndRestore();
+
+// Leaving the page before "Download key and reset" keeps the old key (#1355).
+onUnmounted(cancelReset);
 
 const showDeleteCard = computed(() => route.query.delete === 'true');
 const storedPassphrase = computed(() => keychain.getPassphraseValue() ?? '');
@@ -82,29 +91,32 @@ const closeDeleteCard = () => {
           @cancel="closeDeleteCard"
         />
         <RestoreKeys
-          v-else-if="
-            backupData === 'SHOULD_RESTORE_FROM_BACKUP' && !shouldReset
-          "
+          v-else-if="backupData === 'SHOULD_RESTORE_FROM_BACKUP'"
           :restore-from-backup="restoreFromBackup"
           :set-passphrase="setPassphrase"
           :message="errorMessage"
-          :on-reset="() => (shouldReset = true)"
+          :on-reset="beginReset"
           @cancel="() => router.push('/send/profile?showDashboard=true')"
-        />
-        <!-- RESET -->
-        <ResetEncryptionKeyV2
-          v-else-if="shouldReset"
-          @confirm="resetKeys"
-          @cancel="() => (shouldReset = false)"
         />
         <SecurityAndPrivacy
           v-else-if="backupData === 'KEYS_IN_LOCAL_STORAGE'"
           :show-keys-by-default="true"
-          :reset-keys="resetKeys"
+          :begin-reset="beginReset"
         />
       </section>
       <SupportBox />
     </div>
+    <!-- RESET -->
+    <ResetKeyModal
+      v-if="shouldReset"
+      :words="words"
+      :regenerate-passphrase="regeneratePassphrase"
+      :can-regenerate="canRegenerate"
+      :error-message="errorMessage"
+      :saving="savingBackup"
+      @confirm="confirmReset"
+      @cancel="cancelReset"
+    />
   </div>
 </template>
 

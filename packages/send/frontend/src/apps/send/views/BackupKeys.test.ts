@@ -22,7 +22,10 @@ vi.mock('@send-frontend/composables/useIsExtension', () => ({
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
-const mountOverlay = (errorMessage: string) =>
+const mountOverlay = (
+  errorMessage: string,
+  props: Record<string, unknown> = {}
+) =>
   mount(BackupKeys, {
     props: {
       words: ['one', 'two'],
@@ -30,6 +33,7 @@ const mountOverlay = (errorMessage: string) =>
       regeneratePassphrase: vi.fn(),
       logOutAuth: vi.fn(),
       errorMessage,
+      ...props,
     },
     global: { stubs: { RenderOnEnvironment: true, KeysTemplate: false } },
   });
@@ -47,5 +51,30 @@ describe('BackupKeys.vue', () => {
           .element as HTMLInputElement
       ).value
     ).toBe('one - two');
+  });
+
+  it('first-time setup: regenerate and Download and Continue still work', async () => {
+    const regeneratePassphrase = vi.fn();
+    const makeBackup = vi.fn();
+    const wrapper = mountOverlay('', { regeneratePassphrase, makeBackup });
+
+    await wrapper.find('button[title="Regenerate"]').trigger('click');
+    await wrapper
+      .find('[data-testid="encrypt-keys-button-overlay"]')
+      .trigger('click');
+
+    expect(regeneratePassphrase).toHaveBeenCalledTimes(1);
+    expect(makeBackup).toHaveBeenCalledTimes(1);
+    expect(
+      wrapper.find('[data-testid="backup-keys-error-overlay"]').exists()
+    ).toBe(false);
+  });
+
+  it('disables regenerate when the phrase is locked', () => {
+    const wrapper = mountOverlay('', { canRegenerate: false });
+
+    expect(
+      wrapper.find('button[title="Regenerate"]').attributes('disabled')
+    ).toBeDefined();
   });
 });
