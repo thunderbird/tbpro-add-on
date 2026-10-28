@@ -218,6 +218,8 @@ jobs:
             base_url: "https://send-stage.tb.pro"
             send_server_url: "https://send-backend-stage.tb.pro"
             send_client_url: "https://send-stage.tb.pro"
+            oidc_root_url: "https://auth.stage-thundermail.com/realms/tbpro/"
+            accounts_url: "https://accounts.stage-thundermail.com"
           - env: "prod"
             base_url: "https://send.tb.pro"
             send_server_url: "https://send-backend.tb.pro"
@@ -247,10 +249,11 @@ jobs:
           POSTHOG_KEY: ${{ matrix.env == 'stage' && secrets.VITE_POSTHOG_PROJECT_KEY_STAGE || secrets.VITE_POSTHOG_PROJECT_KEY_PROD }}
           POSTHOG_HOST: ${{ matrix.env == 'stage' && vars.VITE_POSTHOG_HOST_STAGE || vars.VITE_POSTHOG_HOST_PROD }}
           OIDC_CLIENT_ID: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_CLIENT_ID_STAGE || secrets.VITE_OIDC_CLIENT_ID_PROD }}
-          OIDC_ROOT_URL: ${{ matrix.env == 'stage' && secrets.VITE_OIDC_ROOT_URL_STAGE || secrets.VITE_OIDC_ROOT_URL_PROD }}
+          OIDC_ROOT_URL: ${{ matrix.env == 'stage' && matrix.oidc_root_url || secrets.VITE_OIDC_ROOT_URL_PROD }}
           BASE_URL: ${{ matrix.base_url }}
           SEND_SERVER_URL: ${{ matrix.send_server_url }}
           SEND_CLIENT_URL: ${{ matrix.send_client_url }}
+          ACCOUNTS_URL: ${{ matrix.accounts_url }}
         run: |
           echo "Environment: ${{ matrix.env }}"
           cd packages/send/frontend
@@ -264,6 +267,10 @@ jobs:
           VITE_POSTHOG_HOST=${POSTHOG_HOST}
           VITE_OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
           VITE_OIDC_ROOT_URL=${OIDC_ROOT_URL}
+          VITE_ACCOUNTS_URL=${ACCOUNTS_URL}
+          VITE_DASHBOARD_URL=${ACCOUNTS_URL:+${ACCOUNTS_URL}/send/dashboard}
+          VITE_CONTACT_FORM_URL=${ACCOUNTS_URL:+${ACCOUNTS_URL}/contact}
+          VITE_THUNDERMAIL_URL=${ACCOUNTS_URL:+${ACCOUNTS_URL}/mail}
           EOF
 
       - name: Build frontend assets
