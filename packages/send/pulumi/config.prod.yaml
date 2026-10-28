@@ -169,6 +169,10 @@ resources:
                 value: sendapp
               - name: NODE_ENV
                 value: production
+              # Orphan sweep (backend/src/jobs/orphanSweep.ts) defaults to a dry
+              # run; this turns on real deletes from the prod bucket and DB.
+              - name: ORPHAN_SWEEP_DRY_RUN
+                value: "false"
               - name: POSTHOG_HOST
                 value: https://us.i.posthog.com
               # ECS is the ONLY place migrations run in the container entrypoint.
