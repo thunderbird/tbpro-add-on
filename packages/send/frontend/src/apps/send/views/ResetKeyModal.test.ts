@@ -13,7 +13,10 @@ const stubs = {
   },
 };
 
-function mountModal(props: Record<string, unknown> = {}) {
+function mountModal({
+  attachTo,
+  ...props
+}: Record<string, unknown> & { attachTo?: Element } = {}) {
   return mount(ResetKeyModal, {
     props: {
       words: ['brave', 'oil', 'hour'],
@@ -21,6 +24,7 @@ function mountModal(props: Record<string, unknown> = {}) {
       ...props,
     },
     global: { stubs },
+    attachTo,
   });
 }
 
@@ -92,6 +96,30 @@ describe('ResetKeyModal.vue', () => {
     await wrapper.find('.cancel-button').trigger('click');
 
     expect(wrapper.emitted('cancel')).toHaveLength(1);
+  });
+
+  it('is a labelled dialog that takes focus and closes on Escape', async () => {
+    const wrapper = mountModal({ attachTo: document.body });
+    const dialog = wrapper.find('[role="dialog"]');
+
+    expect(dialog.attributes('aria-modal')).toBe('true');
+    expect(dialog.attributes('aria-labelledby')).toBe('reset-key-title');
+    expect(wrapper.find('#reset-key-title').text()).toBe(
+      'Reset Encryption Key'
+    );
+    expect(document.activeElement).toBe(dialog.element);
+
+    await dialog.trigger('keydown', { key: 'Escape' });
+    expect(wrapper.emitted('cancel')).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it('ignores Escape while saving', async () => {
+    const wrapper = mountModal({ saving: true });
+
+    await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Escape' });
+
+    expect(wrapper.emitted('cancel')).toBeUndefined();
   });
 
   it('shows the error under the key', () => {

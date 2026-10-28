@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DangerButton } from '@thunderbirdops/services-ui';
-import { ref } from 'vue';
+import { onMounted, ref, useTemplateRef } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 import PassphraseField from './PassphraseField.vue';
 
@@ -25,6 +25,13 @@ const emit = defineEmits<{
 
 const understood = ref(false);
 
+const dialog = useTemplateRef<HTMLElement>('dialog');
+onMounted(() => dialog.value?.focus());
+
+const cancel = () => {
+  if (!saving) emit('cancel');
+};
+
 const confirm = () => {
   if (understood.value && !saving) {
     emit('confirm');
@@ -34,8 +41,16 @@ const confirm = () => {
 
 <template>
   <KeysTemplate :is-overlay="true">
-    <div class="modal-content">
-      <h1 class="title">Reset Encryption Key</h1>
+    <div
+      ref="dialog"
+      class="reset-key-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reset-key-title"
+      tabindex="-1"
+      @keydown.esc="cancel"
+    >
+      <h1 id="reset-key-title" class="title">Reset Encryption Key</h1>
 
       <div class="description">
         <p>
@@ -84,7 +99,7 @@ const confirm = () => {
           type="button"
           class="cancel-button"
           :disabled="saving"
-          @click="emit('cancel')"
+          @click="cancel"
         >
           Cancel
         </button>
@@ -102,6 +117,12 @@ const confirm = () => {
 
 <style scoped>
 @import '@send-frontend/apps/common/tbpro-styles.css';
+
+/* Programmatic focus target only; the controls inside carry the visible ring. */
+.reset-key-dialog:focus {
+  outline: none;
+}
+
 .description {
   margin-bottom: 2rem;
   line-height: 1.6;
