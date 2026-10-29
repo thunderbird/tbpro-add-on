@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // deleteOrphans (#117): the stored object goes before the row, only old
-// uploads are considered, and dry run / delete budget are honoured.
+// uploads are considered, and the delete budget is honoured.
 
 const h = vi.hoisted(() => {
   const order: string[] = [];
@@ -33,7 +33,7 @@ vi.mock('../../storage', () => ({ default: { del: h.del } }));
 import { deleteOrphans } from '../../models';
 
 const olderThan = new Date('2026-10-22T00:00:00Z');
-const options = { olderThan, dryRun: false, maxDeletes: 100 };
+const options = { olderThan, maxDeletes: 100 };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -47,7 +47,6 @@ describe('deleteOrphans', () => {
       found: 2,
       deleted: 2,
       errors: 0,
-      dryRun: false,
       capped: false,
     });
     for (const id of ['a', 'b']) {
@@ -100,14 +99,6 @@ describe('deleteOrphans', () => {
     expect(h.del).not.toHaveBeenCalled();
     h.prisma.upload.count.mockResolvedValue(1);
     warn.mockRestore();
-  });
-
-  it('deletes nothing in a dry run', async () => {
-    const result = await deleteOrphans({ ...options, dryRun: true });
-
-    expect(result).toMatchObject({ found: 2, deleted: 2, dryRun: true });
-    expect(h.del).not.toHaveBeenCalled();
-    expect(h.prisma.upload.delete).not.toHaveBeenCalled();
   });
 
   it('starts no deletes after the deadline', async () => {

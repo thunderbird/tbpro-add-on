@@ -11,7 +11,6 @@ const UPLOAD_KEY =
 
 export type SweepOptions = {
   olderThan: Date;
-  dryRun: boolean;
   maxDeletes: number;
   /** Epoch ms after which no further work is started. */
   deadline: number;
@@ -28,7 +27,7 @@ type BucketResult = {
 /**
  * Deletes bucket objects older than `olderThan` whose key is an upload id with
  * no Upload row, at most `maxDeletes` attempts. Stateless: a run that dies is
- * redone by the next one. In a dry run `deleted` counts what would be deleted.
+ * redone by the next one.
  */
 export async function deleteBucketOrphans(
   options: SweepOptions,
@@ -66,7 +65,7 @@ async function sweepBucketFrom(
   result.found += orphans.length;
   result.capped = orphans.length > room;
   await mapLimit(orphans.slice(0, room), STORAGE_DELETE_CONCURRENCY, (key) =>
-    deleteKey(key, options.dryRun, result)
+    deleteKey(key, result)
   );
 
   if (page.next !== undefined && !result.capped) {
@@ -74,9 +73,9 @@ async function sweepBucketFrom(
   }
 }
 
-async function deleteKey(key: string, dryRun: boolean, result: BucketResult) {
+async function deleteKey(key: string, result: BucketResult) {
   try {
-    if (!dryRun) await storage.del(key);
+    await storage.del(key);
     result.deleted++;
   } catch (e) {
     console.warn(`[orphanSweep] storage.del(${key}) failed`, e);
@@ -104,9 +103,6 @@ export function sweepOptionsFromEnv(now = Date.now()): SweepOptions {
   const minAgeHours = envNumber('ORPHAN_MIN_AGE_HOURS', 24);
   return {
     olderThan: new Date(now - minAgeHours * HOUR_MS),
-    // Dry run unless explicitly disabled, so a deploy without the variable
-    // deletes nothing. Set ORPHAN_SWEEP_DRY_RUN=false once the counts look right.
-    dryRun: process.env.ORPHAN_SWEEP_DRY_RUN?.trim().toLowerCase() !== 'false',
     maxDeletes: Math.floor(envNumber('ORPHAN_SWEEP_MAX_DELETES', 10000)),
     deadline: now + SWEEP_DEADLINE_MS,
   };
@@ -130,7 +126,6 @@ export async function runSweep(
     deleted: rows.deleted + bucket.deleted,
     errors: rows.errors + bucket.errors,
     durationMs: Date.now() - started,
-    dryRun: options.dryRun,
     capped: rows.capped || bucket.capped,
   };
   console.log(`[orphanSweep] sweep ${JSON.stringify(summary)}`);
