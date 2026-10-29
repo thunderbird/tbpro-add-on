@@ -1,11 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Orphan sweep (#117): the bucket pass, leader election over the advisory
-// lock, and the schedule switch. Storage, Prisma and the row pass are mocked.
+// lock, and the once-per-interval schedule. Storage, Prisma and the row pass
+// are mocked; the JobRun table is one in-memory row.
 
 const h = vi.hoisted(() => {
   const upload = { findMany: vi.fn() };
-  const tx = { $queryRaw: vi.fn(), upload };
+  const job: { lastRunAt: Date | null } = { lastRunAt: null };
+  const jobRun = {
+    findUnique: vi.fn(
+      async () =>
+        job.lastRunAt && { name: 'orphanSweep', lastRunAt: job.lastRunAt }
+    ),
+    upsert: vi.fn(async ({ update }: { update: { lastRunAt: Date } }) => {
+      job.lastRunAt = update.lastRunAt;
+    }),
+  };
+  const tx = { $queryRaw: vi.fn(), upload, jobRun };
   const prisma = {
     upload,
     $transaction: vi.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
@@ -15,7 +26,7 @@ const h = vi.hoisted(() => {
     del: vi.fn(async (_key: string) => true),
   };
   const deleteOrphans = vi.fn();
-  return { tx, prisma, storage, deleteOrphans };
+  return { job, tx, prisma, storage, deleteOrphans };
 });
 
 vi.mock('@prisma/client', async (importOriginal) => ({
@@ -29,7 +40,7 @@ vi.mock('../../models', () => ({ deleteOrphans: h.deleteOrphans }));
 
 import {
   deleteBucketOrphans,
-  runSweepIfLeader,
+  runSweepIfDue,
   startOrphanSweepSchedule,
   sweepOptionsFromEnv,
 } from '../../jobs/orphanSweep';
@@ -59,8 +70,12 @@ function bucket(...pages: { key: string; lastModified: Date }[][]) {
 
 const deletedKeys = () => h.storage.del.mock.calls.map(([key]) => key);
 
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  h.job.lastRunAt = null;
   h.storage.listObjects.mockReset();
   h.prisma.upload.findMany.mockResolvedValue([]);
   h.deleteOrphans.mockResolvedValue({
@@ -134,16 +149,59 @@ describe('deleteBucketOrphans', () => {
   });
 });
 
-describe('runSweepIfLeader', () => {
+describe('runSweepIfDue', () => {
   beforeEach(() => vi.spyOn(console, 'log').mockImplementation(() => {}));
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
 
   it('skips when another instance holds the lock', async () => {
     h.tx.$queryRaw.mockResolvedValue([{ locked: false }]);
 
-    expect(await runSweepIfLeader()).toBe('skipped');
+    expect(await runSweepIfDue(DAY)).toBe('skipped');
+    expect(h.tx.jobRun.findUnique).not.toHaveBeenCalled();
     expect(h.deleteOrphans).not.toHaveBeenCalled();
     expect(h.storage.listObjects).not.toHaveBeenCalled();
+  });
+
+  it('does not sweep when the last sweep started less than an interval ago', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-29T12:00:00Z') });
+    h.job.lastRunAt = new Date('2026-10-29T00:00:00Z');
+    h.tx.$queryRaw.mockResolvedValue([{ locked: true }]);
+
+    expect(await runSweepIfDue(DAY)).toBe('not-due');
+    expect(h.deleteOrphans).not.toHaveBeenCalled();
+    expect(h.storage.listObjects).not.toHaveBeenCalled();
+    expect(h.tx.jobRun.upsert).not.toHaveBeenCalled();
+  });
+
+  it('sweeps a few minutes early rather than waiting a whole check', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-29T23:57:00Z') });
+    h.job.lastRunAt = new Date('2026-10-29T00:00:00Z');
+    h.tx.$queryRaw.mockResolvedValue([{ locked: true }]);
+    bucket([]);
+
+    expect(await runSweepIfDue(DAY)).toMatchObject({ deleted: 0 });
+  });
+
+  it('records the start time of a sweep', async () => {
+    const now = new Date('2026-10-29T12:00:00Z');
+    vi.useFakeTimers({ now });
+    h.tx.$queryRaw.mockResolvedValue([{ locked: true }]);
+    bucket([]);
+
+    await runSweepIfDue(DAY);
+
+    expect(h.job.lastRunAt).toEqual(now);
+  });
+
+  it('does not record a sweep that fails, so the next check retries it', async () => {
+    h.tx.$queryRaw.mockResolvedValue([{ locked: true }]);
+    h.deleteOrphans.mockRejectedValue(new Error('db down'));
+
+    await expect(runSweepIfDue(DAY)).rejects.toThrow('db down');
+    expect(h.tx.jobRun.upsert).not.toHaveBeenCalled();
   });
 
   it('runs both passes under the lock and sums them', async () => {
@@ -157,7 +215,7 @@ describe('runSweepIfLeader', () => {
     });
     bucket([obj(id(1))]);
 
-    expect(await runSweepIfLeader()).toMatchObject({
+    expect(await runSweepIfDue(DAY)).toMatchObject({
       rowOrphans: 2,
       bucketOrphans: 1,
       deleted: 3,
@@ -178,7 +236,7 @@ describe('runSweepIfLeader', () => {
     h.tx.$queryRaw.mockResolvedValue([{ locked: true }]);
     bucket([]);
 
-    await runSweepIfLeader();
+    await runSweepIfDue(DAY);
 
     expect(h.deleteOrphans).toHaveBeenCalledWith(
       expect.objectContaining({ maxDeletes: 10000 }),
@@ -210,9 +268,11 @@ describe('sweepOptionsFromEnv', () => {
 });
 
 describe('startOrphanSweepSchedule', () => {
+  beforeEach(() => vi.spyOn(console, 'log').mockImplementation(() => {}));
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('does not start when the interval is 0', () => {
@@ -223,16 +283,37 @@ describe('startOrphanSweepSchedule', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('first sweeps within 10 minutes, then every interval', async () => {
+  it('first checks within 10 minutes, then hourly', async () => {
     vi.stubEnv('ORPHAN_SWEEP_INTERVAL_HOURS', '24');
     vi.useFakeTimers();
-    vi.spyOn(console, 'log').mockImplementation(() => {});
     h.tx.$queryRaw.mockResolvedValue([{ locked: false }]);
 
     expect(startOrphanSweepSchedule()).toBe(true);
     await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
     expect(h.prisma.$transaction).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(HOUR);
     expect(h.prisma.$transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('sweeps once per interval however many instances boot', async () => {
+    vi.stubEnv('ORPHAN_SWEEP_INTERVAL_HOURS', '24');
+    vi.useFakeTimers({ now: new Date('2026-10-29T00:00:00Z') });
+    h.tx.$queryRaw.mockResolvedValue([{ locked: true }]);
+    h.storage.listObjects.mockResolvedValue({ objects: [], next: undefined });
+    const random = vi.spyOn(Math, 'random');
+
+    // A rollout: four instances boot over an hour, each checking 0-10 min in.
+    for (const jitter of [0, 0.3, 0.6, 0.9]) {
+      random.mockReturnValueOnce(jitter);
+      startOrphanSweepSchedule();
+      await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    }
+    expect(h.deleteOrphans).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(22 * HOUR);
+    expect(h.deleteOrphans).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(3 * HOUR);
+    expect(h.deleteOrphans).toHaveBeenCalledTimes(2);
   });
 });

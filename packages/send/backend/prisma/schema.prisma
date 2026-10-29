@@ -154,6 +154,13 @@ model Login {
   createdAt  DateTime?
 }
 
+// When each background job last started, so a job that runs on every
+// instance still runs once per interval across the cluster.
+model JobRun {
+  name      String   @id
+  lastRunAt DateTime
+}
+
 enum UserTier {
   PRO
   EPHEMERAL

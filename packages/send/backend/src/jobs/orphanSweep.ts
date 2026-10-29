@@ -86,7 +86,11 @@ async function deleteKey(key: string, dryRun: boolean, result: BucketResult) {
 
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_JITTER_MS = 10 * 60 * 1000;
-const MAX_TIMER_MS = 2 ** 31 - 1;
+const CHECK_EVERY_MS = HOUR_MS;
+// A sweep counts as due this much early, so timer drift and connection waits
+// don't push it back by a whole check.
+const DUE_SLACK_MS = 5 * 60 * 1000;
+const JOB_NAME = 'orphanSweep';
 // The lock's transaction times out after SWEEP_TIMEOUT_MS; work stops earlier.
 const SWEEP_DEADLINE_MS = 1.5 * HOUR_MS;
 const SWEEP_TIMEOUT_MS = 2 * HOUR_MS;
@@ -139,11 +143,14 @@ export async function runSweep(
 
 /**
  * Runs the sweep on whichever instance takes the transaction-scoped advisory
- * lock; the others skip. The lock is released when the transaction ends, so a
+ * lock, if the last sweep started at least `intervalMs` ago; otherwise returns
+ * 'skipped' or 'not-due'. The lock is released when the transaction ends, so a
  * crashed instance never holds it and it is safe behind pgbouncer. Both passes
- * read through `tx`, so a sweep stops if the lock's connection is lost.
+ * read through `tx`, so a sweep stops if the lock's connection is lost. The
+ * start time is recorded in the same transaction, so a failed sweep is retried
+ * at the next check.
  */
-export function runSweepIfLeader() {
+export function runSweepIfDue(intervalMs: number) {
   return prisma.$transaction(
     async (tx) => {
       const [{ locked }] = await tx.$queryRaw<{ locked: boolean }[]>`
@@ -152,27 +159,42 @@ export function runSweepIfLeader() {
         console.log('[orphanSweep] skipped: another instance is sweeping');
         return 'skipped' as const;
       }
-      return runSweep(sweepOptionsFromEnv(), tx);
+      const started = new Date();
+      const last = await tx.jobRun.findUnique({ where: { name: JOB_NAME } });
+      const dueAt = last ? last.lastRunAt.getTime() + intervalMs : 0;
+      if (started.getTime() < dueAt - DUE_SLACK_MS) return 'not-due' as const;
+      const summary = await runSweep(
+        sweepOptionsFromEnv(started.getTime()),
+        tx
+      );
+      await tx.jobRun.upsert({
+        where: { name: JOB_NAME },
+        create: { name: JOB_NAME, lastRunAt: started },
+        update: { lastRunAt: started },
+      });
+      return summary;
     },
     { maxWait: 60_000, timeout: SWEEP_TIMEOUT_MS }
   );
 }
 
 /**
- * Sweeps every ORPHAN_SWEEP_INTERVAL_HOURS (default 24; 0 disables), first
+ * Sweeps once every ORPHAN_SWEEP_INTERVAL_HOURS (default 24; 0 disables)
+ * across all instances, however often they restart. Each checks hourly, first
  * after a random delay of up to 10 minutes. Returns whether it was started.
  */
 export function startOrphanSweepSchedule(): boolean {
   const intervalHours = envNumber('ORPHAN_SWEEP_INTERVAL_HOURS', 24);
   if (intervalHours <= 0) return false;
+  const intervalMs = intervalHours * HOUR_MS;
 
   const tick = () =>
-    runSweepIfLeader().catch((e) =>
+    runSweepIfDue(intervalMs).catch((e) =>
       console.error('[orphanSweep] sweep failed', e)
     );
   setTimeout(() => {
     void tick();
-    setInterval(tick, Math.min(intervalHours * HOUR_MS, MAX_TIMER_MS)).unref();
+    setInterval(tick, Math.min(intervalMs, CHECK_EVERY_MS)).unref();
   }, Math.random() * MAX_JITTER_MS).unref();
   return true;
 }
