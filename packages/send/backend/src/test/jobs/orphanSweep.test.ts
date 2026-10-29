@@ -39,7 +39,6 @@ const YOUNG = new Date('2026-10-23T00:00:00Z');
 const olderThan = new Date('2026-10-22T00:00:00Z');
 const options = {
   olderThan,
-  dryRun: false,
   maxDeletes: 100,
   deadline: Infinity,
 };
@@ -67,7 +66,6 @@ beforeEach(() => {
     found: 0,
     deleted: 0,
     errors: 0,
-    dryRun: false,
     capped: false,
   });
 });
@@ -101,15 +99,6 @@ describe('deleteBucketOrphans', () => {
 
     expect(result.capped).toBe(true);
     expect(h.storage.listObjects).not.toHaveBeenCalled();
-  });
-
-  it('deletes nothing in a dry run', async () => {
-    bucket([obj(id(1))]);
-
-    const result = await deleteBucketOrphans({ ...options, dryRun: true });
-
-    expect(result).toMatchObject({ found: 1, deleted: 1 });
-    expect(h.storage.del).not.toHaveBeenCalled();
   });
 
   it('stops at the delete budget and reports it', async () => {
@@ -152,7 +141,6 @@ describe('runSweepIfLeader', () => {
       found: 2,
       deleted: 2,
       errors: 0,
-      dryRun: false,
       capped: false,
     });
     bucket([obj(id(1))]);
@@ -189,35 +177,15 @@ describe('runSweepIfLeader', () => {
 });
 
 describe('sweepOptionsFromEnv', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.restoreAllMocks();
-  });
+  afterEach(() => vi.unstubAllEnvs());
 
-  it('deletes when ORPHAN_SWEEP_DRY_RUN is unset', () => {
-    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', '');
-    expect(sweepOptionsFromEnv().dryRun).toBe(false);
-  });
-
-  it('deletes when ORPHAN_SWEEP_DRY_RUN=false', () => {
-    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'false');
-    expect(sweepOptionsFromEnv().dryRun).toBe(false);
-    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', ' FALSE ');
-    expect(sweepOptionsFromEnv().dryRun).toBe(false);
-  });
-
-  it('dry runs when ORPHAN_SWEEP_DRY_RUN=true', () => {
-    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'true');
-    expect(sweepOptionsFromEnv().dryRun).toBe(true);
-    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', ' TRUE ');
-    expect(sweepOptionsFromEnv().dryRun).toBe(true);
-  });
-
-  it('dry runs and warns on an unrecognised value', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'yes');
-    expect(sweepOptionsFromEnv().dryRun).toBe(true);
-    expect(warn).toHaveBeenCalledOnce();
+  it('reads the delete budget and minimum age from the environment', () => {
+    vi.stubEnv('ORPHAN_SWEEP_MAX_DELETES', '250');
+    vi.stubEnv('ORPHAN_MIN_AGE_HOURS', '48');
+    const now = Date.parse('2026-10-29T12:00:00Z');
+    const opts = sweepOptionsFromEnv(now);
+    expect(opts.maxDeletes).toBe(250);
+    expect(opts.olderThan.toISOString()).toBe('2026-10-27T12:00:00.000Z');
   });
 });
 

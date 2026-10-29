@@ -408,25 +408,21 @@ export type OrphanDeleteResult = {
   found: number;
   deleted: number;
   errors: number;
-  dryRun: boolean;
   capped: boolean;
 };
 
 /**
  * Deletes orphaned uploads created before `olderThan`, at most `maxDeletes`
  * attempts, starting none after `deadline`. The stored object goes first so a
- * failed delete keeps the row for the next run. In a dry run `deleted` counts
- * what would be deleted.
+ * failed delete keeps the row for the next run.
  */
 export async function deleteOrphans(
   {
     olderThan,
-    dryRun,
     maxDeletes,
     deadline = Infinity,
   }: {
     olderThan: Date;
-    dryRun: boolean;
     maxDeletes: number;
     deadline?: number;
   },
@@ -437,7 +433,6 @@ export async function deleteOrphans(
     found: uploadIds.length,
     deleted: 0,
     errors: 0,
-    dryRun,
     capped: uploadIds.length > maxDeletes,
   };
   const batch = uploadIds.slice(0, maxDeletes);
@@ -447,17 +442,15 @@ export async function deleteOrphans(
       return;
     }
     try {
-      if (!dryRun) {
-        // Re-read through `db`: skips an upload an item claimed since the
-        // query, and throws once the sweep lock's transaction is gone.
-        const orphan = await db.upload.count({
-          where: { id, items: { none: {} } },
-        });
-        if (!orphan) return;
-        await storage.del(id);
-        // Own connection: a failed row delete must not abort the lock's tx.
-        await deleteUpload(id);
-      }
+      // Re-read through `db`: skips an upload an item claimed since the
+      // query, and throws once the sweep lock's transaction is gone.
+      const orphan = await db.upload.count({
+        where: { id, items: { none: {} } },
+      });
+      if (!orphan) return;
+      await storage.del(id);
+      // Own connection: a failed row delete must not abort the lock's tx.
+      await deleteUpload(id);
       result.deleted++;
     } catch (e) {
       console.warn(`[deleteOrphans] Could not delete upload ${id}`, e);
