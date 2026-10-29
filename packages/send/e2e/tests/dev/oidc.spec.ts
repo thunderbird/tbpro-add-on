@@ -3,7 +3,7 @@
 // Its own file on purpose. send.spec.ts is one ordered chain against a single
 // account and runs in serial mode, where the first failure skips everything
 // behind it. This test shares no state with that chain but does depend on
-// auth-stage.tb.pro being up — inside the serial group, one bad afternoon at the
+// auth.stage-thundermail.com being up — inside the serial group, one bad afternoon at the
 // provider would cost the whole dev suite's signal.
 
 import { PLAYWRIGHT_TAG_DEV_DESKTOP } from "../../const/const";
