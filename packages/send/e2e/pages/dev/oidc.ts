@@ -18,8 +18,8 @@ export async function oidc_login({ context }: PlaywrightProps) {
   await otherPage.goto("/extension/management");
   await otherPage.getByTestId("login-button-tbpro").click();
 
-  // wait for navigation to auth-stage.tb.pro
-  await otherPage.waitForURL("**/auth-stage.tb.pro/**");
+  // wait for navigation to auth.stage-thundermail.com
+  await otherPage.waitForURL("**/auth.stage-thundermail.com/**");
   await otherPage.waitForLoadState("networkidle");
 
   await otherPage.getByTestId("username-input").fill(username, { force: true });
@@ -27,7 +27,7 @@ export async function oidc_login({ context }: PlaywrightProps) {
   await otherPage.getByTestId("submit-btn").click();
 
   // Wait for OIDC redirect chain to complete:
-  // auth-stage.tb.pro → /post-login (handleOIDCCallback + backend auth) → /send/profile (BackupKeys renders)
+  // auth.stage-thundermail.com → /post-login (handleOIDCCallback + backend auth) → /send/profile (BackupKeys renders)
   await otherPage.waitForURL("**/send/profile**", { timeout: 30000 });
   await otherPage.waitForLoadState("networkidle", { timeout: 30000 });
 
