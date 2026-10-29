@@ -189,23 +189,35 @@ describe('runSweepIfLeader', () => {
 });
 
 describe('sweepOptionsFromEnv', () => {
-  afterEach(() => vi.unstubAllEnvs());
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
 
-  it('defaults to a dry run when ORPHAN_SWEEP_DRY_RUN is unset', () => {
+  it('deletes when ORPHAN_SWEEP_DRY_RUN is unset', () => {
     vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', '');
-    expect(sweepOptionsFromEnv().dryRun).toBe(true);
+    expect(sweepOptionsFromEnv().dryRun).toBe(false);
   });
 
-  it('stays a dry run for anything other than "false"', () => {
-    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'yes');
-    expect(sweepOptionsFromEnv().dryRun).toBe(true);
-  });
-
-  it('deletes only when ORPHAN_SWEEP_DRY_RUN=false', () => {
+  it('deletes when ORPHAN_SWEEP_DRY_RUN=false', () => {
     vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'false');
     expect(sweepOptionsFromEnv().dryRun).toBe(false);
     vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', ' FALSE ');
     expect(sweepOptionsFromEnv().dryRun).toBe(false);
+  });
+
+  it('dry runs when ORPHAN_SWEEP_DRY_RUN=true', () => {
+    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'true');
+    expect(sweepOptionsFromEnv().dryRun).toBe(true);
+    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', ' TRUE ');
+    expect(sweepOptionsFromEnv().dryRun).toBe(true);
+  });
+
+  it('dry runs and warns on an unrecognised value', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubEnv('ORPHAN_SWEEP_DRY_RUN', 'yes');
+    expect(sweepOptionsFromEnv().dryRun).toBe(true);
+    expect(warn).toHaveBeenCalledOnce();
   });
 });
 

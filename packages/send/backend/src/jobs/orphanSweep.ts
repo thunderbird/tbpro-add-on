@@ -100,13 +100,21 @@ function envNumber(name: string, fallback: number): number {
   return fallback;
 }
 
+// Deletes unless ORPHAN_SWEEP_DRY_RUN=true. A value that is neither true nor
+// false is most likely a typo for true, so it falls back to a dry run.
+function envDryRun(): boolean {
+  const raw = process.env.ORPHAN_SWEEP_DRY_RUN?.trim().toLowerCase();
+  if (!raw || raw === 'false') return false;
+  if (raw === 'true') return true;
+  console.warn(`[orphanSweep] ignoring ORPHAN_SWEEP_DRY_RUN=${raw}, dry run`);
+  return true;
+}
+
 export function sweepOptionsFromEnv(now = Date.now()): SweepOptions {
   const minAgeHours = envNumber('ORPHAN_MIN_AGE_HOURS', 24);
   return {
     olderThan: new Date(now - minAgeHours * HOUR_MS),
-    // Dry run unless explicitly disabled, so a deploy without the variable
-    // deletes nothing. Set ORPHAN_SWEEP_DRY_RUN=false once the counts look right.
-    dryRun: process.env.ORPHAN_SWEEP_DRY_RUN?.trim().toLowerCase() !== 'false',
+    dryRun: envDryRun(),
     maxDeletes: Math.floor(envNumber('ORPHAN_SWEEP_MAX_DELETES', 10000)),
     deadline: now + SWEEP_DEADLINE_MS,
   };
