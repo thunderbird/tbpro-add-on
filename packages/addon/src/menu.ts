@@ -8,7 +8,9 @@ import { shouldAutoOpenLoginOnInstall } from './installGate';
 const environmentName = getEnvName();
 const isProd = environmentName === 'production';
 /** URL for Thunderbird Pro account dashboard (switches between staging and production) */
-const THUNDERBIRD_ACCOUNTS_URL = `https://accounts${!isProd ? '-stage' : ''}.tb.pro/dashboard`;
+const THUNDERBIRD_ACCOUNTS_URL = isProd
+  ? 'https://accounts.tb.pro/dashboard'
+  : 'https://accounts.stage-thundermail.com/dashboard';
 
 /**
  * Available menu actions that can be triggered via the TBPro menu system.

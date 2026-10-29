@@ -156,11 +156,11 @@ export const SIBLING_URL_DEFAULTS = {
     appointmentUrl: 'https://appointment.tb.pro/',
   },
   nonProduction: {
-    accountsUrl: 'https://accounts-stage.tb.pro',
-    dashboardUrl: 'https://accounts-stage.tb.pro/send/dashboard',
+    accountsUrl: 'https://accounts.stage-thundermail.com',
+    dashboardUrl: 'https://accounts.stage-thundermail.com/send/dashboard',
     // Was hard-coded to PRODUCTION for every environment before this change.
-    contactFormUrl: 'https://accounts-stage.tb.pro/contact',
-    thundermailUrl: 'https://accounts-stage.tb.pro/mail',
+    contactFormUrl: 'https://accounts.stage-thundermail.com/contact',
+    thundermailUrl: 'https://accounts.stage-thundermail.com/mail',
     appointmentUrl: 'https://appointment-stage.tb.pro/',
   },
 } as const;
