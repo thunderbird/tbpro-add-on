@@ -22,8 +22,14 @@ allowBuilds:
 
 injectWorkspacePackages: true
 
-minimumReleaseAgeExclude:
-  - http-cache-semantics@4.3.0
+# Cooling period: refuse to resolve any version published less than 7 days ago
+# (minutes). Malicious releases are usually pulled within hours; waiting a week
+# keeps them out of the lockfile. Policy: docs/dependency-remediation/README.md.
+# Exceptions go in minimumReleaseAgeExclude as `name@version`, never bare names.
+minimumReleaseAge: 10080
+# Fail resolution instead of silently falling back to a too-new version. pnpm 11+
+# does this by default once minimumReleaseAge is set; pin it so pnpm 10 agrees.
+minimumReleaseAgeStrict: true
 
 onlyBuiltDependencies:
   - '@prisma/client'
