@@ -1,3 +1,4 @@
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
 import { CONTAINER_TYPE } from '@send-frontend/lib/const';
 import Downloader from '@send-frontend/lib/download';
 import { _saveFileStream } from '@send-frontend/lib/filesync';
@@ -676,10 +677,19 @@ const useFolderStore = defineStore('folderManager', () => {
     });
 
     // Save the file using streaming approach with better memory management
-    return await _saveFileStream({
+    await _saveFileStream({
       stream: combinedStream,
       name: decodeURIComponent(name),
       type: combinedType,
+    });
+
+    // Multipart files bypass Downloader.doDownload, so capture the same event
+    // here. `type` is the parts' stored type (application/zip); `part_count`
+    // tells these events apart from single-part ones.
+    metrics.capture(ANALYTICS_EVENTS.FILE_DOWNLOADED, {
+      size: totalSize,
+      type: combinedType,
+      part_count: sortedMetadata.length,
     });
   }
 
