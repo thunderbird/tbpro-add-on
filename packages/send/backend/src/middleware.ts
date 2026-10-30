@@ -121,6 +121,17 @@ export async function rejectIfSessionRevoked(
   return false;
 }
 
+// Populate `authenticatedUser` from the (already validated) JWT cookie.
+function setAuthenticatedUserFromJWT(req: AuthenticatedRequest) {
+  try {
+    const { id, email, uniqueHash, tier } =
+      getDataFromAuthenticatedRequest(req);
+    req.authenticatedUser = { id, email, uniqueHash, tier };
+  } catch (error) {
+    console.error('Error extracting JWT user data:', error);
+  }
+}
+
 /**
  * Unified authentication middleware that supports both OIDC and legacy JWT authentication
  * This middleware prioritizes OIDC authentication but falls back to JWT for backward compatibility
@@ -150,31 +161,28 @@ export async function requireAuth(
         req.oidcUser = validation.userInfo;
 
         // Resolve the OIDC subject to our user record
+        let user: Awaited<ReturnType<typeof getUserByOIDCSubject>> = null;
         try {
-          const user = await getUserByOIDCSubject(validation.userInfo.sub);
-          if (user) {
-            req.authenticatedUser = {
-              id: user.id,
-              email: user.email,
-              uniqueHash: user.uniqueHash,
-              tier: user.tier,
-            };
-          }
+          user = await getUserByOIDCSubject(validation.userInfo.sub);
         } catch (error) {
           console.warn('Could not find OIDC user in database:', error);
         }
 
         // Fail closed when the token is valid but the subject has no account
-        // here. Falling through would leave `authenticatedUser` unset, and
-        // `getAuthenticatedUserData` would then read the caller's identity from
-        // the `authorization` cookie, which on this path is decoded without
-        // being verified.
-        if (!req.authenticatedUser) {
+        // here. Decide on the lookup itself, not on `authenticatedUser`, which
+        // an earlier `requireJWT` in the chain may already have set.
+        if (!user) {
           return res
             .status(403)
             .json({ message: 'Not authorized: OIDC user not registered' });
         }
 
+        req.authenticatedUser = {
+          id: user.id,
+          email: user.email,
+          uniqueHash: user.uniqueHash,
+          tier: user.tier,
+        };
         return next();
       }
     } catch (error) {
@@ -196,13 +204,7 @@ export async function requireAuth(
   }
 
   if (validationResult === 'valid') {
-    // Add JWT user info to request for backward compatibility
-    try {
-      const userData = getDataFromAuthenticatedRequest(req);
-      req.authenticatedUser = userData;
-    } catch (error) {
-      console.error('Error extracting JWT user data:', error);
-    }
+    setAuthenticatedUserFromJWT(req);
     return next();
   }
 
@@ -230,7 +232,7 @@ export async function requireAuth(
  * These middlewares should be maintained in tandem to avoid unintended behavior
  */
 export async function requireJWT(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) {
@@ -250,6 +252,8 @@ export async function requireJWT(
   }
 
   if (validationResult === 'valid') {
+    // Expose the verified identity so downstream limiters key per user.
+    setAuthenticatedUserFromJWT(req);
     return next();
   }
 
