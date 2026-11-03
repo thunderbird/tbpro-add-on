@@ -38,21 +38,25 @@ const handleDownloadTB = () => {
   padding: 24px 24px 0.3px;
   border-radius: 24px;
   box-shadow: 4px 4px 16px 0 rgba(0, 0, 0, 0.04);
-  border: solid 1px var(--surface-border);
+  border: solid 1px var(--colour-surface-border);
   background-image:
     linear-gradient(
       315deg,
-      rgba(88, 202, 255, 0.15) 0%,
-      rgba(88, 201, 255, 0) 60%
+      color-mix(in srgb, var(--colour-accent-blue) 15%, transparent) 0%,
+      transparent 60%
     ),
-    linear-gradient(to bottom, #feffff, #feffff);
+    linear-gradient(
+      to bottom,
+      var(--colour-surface-base),
+      var(--colour-surface-base)
+    );
 }
 .text {
   align-self: stretch;
   flex-grow: 0;
   font-family: Inter;
   font-size: 14px;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
 }
 .buttonwrapper {
   padding: 2rem 0;

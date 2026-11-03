@@ -170,7 +170,7 @@ function handleSetExpiredForTesting() {
 
 <style scoped>
 .description {
-  color: #4b5563;
+  color: var(--colour-ti-secondary);
   font-size: 0.9375rem;
   line-height: 1.5;
   margin-bottom: 1.5rem;
@@ -194,14 +194,14 @@ function handleSetExpiredForTesting() {
   width: 1.125rem;
   height: 1.125rem;
   cursor: pointer;
-  accent-color: #0060df;
+  accent-color: var(--colour-primary-default);
   margin: 0;
   flex-shrink: 0;
 }
 
 .radio-label {
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--colour-ti-secondary);
   line-height: 1.5;
 }
 
@@ -219,31 +219,32 @@ function handleSetExpiredForTesting() {
 .field-label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--colour-ti-secondary);
 }
 
 .input-field {
   width: 100%;
   padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 6px;
   font-size: 0.9375rem;
-  color: #111827;
+  color: var(--colour-ti-base);
   transition: all 0.2s ease;
 }
 
 .input-field:focus {
   outline: none;
-  border-color: #0060df;
-  box-shadow: 0 0 0 3px rgba(0, 96, 223, 0.1);
+  border-color: var(--colour-primary-default);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--colour-primary-default) 10%, transparent);
 }
 
 .test-expired-button {
   margin-top: 1rem;
   padding: 0.5rem 1rem;
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fcd34d;
+  background: var(--colour-warning-soft);
+  color: var(--colour-ti-warning);
+  border: 1px solid var(--colour-warning-default);
   border-radius: 6px;
   font-size: 0.875rem;
   font-weight: 600;
@@ -252,8 +253,8 @@ function handleSetExpiredForTesting() {
 }
 
 .test-expired-button:hover {
-  background: #fde68a;
-  border-color: #fbbf24;
+  background: var(--colour-warning-soft);
+  border-color: var(--colour-warning-default);
 }
 
 @media (max-width: 640px) {

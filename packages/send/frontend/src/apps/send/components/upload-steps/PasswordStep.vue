@@ -148,7 +148,7 @@ function updatePassword(value: string) {
 
 <style scoped>
 .description {
-  color: #4b5563;
+  color: var(--colour-ti-secondary);
   font-size: 0.9375rem;
   line-height: 1.5;
   margin-bottom: 1.5rem;
@@ -166,13 +166,13 @@ function updatePassword(value: string) {
   width: 1.125rem;
   height: 1.125rem;
   cursor: pointer;
-  accent-color: #0060df;
+  accent-color: var(--colour-primary-default);
 }
 
 .checkbox-label {
   font-size: 0.9375rem;
   font-weight: 500;
-  color: #111827;
+  color: var(--colour-ti-base);
   cursor: pointer;
   line-height: 1.5;
 }
@@ -193,11 +193,11 @@ function updatePassword(value: string) {
 .field-label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--colour-ti-secondary);
 }
 
 .required {
-  color: #dc2626;
+  color: var(--colour-ti-critical);
 }
 
 .password-input-wrapper {
@@ -207,21 +207,22 @@ function updatePassword(value: string) {
 .input-field {
   width: 100%;
   padding: 0.625rem 2.75rem 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 6px;
   font-size: 0.9375rem;
-  color: #111827;
+  color: var(--colour-ti-base);
   transition: all 0.2s ease;
 }
 
 .input-field:focus {
   outline: none;
-  border-color: #0060df;
-  box-shadow: 0 0 0 3px rgba(0, 96, 223, 0.1);
+  border-color: var(--colour-primary-default);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--colour-primary-default) 10%, transparent);
 }
 
 .input-field::placeholder {
-  color: #9ca3af;
+  color: var(--colour-ti-muted);
 }
 
 .password-toggle {
@@ -231,7 +232,7 @@ function updatePassword(value: string) {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   cursor: pointer;
   padding: 0.25rem;
   display: flex;
@@ -242,13 +243,13 @@ function updatePassword(value: string) {
 }
 
 .password-toggle:hover {
-  color: #374151;
-  background: #f3f4f6;
+  color: var(--colour-ti-secondary);
+  background: var(--colour-surface-subtle);
 }
 
 .field-help {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   line-height: 1.4;
   margin: 0;
 }

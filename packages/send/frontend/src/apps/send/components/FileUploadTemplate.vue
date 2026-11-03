@@ -109,7 +109,7 @@ const stepText = computed(() => {
 
 .modal-header {
   padding: 1.5rem 2rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--colour-surface-border);
 }
 
 .header-content {
@@ -128,7 +128,7 @@ const stepText = computed(() => {
 .step-indicator {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -136,7 +136,7 @@ const stepText = computed(() => {
 .modal-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--colour-ti-base);
   line-height: 1.3;
   margin: 0;
 }
@@ -147,22 +147,22 @@ const stepText = computed(() => {
 }
 
 .error-banner {
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
+  background-color: var(--colour-critical-soft);
+  border: 1px solid var(--colour-critical-soft);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .error-text {
-  color: #dc2626;
+  color: var(--colour-ti-critical);
   font-size: 0.875rem;
   font-weight: 500;
 }
 
 .modal-footer {
   padding: 1.25rem 2rem 1.5rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--colour-surface-border);
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
@@ -189,23 +189,23 @@ const stepText = computed(() => {
 }
 
 .button-secondary {
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--colour-surface-raised);
+  color: var(--colour-ti-secondary);
+  border: 1px solid var(--colour-surface-border);
 }
 
 .button-secondary:hover:not(:disabled) {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--colour-surface-lower);
+  border-color: var(--colour-surface-border-intense);
 }
 
 .button-primary {
-  background: #0060df;
-  color: white;
+  background: var(--colour-primary-default);
+  color: var(--colour-ti-base-inverted);
 }
 
 .button-primary:hover:not(:disabled) {
-  background: #0050c8;
+  background: var(--colour-primary-hover);
 }
 
 .loading-spinner {
@@ -213,7 +213,7 @@ const stepText = computed(() => {
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border-top-color: var(--colour-surface-raised);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }

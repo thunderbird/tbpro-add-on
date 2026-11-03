@@ -26,7 +26,7 @@
 
 <style scoped>
 .fill {
-  fill: var(--colour-neutral-border);
-  stroke: var(--colour-neutral-border-intense);
+  fill: var(--colour-surface-border);
+  stroke: var(--colour-surface-border-intense);
 }
 </style>

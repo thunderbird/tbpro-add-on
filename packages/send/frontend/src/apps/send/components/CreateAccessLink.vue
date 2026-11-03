@@ -177,7 +177,7 @@ watch(
 .label-text {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgb(75, 85, 99);
+  color: var(--colour-ti-secondary);
 }
 
 .password-field {
@@ -201,9 +201,9 @@ watch(
 }
 
 .error-message {
-  background-color: #fee2e2;
-  border: 1px solid #fecaca;
-  color: var(--critical);
+  background-color: var(--colour-critical-soft);
+  border: 1px solid var(--colour-critical-soft);
+  color: var(--colour-ti-critical);
   padding: 0.75rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;

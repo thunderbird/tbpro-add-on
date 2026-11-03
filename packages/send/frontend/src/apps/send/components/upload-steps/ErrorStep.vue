@@ -76,20 +76,20 @@ function handleRetry() {
 }
 
 .error-icon {
-  color: #dc2626;
+  color: var(--colour-ti-critical);
   margin-bottom: 1.5rem;
 }
 
 .error-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--colour-ti-base);
   margin: 0 0 1rem;
   text-align: center;
 }
 
 .error-description {
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   font-size: 0.9375rem;
   line-height: 1.6;
   max-width: 400px;

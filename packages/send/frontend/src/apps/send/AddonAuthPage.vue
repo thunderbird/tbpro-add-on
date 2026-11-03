@@ -101,6 +101,6 @@ watchEffect(() => {
 }
 
 .error-section h2 {
-  color: var(--color-error, #dc3545);
+  color: var(--colour-ti-critical);
 }
 </style>

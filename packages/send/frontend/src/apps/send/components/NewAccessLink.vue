@@ -69,13 +69,13 @@ watch(() => props.url, focusUrl);
 .label-text {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgb(75, 85, 99);
+  color: var(--colour-ti-secondary);
 }
 
 .notice {
-  background-color: #fef3c7;
-  border: 1px solid #fde68a;
-  color: #92400e;
+  background-color: var(--colour-warning-soft);
+  border: 1px solid var(--colour-warning-default);
+  color: var(--colour-ti-warning);
   padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   font-size: 0.75rem;

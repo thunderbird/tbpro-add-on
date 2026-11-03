@@ -219,14 +219,14 @@ onMounted(runDiagnostics);
   padding: 1rem 1.5rem;
   font-family: system-ui, sans-serif;
   font-size: 14px;
-  color: #1a1a1a;
+  color: var(--colour-ti-base);
 }
 .spinner {
   width: 2rem;
   height: 2rem;
   margin: 4rem auto;
-  border: 3px solid #d4d4d8;
-  border-top-color: #1a1a1a;
+  border: 3px solid var(--colour-surface-border);
+  border-top-color: var(--colour-ti-base);
   border-radius: 50%;
   animation: boot-spin 0.8s linear infinite;
 }
@@ -260,13 +260,13 @@ onMounted(runDiagnostics);
   opacity: 0.55;
 }
 .passed .mark {
-  color: #15803d;
+  color: var(--colour-ti-success);
 }
 .warning .mark {
-  color: #a16207;
+  color: var(--colour-ti-warning);
 }
 .failed .mark {
-  color: #b91c1c;
+  color: var(--colour-ti-critical);
 }
 .detail {
   grid-column: 2;
@@ -277,7 +277,7 @@ onMounted(runDiagnostics);
   margin-top: 1rem;
   padding: 1rem;
   border-radius: 0.375rem;
-  background: #facc15;
+  background: var(--colour-warning-default);
 }
 .title {
   font-weight: 700;
@@ -292,9 +292,9 @@ button {
   padding: 0.35rem 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid #1a1a1a;
+  border: 1px solid var(--colour-ti-base);
   border-radius: 0.25rem;
-  background: #fff;
+  background: var(--colour-surface-raised);
 }
 button.secondary {
   background: transparent;

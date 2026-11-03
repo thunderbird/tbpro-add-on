@@ -23,7 +23,7 @@ console.log('isTbproExtension', isTbproExtension.value);
 .main-title {
   font-size: 1.5rem;
   font-weight: 500;
-  color: #333;
+  color: var(--colour-ti-base);
   margin: 0 0 1.5rem 0;
 }
 
@@ -33,7 +33,7 @@ console.log('isTbproExtension', isTbproExtension.value);
   gap: 1.5rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--colour-surface-border);
 }
 
 .toggle {
@@ -54,7 +54,7 @@ console.log('isTbproExtension', isTbproExtension.value);
 .toggle-slider {
   width: 40px;
   height: 22px;
-  background: #cbd5e1;
+  background: var(--colour-surface-border);
   border-radius: 22px;
   position: relative;
   transition: background 0.2s;
@@ -62,7 +62,7 @@ console.log('isTbproExtension', isTbproExtension.value);
 }
 
 .toggle-input:checked + .toggle-slider {
-  background: #4285f4;
+  background: var(--colour-primary-default);
 }
 
 .toggle-slider::before {
@@ -72,7 +72,7 @@ console.log('isTbproExtension', isTbproExtension.value);
   top: 3px;
   width: 16px;
   height: 16px;
-  background: #fff;
+  background: var(--colour-surface-raised);
   border-radius: 50%;
   transition: transform 0.2s;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
@@ -84,7 +84,7 @@ console.log('isTbproExtension', isTbproExtension.value);
 
 .toggle-label {
   font-size: 0.9375rem;
-  color: #333;
+  color: var(--colour-ti-base);
   font-weight: 500;
 }
 
@@ -95,12 +95,12 @@ console.log('isTbproExtension', isTbproExtension.value);
 .section-title {
   font-size: 1.25rem;
   font-weight: 500;
-  color: #333;
+  color: var(--colour-ti-base);
   margin: 0 0 1rem 0;
 }
 
 .info-text {
-  color: #666;
+  color: var(--colour-ti-secondary);
   font-size: 0.9375rem;
   line-height: 1.6;
   margin: 0;

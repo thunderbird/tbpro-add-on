@@ -52,14 +52,14 @@ onMounted(async () => {
   margin-top: 2rem;
 }
 p {
-  color: #000;
+  color: var(--colour-ti-base);
   font-size: 13px;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
 }
 .countdown {
-  color: #666;
+  color: var(--colour-ti-secondary);
   font-style: italic;
 }
 h2 {

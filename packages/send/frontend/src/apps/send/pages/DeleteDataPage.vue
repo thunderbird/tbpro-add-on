@@ -150,33 +150,33 @@ function resetAfterDelete() {
 .title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #000;
+  color: var(--colour-ti-base);
 }
 
 .hint {
   font-size: 13px;
-  color: #555;
+  color: var(--colour-ti-secondary);
   margin-bottom: 0.5rem;
 }
 
 .status-text {
   font-size: 13px;
-  color: #555;
+  color: var(--colour-ti-secondary);
 }
 
 .warning {
   font-size: 13px;
-  color: #c0392b;
+  color: var(--colour-ti-critical);
 }
 
 .error-text {
   font-size: 13px;
-  color: #c0392b;
+  color: var(--colour-ti-critical);
 }
 
 .success-text {
   font-size: 13px;
-  color: #27ae60;
+  color: var(--colour-ti-success);
 }
 
 .confirm-box {
@@ -188,7 +188,7 @@ function resetAfterDelete() {
 .confirm-text {
   font-size: 13px;
   font-weight: 500;
-  color: #000;
+  color: var(--colour-ti-base);
 }
 
 .actions {
@@ -210,7 +210,7 @@ function resetAfterDelete() {
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
@@ -218,17 +218,17 @@ function resetAfterDelete() {
 }
 
 .user-row:hover {
-  background: #fef2f2;
-  border-color: #c0392b;
+  background: var(--colour-critical-soft);
+  border-color: var(--colour-critical-default);
 }
 
 .user-email {
-  color: #000;
+  color: var(--colour-ti-base);
   font-weight: 500;
 }
 
 .user-id {
-  color: #888;
+  color: var(--colour-ti-muted);
   font-size: 11px;
   font-family: monospace;
   white-space: nowrap;
@@ -239,8 +239,8 @@ function resetAfterDelete() {
 
 .btn-danger {
   padding: 0.5rem 1rem;
-  background: #c0392b;
-  color: #fff;
+  background: var(--colour-critical-default);
+  color: var(--colour-ti-base-inverted);
   border: none;
   border-radius: 4px;
   font-size: 13px;
@@ -255,8 +255,8 @@ function resetAfterDelete() {
 .btn-cancel {
   padding: 0.5rem 1rem;
   background: transparent;
-  color: #333;
-  border: 1px solid #ccc;
+  color: var(--colour-ti-base);
+  border: 1px solid var(--colour-surface-border);
   border-radius: 4px;
   font-size: 13px;
   cursor: pointer;

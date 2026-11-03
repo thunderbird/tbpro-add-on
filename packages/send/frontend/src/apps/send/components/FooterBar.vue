@@ -21,7 +21,10 @@ const { navLinkPaths } = useNavigation();
     <template #default>
       <nav class="send-navigation">
         <div class="top-row">
-          <img src="@send-frontend/apps/send/assets/thunderbird-logo.svg" alt="Thunderbird" />
+          <img
+            src="@send-frontend/apps/send/assets/thunderbird-logo.svg"
+            alt="Thunderbird"
+          />
 
           <ul v-if="isLoggedIn">
             <li v-for="navLink in navLinkPaths" :key="navLink.path">
@@ -38,12 +41,20 @@ const { navLinkPaths } = useNavigation();
 
         <ul class="default-links">
           <li>
-            <a :href="STATUS_PAGE_URL" target="_blank" rel="noopener noreferrer">
+            <a
+              :href="STATUS_PAGE_URL"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Status
             </a>
           </li>
           <li>
-            <a :href="CONTACT_FORM_URL" target="_blank" rel="noopener noreferrer">
+            <a
+              :href="CONTACT_FORM_URL"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Need help? Visit Support
             </a>
           </li>
@@ -92,7 +103,7 @@ const { navLinkPaths } = useNavigation();
     font-weight: 600;
     font-size: 0.8125rem;
     text-transform: uppercase;
-    color: white;
+    color: var(--colour-ti-base-dark);
   }
 
   .default-links {
@@ -103,7 +114,7 @@ const { navLinkPaths } = useNavigation();
     font-weight: 400;
     font-size: 0.6875rem;
     text-transform: none;
-    color: #d4d4d8; /* TODO: Update this once we source colours from services-ui after 2.x */
+    color: var(--colour-ti-secondary-dark);
 
     li {
       display: flex;

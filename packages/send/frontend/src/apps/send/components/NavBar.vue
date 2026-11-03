@@ -36,7 +36,12 @@ const isSettingsActive = computed(() =>
 const apps: AppDrawerApp[] = [
   { id: 'mail', name: 'Mail', icon: MailIcon, href: THUNDERMAIL_URL },
   { id: 'send', name: 'Send', icon: SendIcon, current: true },
-  { id: 'appointment', name: 'Appointment', icon: AppointmentIcon, href: APPOINTMENT_URL },
+  {
+    id: 'appointment',
+    name: 'Appointment',
+    icon: AppointmentIcon,
+    href: APPOINTMENT_URL,
+  },
 ];
 
 const avatarUsername = computed(() => user?.thundermailEmail || user?.email);
@@ -116,7 +121,7 @@ header {
 
   height: 68px;
   padding-inline: 1rem;
-  background-color: #f7f7f8;
+  background-color: var(--colour-surface-lower);
   box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(12px);
   width: 100%;
@@ -158,8 +163,7 @@ header {
     }
 
     .nav-settings-button {
-      /* TODO: Update these colours once we source them from services-ui */
-      color: #18181b;
+      color: var(--colour-ti-base-light);
 
       &.active {
         color: var(--colour-ti-highlight);
@@ -175,7 +179,6 @@ header {
     height: 100%;
   }
 
-  /* TODO: Update these colours once we source them from services-ui */
   nav a {
     display: flex;
     align-items: center;
@@ -188,34 +191,41 @@ header {
     font-weight: 600;
     text-transform: uppercase;
     text-decoration: none;
-    color: #52525b;
+    color: var(--colour-ti-secondary-light);
 
     &.active {
-      color: #19518f;
+      color: var(--colour-primary-pressed);
     }
   }
 }
 
 header.dark {
+  /* There is no services-ui token for the forced dark header background. */
   background-color: #111113;
 
   /*
    * services-ui only applies its dark tokens under `html.dark`, which we can't
-   * set yet without switching the whole app to dark mode and we're not ready for that yet.
+   * set yet without switching the whole app to dark mode. Use the explicit
+   * `-dark` tokens where services-ui provides them; the few values it doesn't
+   * expose as `-dark` tokens are copied from its `html.dark` block.
    * TODO: Remove once the app supports dark mode via html.dark.
    */
-  --colour-neutral-raised: #262d3b;
-  --colour-neutral-subtle: #262d3b;
-  --colour-neutral-border: #303a4a;
+  --colour-surface-raised: #2b2b2f;
+  --colour-surface-subtle: var(--colour-surface-subtle-dark);
+  --colour-surface-border: #52525b;
+  /* services-ui components still read the (deprecated) neutral tokens. */
+  --colour-neutral-raised: var(--colour-surface-raised);
+  --colour-neutral-subtle: var(--colour-surface-subtle);
+  --colour-neutral-border: var(--colour-surface-border);
   --colour-primary-soft: #262c40;
-  --colour-primary-default: #58c9ff;
+  --colour-primary-default: var(--colour-primary-default-dark);
   --colour-primary-hover: #32aeff;
   --colour-primary-pressed: #1b90f5;
-  --colour-ti-secondary: #d9d9de;
-  --colour-ti-muted: #7f94ac;
+  --colour-ti-secondary: var(--colour-ti-secondary-dark);
+  --colour-ti-muted: #a1a1aa;
 
   :deep(.app-drawer__button) {
-    color: #d4d4d8;
+    color: var(--colour-ti-secondary-dark);
   }
 
   .nav-actions .nav-settings-button {
@@ -231,10 +241,10 @@ header.dark {
   }
 
   nav a {
-    color: #d4d4d8;
+    color: var(--colour-ti-secondary-dark);
 
     &.active {
-      color: #5fa6e8;
+      color: var(--colour-primary-default-dark);
     }
   }
 }

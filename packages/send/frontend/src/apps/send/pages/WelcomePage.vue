@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import CheckCircleIcon from '@send-frontend/apps/common/CheckCircleIcon.vue';
-import { THUNDERMAIL_URL } from '@send-frontend/apps/common/constants';
 import SendIconTBPro from '@send-frontend/apps/common/SendIconTBPro.vue';
 import ThundermailIcon from '@send-frontend/apps/common/ThundermailIcon.vue';
 import { OPEN_MANAGEMENT_PAGE } from '@send-frontend/lib/const';
@@ -15,10 +14,6 @@ async function setFTUEComplete() {
 onMounted(async () => {
   await setFTUEComplete();
 });
-
-async function handleOpenThundermail() {
-  window.open(THUNDERMAIL_URL, '_blank');
-}
 
 async function handleSetEncryptionPassword() {
   window.postMessage(
@@ -71,8 +66,7 @@ async function handleSetEncryptionPassword() {
             </div>
             <p class="card-text">
               Next, set your encryption password. Then you’re ready to send
-              encrypted files or manage them from your Thundermail account
-              menu.
+              encrypted files or manage them from your Thundermail account menu.
             </p>
 
             <button
@@ -122,7 +116,7 @@ async function handleSetEncryptionPassword() {
 .welcome-heading {
   font-size: 2rem;
   font-weight: 400;
-  color: #3b82f6;
+  color: var(--colour-ti-highlight);
   margin: 0 0 2rem 0;
   line-height: 1.2;
 }
@@ -140,8 +134,8 @@ async function handleSetEncryptionPassword() {
 }
 
 .content-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--colour-surface-raised);
+  border: 1px solid var(--colour-surface-border);
   border-radius: 12px;
   padding: 2rem;
   display: flex;
@@ -167,7 +161,7 @@ async function handleSetEncryptionPassword() {
 }
 
 .card-label {
-  color: #3b82f6;
+  color: var(--colour-ti-highlight);
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -178,23 +172,23 @@ async function handleSetEncryptionPassword() {
 .card-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--colour-ti-base);
   margin: 0;
   line-height: 1.3;
 }
 
 .card-text {
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   font-size: 0.9375rem;
   line-height: 1.6;
   margin: 0 0 1.5rem 0;
 }
 
 .primary-button {
-  background: #2563eb;
+  background: var(--colour-primary-default);
   border: none;
   border-radius: 6px;
-  color: white;
+  color: var(--colour-ti-base-inverted);
   padding: 0.625rem 1.25rem;
   font-size: 0.9375rem;
   font-weight: 500;
@@ -204,14 +198,14 @@ async function handleSetEncryptionPassword() {
 }
 
 .primary-button:hover {
-  background: #1d4ed8;
+  background: var(--colour-primary-hover);
 }
 
 .secondary-button {
   background: transparent;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 6px;
-  color: #374151;
+  color: var(--colour-ti-secondary);
   padding: 0.625rem 1.25rem;
   font-size: 0.9375rem;
   font-weight: 500;
@@ -221,8 +215,8 @@ async function handleSetEncryptionPassword() {
 }
 
 .secondary-button:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--colour-surface-lower);
+  border-color: var(--colour-surface-border-intense);
 }
 
 .right-column {

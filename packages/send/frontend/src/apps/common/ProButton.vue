@@ -39,7 +39,7 @@ defineEmits<{
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
-  color: white;
+  color: var(--colour-ti-base-inverted);
   transition: all 0.2s ease;
 }
 
@@ -47,9 +47,13 @@ defineEmits<{
   box-shadow: 0px 4px 0 rgba(0, 0, 0, 0.12);
   background-image: linear-gradient(
     to bottom,
-    #37adf9 -20%,
-    #1373d9 20%,
-    #175fb6 80%
+    color-mix(
+        in srgb,
+        var(--colour-accent-blue) 80%,
+        var(--colour-primary-default)
+      ) -20%,
+    var(--colour-primary-default) 20%,
+    var(--colour-primary-hover) 80%
   );
 }
 
@@ -67,7 +71,7 @@ defineEmits<{
   min-width: auto;
   background: transparent;
   box-shadow: none;
-  color: #175fb6;
+  color: var(--colour-ti-highlight);
   font-weight: normal;
   line-height: 1.23;
   text-shadow: 0.5px 0.5px 0 rgba(255, 255, 255, 0.1);

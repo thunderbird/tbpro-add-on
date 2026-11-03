@@ -39,12 +39,12 @@ h2 {
 .description {
   margin-bottom: 2rem;
   line-height: 1.6;
-  color: #1f2937;
+  color: var(--colour-ti-base);
 }
 .reset-button {
   padding: 0.625rem 1.25rem;
-  background-color: #dc2626;
-  color: white;
+  background-color: var(--colour-critical-default);
+  color: var(--colour-ti-base-inverted);
   border: none;
   border-radius: 0.375rem;
   font-weight: 500;

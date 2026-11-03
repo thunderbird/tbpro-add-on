@@ -19,8 +19,8 @@ withDefaults(defineProps<{ message?: string }>(), {
   message: 'Completing authentication',
 });
 
-const BLUE = '#1373D9';
-const WHITE = '#FEFFFF';
+const BLUE = 'var(--colour-primary-default)';
+const WHITE = 'var(--colour-surface-base)';
 
 const logoClipId = useId();
 const arrowHeadClipId = useId();
@@ -176,11 +176,16 @@ onBeforeUnmount(() => {
         </mask>
       </defs>
 
-      <path opacity="0.2" d="M0 36L64 36" stroke="#E4E4E7" stroke-width="6" />
+      <path
+        opacity="0.2"
+        d="M0 36L64 36"
+        stroke="var(--colour-surface-deep)"
+        stroke-width="6"
+      />
 
       <path
         d="M32.6484 1.00879C46.229 1.36164 56.9999 12.7666 57 26.6152V48.9346C57 56.5038 51.1038 62.8002 43.5947 62.9951L43.2363 63C35.8409 63 29.2103 56.9828 29.0049 49.3018L29 48.9346L29 28.7275H22.1582C21.0933 28.7275 20.5598 27.4406 21.3125 26.6875L30.7324 17.2676C31.4326 16.5678 32.5674 16.5678 33.2676 17.2676L42.6875 26.6875C43.4402 27.4406 42.9067 28.7275 41.8418 28.7275L35 28.7275L35 48.9346L35.0107 49.3418C35.241 53.5289 38.9961 57 43.2363 57L43.6289 56.9893C47.6652 56.7776 51 53.3257 51 48.9346V26.6152C51 15.8741 42.6823 7.27324 32.4873 7.00684L32 7C21.5841 7 13.0001 15.7035 13 26.6152L13 33H7L7 26.6152C7.00008 12.5469 18.1154 1 32 1L32.6484 1.00879Z"
-        fill="#E4E4E7"
+        fill="var(--colour-surface-deep)"
       />
 
       <g :clip-path="`url(#${logoClipId})`" :mask="`url(#${bodyMaskId})`">
@@ -217,7 +222,7 @@ onBeforeUnmount(() => {
 
 .auth-loader__text {
   margin: 0 0 32px;
-  color: var(--text-icon-base);
+  color: var(--colour-ti-base);
   font-size: 24px;
   font-weight: 400;
   line-height: 1.35;
@@ -285,7 +290,7 @@ onBeforeUnmount(() => {
 }
 
 .mask-path {
-  stroke: white;
+  stroke: white; /* luminance mask: must be white, not a theme colour */
   stroke-width: 13;
 }
 

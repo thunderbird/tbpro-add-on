@@ -26,7 +26,7 @@ export default {
   position: relative;
   margin: 10% auto;
   padding: 20px;
-  background: #fff;
+  background: var(--colour-surface-raised);
 }
 .modal-close {
   position: absolute;

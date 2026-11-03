@@ -65,28 +65,28 @@ const router = useRouter();
   line-height: normal;
   letter-spacing: normal;
   text-align: left;
-  color: var(--text-icon-critical);
+  color: var(--colour-ti-critical);
 }
 .divider {
   display: block;
   width: 100%;
   height: 1px;
   margin: 32px 0;
-  background-color: var(--surface-border);
-  color: var(--surface-border);
+  background-color: var(--colour-surface-border);
+  color: var(--colour-surface-border);
 }
 
 .title-secondary {
   font-family: Inter;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
 }
 
 .description {
   margin-bottom: 2rem;
   line-height: 1.6;
-  color: #1f2937;
+  color: var(--colour-ti-base);
   gap: 16px;
   display: flex;
   flex-direction: column;
@@ -100,16 +100,16 @@ const router = useRouter();
   display: block;
   font-weight: 500;
   margin-bottom: 0.5rem;
-  color: #1f2937;
+  color: var(--colour-ti-base);
   font-size: 0.875rem;
 }
 
 .required {
-  color: #ef4444;
+  color: var(--colour-ti-critical);
 }
 
 .error-field {
-  color: var(--colour-danger-default);
+  color: var(--colour-critical-default);
   margin-bottom: 1rem;
 }
 
@@ -117,15 +117,16 @@ const router = useRouter();
   position: relative;
   display: flex;
   align-items: center;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 8px;
-  background: white;
+  background: var(--colour-surface-raised);
   overflow: hidden;
 }
 
 .input-container:focus-within {
-  border-color: #3b82f6;
-  outline: 2px solid #3b82f614;
+  border-color: var(--colour-primary-default);
+  outline: 2px solid
+    color-mix(in srgb, var(--colour-primary-default) 8%, transparent);
 }
 
 .passphrase-input {
@@ -134,12 +135,12 @@ const router = useRouter();
   border: none;
   background: transparent;
   font-size: 1rem;
-  color: #1f2937;
+  color: var(--colour-ti-base);
   outline: none;
 }
 
 .passphrase-input::placeholder {
-  color: #9ca3af;
+  color: var(--colour-ti-muted);
 }
 
 .button-group {
@@ -150,8 +151,8 @@ const router = useRouter();
 
 .continue-button {
   padding: 0.75rem 2rem;
-  background: #3b82f6;
-  color: white;
+  background: var(--colour-primary-default);
+  color: var(--colour-ti-base-inverted);
   border: none;
   border-radius: 8px;
   font-size: 1rem;
@@ -161,9 +162,10 @@ const router = useRouter();
 }
 
 .continue-button:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--colour-primary-default);
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 6px -1px
+    color-mix(in srgb, var(--colour-primary-default) 30%, transparent);
 }
 
 .continue-button:active:not(:disabled) {
@@ -171,16 +173,16 @@ const router = useRouter();
 }
 
 .continue-button:disabled {
-  background: #9ca3af;
+  background: var(--colour-surface-border-intense);
   cursor: not-allowed;
   opacity: 0.5;
 }
 
 .cancel-button {
   padding: 0.75rem 2rem;
-  background: white;
-  color: #3b82f6;
-  border: 1px solid #3b82f6;
+  background: var(--colour-surface-raised);
+  color: var(--colour-ti-highlight);
+  border: 1px solid var(--colour-primary-default);
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 500;
@@ -189,7 +191,7 @@ const router = useRouter();
 }
 
 .cancel-button:hover {
-  background: #eff6ff;
+  background: var(--colour-primary-soft);
 }
 
 .cancel-button:active {
@@ -204,16 +206,16 @@ const router = useRouter();
   gap: 0.375rem;
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
-  color: #92400e;
+  color: var(--colour-ti-warning);
   background-color: transparent;
-  border: 1px solid #92400e;
+  border: 1px solid var(--colour-warning-default);
   border-radius: 0.25rem;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .reset-access:hover {
-  background-color: #fde68a;
+  background-color: var(--colour-warning-soft);
 }
 
 .reset-access svg {
@@ -225,8 +227,8 @@ const router = useRouter();
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: white;
-  background-color: #0a84ff;
+  color: var(--colour-ti-base-inverted);
+  background-color: var(--colour-primary-default);
   border: none;
   border-radius: 0.25rem;
   cursor: pointer;

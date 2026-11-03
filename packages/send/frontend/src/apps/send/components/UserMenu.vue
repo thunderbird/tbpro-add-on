@@ -144,7 +144,7 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
-      color: white;
+      color: var(--colour-ti-base-dark);
       text-decoration: none;
       padding: 1rem 1.5rem;
       font-family: metropolis;

@@ -150,7 +150,7 @@ onMounted(async () => {
 @import '@send-frontend/apps/common/tbpro-styles.css';
 .log-out-button-container {
   margin-top: 1rem;
-  color: var(--primary-default);
+  color: var(--colour-primary-default);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -160,7 +160,7 @@ onMounted(async () => {
 .icon-container {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+  background: var(--colour-primary-soft);
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -170,13 +170,13 @@ onMounted(async () => {
 .icon {
   width: 40px;
   height: 40px;
-  color: #3b82f6;
+  color: var(--colour-ti-highlight);
 }
 
 .description {
   margin-bottom: 2rem;
   line-height: 1.6;
-  color: #1f2937;
+  color: var(--colour-ti-base);
 }
 
 .font-semibold {
@@ -188,15 +188,15 @@ onMounted(async () => {
 }
 
 .error-field {
-  color: var(--colour-danger-default);
+  color: var(--colour-critical-default);
   margin-bottom: 1rem;
 }
 
 .download-button {
   width: 100%;
   padding: 0.875rem 1.5rem;
-  background: #3b82f6;
-  color: white;
+  background: var(--colour-primary-default);
+  color: var(--colour-ti-base-inverted);
   border: none;
   border-radius: 8px;
   font-size: 1rem;
@@ -213,9 +213,10 @@ onMounted(async () => {
 }
 
 .download-button:hover {
-  background: #2563eb;
+  background: var(--colour-primary-default);
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 6px -1px
+    color-mix(in srgb, var(--colour-primary-default) 30%, transparent);
 }
 
 .download-button:active {

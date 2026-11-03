@@ -98,11 +98,11 @@ watchEffect(() => {
 }
 
 .error-section {
-  color: #dc3545;
+  color: var(--colour-ti-critical);
 }
 
 .success-section {
-  color: #28a745;
+  color: var(--colour-ti-success);
 }
 
 h2 {

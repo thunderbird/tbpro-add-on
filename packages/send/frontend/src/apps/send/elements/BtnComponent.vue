@@ -46,43 +46,43 @@ withDefaults(defineProps<Props>(), {
 }
 
 .default {
-  border: 1px solid #e5e7eb;
-  background: #f3f4f6;
-  color: #374151;
+  border: 1px solid var(--colour-surface-border);
+  background: var(--colour-surface-subtle);
+  color: var(--colour-ti-secondary);
 }
 
 .default:hover {
-  background: #e5e7eb;
+  background: var(--colour-surface-subtle);
 }
 
 .primary {
-  border: 1px solid var(--primary-hover);
-  background: var(--primary-default);
-  color: white;
+  border: 1px solid var(--colour-primary-hover);
+  background: var(--colour-primary-default);
+  color: var(--colour-ti-base-inverted);
 }
 
 .primary:hover {
-  background: var(--primary-hover);
+  background: var(--colour-primary-hover);
 }
 
 .secondary {
-  border: 1px solid #9ca3af;
-  background: #e5e7eb;
-  color: #1f2937;
+  border: 1px solid var(--colour-surface-border-intense);
+  background: var(--colour-surface-subtle);
+  color: var(--colour-ti-base);
 }
 
 .secondary:hover {
-  background: #d1d5db;
+  background: var(--colour-surface-border);
 }
 
 .danger {
-  border: 1px solid #991b1b;
-  background: #dc2626;
-  color: white;
+  border: 1px solid var(--colour-critical-default);
+  background: var(--colour-critical-default);
+  color: var(--colour-ti-base-inverted);
 }
 
 .danger:hover {
-  background: #991b1b;
+  background: var(--colour-critical-default);
 }
 
 .size-small {

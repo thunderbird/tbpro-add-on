@@ -222,7 +222,7 @@ const copyToClipboard = async () => {
 
 <style scoped>
 .file-info-card {
-  background: white;
+  background: var(--colour-surface-raised);
   border-radius: 8px;
   padding: 2rem;
   max-width: 700px;
@@ -233,7 +233,7 @@ const copyToClipboard = async () => {
 .section-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #666;
+  color: var(--colour-ti-secondary);
   letter-spacing: 0.05em;
   margin: 0 0 1.5rem 0;
 }
@@ -241,22 +241,22 @@ const copyToClipboard = async () => {
 .info-row {
   display: flex;
   padding: 1rem 0;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--colour-surface-border);
 }
 
 .info-label {
   flex: 0 0 140px;
-  color: #666;
+  color: var(--colour-ti-secondary);
   font-size: 0.9375rem;
 }
 
 .info-value {
-  color: #333;
+  color: var(--colour-ti-base);
   font-size: 0.9375rem;
 }
 
 .link {
-  color: #0066cc;
+  color: var(--colour-ti-highlight);
   text-decoration: none;
 }
 
@@ -265,7 +265,7 @@ const copyToClipboard = async () => {
 }
 
 .checksum-section {
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--colour-surface-border);
 }
 
 .checksum-toggle {
@@ -276,19 +276,19 @@ const copyToClipboard = async () => {
   padding: 1rem 0;
   background: none;
   border: none;
-  color: #666;
+  color: var(--colour-ti-secondary);
   font-size: 0.9375rem;
   cursor: pointer;
   text-align: left;
 }
 
 .checksum-toggle:hover {
-  color: #333;
+  color: var(--colour-ti-base);
 }
 
 .chevron {
   transition: transform 0.2s ease;
-  color: #999;
+  color: var(--colour-ti-muted);
 }
 
 .chevron.rotated {
@@ -306,7 +306,7 @@ const copyToClipboard = async () => {
 }
 
 .checksum-label {
-  color: #666;
+  color: var(--colour-ti-secondary);
   font-size: 0.875rem;
 }
 
@@ -320,8 +320,8 @@ const copyToClipboard = async () => {
   flex: 1;
   font-family: monospace;
   font-size: 0.8125rem;
-  color: #333;
-  background: #f8f8f8;
+  color: var(--colour-ti-base);
+  background: var(--colour-surface-lower);
   padding: 0.5rem;
   border-radius: 4px;
   overflow-wrap: break-word;
@@ -331,11 +331,11 @@ const copyToClipboard = async () => {
 .copy-button {
   flex-shrink: 0;
   background: none;
-  border: 1px solid #ddd;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 4px;
   padding: 0.375rem;
   cursor: pointer;
-  color: #666;
+  color: var(--colour-ti-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -343,14 +343,14 @@ const copyToClipboard = async () => {
 }
 
 .copy-button:hover {
-  background: #f8f8f8;
-  border-color: #ccc;
+  background: var(--colour-surface-lower);
+  border-color: var(--colour-surface-border);
 }
 
 .download-button {
   margin-top: 1.5rem;
-  background: #0066cc;
-  color: white;
+  background: var(--colour-primary-default);
+  color: var(--colour-ti-base-inverted);
   border: none;
   border-radius: 6px;
   padding: 0.75rem 1.5rem;
@@ -364,7 +364,7 @@ const copyToClipboard = async () => {
 }
 
 .download-button:hover {
-  background: #0052a3;
+  background: var(--colour-primary-hover);
 }
 
 .slide-enter-active,

@@ -79,8 +79,8 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
   font-size: 1.125rem;
   line-height: 1.75rem;
   font-weight: 700;
-  color: rgb(107, 114, 128);
-  border: 4px dashed rgb(209, 213, 219);
+  color: var(--colour-ti-muted);
+  border: 4px dashed var(--colour-surface-border);
   border-radius: 0.5rem;
 }
 
