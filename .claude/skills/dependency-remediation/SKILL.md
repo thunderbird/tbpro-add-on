@@ -290,6 +290,10 @@ and new versions.
 
 **After the routine PR merges**, rebase each open gated branch onto `main`. Do not hand-merge
 conflicts in `pnpm-lock.yaml` or the version files: take `main`'s copies, re-apply the branch's
-`package.json` / `pnpm-workspace.yaml` edits, then run `pnpm install`,
-`node scripts/bump-versions.js`, and `pnpm install --frozen-lockfile`. Force-push with
+`package.json` / `pnpm-workspace.yaml` edits, and run `pnpm install`. Taking `main`'s lockfile
+drops any transitive lift the branch made through the lockfile alone, and neither `pnpm install`
+nor a frozen install will bring it back. Re-apply each one with `pnpm update <pkg>
+--lockfile-only` (step 4 item 1), using the PR's "Changes by alert" table as the list. Then
+re-run `pnpm audit` and confirm every alert the PR claims to fix is still fixed before running
+`node scripts/bump-versions.js` and `pnpm install --frozen-lockfile`. Force-push with
 `--force-with-lease`.
