@@ -48,9 +48,10 @@ Keep this list in step with the direct dependencies of `packages/send/backend`,
 
 - Clean checkout of `main`. Work starts on `deps/<date>-routine` (date as `YYYY-MM-DD`); each
   gated change gets its own branch from `main` (step 6).
-- `HUSKY=0` exported (the pre-commit hook needs `pnpm` and `bun` on PATH, which laptops may lack).
-- `pnpm --version` is 12 or newer (`npx -y pnpm@12 ...` works when pnpm is not installed
-  globally). Older versions do not lift transitive dependencies with `pnpm update` (step 4).
+- Node, pnpm and bun on PATH at the versions pinned in `mise.toml` (`mise install`).
+  `pnpm --version` must match `packageManager` in `package.json`: other pnpm versions resolve
+  the lockfile differently and churn it, and pnpm before 12 does not lift transitive
+  dependencies with `pnpm update` (step 4).
 - `gh auth status` succeeds; the token can read and dismiss Dependabot alerts.
 - Fresh install so `node_modules/.pnpm` matches the lockfile: `pnpm install --frozen-lockfile`.
 - `scripts/override-drift.js` runs `npm view` by absolute path, not via PATH. If it exits with
