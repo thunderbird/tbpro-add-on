@@ -46,10 +46,19 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
 
 <style lang="css" scoped>
 * {
-  color: rgb(217, 217, 222) !important;
+  color: var(--colour-ti-secondary-dark) !important;
 }
 .border-thing {
-  background-image: linear-gradient(45deg, #171b24 47%, #16395f 93%);
+  background-image: linear-gradient(
+    45deg,
+    var(--colour-surface-subtle-dark) 47%,
+    color-mix(
+        in srgb,
+        var(--colour-surface-subtle-dark) 75%,
+        var(--colour-primary-default-dark)
+      )
+      93%
+  );
   border-radius: 16px;
   padding: 16px;
   height: fit-content;
@@ -57,7 +66,6 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
   max-width: 350px;
 }
 .support-card {
-  background: #1e293b;
   padding: 1rem;
   border-radius: 16px;
   border: solid 1px rgba(88, 201, 255, 0.2);
@@ -65,7 +73,7 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
 }
 
 .support-heading {
-  color: white;
+  color: var(--colour-ti-base-dark);
   font-size: 1.5rem;
   font-weight: 400;
   margin: 0 0 12px 0;
@@ -82,7 +90,7 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
 }
 
 .support-link {
-  color: #e2e8f0;
+  color: var(--colour-ti-secondary-dark);
   font-size: 0.9375rem;
   text-decoration: none;
   font-size: 14px;
@@ -98,6 +106,6 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
 }
 
 .support-link:hover {
-  color: white;
+  color: var(--colour-ti-base-dark);
 }
 </style>

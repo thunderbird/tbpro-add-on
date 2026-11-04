@@ -298,7 +298,7 @@ Note about shareOnly containers.
 .label-text {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgb(75, 85, 99);
+  color: var(--colour-ti-secondary);
 }
 
 .password-field {

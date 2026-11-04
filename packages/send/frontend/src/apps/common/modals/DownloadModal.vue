@@ -50,7 +50,7 @@ const emit = defineEmits<{
   right: 0;
   background: none;
   border: none;
-  color: #666;
+  color: var(--colour-ti-secondary);
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -61,7 +61,7 @@ const emit = defineEmits<{
 }
 
 .close-button:hover {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--colour-surface-lower);
+  color: var(--colour-ti-base);
 }
 </style>

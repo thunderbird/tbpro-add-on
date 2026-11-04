@@ -83,20 +83,20 @@ function handleCopyToClipboard() {
 }
 
 .success-icon {
-  color: #10b981;
+  color: var(--colour-ti-success);
   margin-bottom: 1.5rem;
 }
 
 .success-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--colour-ti-base);
   margin: 0 0 1rem;
   text-align: center;
 }
 
 .success-description {
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   font-size: 0.9375rem;
   line-height: 1.6;
   max-width: 400px;
@@ -114,23 +114,24 @@ function handleCopyToClipboard() {
 .url-input {
   flex: 1;
   padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 6px;
   font-size: 0.875rem;
-  color: #111827;
-  background: #f9fafb;
+  color: var(--colour-ti-base);
+  background: var(--colour-surface-lower);
 }
 
 .url-input:focus {
   outline: none;
-  border-color: #0060df;
-  box-shadow: 0 0 0 3px rgba(0, 96, 223, 0.1);
+  border-color: var(--colour-primary-default);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--colour-primary-default) 10%, transparent);
 }
 
 .copy-button {
   padding: 0.625rem 1.25rem;
-  background: #0060df;
-  color: white;
+  background: var(--colour-primary-default);
+  color: var(--colour-ti-base-inverted);
   border: none;
   border-radius: 6px;
   font-size: 0.875rem;
@@ -140,7 +141,7 @@ function handleCopyToClipboard() {
 }
 
 .copy-button:hover {
-  background: #0050c8;
+  background: var(--colour-primary-hover);
 }
 
 @media (max-width: 640px) {

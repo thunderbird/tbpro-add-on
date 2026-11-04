@@ -108,7 +108,7 @@ const {
   font-weight: 300;
   line-height: 1.2;
   letter-spacing: -0.36px;
-  color: var(--text-icon-base);
+  color: var(--colour-ti-base);
 }
 
 .welcome {
@@ -116,7 +116,7 @@ const {
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.42px;
-  color: var(--text-icon-muted);
+  color: var(--colour-ti-muted);
   margin-bottom: 4px;
   text-transform: uppercase;
 }
@@ -126,7 +126,7 @@ const {
   font-size: 16px;
   line-height: 1.32;
   margin: 4px 0 0;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
 }
 
 .row {

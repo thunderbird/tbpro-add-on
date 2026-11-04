@@ -22,7 +22,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  color: var(--primary-default);
+  color: var(--colour-primary-default);
   text-decoration: none;
 }
 section {
@@ -33,6 +33,6 @@ section {
   line-height: normal;
   letter-spacing: normal;
   text-align: left;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
 }
 </style>

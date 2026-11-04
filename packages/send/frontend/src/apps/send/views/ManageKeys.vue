@@ -125,11 +125,11 @@ const togglePassphraseVisibility = () => {
 }
 
 .reset-section {
-  background-color: white;
+  background-color: var(--colour-surface-raised);
 }
 
 .section-description {
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   font-size: 0.875rem;
   line-height: 1.5;
   margin-bottom: 1.5rem;
@@ -143,20 +143,20 @@ const togglePassphraseVisibility = () => {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--colour-ti-secondary);
   margin-bottom: 0.5rem;
 }
 
 .required {
-  color: #dc2626;
+  color: var(--colour-ti-critical);
 }
 
 .key-input-container {
   display: flex;
   align-items: center;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 0.375rem;
-  background-color: #f9fafb;
+  background-color: var(--colour-surface-lower);
   padding: 0.5rem;
   gap: 0.5rem;
 }
@@ -168,7 +168,7 @@ const togglePassphraseVisibility = () => {
   outline: none;
   font-family: monospace;
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--colour-ti-secondary);
 }
 
 .icon-button {
@@ -178,15 +178,15 @@ const togglePassphraseVisibility = () => {
   padding: 0.25rem;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   cursor: pointer;
   border-radius: 0.25rem;
   transition: all 0.2s;
 }
 
 .icon-button:hover {
-  color: #374151;
-  background-color: #e5e7eb;
+  color: var(--colour-ti-secondary);
+  background-color: var(--colour-surface-subtle);
 }
 
 .reset-button {
@@ -194,10 +194,10 @@ const togglePassphraseVisibility = () => {
 }
 
 .reset-button:hover {
-  background-color: #b91c1c;
+  background-color: var(--colour-critical-default);
 }
 
 .reset-button:active {
-  background-color: #991b1b;
+  background-color: var(--colour-critical-default);
 }
 </style>

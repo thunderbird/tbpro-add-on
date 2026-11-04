@@ -35,7 +35,7 @@ const emit = defineEmits<{
 .modal-body {
   margin: auto;
   padding: 20px;
-  background-color: white;
+  background-color: var(--colour-surface-raised);
   border-radius: 8px;
 }
 </style>

@@ -31,6 +31,6 @@ p {
   font-size: 16px;
   font-stretch: normal;
   line-height: 1.32;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
 }
 </style>

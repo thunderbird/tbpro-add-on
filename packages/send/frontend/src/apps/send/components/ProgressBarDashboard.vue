@@ -15,7 +15,7 @@ const { percentage } = defineProps<{
 .progress-bar-container {
   width: 100%;
   height: 12px;
-  background-color: #e0e0e0;
+  background-color: var(--colour-surface-deep);
   border-radius: 64px;
   overflow: hidden;
   margin-top: 0.5rem;
@@ -28,9 +28,9 @@ const { percentage } = defineProps<{
   box-shadow: inset 0 3px 3px 0 rgba(255, 255, 255, 0.2);
   background-image: linear-gradient(
     to right,
-    #58c9ff 58%,
-    #ae55f7 118%,
-    #e247c4 118%
+    var(--colour-accent-blue) 58%,
+    var(--colour-accent-purple) 118%,
+    var(--colour-accent-pink) 118%
   );
   transition: width 0.3s ease;
 }

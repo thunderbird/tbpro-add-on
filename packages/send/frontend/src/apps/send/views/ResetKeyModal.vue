@@ -142,9 +142,9 @@ const confirm = () => {
 }
 
 .description {
-  margin-bottom: 2rem;
-  line-height: 1.6;
-  color: #1f2937;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+  color: var(--colour-ti-base);
 }
 
 .mt-2 {
@@ -152,27 +152,30 @@ const confirm = () => {
 }
 
 .error-field {
-  color: var(--colour-danger-default);
+  color: var(--colour-critical-default);
   margin-bottom: 1rem;
 }
 
 .checkbox-container {
   display: flex;
   align-items: center;
+  /* Room for the checkbox focus ring so the scrollable modal body doesn't clip it. */
+  padding: 0.25rem;
+  margin-top: 0.75rem;
 }
 
 .checkbox {
   width: 1rem;
   height: 1rem;
-  color: #2563eb;
-  border-color: #d1d5db;
+  color: var(--colour-ti-highlight);
+  border-color: var(--colour-surface-border);
   border-radius: 0.25rem;
 }
 
 .checkbox-label {
   margin-left: 0.5rem;
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--colour-ti-secondary);
 }
 
 .actions {
@@ -184,8 +187,8 @@ const confirm = () => {
 
 .cancel-button {
   padding: 0.5rem 1rem;
-  color: #2563eb;
-  border: 1px solid #2563eb;
+  color: var(--colour-ti-highlight);
+  border: 1px solid var(--colour-primary-default);
   border-radius: 0.25rem;
   background-color: transparent;
   transition: background-color 0.2s;
@@ -193,7 +196,7 @@ const confirm = () => {
 }
 
 .cancel-button:hover:not(:disabled) {
-  background-color: #eff6ff;
+  background-color: var(--colour-primary-soft);
 }
 
 .cancel-button:disabled {

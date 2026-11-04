@@ -18,6 +18,10 @@ export default defineConfig({
     setupFiles: ['./src/test/setup/webcrypto.js'],
     globals: true,
     mockReset: false,
+    // Node >= 25 exposes an experimental global localStorage/sessionStorage that
+    // is unusable without --localstorage-file and shadows happy-dom's. Turn it
+    // off so the tests see happy-dom's storage on every Node version.
+    execArgv: ['--no-experimental-webstorage'],
   },
   // src/config.ts reads each fallback as a literal `import.meta.env.VITE_*` member
   // expression precisely so these overrides reach it.

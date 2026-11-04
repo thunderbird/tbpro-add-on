@@ -96,12 +96,12 @@ const onConfirm = async () => {
 .title {
   font-size: 1.5rem;
   font-weight: 500;
-  color: #4285f4;
+  color: var(--colour-ti-highlight);
   margin: 0 0 1.5rem 0;
 }
 
 .disclaimer {
-  color: #333;
+  color: var(--colour-ti-base);
   font-size: 0.9375rem;
   line-height: 1.6;
   margin-bottom: 1.5rem;
@@ -127,8 +127,8 @@ const onConfirm = async () => {
 
 .download-button {
   width: auto;
-  background: #4285f4;
-  color: white;
+  background: var(--colour-primary-default);
+  color: var(--colour-ti-base-inverted);
   border: none;
   border-radius: 6px;
   padding: 0.75rem 1.5rem;
@@ -142,7 +142,7 @@ const onConfirm = async () => {
 }
 
 .download-button:hover {
-  background: #3367d6;
+  background: var(--colour-primary-hover);
 }
 
 .footer-links {
@@ -151,12 +151,12 @@ const onConfirm = async () => {
   gap: 0.75rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--colour-surface-border);
   font-size: 0.875rem;
 }
 
 .link {
-  color: #4285f4;
+  color: var(--colour-ti-highlight);
   text-decoration: none;
 }
 
@@ -165,6 +165,6 @@ const onConfirm = async () => {
 }
 
 .separator {
-  color: #999;
+  color: var(--colour-ti-muted);
 }
 </style>

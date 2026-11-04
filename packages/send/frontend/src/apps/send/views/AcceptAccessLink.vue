@@ -138,11 +138,11 @@ h3 {
   font-size: 20px;
 }
 .prompt {
-  color: var(--color-send-muted);
+  color: var(--colour-ti-muted);
   font-size: 11px;
 }
 .critical {
-  color: var(--critical);
+  color: var(--colour-ti-critical);
 }
 input {
   height: 44px;
@@ -156,14 +156,14 @@ input {
   padding: 12px;
   border-radius: 8px;
   box-shadow: inset 2px 2px 4px 0 rgba(0, 0, 0, 0.05);
-  border: solid 1px rgb(228, 228, 231);
-  background-color: var(--neutral-base);
+  border: solid 1px var(--colour-surface-border);
+  background-color: var(--colour-surface-base);
   width: 100%;
   max-width: 38rem;
 }
 .passwordText {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
 }
 </style>

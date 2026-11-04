@@ -175,7 +175,7 @@ const progressDisplay = computed(() => {
 .progress-bar-container {
   width: 100%;
   height: 8px;
-  background-color: #e5e7eb;
+  background-color: var(--colour-surface-deep);
   border-radius: 4px;
   overflow: hidden;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);

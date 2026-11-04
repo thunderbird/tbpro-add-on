@@ -141,15 +141,15 @@ const handleSubmit = async () => {
 button {
   width: 100%;
   padding: 10px;
-  background-color: #4caf50;
-  color: white;
+  background-color: var(--colour-success-default);
+  color: var(--colour-ti-base-inverted);
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
 
 button:disabled {
-  background-color: #cccccc;
+  background-color: var(--colour-surface-border);
   cursor: not-allowed;
 }
 </style>

@@ -48,7 +48,7 @@ const returnToDashboard = () => {
   font-family: Inter;
   font-size: 14px;
   line-height: 1.23;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
   margin: 0;
 }
 </style>

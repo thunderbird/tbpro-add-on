@@ -45,21 +45,21 @@ h3 {
 .title {
   font-size: 24px;
   font-weight: 500;
-  color: #3b82f6;
+  color: var(--colour-ti-highlight);
 }
 
 .description {
   margin-bottom: 2rem;
   line-height: 1.6;
-  color: #1f2937;
+  color: var(--colour-ti-base);
 }
 
 .recover-access {
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: white;
-  background-color: #0a84ff;
+  color: var(--colour-ti-base-inverted);
+  background-color: var(--colour-primary-default);
   border: none;
   border-radius: 0.25rem;
   cursor: pointer;

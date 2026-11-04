@@ -69,7 +69,7 @@ p {
   padding: 1rem;
 }
 .testing {
-  background: var(--colour-send-primary-accent-1);
+  background: var(--colour-primary-default);
   padding: 1rem;
 }
 .closebutton {

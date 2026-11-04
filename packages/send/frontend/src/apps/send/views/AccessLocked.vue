@@ -60,7 +60,7 @@ defineProps<{
 .learn-more {
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
   text-decoration: underline;
   border-radius: 0.25rem;
   transition: background-color 0.2s;
@@ -70,8 +70,8 @@ defineProps<{
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: white;
-  background-color: #0a84ff;
+  color: var(--colour-ti-base-inverted);
+  background-color: var(--colour-primary-default);
   border: none;
   border-radius: 0.25rem;
   cursor: pointer;
@@ -79,10 +79,10 @@ defineProps<{
 }
 
 .recover-access:hover {
-  background-color: #0060df;
+  background-color: var(--colour-primary-default);
 }
 
 .recover-access:active {
-  background-color: #003eaa;
+  background-color: var(--colour-primary-pressed);
 }
 </style>

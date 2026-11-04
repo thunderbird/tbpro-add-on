@@ -76,9 +76,9 @@ defineProps<Props>();
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: #f9fafb;
+  background: var(--colour-surface-lower);
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--colour-surface-border);
 }
 
 .file-status-icon {
@@ -88,7 +88,7 @@ defineProps<Props>();
 
 .file-name {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--colour-ti-secondary);
   word-break: break-word;
   flex: 1;
 }

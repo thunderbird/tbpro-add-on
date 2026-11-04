@@ -92,11 +92,11 @@ defineProps<ReportProps>();
 .report-section {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--colour-surface-border);
 }
 
 .report-message {
-  color: #333;
+  color: var(--colour-ti-base);
   font-size: 0.9375rem;
 }
 
@@ -109,13 +109,13 @@ defineProps<ReportProps>();
 }
 
 .report-text {
-  color: #666;
+  color: var(--colour-ti-secondary);
   font-size: 0.9375rem;
   margin: 0;
 }
 
 .link {
-  color: #0066cc;
+  color: var(--colour-ti-highlight);
   text-decoration: none;
   cursor: pointer;
 }

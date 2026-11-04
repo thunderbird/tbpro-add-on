@@ -61,7 +61,7 @@ const isLoading = computed(() => {
   line-height: 1.2;
   letter-spacing: normal;
   text-align: left;
-  color: #4c4d58;
+  color: var(--colour-ti-secondary);
 }
 
 .storage-remaining {
@@ -73,6 +73,6 @@ const isLoading = computed(() => {
   line-height: normal;
   letter-spacing: normal;
   text-align: right;
-  color: #4c4d58;
+  color: var(--colour-ti-secondary);
 }
 </style>

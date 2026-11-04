@@ -75,13 +75,13 @@ watchEffect(() => {
 }
 
 .breadcrumb-button:focus {
-  outline: 2px solid #007acc;
+  outline: 2px solid var(--colour-primary-default);
   outline-offset: 2px;
 }
 
 .breadcrumb-separator {
   margin: 0 0.5rem;
-  color: #666;
+  color: var(--colour-ti-secondary);
 }
 
 .breadcrumb-item {

@@ -153,7 +153,7 @@ const confirmDeletion = () => {
   font-family: Inter;
   font-size: 14px;
   line-height: 1.23;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
 }
 
 .description {
@@ -178,16 +178,16 @@ const confirmDeletion = () => {
 }
 
 .checkbox-label {
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
   font-size: 1rem;
 }
 
 .required {
-  color: var(--text-icon-critical);
+  color: var(--colour-ti-critical);
 }
 
 .error-field {
-  color: var(--colour-danger-default);
+  color: var(--colour-critical-default);
   margin-top: 0.25rem;
 }
 
@@ -206,9 +206,9 @@ const confirmDeletion = () => {
   display: flex;
   align-items: center;
   width: 100%;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--colour-surface-border);
   border-radius: 10px;
-  background: white;
+  background: var(--colour-surface-raised);
   padding-right: 0.5rem;
   max-width: 380px;
 }
@@ -219,12 +219,12 @@ const confirmDeletion = () => {
   background: transparent;
   outline: none;
   padding: 0.75rem;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
   font-size: 1rem;
 }
 
 .password-input::placeholder {
-  color: var(--text-icon-muted);
+  color: var(--colour-ti-muted);
 }
 
 .icon-button {
@@ -234,7 +234,7 @@ const confirmDeletion = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-icon-secondary);
+  color: var(--colour-ti-secondary);
 }
 
 .cancel-link {
@@ -246,7 +246,7 @@ const confirmDeletion = () => {
   font-family: Inter;
   font-size: 12px;
   line-height: normal;
-  color: var(--text-icon-highlight);
+  color: var(--colour-ti-highlight);
   text-decoration: underline;
 }
 

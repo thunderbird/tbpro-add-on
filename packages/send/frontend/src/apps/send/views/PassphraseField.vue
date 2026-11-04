@@ -95,26 +95,27 @@ const copyToClipboard = async () => {
   display: block;
   font-weight: 500;
   margin-bottom: 0.5rem;
-  color: #1f2937;
+  color: var(--colour-ti-base);
 }
 
 .required {
-  color: #ef4444;
+  color: var(--colour-ti-critical);
 }
 
 .input-container {
   position: relative;
   display: flex;
   align-items: center;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--colour-surface-border);
   border-radius: 8px;
-  background: white;
+  background: var(--colour-surface-raised);
   overflow: hidden;
 }
 
 .input-container:focus-within {
-  border-color: #3b82f6;
-  outline: 2px solid #3b82f614;
+  border-color: var(--colour-primary-default);
+  outline: 2px solid
+    color-mix(in srgb, var(--colour-primary-default) 8%, transparent);
 }
 
 .passphrase-input {
@@ -123,7 +124,7 @@ const copyToClipboard = async () => {
   border: none;
   background: transparent;
   font-size: 1rem;
-  color: #1f2937;
+  color: var(--colour-ti-base);
   outline: none;
   font-family: 'Courier New', Courier, monospace;
   letter-spacing: 0.5px;
@@ -133,7 +134,7 @@ const copyToClipboard = async () => {
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--colour-surface-border);
 }
 
 .icon-button {
@@ -145,7 +146,7 @@ const copyToClipboard = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: var(--colour-ti-muted);
   transition:
     background-color 0.2s,
     color 0.2s,
@@ -153,8 +154,8 @@ const copyToClipboard = async () => {
 }
 
 .icon-button:hover:not(:disabled) {
-  background: #f3f4f6;
-  color: #1f2937;
+  background: var(--colour-surface-subtle);
+  color: var(--colour-ti-base);
 }
 
 .icon-button:disabled {

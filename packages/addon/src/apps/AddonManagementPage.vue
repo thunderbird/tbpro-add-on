@@ -71,7 +71,7 @@ async function openLoginPage() {
 }
 
 .description {
-  color: #333;
+  color: var(--colour-ti-base);
   font-size: 16px;
   line-height: 1.6;
   margin: 1rem 0 0 0;

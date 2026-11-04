@@ -36,7 +36,12 @@
  */
 import { INIT_ERRORS } from '@send-frontend/apps/send/const';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDeferred, setupHost, stubContext, teardownHost } from './testHelpers';
+import {
+  createDeferred,
+  setupHost,
+  stubContext,
+  teardownHost,
+} from './testHelpers';
 import type { FakeHost } from './fakeThunderbirdHost';
 
 describe('D3: init.ts single-flight guard does not coordinate across contexts (fixed via storage lock)', () => {
@@ -76,6 +81,7 @@ describe('D3: init.ts single-flight guard does not coordinate across contexts (f
       defaultFolder: { id: 'shared-account-default-folder' },
       deleteFolder: vi.fn().mockResolvedValue(undefined),
       createFolder: vi.fn().mockResolvedValue({ id: 'new-folder-id' }),
+      getDefaultFolderId: vi.fn().mockResolvedValue(undefined),
     };
 
     // Start context 1's init() -- it will block inside folderStore.sync()
@@ -93,7 +99,9 @@ describe('D3: init.ts single-flight guard does not coordinate across contexts (f
     // Let context 1 finish sync and go on to acquire the lock and run
     // deleteFolder/createFolder, before context 2 gets a chance to try.
     sync1Deferred.resolve();
-    await vi.waitFor(() => expect(folderStore1.createFolder).toHaveBeenCalled());
+    await vi.waitFor(() =>
+      expect(folderStore1.createFolder).toHaveBeenCalled()
+    );
 
     // --- "Context 2" (e.g. popup), a totally separate module instance,
     // stubbed onto a SEPARATE fake-host context that shares the same
@@ -118,6 +126,7 @@ describe('D3: init.ts single-flight guard does not coordinate across contexts (f
       defaultFolder: { id: 'shared-account-default-folder' }, // SAME folder
       deleteFolder: vi.fn().mockResolvedValue(undefined),
       createFolder: vi.fn().mockResolvedValue({ id: 'another-new-folder-id' }),
+      getDefaultFolderId: vi.fn().mockResolvedValue(undefined),
     };
 
     // By the time context 2 runs, context 1 has already released its lock
@@ -166,6 +175,7 @@ describe('D3: init.ts single-flight guard does not coordinate across contexts (f
         return deleteDeferred.promise;
       }),
       createFolder: vi.fn().mockResolvedValue({ id: 'new-folder-id' }),
+      getDefaultFolderId: vi.fn().mockResolvedValue(undefined),
     };
 
     const context1InitPromise = init1(
@@ -201,6 +211,7 @@ describe('D3: init.ts single-flight guard does not coordinate across contexts (f
       defaultFolder: { id: 'context-1s-recreated-folder' },
       deleteFolder: vi.fn().mockResolvedValue(undefined),
       createFolder: vi.fn().mockResolvedValue({ id: 'should-not-be-used' }),
+      getDefaultFolderId: vi.fn().mockResolvedValue(undefined),
     };
 
     const context2Result = await init2(
