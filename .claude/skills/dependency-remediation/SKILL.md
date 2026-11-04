@@ -49,8 +49,8 @@ Keep this list in step with the direct dependencies of `packages/send/backend`,
 - Clean checkout of `main`. Work starts on `deps/<date>-routine` (date as `YYYY-MM-DD`); each
   gated change gets its own branch from `main` (step 6).
 - `HUSKY=0` exported (the pre-commit hook needs `pnpm` and `bun` on PATH, which laptops may lack).
-- pnpm 10.16 or newer (`npx -y pnpm@10 ...` works when pnpm is not installed globally); the
-  7-day cooling period in `pnpm-workspace.yaml` needs it (see step 3).
+- `pnpm --version` is 12 or newer (`npx -y pnpm@12 ...` works when pnpm is not installed
+  globally). Older versions do not lift transitive dependencies with `pnpm update` (step 4).
 - `gh auth status` succeeds; the token can read and dismiss Dependabot alerts.
 - Fresh install so `node_modules/.pnpm` matches the lockfile: `pnpm install --frozen-lockfile`.
 - `scripts/override-drift.js` runs `npm view` by absolute path, not via PATH. If it exits with
@@ -180,14 +180,16 @@ Do steps 4 and 5 on the routine branch first, then on each gated branch (`git sw
 deps/<date>-<...> main`), so every branch stands on its own against `main`. Pruning (items 4
 and 5) belongs to the routine branch; a gated branch touches only what its decision needs.
 
+Every lockfile change comes from a pnpm command and is reviewed as its diff. Never edit
+`pnpm-lock.yaml` by hand, and never run `pnpm dedupe` (it rewrites hundreds of unrelated lines).
 
-0. Check that `pnpm` >= 12.
-1. `pnpm update <pkg> --lockfile-only`, then `git diff pnpm-lock.yaml` and confirm every changed line names `<pkg>`, then `pnpm install --frozen-lockfile` and the suites. If the version does not move, a parent pins it exactly — that is the parent-upgrade or override step, not a reason to delete entries from pnpm-lock.yaml.
-2. **Lifting a transitive dependency within its parent's range**: `pnpm update <pkg>` only
-   touches direct dependencies (even with `--depth Infinity`) and `pnpm dedupe` does not lift
-   single versions. Delete the stale package's entries from the `packages:` and `snapshots:`
-   sections of `pnpm-lock.yaml`, run `pnpm install`, and pnpm re-resolves just those. Finish with
-   `pnpm install --lockfile-only` so the lockfile is written in pnpm's own format.
+1. Edit `package.json` ranges and `pnpm-workspace.yaml` overrides as decided; then `pnpm install`.
+2. **Lifting a transitive dependency within its parent's range**: `pnpm update <pkg>
+   --lockfile-only` (pnpm 12 moves transitives; pnpm 10 and 11 do not). Then `git diff
+   pnpm-lock.yaml`: most changed lines should name `<pkg>`, and every other package that changed
+   must be explained (pnpm may drop a now-unneeded duplicate along the way) or the update
+   reverted. Then `pnpm install --frozen-lockfile` and the suites. If the version does not move,
+   a parent pins it exactly: that is the parent-upgrade or override rule in step 3.
 3. Check for new duplicate copies: compare the set of packages with more than one version
    against `main`. A second copy of a runtime library (vue, vue-i18n, pinia) is a regression;
    fix it with an in-range pin or by restoring the previous version before moving on.
@@ -293,7 +295,7 @@ conflicts in `pnpm-lock.yaml` or the version files: take `main`'s copies, re-app
 `package.json` / `pnpm-workspace.yaml` edits, and run `pnpm install`. Taking `main`'s lockfile
 drops any transitive lift the branch made through the lockfile alone, and neither `pnpm install`
 nor a frozen install will bring it back. Re-apply each one with `pnpm update <pkg>
---lockfile-only` (step 4 item 1), using the PR's "Changes by alert" table as the list. Then
+--lockfile-only` (step 4 item 2), using the PR's "Changes by alert" table as the list. Then
 re-run `pnpm audit` and confirm every alert the PR claims to fix is still fixed before running
 `node scripts/bump-versions.js` and `pnpm install --frozen-lockfile`. Force-push with
 `--force-with-lease`.
