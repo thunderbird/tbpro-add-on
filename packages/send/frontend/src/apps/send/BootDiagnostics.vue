@@ -219,14 +219,14 @@ onMounted(runDiagnostics);
   padding: 1rem 1.5rem;
   font-family: system-ui, sans-serif;
   font-size: 14px;
-  color: var(--colour-ti-base);
+  color: var(--colour-ti-base, #1a1a1a);
 }
 .spinner {
   width: 2rem;
   height: 2rem;
   margin: 4rem auto;
-  border: 3px solid var(--colour-surface-border);
-  border-top-color: var(--colour-ti-base);
+  border: 3px solid var(--colour-surface-border, #d4d4d8);
+  border-top-color: var(--colour-ti-base, #1a1a1a);
   border-radius: 50%;
   animation: boot-spin 0.8s linear infinite;
 }
@@ -260,13 +260,13 @@ onMounted(runDiagnostics);
   opacity: 0.55;
 }
 .passed .mark {
-  color: var(--colour-ti-success);
+  color: var(--colour-ti-success, #15803d);
 }
 .warning .mark {
-  color: var(--colour-ti-warning);
+  color: var(--colour-ti-warning, #a16207);
 }
 .failed .mark {
-  color: var(--colour-ti-critical);
+  color: var(--colour-ti-critical, #b91c1c);
 }
 .detail {
   grid-column: 2;
@@ -277,7 +277,7 @@ onMounted(runDiagnostics);
   margin-top: 1rem;
   padding: 1rem;
   border-radius: 0.375rem;
-  background: var(--colour-warning-default);
+  background: var(--colour-warning-default, #facc15);
 }
 .title {
   font-weight: 700;
@@ -292,9 +292,9 @@ button {
   padding: 0.35rem 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid var(--colour-ti-base);
+  border: 1px solid var(--colour-ti-base, #1a1a1a);
   border-radius: 0.25rem;
-  background: var(--colour-surface-raised);
+  background: var(--colour-surface-raised, #fff);
 }
 button.secondary {
   background: transparent;
