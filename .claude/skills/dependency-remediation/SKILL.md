@@ -1,6 +1,6 @@
 ---
 name: dependency-remediation
-description: Careful remediation of Dependabot / pnpm audit findings. Prefers parent upgrades over overrides, reads changelogs, checks reachability and test coverage, surfaces high-risk findings without a clean fix for a human decision, and produces a PR with a QA Log. Run manually from a laptop.
+description: Careful remediation of Dependabot / pnpm audit findings. Prefers parent upgrades over overrides, reads changelogs, checks reachability and test coverage, surfaces high-risk findings without a clean fix for a human decision, and produces a routine PR plus one gated PR per decision that needs review, each with a QA Log. Run manually from a laptop.
 ---
 
 # Dependency audit remediation
@@ -9,13 +9,45 @@ Policy lives in `docs/dependency-remediation/README.md`; this file is the proced
 primary metric is **open Dependabot alerts**, not the `pnpm audit` count.
 
 There is no committed decision log. Two places hold the record: Dependabot keeps the dismissal
-reason and comment for every alert we dismiss, and the PR body holds every other decision
+reason and comment for every alert we dismiss, and the PR bodies hold every other decision
 (bumps, overrides, mitigations, accepted risks, verification). Never edit
 `pnpm-workspace.yaml` overrides without explaining why in the PR.
 
+## One pass, several PRs
+
+Changes are split by gate so that the routine work merges every week and nothing waits on a
+discussion it is not part of.
+
+- **Routine PR**: `deps/<date>-routine`. In-range bumps, patch/minor parent upgrades, removal of
+  dead or redundant overrides, dismissals (with their reasons repeated in the body), accepted
+  normal-risk groups. Merged by the person running the pass alone once CI is green. The body
+  carries the pass summary: alerts before and after by severity, what was deferred for cooling
+  and until when, links to the gated PRs.
+- **One gated PR per decision**: `deps/<date>-bypass-<pkg>`, `deps/<date>-major-<pkg>`,
+  `deps/<date>-<pkg>` for a high-risk choice. Each carries only its own rationale and asks for
+  its own review. Gated: cooling-period bypasses; major bumps; high-risk no-clean-fix choices;
+  any change to a package on the sensitive list below.
+
+Gated PRs are branched from `main`, not stacked on the routine PR, and rebased after it merges.
+A little duplicate lockfile churn between them is acceptable; a blocked routine PR is not.
+
+**Sensitive packages** (auth, crypto, storage). A change to any of these, or to a transitive
+dependency reached only through one of them, is gated even when it is a patch bump:
+
+- auth: `openid-client`, `oidc-client-ts`, `passport`, `passport-openidconnect`,
+  `passport-oauth2-refresh`, `jsonwebtoken`, `jose`, `cookie-parser`, `express-rate-limit`,
+  `rate-limit-redis`, `helmet`, `cors`
+- crypto: `@scure/bip39`, `get-random-values`, `bcryptjs`
+- storage: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@tweedegolf/*`,
+  `@prisma/client`, `prisma`, `ioredis`
+
+Keep this list in step with the direct dependencies of `packages/send/backend`,
+`packages/send/frontend` and `packages/addon`.
+
 ## 0. Preconditions
 
-- Clean checkout of `main` on a new branch, e.g. `dependency-audit-YYYY-MM-DD`.
+- Clean checkout of `main`. Work starts on `deps/<date>-routine` (date as `YYYY-MM-DD`); each
+  gated change gets its own branch from `main` (step 6).
 - `HUSKY=0` exported (the pre-commit hook needs `pnpm` and `bun` on PATH, which laptops may lack).
 - pnpm 10.16 or newer (`npx -y pnpm@10 ...` works when pnpm is not installed globally); the
   7-day cooling period in `pnpm-workspace.yaml` needs it (see step 3).
@@ -39,7 +71,7 @@ node scripts/override-drift.js --json > /tmp/drift-before.json   # --offline ski
 Group alerts by the direct dependency that owns the path (`pnpm why <pkg>`). For each group note:
 vulnerable package and version, parent chain, each parent's declared range (from the drift
 report), fixed version, and whether the path is **runtime** (shipped backend/frontend/addon code)
-or **dev/test only**.
+or **dev/test only**. Also note whether any package in the group is on the sensitive list.
 
 ## 2. Classify risk first
 
@@ -56,8 +88,8 @@ A high-risk group is never deferred or accepted on your own judgement. When it h
 or no fix at all), stop and put the decision to the person running the skill: lay out the
 options, the risks and benefits of each (exposure while waiting, breaking changes and the code
 they hit, test coverage of the vulnerable path, effort), and your recommendation. Apply only
-the option they choose. Record each such group in the PR's "High-risk decisions" section (see
-step 6).
+the option they choose, in its own gated PR, with the decision recorded in that PR's
+"Decision" section (see step 6).
 
 ## 3. Decide, one group at a time
 
@@ -70,21 +102,24 @@ npm view <pkg>@<version> time.<version>
 ```
 
 If it is younger than 7 days and the group is **normal** risk, defer the group to the next
-pass: leave the alert open and list it under "Deferred for cooling period" in the PR. If the
-group is **high** risk, surface it for a human decision (step 2): wait for the cooling period,
-or bypass it. A bypass covers that one version only, by adding `name@version` to
-`minimumReleaseAgeExclude` (never a bare package name, which exempts every future release);
-justify it in the PR and note the date it ages out. On every pass, delete exclusions whose
-version is now at least 7 days old.
+pass: leave the alert open and list it under "Deferred for cooling period" in the routine PR.
+If the group is **high** risk, surface it for a human decision (step 2): wait for the cooling
+period, or bypass it. A bypass goes in its own gated PR (`deps/<date>-bypass-<pkg>`) and covers
+that one version only, by adding `name@version` to `minimumReleaseAgeExclude` (never a bare
+package name, which exempts every future release); justify it in that PR and note the date it
+ages out. On every pass, delete exclusions whose version is now at least 7 days old (routine
+PR).
 
-Walk this list in order and stop at the first rule that applies.
+Walk this list in order and stop at the first rule that applies. Then assign the result to a
+PR: a major bump, a high-risk choice from rule 5, or anything touching a sensitive package goes
+in its own gated PR; everything else goes in the routine PR.
 
 1. **In range.** The fixed version satisfies every parent's declared range. Re-resolve it (see
    step 4) and remove any override for it.
 2. **Parent upgrade reaches the fix.** A newer release of the direct dependency pins or allows
    the fixed version. Bump the direct dependency's range in the owning `package.json`. Patch or
-   minor freely; a major bump needs the changelog step and the coverage check, and is flagged in
-   the PR. Remove overrides the bump makes redundant.
+   minor freely; a major bump needs the changelog step and the coverage check, and goes in its
+   own gated PR (`deps/<date>-major-<pkg>`). Remove overrides the bump makes redundant.
 3. **Minimal override.** Only when the parent pins an exact version and the fix is a patch
    within the same major (for 0.x: the same minor). One narrow selector per package, e.g.
    `handlebars@4.7.9: 4.7.10`. Collapse overlapping selectors: pnpm applies one and shadows the
@@ -95,8 +130,8 @@ Walk this list in order and stop at the first rule that applies.
    which integrations the app enables, check runtime config. Dismiss via the API with
    `dismissed_reason=not_used` and a comment of at most 280 characters. The comment is the
    permanent record for that alert, so it must stand on its own: what was checked, why the code
-   never loads, and the condition that would make us revisit. Repeat the rationale in the PR's
-   "Dismissed alerts" section:
+   never loads, and the condition that would make us revisit. Repeat the rationale in the
+   routine PR's "Dismissed alerts" section:
 
    ```sh
    gh api -X PATCH repos/thunderbird/tbpro-add-on/dependabot/alerts/<n> \
@@ -112,8 +147,8 @@ Walk this list in order and stop at the first rule that applies.
      leaving the alert open with a re-check condition. Whichever change they choose, add
      coverage for the vulnerable path.
    - **Normal risk, no fix upstream**: accept. List the package, why it is low risk, and the
-     re-check condition in the PR's "Accepted / no upstream fix" section. If a Dependabot alert
-     exists for it, leave the alert open; it is the reminder to re-check.
+     re-check condition in the routine PR's "Accepted / no upstream fix" section. If a
+     Dependabot alert exists for it, leave the alert open; it is the reminder to re-check.
 
 ### Changelog step (every bump, including transitive ones)
 
@@ -141,6 +176,10 @@ Then proceed with the upgrade. The new test and what it proves go in the QA Log.
 
 ## 4. Apply and prune
 
+Do steps 4 and 5 on the routine branch first, then on each gated branch (`git switch -c
+deps/<date>-<...> main`), so every branch stands on its own against `main`. Pruning (items 4
+and 5) belongs to the routine branch; a gated branch touches only what its decision needs.
+
 1. Edit `package.json` ranges and `pnpm-workspace.yaml` overrides as decided; then `pnpm install`.
 2. **Lifting a transitive dependency within its parent's range**: `pnpm update <pkg>` only
    touches direct dependencies (even with `--depth Infinity`) and `pnpm dedupe` does not lift
@@ -158,16 +197,19 @@ Then proceed with the upgrade. The new test and what it proves go in the QA Log.
    to `^3.1.8` while `3.1.7` is locked), and deleting it drops the fix. Re-resolve the package
    as in item 2 and re-run the report. If the target now resolves, judge the override by its
    new status. If pnpm cannot resolve it because of the cooling period, keep the override and
-   list it under "Cooling period" in the PR. Repeat until every remaining override is `needed`,
-   or `forcing` with a justification in the PR.
+   list it under "Deferred for cooling period" in the routine PR. Repeat until every remaining
+   override is `needed`, or `forcing` with a justification in the PR.
 6. `pnpm install --frozen-lockfile` must succeed on the result.
 7. `node scripts/bump-versions.js` (repo convention: dependency changes bump the patch version in
-   the six version files so CI validates them).
+   the six version files so CI validates them). Run it on every branch; the version files and
+   lockfile will conflict between branches, which is expected (see step 6).
 8. Before committing, revert files touched only by formatters: `ci:validate` runs `eslint --fix`
    and `prettier --write` and reformats committed files, and the frontend build writes into
    `packages/send/backend/public/`.
 
 ## 5. Verify
+
+Verify each branch separately; each PR's QA Log covers only its own branch.
 
 - `pnpm audit --json > /tmp/audit-after.json`; compare with the before file.
 - Backend (`packages/send/backend`, MinIO up): `pnpm prisma generate && pnpm ci:validate && pnpm typecheck`.
@@ -182,28 +224,29 @@ Then proceed with the upgrade. The new test and what it proves go in the QA Log.
 - `git diff main -- pnpm-workspace.yaml` shows only removals plus the justified additions, and
   `minimumReleaseAge` / `minimumReleaseAgeStrict` are untouched.
 
-## 6. Commit and open the PR
+## 6. Commit and open the PRs
 
 **Commits are concise.** Subject under 72 characters, body of a few lines at most naming the
 direct bumps, override count change, and alert numbers fixed. Commit the dependency changes and
 their supporting tests separately from any tooling or documentation changes. Do not put the
 verification narrative in the commit.
 
-**The PR is where the detail goes.** Body structure:
+Open every PR against `main` so integration and e2e run. Open the gated PRs first so the
+routine PR can link to them. Link alerts by number so merging closes them.
+
+**The PR is where the detail goes.** Routine PR body:
 
 ```markdown
 ## Summary
-One paragraph: alerts addressed, direct bumps, overrides before -> after.
+Pass summary: open alerts before -> after by severity (critical/high/medium/low), direct
+bumps, overrides before -> after.
+
+## Gated PRs
+Link and one line per gated PR opened in this pass (omit if none).
 
 ## Changes by alert
 | Alert | Package | Parent declares | Fix | Decision |
-one row per group, decisions in the words of step 3
-
-## High-risk decisions
-One subsection per high-risk group put to a human (omit the section if none): what was
-reachable and how, the options presented with their risks and benefits, who decided, what they
-chose and why. If a change was made: what breaking changes were handled and where our code
-changed, which test now covers the path. If accepted or deferred: the re-check condition.
+one row per group in this PR, decisions in the words of step 3
 
 ## Overrides
 Added (with justification) / removed (with drift-script status).
@@ -214,19 +257,37 @@ Alert numbers, package, one-line rationale each (the 280-char API comment points
 ## Accepted / no upstream fix
 Package, why it is low risk, re-check condition.
 
-## Cooling period
-Deferred: package, fix version, publish date, eligible date. Bypassed (high risk, human
-decision only): the `minimumReleaseAgeExclude` entry added, why it could not wait, date to
-remove it.
+## Deferred for cooling period
+Package, fix version, publish date, eligible date.
 
 ## QA Log
 - bulleted list of every verification step actually run, with the command and the result
   (counts of test files/tests, build status, frozen-install result, audit before/after)
-- for each new test: file, what it drives, result against old and new versions
 - what was NOT run locally and is left to PR CI (integration, e2e)
 - lockfile duplicate check result
 - drift-script summary after
 ```
 
-Open the PR against `main` so integration and e2e run. Link alerts by number so merging
-closes them.
+Gated PR body, one per decision:
+
+```markdown
+## Decision
+What needs review and why it is gated (bypass, major, high-risk choice, sensitive package).
+For a high-risk group: what was reachable and how, the options presented with their risks and
+benefits, who decided, what they chose and why, and the re-check condition if accepted or
+deferred. For a major: breaking changes handled and where our code changed. For a bypass: the
+`minimumReleaseAgeExclude` entry, why it could not wait, the date to remove it.
+
+## Changes by alert
+| Alert | Package | Parent declares | Fix | Decision |
+
+## QA Log
+Same as the routine PR, plus for each new test: file, what it drives, result against the old
+and new versions.
+```
+
+**After the routine PR merges**, rebase each open gated branch onto `main`. Do not hand-merge
+conflicts in `pnpm-lock.yaml` or the version files: take `main`'s copies, re-apply the branch's
+`package.json` / `pnpm-workspace.yaml` edits, then run `pnpm install`,
+`node scripts/bump-versions.js`, and `pnpm install --frozen-lockfile`. Force-push with
+`--force-with-lease`.
