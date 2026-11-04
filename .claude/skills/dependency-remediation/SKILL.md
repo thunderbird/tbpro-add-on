@@ -180,7 +180,9 @@ Do steps 4 and 5 on the routine branch first, then on each gated branch (`git sw
 deps/<date>-<...> main`), so every branch stands on its own against `main`. Pruning (items 4
 and 5) belongs to the routine branch; a gated branch touches only what its decision needs.
 
-1. Edit `package.json` ranges and `pnpm-workspace.yaml` overrides as decided; then `pnpm install`.
+
+0. Check that `pnpm` >= 12.
+1. `pnpm update <pkg> --lockfile-only`, then `git diff pnpm-lock.yaml` and confirm every changed line names `<pkg>`, then `pnpm install --frozen-lockfile` and the suites. If the version does not move, a parent pins it exactly — that is the parent-upgrade or override step, not a reason to delete entries from pnpm-lock.yaml.
 2. **Lifting a transitive dependency within its parent's range**: `pnpm update <pkg>` only
    touches direct dependencies (even with `--depth Infinity`) and `pnpm dedupe` does not lift
    single versions. Delete the stale package's entries from the `packages:` and `snapshots:`
