@@ -4,6 +4,8 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
+import { CLIENT_JWK } from '../fixtures/publicKeyJwk';
+
 const h = vi.hoisted(() => {
   const fullRow = {
     id: 'user-1',
@@ -113,9 +115,9 @@ describe('current-user routes return only profile fields', () => {
   it('POST /api/users/publickey returns only the new public key', async () => {
     const response = await request(app)
       .post('/api/users/publickey')
-      .send({ publicKey: 'new-key' });
+      .send({ publicKey: CLIENT_JWK });
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ update: { publicKey: '"new-key"' } });
+    expect(response.body).toEqual({ update: { publicKey: CLIENT_JWK } });
   });
 });
