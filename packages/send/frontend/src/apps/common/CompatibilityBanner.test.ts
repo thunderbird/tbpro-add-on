@@ -1,91 +1,117 @@
 import { getByTestId } from '@send-frontend/lib/testUtils';
 import { mount } from '@vue/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 import CompatibilityBanner from './CompatibilityBanner.vue';
 
-const { queryResults, isProd, isLoading } = vi.hoisted(() => {
-  return { queryResults: vi.fn(), isProd: vi.fn(), isLoading: vi.fn() };
-});
-
-vi.mock('../send/stores/config-store', () => ({
-  useConfigStore: () => ({
-    isProd: isProd(),
-  }),
+const { query, config } = vi.hoisted(() => ({
+  query: { data: null as unknown },
+  config: { isProd: true, isThunderbirdHost: false },
 }));
 
-// Mock trpc
 vi.mock('@send-frontend/lib/trpc', () => ({
-  trpc: {
-    settings: {
-      query: queryResults(),
-    },
-  },
+  trpc: { settings: { query: vi.fn() } },
 }));
-
-// Mock vue-query
 vi.mock('@tanstack/vue-query', () => ({
-  useQuery: () => {
-    return {
-      data: { value: queryResults() },
-      isLoading: isLoading(),
-    };
-  },
+  useQuery: () => ({ data: ref(query.data), error: ref(null) }),
 }));
+vi.mock('../send/stores/config-store', () => ({
+  useConfigStore: () => config,
+}));
+vi.mock('@vueuse/core', () => ({ usePreferredDark: () => ref(false) }));
 
-describe('CompatibilityBanner.vue', () => {
+function gate(
+  action: string,
+  message: unknown = null,
+  title: unknown = 'Server title'
+) {
+  return { clientGate: { action, minVersion: '9.9.9', title, message } };
+}
+
+describe('CompatibilityBanner', () => {
   beforeEach(() => {
-    queryResults.mockReturnValue({ compatibility: { result: 'COMPATIBLE' } });
-    isProd.mockReturnValue(true);
-    isLoading.mockReturnValue(false);
+    query.data = null;
+    config.isProd = true;
+    config.isThunderbirdHost = false;
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it.skip('should not show banner when isClosedByUser is true', async () => {
-    isProd.mockReturnValue(false);
+  it('renders nothing while settings are loading', () => {
     const wrapper = mount(CompatibilityBanner);
-
-    const closeButton = wrapper.find(getByTestId('close-button'));
-
-    await closeButton.trigger('click');
-    //@ts-ignore
-    await wrapper.vm.$nextTick();
-
     expect(wrapper.find('header').exists()).toBe(false);
   });
 
-  it('should show testing banner when not in production', async () => {
-    isProd.mockReturnValue(false);
-    const wrapper = mount(CompatibilityBanner, {});
-    const testingBanner = wrapper.find(getByTestId('testing-banner'));
-
-    expect(testingBanner.exists()).toBe(true);
-  });
-
-  it('should show loading state when isLoading is true', async () => {
-    queryResults.mockReturnValue({
-      data: { value: null },
-    });
-    isLoading.mockReturnValue(true);
-
+  it.each(['none', 'block'])('renders nothing for %s', (action) => {
+    query.data = gate(action);
     const wrapper = mount(CompatibilityBanner);
-    const loadingBanner = wrapper.find(
-      getByTestId('loading-compatibility-banner')
+    expect(wrapper.find(getByTestId('prompt-update-banner')).exists()).toBe(
+      false
     );
-
-    expect(loadingBanner.exists()).toBe(true);
   });
 
-  it('should show prompt update banner when compatibility is PROMPT_UPDATE', async () => {
-    queryResults.mockReturnValue({
-      compatibility: { result: 'PROMPT_UPDATE' },
-    });
-
+  it('shows the update notice for banner with default copy', () => {
+    query.data = gate('banner');
     const wrapper = mount(CompatibilityBanner);
-    const forceUpdateBanner = wrapper.find(getByTestId('prompt-update-banner'));
+    expect(wrapper.find(getByTestId('prompt-update-message')).text()).toBe(
+      'A new version of Send is available. Reload the page to get it.'
+    );
+  });
 
-    expect(forceUpdateBanner.exists()).toBe(true);
+  it('uses add-on copy inside Thunderbird', () => {
+    config.isThunderbirdHost = true;
+    query.data = gate('banner');
+    const wrapper = mount(CompatibilityBanner);
+    expect(wrapper.find(getByTestId('prompt-update-message')).text()).toContain(
+      'Update Thunderbird and its add-ons'
+    );
+  });
+
+  it.each([false, true])(
+    'shows the server message, not bold (Thunderbird host: %s)',
+    (isThunderbirdHost) => {
+      config.isThunderbirdHost = isThunderbirdHost;
+      query.data = gate('banner', 'Version 3 is out.');
+      const wrapper = mount(CompatibilityBanner);
+      const message = wrapper.find(getByTestId('prompt-update-message'));
+      expect(message.text()).toBe('Version 3 is out.');
+      expect(message.classes()).not.toContain('emphasis');
+    }
+  );
+
+  it('falls back to the default copy for a non-string message', () => {
+    query.data = gate('banner', ['Version 3 is out.']);
+    const wrapper = mount(CompatibilityBanner);
+    expect(wrapper.find(getByTestId('prompt-update-message')).text()).toBe(
+      'A new version of Send is available. Reload the page to get it.'
+    );
+  });
+
+  it('can be dismissed', async () => {
+    query.data = gate('banner');
+    const wrapper = mount(CompatibilityBanner);
+    await wrapper.find(getByTestId('prompt-update-close')).trigger('click');
+    expect(wrapper.find(getByTestId('prompt-update-banner')).exists()).toBe(
+      false
+    );
+  });
+
+  it('shows the testing banner outside production', () => {
+    config.isProd = false;
+    const wrapper = mount(CompatibilityBanner);
+    expect(wrapper.find(getByTestId('testing-banner')).exists()).toBe(true);
+  });
+
+  it('dismisses the testing banner without hiding an update notice', async () => {
+    config.isProd = false;
+    query.data = gate('banner');
+    const wrapper = mount(CompatibilityBanner);
+
+    await wrapper
+      .find(`${getByTestId('testing-banner')} ${getByTestId('close-button')}`)
+      .trigger('click');
+
+    expect(wrapper.find(getByTestId('testing-banner')).exists()).toBe(false);
+    expect(wrapper.find(getByTestId('prompt-update-banner')).exists()).toBe(
+      true
+    );
   });
 });
