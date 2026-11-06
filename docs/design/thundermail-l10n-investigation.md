@@ -1,7 +1,8 @@
 # Thundermail add-on localization — design & decisions
 
-Status: design, pre-implementation. Last updated 2026-11-06.
+Status: implementation starting. Last updated 2026-11-06.
 Scope: Fluent-based localization for the Thundermail add-on and the send.tb.pro web app, translated via a dedicated Pontoon project, following the Mozilla VPN extension's repo/submodule model.
+Tracking: epic #1086 (sub-issues) + milestone "Thundermail add-on localization".
 
 ## Summary
 
@@ -15,7 +16,7 @@ Goals (from the project brief):
 - Failure modes designed out: empty strings, broken English fallback, harder local development.
 
 Non-goals / out of scope:
-- Building a new translation mechanism, adopting a new translation tool beyond Fluent (leadership-mandated), or using a 3rd-party translation service (AI flow pending ASK-4).
+- Building a new translation mechanism, adopting a new translation tool beyond Fluent (leadership-mandated), or using a 3rd-party translation platform/vendor (the Claude MT flow is leadership-approved).
 - `@thunderbirdops/services-ui` strings (see Known gaps).
 - Translating pages the add-on links to outside send-frontend (e.g. accounts dashboard).
 - Locale parity with Thunderbird Desktop (~60 locales); future work.
@@ -26,28 +27,27 @@ Non-goals / out of scope:
 |---|---|
 | Format | **Fluent (`.ftl`)** for all translatable strings — hard requirement from leadership, confirmed by desktop (2026-11-04: "the general push is to move to Fluent"). WebExtension `messages.json` survives only as a build artifact for the manifest. |
 | Scope | **Shared UI: add-on and the send.tb.pro web app.** All of send-frontend (~435 strings) plus the add-on shell. |
-| English source | **Authored in this repo**, always bundled as fallback; bot-synced to the l10n repo. Pontoon doesn't care who commits English there; the l10n team may keep a review gate on sync PRs. (Pending explicit l10n-team OK.) |
+| English source | **Authored in this repo**, always bundled as fallback; bot-synced to the l10n repo. Pontoon doesn't care who commits English there; the l10n team may keep a review gate on sync PRs. |
 | Translations in | Git **submodule**, **manually pinned per release** (desktop's model, 2026-11-04). No auto-bump bot — removes the VPN's silently-stalled-bot failure mode. |
 | Missing translations | **Fall back to English per message.** Ship every locale regardless of completion. Empty strings must never render. |
 | Machine translation | First pass for de, fr, ja, it via **Claude** (validated: placeholders, brand terms, native-speaker spot check). Lands as initial locale files; community refines in Pontoon afterward. |
 | Server-originated strings | **The server sends reason codes, never user-facing prose.** tRPC errors carry a stable `reason` (e.g. `auth.invalid-credentials`, `user.exists`, `keys.reset-failed`); the client maps it to a Fluent message through one helper, with a generic fallback. The client update gate (PR #1346) ships as designed, with its copy from server config; moving it to a reason enum plus `.ftl` copy is part of the server-strings work later, with a compatibility shim for clients that still expect text. `message` stays English for logs and Sentry and is never rendered. Reason codes live with the shared tRPC types so both sides compile against one list. Rationale: the backend has no locale machinery and cannot see Thunderbird's UI language; copy in two places breaks the single source of truth; the add-on must be able to re-render after a locale change. |
-| Existing epic | This replaces #1086 and children (#1088–#1092); #302 is a duplicate. #1087/PR #1093 (vue-i18n foundation) is superseded; the host's `vue-i18n` dependency is removed once Fluent is in (services-ui 2.0.1 no longer needs it, see Runtime design). |
+| Tracking | Epic **#1086** (revamped 2026-11-06) with sub-issues #1386–#1388 and #1088–#1092, grouped in the "Thundermail add-on localization" milestone; #302 closed as duplicate. #1087/PR #1093 (vue-i18n foundation) is superseded; the host's `vue-i18n` dependency is removed once Fluent is in (services-ui 2.0.1 no longer needs it, see Runtime design). |
+| Staffing & start | **2 engineers, staggered support rotation; work starts immediately** (phases 1–2 have no external dependency). Constraints: 2-week end-of-year shutdown + 2 PTO-limited weeks, placed on wait/tail phases. |
+| Delivery | **Desktop uplifts the translation-only add-on update within a week of landing (incl. ESR)**; users get it at the next point/monthly release after the uplift. Condition: the uplifted payload stays translation-only. |
 | services-ui strings | Out of scope; known gap (#1389). |
 | Locale coverage | **Launch scope is de, fr, it, ja + `en-US`.** The project is open to any locale Pontoon's community picks up; per-message English fallback makes partial locales safe to ship. Parity with Thunderbird's ~60 locales is future work, not a launch requirement. |
 | Why not comm-central's own l10n | A component vendored into comm-central could use `mail/locales` Fluent and inherit all ~60 Thunderbird locales for free. Rejected because the same UI ships at send.tb.pro, which comm-central cannot serve; the dedicated Pontoon project keeps one corpus for both. If parity is ever required, the design extends to a hybrid — `.ftl` source stays here, the add-on build also emits into comm-central's l10n tree, Pontoon serves the web — without changing the runtime or the string migration. Future work under #1086. |
 
 ## Open items
 
-| # | Item | Status |
-|---|---|---|
-| ASK-2 | Pontoon project + l10n repo creation | **Owned by desktop manager** (offered 2026-11-04, conditional fit confirmed: same structure as VPN, deviations = Fluent format + bot-synced English). Pontoon↔repo sync is automatic both ways; our manual step is the submodule pin. Needed by ~project midpoint. |
-| ~~ASK-4~~ | Machine-translation approach | **Resolved (2026-11-05): AI-assisted flow using Claude**, with automated placeholder/brand-term validation and a native-speaker spot check. **Delivery: committed as initial locale files (import as approved); community reviews and refines in Pontoon afterward.** Launch locales ship complete from day one; the spot check is the quality gate before first ship. |
-| — | English sync model sign-off (bot-authored English in the l10n repo, optional review gate) | With l10n team via desktop. |
-| — | Taskcluster release checkout: does it init git submodules? | **Separate desktop item** (2026-11-04). If not: release XPI silently builds English-only; mitigated by a hard build guard either way. |
-| — | MT files committed to the l10n repo import into Pontoon as *approved*. Agree with the l10n team whether to use Pontoon's pretranslation (strings marked machine-translated, surfaced for review) or an import that leaves them unreviewed. | With l10n team via desktop, part of ASK-2. |
-| — | `_locales/<locale>` folder names: the WebExtension convention is underscore (`pt_BR`); the hyphen claim below is unverified. The German proof does not exercise this (`de` has no region). | Test `pt-BR` vs `pt_BR` in the week-1 slice, or generate underscore names in the build step. |
-| ~~ASK-1~~ | Fluent hard requirement | Resolved: yes (leadership + desktop). |
-| ~~ASK-3~~ | Where English is authored | Resolved as working assumption: this repo + sync (see above). |
+| Item | Status |
+|---|---|
+| Pontoon project + l10n repo creation (#1387) | **Owned by the desktop manager** (2026-11-04); structure confirmed (VPN model, deviations: Fluent format + bot-synced English). Pontoon↔repo sync is automatic both ways; our manual step is the submodule pin. Needed by ~project midpoint; **did not exist yet as of 2026-11-06**. |
+| English sync model sign-off (bot-authored English in the l10n repo, optional review gate) | With the l10n team via desktop, part of #1387. |
+| Taskcluster release checkout: does it init git submodules? (#1388) | Desktop item. If not: the release XPI silently builds English-only; mitigated by a hard build guard either way. |
+| MT files committed to the l10n repo import into Pontoon as *approved*. Agree with the l10n team whether to use Pontoon's pretranslation (strings marked machine-translated, surfaced for review) or an import that leaves them unreviewed. | With the l10n team via desktop, part of #1387. |
+| `_locales/<locale>` folder names: the WebExtension convention is underscore (`pt_BR`); the hyphen claim below is unverified. The German proof does not exercise this (`de` has no region). | Test `pt-BR` vs `pt_BR` in the week-1 slice (#1386), or generate underscore names in the build step. |
 
 ## Architecture
 
@@ -124,17 +124,15 @@ A week-1 vertical slice (hand-made German locale through `.ftl` → generated `_
 
 ## Plan
 
-1. [release] Pontoon project + `mozilla-l10n/thundermail-addon-l10n` repo; agree English sync model (desktop-owned; needed by ~project midpoint).
-2. [services] Fluent runtime + in-repo `en-US` fallback + locale detection + manifest generation + **week-1 German proof** (~1 week, M). Can start immediately.
-3. [services] Submodule wiring, release guards, sync bot, staleness check, pin checklist (~1 week, M).
-   3b. [desktop] Verify/enable submodule support in the Taskcluster release checkout (separate item).
-4. [services] String migration in 8–10 batches by area: add-on shell + experiments; upload flow; dashboard/files; sharing/download; key recovery/backup; settings/deletion; errors/messages (2–3 weeks, L). Starts after 2; doesn't wait for the l10n repo.
+1. #1387 [desktop] Pontoon project + `mozilla-l10n/thundermail-addon-l10n` repo; agree English sync model (needed by ~project midpoint).
+2. #1386 [services] Fluent runtime + in-repo `en-US` fallback + locale detection + manifest generation + **week-1 German proof** (~1 week, M). Starts immediately — engineer 1.
+3. #1090 [services] Submodule wiring, release guards, sync bot, staleness check, pin checklist, CI lint + contributor docs (~1 week, M). Starts immediately — engineer 2.
+   3b. #1388 [desktop] Verify/enable submodule support in the Taskcluster release checkout.
+4. #1088 [services] String migration in 8–10 batches by area, starting with the add-on shell (#1089), then upload flow; dashboard/files; sharing/download; key recovery/backup; settings/deletion; errors/messages (2–3 weeks, L). Starts after #1386; doesn't wait for the l10n repo.
    4b. [services] Server strings → reason codes: create and wire the `packages/shared` workspace package, shared enum, attach to the 21 `TRPCError`s and 2 REST error bodies, `errorToFluentId`, contract test; the client gate (PR #1346) is migrated afterwards behind a compatibility shim for already-shipped clients (S, 2–3 days, inside contingency).
-5. [services] CI lint + contributor docs (S).
-6. [services] Translation pass de/fr/ja/it — pre-translation or AI flow per ASK-4 (~2 days, S).
-7. [desktop] Verify in Thunderbird after comm-central vendoring, language packs, `ja-JP-mac`, and in the official packaged build (`messenger.jar`), not only local `mach run` — owner to be confirmed with desktop (part of ~1 week QA, M).
-8. [services] QA: layout, dates, `<html lang>`, English fallback, add-on + web (M).
-9. (Follow-up, out of scope) services-ui locales and locale-source alignment.
+5. #1091 [services] Machine-translation pass (Claude) for de/fr/it/ja (~2 days, S). Needs #1088 + #1387.
+6. #1092 [services+desktop] QA: 4-locale matrix in TB Desktop — after comm-central vendoring, language packs, `ja-JP-mac`, and in the official packaged build (`messenger.jar`), not only local `mach run` (owner to be confirmed with desktop) — plus the web app; layout, dates, `<html lang>`, fallback drills (~1 week, M).
+7. (Follow-up, out of scope) #1389 services-ui locales and locale-source alignment.
 
 ## Estimates
 
@@ -157,22 +155,22 @@ Elapsed time by staffing (3-person support-captain rotation takes 1 in 3 weeks o
 |---|---|
 | 1 engineer, in rotation | ~8–11 weeks (+ any holiday overlap) |
 | 1 engineer, support weeks swapped onto external wait points | ~6–8 weeks |
-| 2 engineers, staggered rotation (~1.3 FTE, never idles) | ~5–6 weeks; limited by review speed |
+| **2 engineers, staggered rotation (~1.3 FTE, never idles) — chosen** | ~5–6 weeks; limited by review speed |
 
-Assumptions: engineer knows the codebase; reviews turn around in ~1 day (~15–20 PRs — at p75 review latency (~4 days) add 1–2 weeks); not stacked on a full normal workload. Excluded: l10n team lead time beyond the midpoint gate, native-speaker review of machine translations, design/copy time, dedicated QA (add ~1 week if the engineer covers it), services-ui. Confidence ±25%. Users see translations in the first Thunderbird release containing the updated vendored add-on — cadence owned by desktop.
+Assumptions: engineer knows the codebase; reviews turn around in ~1 day (~15–20 PRs — at p75 review latency (~4 days) add 1–2 weeks); not stacked on a full normal workload. Excluded: l10n team lead time beyond the midpoint gate, native-speaker review of machine translations, design/copy time, dedicated QA (add ~1 week if the engineer covers it), services-ui. Confidence ±25%. Delivery: desktop uplifts the translation-only update within a week of landing (incl. ESR), so users get it at the next point/monthly release after the uplift.
 
 ## Risks
 
-1. **External gate:** the Pontoon project/repo must exist by the project midpoint; now owned by desktop, but l10n team responsiveness is unproven.
+1. **External gate:** the Pontoon project/repo (#1387) must exist by the project midpoint; owned by desktop, but l10n team responsiveness is unproven.
 2. **Review throughput** is the biggest schedule lever we control (see assumptions).
-3. **Taskcluster submodules** unverified — guarded by the hard release check; tracked with desktop (3b).
+3. **Taskcluster submodules** unverified — guarded by the hard release check; tracked in #1388.
 4. **Stale translations:** manual pinning means a forgotten pin ships old strings — release checklist + CI staleness warning.
 5. **English leakage:** services-ui strings (en/de only) stay English in fr/ja/it; its locale choice (`localStorage`/`navigator.language`) may disagree with Thunderbird's UI language.
 6. **Layout/locale edges:** German length, Japanese line-breaking, `ja-JP-mac` — covered by pseudo-locale + QA matrix.
 7. **Translation freshness in Desktop:** strings freeze when `dist/` is vendored into comm-central; updates ride new landings/uplifts.
 8. **Ramp-up:** Fluent is new to the team — short guide + careful review of early batches.
 
-## Pontoon intake answers (sent via desktop; drafted 2026-11-04)
+## Pontoon intake answers (sent via desktop, 2026-11-05)
 
 1. **Product:** Thundermail Add-on — built-in Thunderbird Desktop add-on for Thunderbird Pro (Thundermail address, appointments, Send file sharing). Same UI runs at send.tb.pro.
 2. **Code & format:** github.com/thunderbird/tbpro-add-on. Fluent `.ftl` only; manifest `messages.json` generated at build time. `en-US` authored here, bot-synced.
