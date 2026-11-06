@@ -60,7 +60,7 @@ jobs:
   # is the version the backend also carries. NOTE: both images are published under
   # it, so a backend-only change still ships under the frontend's version.
   version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # This job publishes nothing, so it does not need packages: write.
     permissions:
       contents: read
@@ -150,7 +150,7 @@ jobs:
   # instead, so the hole is visible here rather than in a promotion.
   verify-matched-set:
     needs: [backend, frontend]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Read-only: this job inspects manifests, it never pushes.
     permissions:
       packages: read

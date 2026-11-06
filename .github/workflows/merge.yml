@@ -34,7 +34,7 @@ permissions:
 
 jobs:
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
@@ -63,7 +63,7 @@ jobs:
   backend-build-stage:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -130,7 +130,7 @@ jobs:
   backend-deploy-stage-aws:
     needs: ["backend-build-stage", "detect-changes"]
     if: needs.detect-changes.outputs.backend-changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -203,7 +203,7 @@ jobs:
   frontend-build:
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend-changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
@@ -304,7 +304,7 @@ jobs:
   frontend-deploy-stage-aws:
     needs: ["frontend-build", "detect-changes"]
     if: needs.detect-changes.outputs.frontend-changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -349,7 +349,7 @@ jobs:
   frontend-invalidate-stage-cdn:
     needs: [detect-changes, frontend-deploy-stage-aws, backend-deploy-stage-aws]
     if: ${{ always() && needs.detect-changes.outputs.frontend-changed == 'true' && needs.frontend-deploy-stage-aws.result == 'success' && (needs.detect-changes.outputs.backend-changed != 'true' || needs.backend-deploy-stage-aws.result == 'success') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -378,7 +378,7 @@ jobs:
 
   addon-changes:
     needs: detect-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     ### Prod only, and no build matrix. The one add-on we ship is the system

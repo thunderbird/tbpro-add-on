@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
@@ -45,7 +45,7 @@ jobs:
   build-e2e-images:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
       contents: read
@@ -110,7 +110,7 @@ jobs:
   end-to-end-bucket-tests:
     needs: [detect-changes, build-e2e-images]
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
       options: --shm-size=2gb --security-opt seccomp=unconfined
