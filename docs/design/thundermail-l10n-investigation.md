@@ -18,6 +18,7 @@ Non-goals / out of scope:
 - Building a new translation mechanism, adopting a new translation tool beyond Fluent (leadership-mandated), or using a 3rd-party translation service (AI flow pending ASK-4).
 - `@thunderbirdops/services-ui` strings (see Known gaps).
 - Translating pages the add-on links to outside send-frontend (e.g. accounts dashboard).
+- Locale parity with Thunderbird Desktop (~60 locales); future work.
 
 ## Decisions
 
@@ -32,7 +33,8 @@ Non-goals / out of scope:
 | Server-originated strings | **The server sends reason codes, never user-facing prose.** tRPC errors carry a stable `reason` (e.g. `auth.invalid-credentials`, `user.exists`, `keys.reset-failed`); the client maps it to a Fluent message through one helper, with a generic fallback. The client update gate (PR #1346) sends a reason enum and policy (minimum version, link), not title/message text — the copy moves into `.ftl`. `message` stays English for logs and Sentry and is never rendered. Reason codes live with the shared tRPC types so both sides compile against one list. Rationale: the backend has no locale machinery and cannot see Thunderbird's UI language; copy in two places breaks the single source of truth; the add-on must be able to re-render after a locale change. |
 | Existing epic | This replaces #1086 and children (#1088–#1092); #302 is a duplicate. #1087/PR #1093 (vue-i18n foundation) is superseded; `vue-i18n` is removed once Fluent is in (services-ui 2.0.1 no longer needs it, see Runtime design). |
 | services-ui strings | Out of scope; known gap (#1389). |
-| Why not comm-central's own l10n | A component vendored into comm-central could use `mail/locales` Fluent and inherit all ~60 Thunderbird locales for free. Rejected for now because the same UI ships at send.tb.pro, which comm-central cannot serve; the dedicated Pontoon project keeps one corpus for both. Revisit if the locale-coverage policy (Open items) demands parity with Thunderbird. |
+| Locale coverage | **Launch scope is de, fr, it, ja + `en-US`.** The project is open to any locale Pontoon's community picks up; per-message English fallback makes partial locales safe to ship. Parity with Thunderbird's ~60 locales is future work, not a launch requirement. |
+| Why not comm-central's own l10n | A component vendored into comm-central could use `mail/locales` Fluent and inherit all ~60 Thunderbird locales for free. Rejected because the same UI ships at send.tb.pro, which comm-central cannot serve; the dedicated Pontoon project keeps one corpus for both. If parity is ever required, the design extends to a hybrid — `.ftl` source stays here, the add-on build also emits into comm-central's l10n tree, Pontoon serves the web — without changing the runtime or the string migration. Future work under #1086. |
 
 ## Open items
 
@@ -42,7 +44,6 @@ Non-goals / out of scope:
 | ~~ASK-4~~ | Machine-translation approach | **Resolved (2026-11-05): AI-assisted flow using Claude**, with automated placeholder/brand-term validation and a native-speaker spot check. **Delivery: committed as initial locale files (import as approved); community reviews and refines in Pontoon afterward.** Launch locales ship complete from day one; the spot check is the quality gate before first ship. |
 | — | English sync model sign-off (bot-authored English in the l10n repo, optional review gate) | With l10n team via desktop. |
 | — | Taskcluster release checkout: does it init git submodules? | **Separate desktop item** (2026-11-04). If not: release XPI silently builds English-only; mitigated by a hard build guard either way. |
-| — | Locale-coverage policy: is 4 locales + English acceptable for a built-in add-on (TB ships ~60 locales)? | Unanswered; could change scope (see "Why not comm-central's own l10n"). |
 | — | MT files committed to the l10n repo import into Pontoon as *approved*. Agree with the l10n team whether to use Pontoon's pretranslation (strings marked machine-translated, surfaced for review) or an import that leaves them unreviewed. | With l10n team via desktop, part of ASK-2. |
 | — | `_locales/<locale>` folder names: the WebExtension convention is underscore (`pt_BR`); the hyphen claim below is unverified. The German proof does not exercise this (`de` has no region). | Test `pt-BR` vs `pt_BR` in the week-1 slice, or generate underscore names in the build step. |
 | ~~ASK-1~~ | Fluent hard requirement | Resolved: yes (leadership + desktop). |
@@ -81,7 +82,9 @@ Library: `@fluent/bundle` + `@fluent/langneg` (Mozilla-maintained) behind a smal
 - **Resolution:** try bundles in chain order; a missing message, empty pattern, or format error falls through to the next bundle, ending at `en-US`. If even `en-US` lacks the ID: return the ID and report (console in dev, Sentry in prod). An empty string is treated as missing — it can never render.
 - **Outside components:** the l10n module exports a plain `t(id, args)` not bound to Vue, used by `lib/messages.ts`, `lib/errorMessages.ts`, Pinia stores, and `packages/addon/src/background.ts`/`menu.ts` (which drops `browser.i18n.getMessage` in favor of the same module, so shell and UI share one system).
 - **services-ui:** since services-ui 2.0.1 (#351) `StandardFooter` carries its own i18n instance and no longer needs vue-i18n in the host. No shim is required; `vue-i18n` and the `services-ui>vue-i18n` override leave this repo in phase 1. services-ui's own locale choice (`localStorage` / `navigator.language`) may still disagree with Thunderbird's UI language — tracked in #1389.
-- **Server-originated text:** one helper `errorToFluentId(error)` maps a server `reason` to `send-error-<reason>`, falling back to `send-error-unknown`; the render sites that print `error.message` today (`LoginForm`, `RegisterForm`, `ErrorBoundary`, `FolderView`, `PostLoginPage`, `AddonAuthPage`, `CreateAccessLink`, `DragAndDropUpload`) call it instead. A contract test checks every backend reason has an `en-US` message.
+- **Server-originated text:** every error the client can show carries a `reason` — a flat, dotted, kebab-case string, *domain.event*: `auth.invalid-credentials`, `auth.session-expired`, `user.exists`, `user.not-found`, `keys.reset-failed`, `storage.quota-exceeded`, `storage.default-folder-unavailable`, `share.recipient-create-failed`, `client.update-required`. The list is a `const` object in `packages/shared/src/errorReasons.ts` (the package exists and is empty today), imported by both sides. The backend attaches it through a tRPC `errorFormatter` on `data.reason` (none exists yet), so every procedure gets it for free; the two REST error bodies return `{ reason }` the same way. tRPC's own `code` (`UNAUTHORIZED`, `NOT_FOUND`, …) is unchanged and keeps driving redirects and retries; `reason` only drives copy. `message` stays English for logs and Sentry and is never rendered.
+  The Fluent ID is derived mechanically — `send-error-` + reason with `.` → `-` (`send-error-auth-invalid-credentials`); `errorToFluentId(error)` returns it or `send-error-unknown`. The render sites that print `error.message` today (`LoginForm`, `RegisterForm`, `ErrorBoundary`, `FolderView`, `PostLoginPage`, `AddonAuthPage`, `CreateAccessLink`, `DragAndDropUpload`) call it instead. A unit test asserts every entry in `errorReasons.ts` has an `en-US` message, so a reason without copy fails CI.
+  Rejected: reusing tRPC `code` plus a `detail` enum (two fields to agree on; codes like `FORBIDDEN` cover unrelated situations); free-text server messages selected by `Accept-Language` (no locale machinery server-side, cannot see Thunderbird's UI language, copy in two places).
 - **Which locale source where:** the compose popup and management page are extension pages where both `browser.i18n.getUILanguage()` and `navigator.languages` exist and can disagree; add-on surfaces always use `getUILanguage()`.
 - **Side effects of locale:** set `<html lang>` after negotiation; dynamically import the matching dayjs locale.
 - **Brand terms:** `-thundermail-brand`, `-send-brand` Fluent terms; never translated.
@@ -89,6 +92,7 @@ Library: `@fluent/bundle` + `@fluent/langneg` (Mozilla-maintained) behind a smal
 ### Build & release changes
 
 - `packages/addon/scripts/build.sh`: new step generates `dist/_locales/<locale>/messages.json` (manifest keys only) from each locale's `addon.ftl`; excludes `.github/`. comm-central needs no change — `jar.mn` already globs `extension/**`.
+- The same script generates the `en-XA` pseudo-locale; it is excluded from production builds and never enters the l10n repo.
 - **Release guard:** production/system builds fail hard if the submodule is missing or empty ("silently English-only" becomes "loudly broken"). Dev builds run English-only without the submodule — local dev, unit tests, and e2e don't need it.
 - **Checkouts that produce artifacts must init the submodule.** No workflow in `.github/workflows` passes `submodules: true` today; `publish-images.yml` (prod web image), `merge.yml` and the e2e image builds all need it, as does the Taskcluster checkout (3b). With the guard in place, a forgotten flag fails the build instead of shipping English.
 - **Tooling ignores:** the submodule sits under `packages/send/frontend/src/`, inside the eslint/prettier/vitest/tsc roots; it is excluded explicitly so translators' files are never linted or type-checked here.
@@ -101,6 +105,7 @@ Library: `@fluent/bundle` + `@fluent/langneg` (Mozilla-maintained) behind a smal
 - Message IDs: Fluent kebab-case, prefixed by surface (`send-upload-expiration-never`, `addon-menu-sign-out`).
 - Every message carries a translator comment (`#`) explaining context and placeholders; placeholders use meaningful names (`{ $fileName }`).
 - Plurals and selects use Fluent selectors — this is the capability that justified Fluent over `messages.json`.
+- Reason codes are stable identifiers like Fluent IDs: never reworded, only added or deprecated.
 - **When a message's meaning changes, its ID changes** (rename or `-v2`); editing the English in place leaves stale translations of the old meaning live until someone notices. Lint cannot catch this — it is a review rule.
 - Attributes (`aria-label`, `title`, `alt`, `placeholder`) are Fluent attributes on the same message, not separate messages.
 - `<html dir>` follows the negotiated locale alongside `<html lang>`; no RTL launch locale, but Pontoon will attract them.
@@ -111,7 +116,7 @@ Library: `@fluent/bundle` + `@fluent/langneg` (Mozilla-maintained) behind a smal
 |---|---|
 | Unit | Negotiation (incl. `ja-JP-mac` → `ja`, `es-AR` → `es-ES`/`en-US`), full fallback chain, empty-equals-missing, outside-component `t()`, manifest `messages.json` generation. |
 | CI lint | Syntax, placeholders, missing/unused/empty messages, typography. |
-| Pseudo-locale | Accented/stretched English in dev builds to catch hardcoded strings and layout breakage before real translations exist. |
+| Pseudo-locale | `en-XA`, generated at build from `en-US` (accented, ~35 % stretched, bracketed — `[Ƥŕöƒîļé···]`), selectable with `?locale=en-XA` in dev builds and the e2e build. **Phase 1:** one e2e smoke spec runs the main flows in `en-XA` and fails on (a) any literal from a denylist of the ~20 most common hardcoded English words — catches un-migrated strings — and (b) horizontal overflow on the compose popup and management page (`scrollWidth > clientWidth`). No screenshots, no baseline images. **Later, optional:** Playwright `toHaveScreenshot` for 4–6 key screens once the migration settles (none exist in the repo today); not in the estimate. |
 | e2e | Unchanged — runs in English; selectors are mostly test-ID based (116 vs 49 text selectors), so migration impact is low. 10 of 58 unit test files assert English text and need touch-ups. |
 | Manual, per release | 4 locales × surfaces: app menu, compose popup, options/management page, manifest strings in TB preferences; plus the web app. German for length, Japanese for line-breaking and `ja-JP-mac`. Verified in a comm-central build (`sync-to-builtin.sh` → `mach run`) with language packs. |
 
