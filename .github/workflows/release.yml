@@ -19,7 +19,7 @@ jobs:
   backend-deploy-prod-aws:
     environment:
       name: send-prod
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
@@ -124,7 +124,7 @@ jobs:
   frontend-deploy-prod-aws:
     environment:
       name: send-prod
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
@@ -158,7 +158,7 @@ jobs:
   frontend-invalidate-prod-cdn:
     needs: ["frontend-deploy-prod-aws", "backend-deploy-prod-aws"]
     if: ${{ needs.frontend-deploy-prod-aws.outputs.s3_deployed == 'true' && needs.backend-deploy-prod-aws.outputs.ecs_deployed == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: send-prod
     steps:

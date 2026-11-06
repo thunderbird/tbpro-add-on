@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Branches in this repo are already covered by the push trigger, so only let the
     # pull_request event do the work for forks. Every other job needs this one, so
     # skipping it here skips the whole duplicate run.
@@ -51,7 +51,7 @@ jobs:
   integration-tests:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.frontend-changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
         image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:

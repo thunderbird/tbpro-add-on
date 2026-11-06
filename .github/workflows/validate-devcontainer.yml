@@ -20,7 +20,7 @@ env:
 jobs:
   # detect changes in devcontainer files
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       IS_CI_AUTOMATION: "yes"
     outputs:
@@ -37,7 +37,7 @@ jobs:
   # Build and cache devcontainer test build for faster CI stages
   devcontainer-test-build:
     needs: detect-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: needs.detect-changes.outputs.devcontainer-changed == 'true'
     # Pushes the cached test image to GHCR.
     permissions:
@@ -63,7 +63,7 @@ jobs:
 
   test-devcontainer-binaries-exist:
     # Test that expected binaries exist in the devcontainer, using the cached devcontainer test build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: devcontainer-test-build
     permissions:
       contents: read

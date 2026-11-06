@@ -23,7 +23,7 @@ permissions:
 jobs:
   # This job detects which parts of the repo have been changed, setting future jobs up for conditional behavior.
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Branches in this repo are already covered by the push trigger, so only let the
     # pull_request event do the work for forks. Every other job needs this one, so
     # skipping it here skips the whole duplicate run.
@@ -61,7 +61,7 @@ jobs:
   # When the backend code changes, run these steps
   backend-tests:
     needs: detect-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
@@ -142,7 +142,7 @@ jobs:
   # When Pulumi code or configs change, run these steps
   iac-lint:
     needs: detect-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
@@ -158,7 +158,7 @@ jobs:
   # When the frontend code changes, run these steps
   frontend-tests-and-lint:
     needs: detect-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
@@ -204,7 +204,7 @@ jobs:
   # When the addon package code changes, run these steps
   addon-changes:
     needs: detect-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/${{ github.repository }}/cached-devcontainer:latest
     env:
