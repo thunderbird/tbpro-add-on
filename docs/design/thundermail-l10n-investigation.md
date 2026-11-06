@@ -30,7 +30,7 @@ Non-goals / out of scope:
 | Translations in | Git **submodule**, **manually pinned per release** (desktop's model, 2026-11-04). No auto-bump bot — removes the VPN's silently-stalled-bot failure mode. |
 | Missing translations | **Fall back to English per message.** Ship every locale regardless of completion. Empty strings must never render. |
 | Machine translation | First pass for de, fr, ja, it via **Claude** (validated: placeholders, brand terms, native-speaker spot check). Lands as initial locale files; community refines in Pontoon afterward. |
-| Server-originated strings | **The server sends reason codes, never user-facing prose.** tRPC errors carry a stable `reason` (e.g. `auth.invalid-credentials`, `user.exists`, `keys.reset-failed`); the client maps it to a Fluent message through one helper, with a generic fallback. The client update gate (PR #1346) sends a reason enum and policy (minimum version, link), not title/message text — the copy moves into `.ftl`. `message` stays English for logs and Sentry and is never rendered. Reason codes live with the shared tRPC types so both sides compile against one list. Rationale: the backend has no locale machinery and cannot see Thunderbird's UI language; copy in two places breaks the single source of truth; the add-on must be able to re-render after a locale change. |
+| Server-originated strings | **The server sends reason codes, never user-facing prose.** tRPC errors carry a stable `reason` (e.g. `auth.invalid-credentials`, `user.exists`, `keys.reset-failed`); the client maps it to a Fluent message through one helper, with a generic fallback. The client update gate (PR #1346) ships as designed, with its copy from server config; moving it to a reason enum plus `.ftl` copy is part of the server-strings work later, with a compatibility shim for clients that still expect text. `message` stays English for logs and Sentry and is never rendered. Reason codes live with the shared tRPC types so both sides compile against one list. Rationale: the backend has no locale machinery and cannot see Thunderbird's UI language; copy in two places breaks the single source of truth; the add-on must be able to re-render after a locale change. |
 | Existing epic | This replaces #1086 and children (#1088–#1092); #302 is a duplicate. #1087/PR #1093 (vue-i18n foundation) is superseded; `vue-i18n` is removed once Fluent is in (services-ui 2.0.1 no longer needs it, see Runtime design). |
 | services-ui strings | Out of scope; known gap (#1389). |
 | Locale coverage | **Launch scope is de, fr, it, ja + `en-US`.** The project is open to any locale Pontoon's community picks up; per-message English fallback makes partial locales safe to ship. Parity with Thunderbird's ~60 locales is future work, not a launch requirement. |
@@ -129,10 +129,10 @@ A week-1 vertical slice (hand-made German locale through `.ftl` → generated `_
 3. [services] Submodule wiring, release guards, sync bot, staleness check, pin checklist (~1 week, M).
    3b. [desktop] Verify/enable submodule support in the Taskcluster release checkout (separate item).
 4. [services] String migration in 8–10 batches by area: add-on shell + experiments; upload flow; dashboard/files; sharing/download; key recovery/backup; settings/deletion; errors/messages (2–3 weeks, L). Starts after 2; doesn't wait for the l10n repo.
-   4b. [services] Server strings → reason codes: shared enum, attach to the 21 `TRPCError`s and 2 REST error bodies, `errorToFluentId`, contract test; the client gate contract (PR #1346) changes **before** that PR merges, since bundled clients cannot be force-updated (S, 2–3 days, inside contingency).
+   4b. [services] Server strings → reason codes: shared enum, attach to the 21 `TRPCError`s and 2 REST error bodies, `errorToFluentId`, contract test; the client gate (PR #1346) is migrated afterwards behind a compatibility shim for already-shipped clients (S, 2–3 days, inside contingency).
 5. [services] CI lint + contributor docs (S).
 6. [services] Translation pass de/fr/ja/it — pre-translation or AI flow per ASK-4 (~2 days, S).
-7. [desktop] Verify in Thunderbird after comm-central vendoring, language packs, `ja-JP-mac` (part of ~1 week QA, M).
+7. [desktop] Verify in Thunderbird after comm-central vendoring, language packs, `ja-JP-mac`, and in the official packaged build (`messenger.jar`), not only local `mach run` — owner to be confirmed with desktop (part of ~1 week QA, M).
 8. [services] QA: layout, dates, `<html lang>`, English fallback, add-on + web (M).
 9. (Follow-up, out of scope) services-ui locales and locale-source alignment.
 
@@ -179,8 +179,9 @@ Assumptions: engineer knows the codebase; reviews turn around in ~1 day (~15–2
 3. **Repo structure:** `mozilla-l10n/thundermail-addon-l10n` (name TBC): `<locale>/{addon,send}.ftl`, hyphenated BCP-47 folders, consumed as a pinned submodule.
 4. **Locales:** launch de, fr, it, ja + `en-US` (~435 messages). First MT pass supplied by us (Claude flow, validated), committed as initial locale files; community reviews/refines in Pontoon afterward. Community locales welcome; per-message English fallback makes partial locales safe.
 5. **Testing:** see Testing strategy above.
-6. **Cadence:** heavy source flow during migration, then feature-driven; translations snapshot per release; no hard string freeze initially, notice window before releases once stable. **ETA for `.ftl` in the l10n repo (kickoff-relative, assumed w/c Nov 9):** seed `en-US` ~2 weeks in (~Nov 20, ready for the Pontoon test sync); full ~435-message corpus by ~mid-Dec 2026 (incremental, staffing-sensitive); MT files for de/fr/it/ja pre-holidays best case, early–mid Jan realistic.
+6. **Cadence:** heavy source flow during migration, then feature-driven; translations snapshot per release; no hard string freeze initially, notice window before releases once stable. **Sequencing for `.ftl` in the l10n repo (kickoff-relative; dates live in the project tracker):** seed `en-US` about two weeks after kickoff, ready for the Pontoon test sync; the full ~435-message corpus follows incrementally over the migration (staffing-sensitive); MT files for de/fr/it/ja once the corpus is complete.
 7. **Contacts:** engineering/project: **aaspinwall**; desktop manager as Pontoon liaison; backup to be named given the support rotation.
+8. **Access we need from the l10n team:** a GitHub App or PAT, owned by them, that lets this repo's sync Action open PRs against the l10n repo.
 
 ## Appendix A — current state (evidence, 2026-10-30)
 
