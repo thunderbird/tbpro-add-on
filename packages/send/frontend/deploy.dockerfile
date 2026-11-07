@@ -17,7 +17,7 @@
 # would silently fall back to whatever was baked.
 
 # Pinned to the same Node the other Dockerfiles in this repo use.
-FROM node:22.14.0 AS build
+FROM node:22.23.4 AS build
 
 WORKDIR /app
 RUN npm install -g --ignore-scripts pnpm@12.16.1
