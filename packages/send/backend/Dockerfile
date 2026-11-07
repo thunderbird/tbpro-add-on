@@ -2,7 +2,7 @@
 # We use these to add contitional build differences.
 ARG BUILD_ENV=production
 
-FROM node:22.14.0 AS base
+FROM node:22.23.4 AS base
 
 # Update packages
 RUN apt update -y && apt upgrade -y
@@ -26,10 +26,21 @@ FROM base AS build_lockfile_development
 ONBUILD RUN echo "Don't add pnpm-lock.yaml"
 
 FROM build_lockfile_${BUILD_ENV} AS build_app
-RUN npm install -g pnpm@10
-# Create workspace config to allow build scripts (pnpm 9+ security requirement).
+# Install pnpm, then create workspace config to allow build scripts (pnpm 9+ security requirement).
 # Without this, pnpm blocks postinstall scripts for prisma, sentry, etc.
-RUN printf 'packages:\n  - "."\nonlyBuiltDependencies:\n  - "@prisma/client"\n  - "@prisma/engines"\n  - "@scarf/scarf"\n  - "@sentry/cli"\n  - "@sentry/profiling-node"\n  - prisma\n' > pnpm-workspace.yaml
+# pnpm 11+ reads allowBuilds and ignores the older onlyBuiltDependencies list.
+RUN npm install -g --ignore-scripts pnpm@12.16.1 && \
+    printf '%s\n' \
+      'packages:' \
+      '  - "."' \
+      'allowBuilds:' \
+      '  "@prisma/client": true' \
+      '  "@prisma/engines": true' \
+      '  "@scarf/scarf": true' \
+      '  "@sentry/cli": true' \
+      '  "@sentry/profiling-node": true' \
+      '  prisma: true' \
+      > pnpm-workspace.yaml
 # prisma must be present before install: prisma's postinstall runs `prisma generate`
 ADD prisma ./prisma
 # Use --no-lockfile: the pnpm-lock.yaml (whether from pnpm deploy or the workspace root)
@@ -90,18 +101,17 @@ RUN --mount=type=secret,id=sentry_auth_token,required=false \
 FROM build_app AS runtime_production
 # Set environment vartiable for runtime container user name
 ENV runtime_user=send
-# Add runtime user
-ONBUILD RUN echo "Add runtime user"
-ONBUILD RUN useradd -m ${runtime_user} -d /home/${runtime_user}
-# Chown /app to runtime_user
-ONBUILD RUN chown -Rf ${runtime_user} /app
+# Add runtime user and chown /app to it
+ONBUILD RUN echo "Add runtime user" && \
+    useradd -m "${runtime_user}" -d "/home/${runtime_user}" && \
+    chown -Rf "${runtime_user}" /app
 # Switch to runtime user
 ONBUILD USER ${runtime_user}
 
 # runtime dev
 FROM build_app AS runtime_development
-ONBUILD RUN echo "Don't add runtime user"
-ONBUILD RUN chown -Rvf node:node /app
+ONBUILD RUN echo "Don't add runtime user" && \
+    chown -Rvf node:node /app
 
 FROM runtime_${BUILD_ENV}
 

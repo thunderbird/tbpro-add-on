@@ -23,21 +23,6 @@ allowBuilds:
 injectWorkspacePackages: true
 
 
-onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - '@scarf/scarf'
-  - '@sentry/cli'
-  - '@sentry/profiling-node'
-  - aws-sdk
-  - core-js
-  - esbuild
-  - msw
-  - nx
-  - prisma
-  - protobufjs
-  - vue-demi
-
 overrides:
   # Security floors that remain unavoidable: the vulnerable version is pulled by
   # a transitive dependency with no upgradable direct parent.
