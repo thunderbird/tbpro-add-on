@@ -14,6 +14,7 @@ This monorepo is managed using [Lerna](https://lerna.js.org/) and [pnpm](https:/
 
 ## Prerequisites
 
+- [Node.js](https://nodejs.org/en/download/) (`>=22.11.0`)
 - [pnpm](https://pnpm.io/installation) (v10.6.4 or later)
 - [bun](https://bun.sh/) (v1.1.13) — a handful of package scripts run through it (`compare_envs`, the frontend and add-on build scripts), so the repo needs it even though it is not the package manager
 - [Docker](https://www.docker.com/get-started/) with the [Compose](https://docs.docker.com/compose/install/) plugin
