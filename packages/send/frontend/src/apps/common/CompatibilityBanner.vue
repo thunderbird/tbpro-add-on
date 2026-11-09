@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useClientGate } from '@send-frontend/composables/useClientGate';
 import { usePreferredDark } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useConfigStore } from '../send/stores/config-store';
 import CloseButton from './CloseButton.vue';
 
@@ -22,8 +22,19 @@ const defaultMessage = isThunderbirdHost
 
 // Announced by screen readers: a live region only fires for changes inside an
 // element that already exists, so this stays mounted and only its text changes.
+// The banner can mount with the notice already known (after the boundary's
+// loader), so the text is filled only after the empty region is in the DOM.
+const ANNOUNCE_DELAY_MS = 100;
+const canAnnounce = ref(false);
+let announceTimer: ReturnType<typeof setTimeout> | undefined;
+onMounted(() => {
+  announceTimer = setTimeout(() => {
+    canAnnounce.value = true;
+  }, ANNOUNCE_DELAY_MS);
+});
+onBeforeUnmount(() => clearTimeout(announceTimer));
 const announcement = computed(() =>
-  showUpdate.value
+  canAnnounce.value && showUpdate.value
     ? `Update available. ${gate.value.message ?? defaultMessage}`
     : ''
 );

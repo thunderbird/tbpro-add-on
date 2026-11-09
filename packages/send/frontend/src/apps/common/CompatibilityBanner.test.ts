@@ -1,6 +1,6 @@
 import { getByTestId } from '@send-frontend/lib/testUtils';
 import { mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import CompatibilityBanner from './CompatibilityBanner.vue';
 
@@ -34,6 +34,9 @@ describe('CompatibilityBanner', () => {
     config.isProd = true;
     config.isThunderbirdHost = false;
   });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('renders nothing while settings are loading', () => {
     const wrapper = mount(CompatibilityBanner);
@@ -48,12 +51,18 @@ describe('CompatibilityBanner', () => {
     expect(region.text()).toBe('');
   });
 
-  it('announces the update notice through the live region', () => {
+  it('announces the update notice through the live region after mounting', async () => {
+    vi.useFakeTimers();
     query.data = gate('banner', 'Server message');
     const wrapper = mount(CompatibilityBanner);
-    expect(wrapper.find(getByTestId('prompt-update-announcement')).text()).toBe(
-      'Update available. Server message'
-    );
+    const region = () =>
+      wrapper.find(getByTestId('prompt-update-announcement'));
+    // Already known at mount (after the boundary's loader): the region must
+    // exist empty first, or screen readers skip the notice.
+    expect(region().text()).toBe('');
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(region().text()).toBe('Update available. Server message');
     expect(
       wrapper.find(getByTestId('prompt-update-banner')).attributes('aria-live')
     ).toBeUndefined();
