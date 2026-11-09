@@ -205,11 +205,18 @@ export async function getUploadMetadata(id: string) {
 // confirmed: add the parts' hashes to `SuspiciousFile` (downloads blocked) and
 // flag them `reported`; otherwise remove those hashes and clear both flags.
 export async function setReportVerdict(uploadId: string, confirmed: boolean) {
-  const ids = (await getUploadParts(uploadId)).map(({ id }) => id);
-  const parts = await prisma.upload.findMany({
-    where: { id: { in: ids } },
-    select: { fileHash: true },
+  const partIds = (await getUploadParts(uploadId)).map(({ id }) => id);
+  // `wrappedKey` is client-supplied, so only the reported upload's owner's
+  // parts count; another owner's item may reuse the same key.
+  const { ownerId } = await prisma.upload.findUnique({
+    where: { id: uploadId },
+    select: { ownerId: true },
   });
+  const parts = await prisma.upload.findMany({
+    where: { id: { in: partIds }, ownerId },
+    select: { id: true, fileHash: true },
+  });
+  const ids = parts.map(({ id }) => id);
   const hashes = parts.map(({ fileHash }) => fileHash).filter(Boolean);
 
   await prisma.$transaction([

@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Upload = {
   id: string;
+  ownerId: string;
   fileHash: string | null;
   part: number | null;
   reported: boolean;
@@ -67,7 +68,9 @@ const h = vi.hoisted(() => {
         return { ...upload, items };
       }),
       findMany: vi.fn(async ({ where }) =>
-        where.id.in.map((id) => db.uploads.get(id)).filter(Boolean)
+        where.id.in
+          .map((id) => db.uploads.get(id))
+          .filter((u) => u && (!where.ownerId || u.ownerId === where.ownerId))
       ),
       update: vi.fn(async ({ where, data }) => {
         const upload = db.uploads.get(where.id);
@@ -157,6 +160,7 @@ beforeEach(() => {
   db.uploads.clear();
   db.uploads.set(UPLOAD, {
     id: UPLOAD,
+    ownerId: OWNER,
     fileHash: 'hash-1',
     part: null,
     reported: false,
@@ -318,6 +322,7 @@ describe('POST /api/uploads/:uploadId/report/:verdict', () => {
     const PART2 = '55555555-5555-4555-8555-555555555555';
     h.db.uploads.set(PART2, {
       id: PART2,
+      ownerId: OWNER,
       fileHash: 'hash-2',
       part: 2,
       reported: false,
@@ -333,6 +338,30 @@ describe('POST /api/uploads/:uploadId/report/:verdict', () => {
 
     expect([...h.db.suspicious].sort()).toEqual(['hash-1', 'hash-2']);
     expect(h.db.uploads.get(PART2).reported).toBe(true);
+  });
+
+  it("leaves another owner's upload with the same wrappedKey alone", async () => {
+    const VICTIM = '77777777-7777-4777-8777-777777777777';
+    h.db.uploads.set(VICTIM, {
+      id: VICTIM,
+      ownerId: STRANGER,
+      fileHash: 'victim-hash',
+      part: null,
+      reported: true,
+      reportPending: false,
+    });
+    h.db.suspicious.add('victim-hash');
+    h.db.items.push({
+      uploadId: VICTIM,
+      containerId: OTHER_CONTAINER,
+      wrappedKey: 'wk',
+    });
+
+    const response = await verdict('clear', cookieFor(ADMIN)).expect(200);
+
+    expect(response.body.uploadIds).toEqual([UPLOAD]);
+    expect(h.db.uploads.get(VICTIM).reported).toBe(true);
+    expect(h.db.suspicious.has('victim-hash')).toBe(true);
   });
 
   it('404s (does not crash) for an unknown upload', async () => {
