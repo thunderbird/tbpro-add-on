@@ -146,7 +146,19 @@ describe('findOrphans', () => {
     expect(ownUploads(result.uploadIds)).toEqual([upload1.id, upload2.id]);
   });
 
-  it('should return an empty array when no orphans exist', async () => {
+  it('should return nothing when every upload has an item', async () => {
+    const upload = await prisma.upload.create({
+      data: {
+        size: 1000,
+        ownerId: user.id,
+        createdAt: new Date(),
+        type: 'application/octet-stream',
+      },
+    });
+    uploads.push(upload);
+    items.push(
+      await createItem('item', container.id, upload.id, ItemType.FILE, 'abc123')
+    );
     const result = await findOrphans();
     expect(ownUploads(result.uploadIds)).toEqual([]);
   });
