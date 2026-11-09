@@ -74,6 +74,12 @@ describe('findOrphans', () => {
     uploads = [];
   }
 
+  /** The ids among `found` that belong to uploads this test created. */
+  function ownUploads(found: string[]) {
+    const own = new Set(uploads.map(({ id }) => id));
+    return found.filter((id) => own.has(id));
+  }
+
   beforeEach(async () => {
     // Dummy user, group, and container for tests.
     user = await prisma.user.create({
@@ -135,12 +141,14 @@ describe('findOrphans', () => {
     uploads.push(upload1);
     uploads.push(upload2);
     const result = await findOrphans();
-    expect(result.uploadIds).toEqual([upload1.id, upload2.id]);
+    // Other suites share this database, so only this test's uploads are
+    // asserted on.
+    expect(ownUploads(result.uploadIds)).toEqual([upload1.id, upload2.id]);
   });
 
   it('should return an empty array when no orphans exist', async () => {
     const result = await findOrphans();
-    expect(result.uploadIds).toEqual([]);
+    expect(ownUploads(result.uploadIds)).toEqual([]);
   });
 
   it('should exclude uploads that have associated items', async () => {
@@ -195,6 +203,6 @@ describe('findOrphans', () => {
     );
 
     const result = await findOrphans();
-    expect(result.uploadIds).toEqual([orphanedUpload.id]);
+    expect(ownUploads(result.uploadIds)).toEqual([orphanedUpload.id]);
   });
 });

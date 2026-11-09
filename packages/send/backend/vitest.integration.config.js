@@ -25,6 +25,8 @@ export default defineConfig({
       '**/node_modules/**',
     ],
     environment: 'node',
+    // The suites share one database, so files run one at a time.
+    fileParallelism: false,
     setupFiles: ['dotenv/config'],
     env: {
       ...config({ path: './env' }).parsed,
