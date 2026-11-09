@@ -57,32 +57,38 @@ describe('ReportContent.vue', () => {
     );
   });
 
-  it('shows an error and allows a retry when the report is rejected', async () => {
-    vi.useFakeTimers();
-    try {
-      params.value = {};
-      call.mockResolvedValueOnce(null);
-      const wrapper = await confirmReport();
-      await flushPromises();
+  it.each([
+    ['returns null', () => call.mockResolvedValueOnce(null)],
+    ['rejects', () => call.mockRejectedValueOnce(new TypeError('body'))],
+  ])(
+    'shows an error and allows a retry when api.call %s',
+    async (_label, fail) => {
+      vi.useFakeTimers();
+      try {
+        params.value = {};
+        fail();
+        const wrapper = await confirmReport();
+        await flushPromises();
 
-      expect(wrapper.text()).not.toContain('Thank you for your report!');
-      expect(wrapper.find('[role="alert"]').exists()).toBe(true);
-      expect(capture).not.toHaveBeenCalledWith(
-        ANALYTICS_EVENTS.CONTENT_REPORT_COMPLETED,
-        expect.anything()
-      );
-      expect(vi.getTimerCount()).toBe(0);
+        expect(wrapper.text()).not.toContain('Thank you for your report!');
+        expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+        expect(capture).not.toHaveBeenCalledWith(
+          ANALYTICS_EVENTS.CONTENT_REPORT_COMPLETED,
+          expect.anything()
+        );
+        expect(vi.getTimerCount()).toBe(0);
 
-      await wrapper.find('a.link').trigger('click');
-      await flushPromises();
+        await wrapper.find('a.link').trigger('click');
+        await flushPromises();
 
-      expect(call).toHaveBeenCalledTimes(2);
-      expect(wrapper.text()).toContain('Thank you for your report!');
-    } finally {
-      vi.clearAllTimers();
-      vi.useRealTimers();
+        expect(call).toHaveBeenCalledTimes(2);
+        expect(wrapper.text()).toContain('Thank you for your report!');
+      } finally {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+      }
     }
-  });
+  );
 
   it('has no hidden click targets at either step (#1009)', async () => {
     const wrapper = mount(ReportContent, { props });

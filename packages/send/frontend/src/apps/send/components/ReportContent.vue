@@ -28,12 +28,18 @@ async function reportContent({ uploadId, containerId }: ReportProps) {
   hasFailed.value = false;
   // The share link is the reporter's proof of access when logged out (#1008).
   const linkId = route?.params?.linkId;
-  const result = await api.call(
-    `containers/${containerId}/report`,
-    { uploadId, ...(typeof linkId === 'string' && linkId ? { linkId } : {}) },
-    'POST'
-  );
-  isSending.value = false;
+  let result: unknown = null;
+  try {
+    result = await api.call(
+      `containers/${containerId}/report`,
+      { uploadId, ...(typeof linkId === 'string' && linkId ? { linkId } : {}) },
+      'POST'
+    );
+  } catch {
+    // A failed response-body read rejects instead of returning null.
+  } finally {
+    isSending.value = false;
+  }
   // api.call returns null on any failure (e.g. 429 from the rate limiter).
   if (!result) {
     hasFailed.value = true;
