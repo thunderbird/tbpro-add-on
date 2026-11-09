@@ -16,7 +16,7 @@ import {
   getUploadParts,
   getUploadPartsByWrappedKey,
   getUploadSize,
-  reportSuspiciousFile,
+  setReportVerdict,
   statUpload,
 } from '../models/uploads';
 
@@ -29,7 +29,9 @@ import { ANALYTICS_EVENTS } from '../metrics/events';
 import {
   checkStorageLimit,
   getGroupMemberPermissions,
+  requireAdminPermisions,
   requireJWT,
+  requireUploadAccess,
   requireWritePermission,
 } from '../middleware';
 import { calculateEncryptedSize } from '../utils/encryptedSize';
@@ -685,8 +687,11 @@ router.post('/items', async (req, res) => {
  * @openapi
  * /api/uploads/report:
  *   post:
- *     summary: Report a suspicious file
- *     description: Reports a file upload as suspicious based on its upload ID
+ *     summary: Report a file for abuse review
+ *     description: >
+ *       Queues an upload for admin review. Requires proof of access: a live
+ *       share link (`linkId`) to a container holding the upload, or a signed-in
+ *       member of such a container. The report does not block the file.
  *     tags: [Uploads]
  *     requestBody:
  *       required: true
@@ -697,51 +702,75 @@ router.post('/items', async (req, res) => {
  *             properties:
  *               uploadId:
  *                 type: string
- *                 description: The ID of the upload to report as suspicious
+ *                 format: uuid
+ *               linkId:
+ *                 type: string
+ *                 description: Share link the reporter opened the file from
  *             required:
  *               - uploadId
- *           example:
- *             uploadId: "upload-suspicious-123"
  *     responses:
  *       200:
- *         description: Report received successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 id:
- *                   type: string
- *                   description: The ID of the report created
- *               example:
- *                 message: "Report received"
- *                 id: "report-789"
- *       500:
+ *         description: Report received and pending review
+ *       400:
+ *         description: uploadId is not a uuid
+ *       403:
+ *         description: No proof of access to the upload
+ *       404:
  *         description: Failed to process report
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *               example:
- *                 message: "Failed to process report"
  */
 router.post(
   '/report',
+  createRateLimiter('sensitive'),
+  requireUploadAccess,
   addErrorHandling(UPLOAD_ERRORS.REPORT_FAILED),
   wrapAsyncHandler(async (req, res) => {
-    const { uploadId } = req.body;
-    // `reportSuspiciousFile` -> `getUploadParts` throws `UPLOAD_NOT_FOUND` for an
-    // unknown id. Without an async boundary that rejection was unhandled and
-    // terminated the process (private #49); `wrapAsyncHandler` routes it to the
-    // error handler, which answers 404 from `REPORT_FAILED` instead.
-    const id = await reportSuspiciousFile(uploadId);
-    await reportUpload(uploadId);
-    res.status(200).json({ message: 'Report received', id });
+    await reportUpload(req.body.uploadId);
+    res.status(200).json({ message: 'Report received' });
+  })
+);
+
+/**
+ * @openapi
+ * /api/uploads/{uploadId}/report/{verdict}:
+ *   post:
+ *     summary: Resolve an abuse report (admin only)
+ *     description: >
+ *       `confirm` adds the upload's file hashes to the suspicious list, which
+ *       blocks downloads and new share links. `clear` removes them and clears
+ *       the report, unblocking the file.
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: uploadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: verdict
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [confirm, clear]
+ *     responses:
+ *       200:
+ *         description: Verdict applied to every part of the upload
+ *       403:
+ *         description: Caller is not an admin
+ *       404:
+ *         description: Unknown upload or verdict
+ */
+router.post(
+  '/:uploadId/report/:verdict(confirm|clear)',
+  requireJWT,
+  requireAdminPermisions,
+  createRateLimiter('sensitive'),
+  addErrorHandling(UPLOAD_ERRORS.REPORT_FAILED),
+  wrapAsyncHandler(async (req, res) => {
+    const { uploadId, verdict } = req.params;
+    const uploadIds = await setReportVerdict(uploadId, verdict === 'confirm');
+    res.status(200).json({ message: `Report ${verdict}ed`, uploadIds });
   })
 );
 
