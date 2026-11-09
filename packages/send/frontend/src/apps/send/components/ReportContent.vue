@@ -17,15 +17,28 @@ const route = useRoute();
 
 const hasClicked = ref(false);
 const hasReported = ref(false);
+const hasFailed = ref(false);
+const isSending = ref(false);
 
 async function reportContent({ uploadId, containerId }: ReportProps) {
+  if (isSending.value) {
+    return;
+  }
+  isSending.value = true;
+  hasFailed.value = false;
   // The share link is the reporter's proof of access when logged out (#1008).
   const linkId = route?.params?.linkId;
-  await api.call(
+  const result = await api.call(
     `containers/${containerId}/report`,
     { uploadId, ...(typeof linkId === 'string' && linkId ? { linkId } : {}) },
     'POST'
   );
+  isSending.value = false;
+  // api.call returns null on any failure (e.g. 429 from the rate limiter).
+  if (!result) {
+    hasFailed.value = true;
+    return;
+  }
   metrics.capture(ANALYTICS_EVENTS.CONTENT_REPORT_COMPLETED, {
     upload_id: uploadId,
     container_id: containerId,
@@ -75,6 +88,9 @@ defineProps<ReportProps>();
             here</a
           >
         </p>
+        <p v-if="hasFailed" class="report-error" role="alert">
+          Your report could not be sent. Please try again.
+        </p>
       </div>
     </div>
   </div>
@@ -98,6 +114,13 @@ defineProps<ReportProps>();
 
 .report-content {
   display: flex;
+  flex-direction: column;
+}
+
+.report-error {
+  color: var(--colour-danger-default);
+  font-size: 0.9375rem;
+  margin: 0.5rem 0 0;
 }
 
 .report-text {

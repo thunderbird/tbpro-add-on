@@ -1,4 +1,5 @@
-import { mount } from '@vue/test-utils';
+import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
+import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ReportContent from './ReportContent.vue';
 
@@ -54,6 +55,33 @@ describe('ReportContent.vue', () => {
       { uploadId: 'upload-1' },
       'POST'
     );
+  });
+
+  it('shows an error and allows a retry when the report is rejected', async () => {
+    vi.useFakeTimers();
+    try {
+      params.value = {};
+      call.mockResolvedValueOnce(null);
+      const wrapper = await confirmReport();
+      await flushPromises();
+
+      expect(wrapper.text()).not.toContain('Thank you for your report!');
+      expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+      expect(capture).not.toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.CONTENT_REPORT_COMPLETED,
+        expect.anything()
+      );
+      expect(vi.getTimerCount()).toBe(0);
+
+      await wrapper.find('a.link').trigger('click');
+      await flushPromises();
+
+      expect(call).toHaveBeenCalledTimes(2);
+      expect(wrapper.text()).toContain('Thank you for your report!');
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 
   it('has no hidden click targets at either step (#1009)', async () => {
