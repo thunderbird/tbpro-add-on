@@ -4,17 +4,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref } from 'vue';
 import CompatibilityBoundary from './CompatibilityBoundary.vue';
 
-const { query, settingsQuery, config, prefersDark } = vi.hoisted(() => ({
-  query: { data: null, error: null } as {
-    data: unknown;
-    error: unknown;
-    options?: { queryFn: () => Promise<unknown> };
-    dataRef?: { value: unknown };
-  },
-  settingsQuery: vi.fn(),
-  config: { isThunderbirdHost: false, isDev: false },
-  prefersDark: { value: false },
-}));
+const { query, settingsQuery, config, prefersDark, captureException } =
+  vi.hoisted(() => ({
+    query: { data: null, error: null, pending: false } as {
+      data: unknown;
+      error: unknown;
+      pending: boolean;
+      options?: { queryFn: () => Promise<unknown> };
+      dataRef?: { value: unknown };
+    },
+    captureException: vi.fn(),
+    settingsQuery: vi.fn(),
+    config: { isThunderbirdHost: false, isDev: false },
+    prefersDark: { value: false },
+  }));
 
 vi.mock('@send-frontend/lib/trpc', () => ({
   trpc: { settings: { query: settingsQuery } },
@@ -23,9 +26,14 @@ vi.mock('@tanstack/vue-query', () => ({
   useQuery: vi.fn((options) => {
     query.options = options;
     query.dataRef = ref(query.data);
-    return { data: query.dataRef, error: ref(query.error) };
+    return {
+      data: query.dataRef,
+      error: ref(query.error),
+      isPending: ref(query.pending),
+    };
   }),
 }));
+vi.mock('@sentry/vue', () => ({ captureException }));
 vi.mock('../send/stores/config-store', () => ({
   useConfigStore: () => config,
 }));
@@ -57,6 +65,7 @@ describe('CompatibilityBoundary', () => {
     vi.clearAllMocks();
     query.data = null;
     query.error = null;
+    query.pending = false;
     config.isThunderbirdHost = false;
     config.isDev = false;
     prefersDark.value = false;
@@ -79,27 +88,39 @@ describe('CompatibilityBoundary', () => {
     }
   );
 
-  it('renders the app while settings are loading', () => {
+  it('holds the app back until the first settings response', () => {
+    query.pending = true;
     const wrapper = mountBoundary();
-    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+    expect(wrapper.find(getByTestId('client-gate-loading')).exists()).toBe(
+      true
+    );
+    expect(wrapper.find(getByTestId('app-content')).exists()).toBe(false);
     expect(wrapper.find(getByTestId('force-update-banner')).exists()).toBe(
       false
     );
+    expect(wrapper.emitted('blocked')).toBeUndefined();
   });
 
-  it('renders the app when settings fail', () => {
-    query.error = new Error('Failed to fetch');
+  it('renders the app and reports to Sentry when settings fail', async () => {
+    query.error = new Error('500 from settings');
     const wrapper = mountBoundary();
+    await nextTick();
     expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
     expect(wrapper.find(getByTestId('error')).exists()).toBe(false);
+    expect(captureException).toHaveBeenCalledWith(
+      query.error,
+      expect.objectContaining({ tags: { feature: 'client-gate' } })
+    );
   });
 
-  it('adds the local certificate hint in development', () => {
+  it('adds the local certificate hint in development without reporting it', async () => {
     config.isDev = true;
     query.error = new Error('Failed to fetch');
     const wrapper = mountBoundary();
+    await nextTick();
     expect(wrapper.find(getByTestId('error')).exists()).toBe(true);
     expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+    expect(captureException).not.toHaveBeenCalled();
   });
 
   it('renders the app when a refetch fails over a cached block', () => {

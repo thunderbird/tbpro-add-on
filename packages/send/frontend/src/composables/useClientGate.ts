@@ -9,14 +9,16 @@ const asString = (value: unknown) => (typeof value === 'string' ? value : null);
 
 /**
  * Server-controlled update gate from the `settings` query. The boundary and the
- * banner share the query key, so this is one request. Until it resolves, if it
- * fails (including a failed refetch over cached data), against a server that
- * doesn't send `clientGate`, or for an action this build doesn't know, the
- * action is `none` and the app renders.
+ * banner share the query key, so this is one request. `isPending` is true only
+ * until the first response, so the boundary can hold the app back instead of
+ * rendering it and then replacing it. If the request fails (including a failed
+ * refetch over cached data), against a server that doesn't send `clientGate`,
+ * or for an action this build doesn't know, the action is `none` and the app
+ * renders.
  */
 export function useClientGate() {
   const { isThunderbirdHost } = useConfigStore();
-  const { data, error } = useQuery({
+  const { data, error, isPending } = useQuery({
     queryKey: ['settingsQuery'],
     queryFn: async () =>
       await trpc.settings.query({
@@ -40,5 +42,5 @@ export function useClientGate() {
     };
   });
 
-  return { gate, clientVersion: __APP_VERSION__, error };
+  return { gate, clientVersion: __APP_VERSION__, error, isPending };
 }

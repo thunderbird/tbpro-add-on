@@ -20,6 +20,14 @@ const defaultMessage = isThunderbirdHost
   ? 'A new version of Send is available. Update Thunderbird and its add-ons to get it.'
   : 'A new version of Send is available. Reload the page to get it.';
 
+// Announced by screen readers: a live region only fires for changes inside an
+// element that already exists, so this stays mounted and only its text changes.
+const announcement = computed(() =>
+  showUpdate.value
+    ? `Update available. ${gate.value.message ?? defaultMessage}`
+    : ''
+);
+
 function dismissTesting() {
   isTestingDismissed.value = true;
 }
@@ -29,6 +37,13 @@ function dismissUpdate() {
 </script>
 
 <template>
+  <p
+    class="sr-only"
+    aria-live="polite"
+    data-testid="prompt-update-announcement"
+  >
+    {{ announcement }}
+  </p>
   <header v-if="showTesting || showUpdate" data-testid="compatibility-banner">
     <div v-if="showTesting" class="notice" data-testid="testing-banner">
       <p class="testing text-center">
@@ -41,7 +56,6 @@ function dismissUpdate() {
       v-if="showUpdate"
       class="notice client-gate-banner"
       :class="{ dark: prefersDark }"
-      aria-live="polite"
       data-testid="prompt-update-banner"
     >
       <p class="title">Update available</p>
@@ -58,6 +72,17 @@ function dismissUpdate() {
 </template>
 
 <style scoped>
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 header {
   display: flex;
   flex-direction: column;

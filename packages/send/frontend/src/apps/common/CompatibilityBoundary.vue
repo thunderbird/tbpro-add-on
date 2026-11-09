@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useClientGate } from '@send-frontend/composables/useClientGate';
+import * as Sentry from '@sentry/vue';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
 import { usePreferredDark } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import { useConfigStore } from '../send/stores/config-store';
 import FeedbackBox from './FeedbackBox.vue';
+import LoadingComponent from './LoadingComponent.vue';
 
 const emit = defineEmits<{ blocked: []; unblocked: [] }>();
 
@@ -12,10 +14,12 @@ const emit = defineEmits<{ blocked: []; unblocked: [] }>();
 // Thunderbird and its add-ons; in a browser it is reloading the page.
 const { isThunderbirdHost, isDev } = useConfigStore();
 const prefersDark = usePreferredDark();
-const { gate, clientVersion, error } = useClientGate();
+const { gate, clientVersion, error, isPending } = useClientGate();
 const showInstructions = ref(false);
 
-// Only a resolved `block` replaces the app; loading and errors never hide it.
+// The app waits for the first settings response so a `block` never flashes the
+// UI before replacing it. After that, only a resolved `block` replaces the app;
+// a failed request renders it (and is reported below).
 const isBlocked = computed(() => gate.value.action === 'block');
 watch(
   isBlocked,
@@ -27,6 +31,18 @@ watch(
 );
 const isLocalCertError = computed(
   () => isDev && Boolean(error.value?.message?.includes('Failed to fetch'))
+);
+// A failed gate check is not shown to the user (the app still works without
+// it) but it must not be silent either: report it so a broken settings
+// endpoint shows up in Sentry.
+watch(
+  error,
+  (failure) => {
+    if (failure && !isLocalCertError.value) {
+      Sentry.captureException(failure, { tags: { feature: 'client-gate' } });
+    }
+  },
+  { immediate: true }
 );
 
 const defaultTitle = isThunderbirdHost
@@ -45,8 +61,10 @@ const toggleInstructions = () => {
 </script>
 
 <template>
+  <LoadingComponent v-if="isPending" data-testid="client-gate-loading" />
+
   <section
-    v-if="isBlocked"
+    v-else-if="isBlocked"
     class="client-gate-block"
     :class="{ dark: prefersDark }"
     role="alert"

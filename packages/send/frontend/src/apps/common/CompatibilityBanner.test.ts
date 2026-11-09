@@ -40,6 +40,25 @@ describe('CompatibilityBanner', () => {
     expect(wrapper.find('header').exists()).toBe(false);
   });
 
+  it('keeps an empty live region mounted so the notice can be announced', () => {
+    const wrapper = mount(CompatibilityBanner);
+    const region = wrapper.find(getByTestId('prompt-update-announcement'));
+    expect(region.exists()).toBe(true);
+    expect(region.attributes('aria-live')).toBe('polite');
+    expect(region.text()).toBe('');
+  });
+
+  it('announces the update notice through the live region', () => {
+    query.data = gate('banner', 'Server message');
+    const wrapper = mount(CompatibilityBanner);
+    expect(wrapper.find(getByTestId('prompt-update-announcement')).text()).toBe(
+      'Update available. Server message'
+    );
+    expect(
+      wrapper.find(getByTestId('prompt-update-banner')).attributes('aria-live')
+    ).toBeUndefined();
+  });
+
   it.each(['none', 'block'])('renders nothing for %s', (action) => {
     query.data = gate(action);
     const wrapper = mount(CompatibilityBanner);
