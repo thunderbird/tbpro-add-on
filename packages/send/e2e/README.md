@@ -76,10 +76,11 @@ lerna run test:e2e:headless --scope=send-suite-e2e
 
 #### Toolchain note
 
-`playwright install` has to run under Node 22 — on Node 24 it hangs while unpacking the browser
-archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)). `.tool-versions` in
-this folder pins Node for [mise](https://mise.jdx.dev/), which CI uses; if your default Node is
-already 22.x you don't need mise at all.
+There is an issue when using Playwright <= 1.59 with Node 24+ where `playwright install`
+hangs while unpacking the browser archives ([nodejs/node#63487](https://github.com/nodejs/node/issues/63487)).
+We were using `.tool-versions` in this folder to pin Node to 22 for [mise](https://mise.jdx.dev/), which CI uses.
+However this is now fixed in Playwright 1.60+, which we've upgraded to now that BrowserStack now supports
+Playwright 1.60+. Leaving mise here anyway in case we ever need to pin node again for the E2E tests in CI.
 
 #### Reading the results
 
