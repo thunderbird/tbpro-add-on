@@ -1,6 +1,6 @@
 {
   "name": "send-frontend",
-  "version": "8.0.24",
+  "version": "8.0.25",
   "private": false,
   "type": "module",
   "scripts": {
