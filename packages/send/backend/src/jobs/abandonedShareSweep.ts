@@ -1,0 +1,227 @@
+import { Prisma, PrismaClient } from '@prisma/client';
+import { envNumber } from '../utils/envNumber';
+
+const prisma = new PrismaClient();
+
+// Cleans up shares left behind by file deletions made before deleteItem revoked
+// share links (#1393). A share is abandoned once none of its uploads has an
+// item in a regular folder. If no link resolves any more, its Group is deleted
+// (cascading to the share) and the freed uploads become row orphans. Links that
+// still resolve get a sunset expiryDate instead and are reaped by a later run.
+// Locked links count as resolving.
+
+export type AbandonedShareSweepOptions = {
+  /** Only containers created before this are touched (null counts as old). */
+  olderThan: Date;
+  /** Sunset written to links that still resolve; now plus the grace period. */
+  graceEnd: Date;
+  /** When true, log what would happen and change nothing. */
+  dryRun: boolean;
+  /** Most containers acted on per run; the rest wait for the next one. */
+  maxActions: number;
+  /** Epoch ms after which no further work is started. */
+  deadline: number;
+};
+
+export type AbandonedShareSweepResult = {
+  /** Abandoned containers examined. */
+  scanned: number;
+  /** Containers deleted because no link resolves them any more. */
+  reaped: number;
+  /** Containers whose links received a sunset expiry this run. */
+  graced: number;
+  /** Containers already sunset, still inside their grace period. */
+  waiting: number;
+  errors: number;
+  dryRun: boolean;
+  capped: boolean;
+};
+
+type Db = Pick<Prisma.TransactionClient, 'container'>;
+type Link = { expiryDate: Date | null };
+
+const BATCH_SIZE = 200;
+
+/**
+ * The single definition of an abandoned share: a share-only container, old
+ * enough that no share creation can still be in flight, in which every item's
+ * upload has lost all its regular-folder items. The report script and the
+ * sweep must agree on this, so both build their queries from here.
+ */
+export function abandonedShareWhere(
+  olderThan: Date,
+  afterId?: string
+): Prisma.ContainerWhereInput {
+  return {
+    shareOnly: true,
+    OR: [{ createdAt: { lt: olderThan } }, { createdAt: null }],
+    items: {
+      every: {
+        upload: { items: { none: { container: { shareOnly: false } } } },
+      },
+    },
+    ...(afterId && { id: { gt: afterId } }),
+  };
+}
+
+export type ShareAction = 'reap' | 'sunset' | 'wait';
+
+/**
+ * What the sweep does with an abandoned container, from its links: reap it
+ * when none resolves any more, sunset the links that would outlive graceEnd,
+ * otherwise wait for a sunset already written. The report script prints the
+ * same decision, so both call this.
+ */
+export function decideAction<L extends Link>(
+  links: L[],
+  now: Date,
+  graceEnd: Date
+): { action: ShareAction; needsSunset: L[] } {
+  const resolving = links.filter(
+    ({ expiryDate }) => expiryDate === null || expiryDate > now
+  );
+  const needsSunset = resolving.filter(
+    ({ expiryDate }) => expiryDate === null || expiryDate > graceEnd
+  );
+  if (resolving.length === 0) return { action: 'reap', needsSunset };
+  return { action: needsSunset.length > 0 ? 'sunset' : 'wait', needsSunset };
+}
+
+type Batch = Prisma.ContainerGetPayload<{
+  select: {
+    id: true;
+    ownerId: true;
+    groupId: true;
+    _count: { select: { items: true } };
+    shares: {
+      select: { accessLinks: { select: { id: true; expiryDate: true } } };
+    };
+  };
+}>[];
+
+const COUNTER: Record<ShareAction, 'reaped' | 'graced' | 'waiting'> = {
+  reap: 'reaped',
+  sunset: 'graced',
+  wait: 'waiting',
+};
+
+/** Applies the decision for one abandoned container. */
+async function processContainer(
+  container: Batch[number],
+  options: AbandonedShareSweepOptions,
+  now: Date
+): Promise<ShareAction> {
+  const links = container.shares.flatMap(({ accessLinks }) => accessLinks);
+  const { action, needsSunset } = decideAction(links, now, options.graceEnd);
+  if (action === 'wait') return action;
+
+  if (!options.dryRun && action === 'reap') {
+    await prisma.group.delete({ where: { id: container.groupId } });
+  }
+  if (!options.dryRun && action === 'sunset') {
+    await prisma.accessLink.updateMany({
+      where: { id: { in: needsSunset.map(({ id }) => id) } },
+      data: { expiryDate: options.graceEnd },
+    });
+  }
+  const verb =
+    action === 'reap'
+      ? `${options.dryRun ? 'would reap' : 'reaped'}`
+      : `${options.dryRun ? 'would sunset' : 'sunset'} ${needsSunset.length} links of`;
+  console.log(
+    `[abandonedShareSweep] ${verb} container ${container.id} ` +
+      `(owner ${container.ownerId}, ${container._count.items} items, ${links.length} links)`
+  );
+  return action;
+}
+
+/**
+ * Reads go through `db` (the orphan sweep's lock transaction); writes commit on
+ * this module's own connection, as in deleteOrphans. Otherwise the row pass's
+ * upload deletes would block on this pass's uncommitted item deletes until the
+ * lock's transaction times out, and one failed write would abort it.
+ */
+export async function sweepAbandonedShares(
+  options: AbandonedShareSweepOptions,
+  db: Db = prisma
+): Promise<AbandonedShareSweepResult> {
+  const result: AbandonedShareSweepResult = {
+    scanned: 0,
+    reaped: 0,
+    graced: 0,
+    waiting: 0,
+    errors: 0,
+    dryRun: options.dryRun,
+    capped: false,
+  };
+  const now = new Date();
+  let afterId: string | undefined;
+
+  // Keyset pagination: reaped rows vanish mid-run, so a cursor row may no
+  // longer exist; `id > afterId` is immune to that.
+  for (;;) {
+    const batch: Batch = await db.container.findMany({
+      where: abandonedShareWhere(options.olderThan, afterId),
+      select: {
+        id: true,
+        ownerId: true,
+        groupId: true,
+        _count: { select: { items: true } },
+        shares: {
+          select: { accessLinks: { select: { id: true, expiryDate: true } } },
+        },
+      },
+      orderBy: { id: 'asc' },
+      take: BATCH_SIZE,
+    });
+
+    for (const container of batch) {
+      const actions = result.reaped + result.graced + result.errors;
+      if (actions >= options.maxActions || Date.now() > options.deadline) {
+        result.capped = true;
+        return result;
+      }
+      result.scanned++;
+      try {
+        result[COUNTER[await processContainer(container, options, now)]]++;
+      } catch (e) {
+        console.warn(
+          `[abandonedShareSweep] failed on container ${container.id}`,
+          e
+        );
+        result.errors++;
+      }
+    }
+
+    if (batch.length < BATCH_SIZE) {
+      return result;
+    }
+    afterId = batch[batch.length - 1].id;
+  }
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+// Matches the orphan sweep: work stops before the leader lock's transaction
+// times out.
+const SWEEP_DEADLINE_MS = 1.5 * HOUR_MS;
+
+export function abandonedShareSweepOptionsFromEnv(
+  now = Date.now()
+): AbandonedShareSweepOptions {
+  const minAgeHours = envNumber('ABANDONED_SHARE_MIN_AGE_HOURS', 24);
+  const graceDays = envNumber('ABANDONED_SHARE_GRACE_DAYS', 180);
+  return {
+    olderThan: new Date(now - minAgeHours * HOUR_MS),
+    graceEnd: new Date(now + graceDays * DAY_MS),
+    // Dry run unless explicitly set to false: a deploy without the variable
+    // changes nothing.
+    dryRun:
+      process.env.ABANDONED_SHARE_SWEEP_DRY_RUN?.trim().toLowerCase() !==
+      'false',
+    maxActions: Math.floor(
+      envNumber('ABANDONED_SHARE_SWEEP_MAX_ACTIONS', 1000)
+    ),
+    deadline: now + SWEEP_DEADLINE_MS,
+  };
+}
