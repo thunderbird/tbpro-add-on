@@ -10,6 +10,7 @@ import { resetKeys } from '@send-backend/models/users';
 import { TRPCError } from '@trpc/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { usersRouter } from '../../trpc/users';
+import { CLIENT_JWK } from '../fixtures/publicKeyJwk';
 
 // Regression test for issue #1116 (safe "Reset Access"), router layer.
 //
@@ -53,7 +54,7 @@ vi.mock('@send-backend/models/users', () => ({
 }));
 
 const input = {
-  publicKey: 'new-public-key-jwk',
+  publicKey: CLIENT_JWK,
   backupKeypair: 'new-encrypted-keypair',
   backupKeystring: 'new-password-wrapped-key',
   backupSalt: 'new-salt',
@@ -144,5 +145,39 @@ describe('resetKeys router — cleanup failure after a committed swap (#1116)', 
     ).rejects.toThrow(new TRPCError({ code: 'FORBIDDEN' }));
     expect(resetKeys).not.toHaveBeenCalled();
     expect(deleteContainer).not.toHaveBeenCalled();
+  });
+});
+
+describe('resetKeys router — publicKey must be an RSA public key JWK', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(oidc.extractBearerToken).mockReturnValue(null);
+    vi.mocked(oidc.isAccessTokenRevoked).mockResolvedValue(false);
+    vi.mocked(jwt.validateJWT).mockReturnValue('valid');
+    vi.mocked(resetKeys).mockResolvedValue({ id: 'user-1116' } as never);
+    vi.mocked(getContainersOwnedByUser).mockResolvedValue([] as never);
+    vi.mocked(getUploadsOwnedByUser).mockResolvedValue([] as never);
+  });
+
+  it('passes the current client JWK string through unchanged', async () => {
+    await caller(baseCtx).resetKeys(input);
+
+    expect(resetKeys).toHaveBeenCalledWith('user-1116', input);
+  });
+
+  it.each([
+    ['1', 1],
+    ['true', true],
+    ['null', null],
+    ['[]', []],
+    ['"x"', 'x'],
+    ['"1"', '1'],
+    ['{kty:"EC"}', { kty: 'EC' }],
+    ['{kty:"EC"} as a string', '{"kty":"EC"}'],
+  ])('rejects %s with BAD_REQUEST', async (_label, publicKey) => {
+    await expect(
+      caller(baseCtx).resetKeys({ ...input, publicKey } as never)
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    expect(resetKeys).not.toHaveBeenCalled();
   });
 });
