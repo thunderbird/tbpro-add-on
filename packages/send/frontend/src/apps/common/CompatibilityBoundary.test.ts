@@ -1,6 +1,6 @@
 import { getByTestId } from '@send-frontend/lib/testUtils';
 import { mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref } from 'vue';
 import CompatibilityBoundary from './CompatibilityBoundary.vue';
 
@@ -12,6 +12,7 @@ const { query, settingsQuery, config, prefersDark, captureException } =
       pending: boolean;
       options?: { queryFn: () => Promise<unknown> };
       dataRef?: { value: unknown };
+      pendingRef?: { value: boolean };
     },
     captureException: vi.fn(),
     settingsQuery: vi.fn(),
@@ -26,10 +27,11 @@ vi.mock('@tanstack/vue-query', () => ({
   useQuery: vi.fn((options) => {
     query.options = options;
     query.dataRef = ref(query.data);
+    query.pendingRef = ref(query.pending);
     return {
       data: query.dataRef,
       error: ref(query.error),
-      isPending: ref(query.pending),
+      isPending: query.pendingRef,
     };
   }),
 }));
@@ -99,6 +101,42 @@ describe('CompatibilityBoundary', () => {
       false
     );
     expect(wrapper.emitted('blocked')).toBeUndefined();
+  });
+
+  describe('a stalled first response', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      query.pending = true;
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('renders the app after 5 seconds', async () => {
+      const wrapper = mountBoundary();
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(wrapper.find(getByTestId('app-content')).exists()).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(wrapper.find(getByTestId('app-content')).exists()).toBe(true);
+      expect(wrapper.find(getByTestId('client-gate-loading')).exists()).toBe(
+        false
+      );
+      expect(wrapper.emitted('blocked')).toBeUndefined();
+    });
+
+    it('still blocks when the response arrives late', async () => {
+      const wrapper = mountBoundary();
+      await vi.advanceTimersByTimeAsync(5000);
+
+      query.dataRef!.value = gate('block');
+      query.pendingRef!.value = false;
+      await nextTick();
+      expect(wrapper.find(getByTestId('force-update-banner')).exists()).toBe(
+        true
+      );
+      expect(wrapper.emitted('blocked')).toHaveLength(1);
+    });
   });
 
   it('renders the app and reports to Sentry when settings fail', async () => {

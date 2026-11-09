@@ -8,7 +8,11 @@ import { ref, type Ref } from 'vue';
 import ExtensionPage from './ExtensionPage.vue';
 
 const { gate } = vi.hoisted(() => ({
-  gate: { action: 'none', current: null as Ref<{ action: string }> | null },
+  gate: {
+    action: 'none',
+    pending: false,
+    current: null as Ref<{ action: string }> | null,
+  },
 }));
 
 vi.mock('@send-frontend/composables/useClientGate', () => ({
@@ -19,7 +23,12 @@ vi.mock('@send-frontend/composables/useClientGate', () => ({
       title: null,
       message: null,
     });
-    return { gate: gate.current, clientVersion: '1.0.0', error: ref(null) };
+    return {
+      gate: gate.current,
+      clientVersion: '1.0.0',
+      error: ref(null),
+      isPending: ref(gate.pending),
+    };
   },
 }));
 vi.mock('@send-frontend/lib/init', () => ({ default: vi.fn() }));
@@ -58,10 +67,24 @@ describe('ExtensionPage client gate', () => {
 
   beforeEach(() => {
     sendMessage.mockClear();
+    gate.pending = false;
     vi.stubGlobal('browser', { runtime: { sendMessage } });
   });
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('shows the upload page if the gate check stalls', async () => {
+    vi.useFakeTimers();
+    gate.pending = true;
+    const wrapper = mount(ExtensionPage, { global: { stubs } });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="popup-view"]').exists()).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(wrapper.find('[data-testid="popup-view"]').exists()).toBe(true);
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 
   it('releases pending uploads once when blocked', async () => {

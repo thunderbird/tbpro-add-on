@@ -16,6 +16,8 @@ export const FILE_LIST = 'FILE_LIST';
 export const ALL_UPLOADS_COMPLETE = 'ALL_UPLOADS_COMPLETE';
 export const ALL_UPLOADS_ABORTED = 'ALL_UPLOADS_ABORTED';
 export const CLIENT_GATE_UNBLOCKED = 'CLIENT_GATE_UNBLOCKED';
+// Longest the app is held back waiting for the client gate's first response.
+export const CLIENT_GATE_WAIT_MS = 5000;
 
 export const FILE_SELECTED = 'FILE_SELECTED';
 export const SELECTION_COMPLETE = 'SELECTION_COMPLETE';

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useClientGate } from '@send-frontend/composables/useClientGate';
+import { CLIENT_GATE_WAIT_MS } from '@send-frontend/lib/const';
 import * as Sentry from '@sentry/vue';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
 import { usePreferredDark } from '@vueuse/core';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useConfigStore } from '../send/stores/config-store';
 import FeedbackBox from './FeedbackBox.vue';
 import LoadingComponent from './LoadingComponent.vue';
@@ -18,8 +19,15 @@ const { gate, clientVersion, error, isPending } = useClientGate();
 const showInstructions = ref(false);
 
 // The app waits for the first settings response so a `block` never flashes the
-// UI before replacing it. After that, only a resolved `block` replaces the app;
-// a failed request renders it (and is reported below).
+// UI before replacing it, but at most CLIENT_GATE_WAIT_MS. After that, only a
+// resolved `block` replaces the app; a failed request renders it (and is
+// reported below).
+const waitedTooLong = ref(false);
+const waitTimer = setTimeout(() => {
+  waitedTooLong.value = true;
+}, CLIENT_GATE_WAIT_MS);
+onBeforeUnmount(() => clearTimeout(waitTimer));
+const isWaiting = computed(() => isPending.value && !waitedTooLong.value);
 const isBlocked = computed(() => gate.value.action === 'block');
 watch(
   isBlocked,
@@ -61,7 +69,7 @@ const toggleInstructions = () => {
 </script>
 
 <template>
-  <LoadingComponent v-if="isPending" data-testid="client-gate-loading" />
+  <LoadingComponent v-if="isWaiting" data-testid="client-gate-loading" />
 
   <section
     v-else-if="isBlocked"
