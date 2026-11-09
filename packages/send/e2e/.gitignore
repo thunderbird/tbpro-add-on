@@ -8,3 +8,5 @@
 
 # BrowserStack logging
 /log
+browserstackSetupConfig.json
+playwright-browserstack-sdk.config.ts
