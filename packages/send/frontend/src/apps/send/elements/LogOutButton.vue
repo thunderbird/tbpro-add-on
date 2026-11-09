@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import OpenerIcon from '@send-frontend/apps/common/OpenerIcon.vue';
-import { useL10n } from '@send-frontend/l10n';
 
 type LogOutProps = {
   logOut: () => Promise<void>;
 };
 
 defineProps<LogOutProps>();
-const { t } = useL10n();
 </script>
 
 <template>
   <div class="container">
     <button size="small" data-testid="log-out-button" @click.prevent="logOut">
-      <span>{{ t('send-log-out') }}</span>
+      <span>Log out</span>
       <OpenerIcon />
     </button>
   </div>

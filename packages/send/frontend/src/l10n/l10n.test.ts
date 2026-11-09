@@ -79,11 +79,25 @@ describe('t / setLocale', () => {
     );
   });
 
-  it('falls through to en-US for a message the locale lacks', async () => {
+  it('falls through to en-US for a message the locale lacks and reports once', async () => {
     await setLocale(['de']);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(t('send-error-unknown')).toBe(
       'Something went wrong. Please try again.'
     );
+    t('send-error-unknown');
+    // DEV builds warn on the console; production calls Sentry instead.
+    const reports = import.meta.env.DEV
+      ? warn.mock.calls.filter(([m]) => String(m).includes('fell back'))
+      : captureMessage.mock.calls;
+    expect(reports).toHaveLength(1);
+    warn.mockRestore();
+  });
+
+  it('keeps the bundles as the original objects', async () => {
+    await setLocale(['de']);
+    const { defaultBundle } = await import('./bundles');
+    expect(fallbackChain.value.at(-1)).toBe(defaultBundle);
   });
 
   it('treats an empty pattern as missing and never renders blank', async () => {

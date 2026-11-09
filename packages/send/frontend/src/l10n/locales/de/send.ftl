@@ -19,6 +19,7 @@ send-upload-progress =
        *[other] { $count } Dateien werden hochgeladen…
     }
 send-log-out = Abmelden
+send-sign-out = Abmelden
 send-copy-link = Link kopieren
 send-link-copied = Link kopiert
 # Intentionally left untranslated so the fallback drill has a real gap:

@@ -1,22 +1,29 @@
 import type { FluentBundle, FluentVariable } from '@fluent/bundle';
 import * as Sentry from '@sentry/vue';
-import { computed, readonly, ref } from 'vue';
+import { computed, shallowReadonly, shallowRef } from 'vue';
 import { defaultBundle, loadBundle } from './bundles';
 import { DEFAULT_LOCALE, negotiate, requestedLocales } from './negotiate';
 
-export { AVAILABLE_LOCALES, DEFAULT_LOCALE, negotiate } from './negotiate';
+export {
+  AVAILABLE_LOCALES,
+  DEFAULT_LOCALE,
+  negotiate,
+  requestedLocales,
+} from './negotiate';
 
 export type L10nArgs = Record<string, FluentVariable>;
 
-// Bundles in fallback order; the last one is always en-US.
-const chain = ref<FluentBundle[]>([defaultBundle]);
+// Bundles in fallback order; the last one is always en-US. Shallow so the
+// bundles stay the original objects (a deep ref would proxy them and break
+// identity checks and FluentBundle internals).
+const chain = shallowRef<FluentBundle[]>([defaultBundle]);
 const reported = new Set<string>();
 
 /** Negotiated locale of the first bundle in the chain. */
 export const locale = computed(
   () => chain.value[0]?.locales[0] ?? DEFAULT_LOCALE
 );
-export const fallbackChain = readonly(chain);
+export const fallbackChain = shallowReadonly(chain);
 
 function report(id: string, detail: string) {
   if (reported.has(id)) return;

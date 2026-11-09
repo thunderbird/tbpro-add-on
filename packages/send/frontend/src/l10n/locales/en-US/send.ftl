@@ -34,8 +34,10 @@ send-upload-progress =
         [one] Uploading { $count } file…
        *[other] Uploading { $count } files…
     }
-# Button that signs the user out (management page, key backup page).
+# Button on the key backup page that signs the user out.
 send-log-out = Log out
+# Entry in the user menu that signs the user out.
+send-sign-out = Sign out
 # Button that copies the share link.
 send-copy-link = Copy link
 # Confirmation after the link is copied.

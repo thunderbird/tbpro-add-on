@@ -14,6 +14,7 @@ import {
 } from '@send-frontend/composables/useSendConfig';
 import { useRouter } from 'vue-router';
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
+import { useL10n } from '@send-frontend/l10n';
 import RenderOnEnvironment from '@send-frontend/apps/common/RenderOnEnvironment.vue';
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
   canRegenerate?: boolean;
 };
 
+const { t } = useL10n();
 const {
   makeBackup,
   words,
@@ -137,7 +139,7 @@ onMounted(async () => {
               data-testid="log-out-button-overlay"
               @click.prevent="handleLogout"
             >
-              <span>Log out</span>
+              <span>{{ t('send-log-out') }}</span>
             </button>
           </div>
         </RenderOnEnvironment>
