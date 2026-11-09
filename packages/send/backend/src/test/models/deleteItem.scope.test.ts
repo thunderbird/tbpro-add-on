@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // deleteItem removes only the authorized container's item rows, and removes
 // the Upload row and stored bytes only once no item references that upload.
+// Share-link revocation is covered against a real DB in
+// deleteItem.shares.integration.ts.
 
 const h = vi.hoisted(() => {
   const tx = {
@@ -11,7 +13,8 @@ const h = vi.hoisted(() => {
       deleteMany: vi.fn(),
     },
     upload: { findMany: vi.fn(), deleteMany: vi.fn() },
-    container: { update: vi.fn() },
+    container: { update: vi.fn(), findMany: vi.fn() },
+    group: { deleteMany: vi.fn() },
   };
   const prisma = {
     $transaction: vi.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
@@ -40,14 +43,21 @@ const UPLOAD = 'upload-1';
 
 function seed({ stillReferenced }: { stillReferenced: boolean }) {
   h.tx.item.findFirst.mockResolvedValue({ wrappedKey: 'wk' });
-  h.tx.item.findMany.mockResolvedValue([{ id: 1, uploadId: UPLOAD }]);
+  // first call finds the multipart siblings; later calls find share-only
+  // copies (none by default)
+  h.tx.item.findMany
+    .mockResolvedValueOnce([{ id: 1, uploadId: UPLOAD }])
+    .mockResolvedValue([]);
   h.tx.item.deleteMany.mockResolvedValue({ count: 1 });
-  // uploads with no remaining item rows
+  // serves both the abandoned-share check (no regular item left) and the
+  // orphan check (no item rows at all)
   h.tx.upload.findMany.mockResolvedValue(
     stillReferenced ? [] : [{ id: UPLOAD }]
   );
   h.tx.upload.deleteMany.mockResolvedValue({ count: 0 });
   h.tx.container.update.mockResolvedValue({});
+  h.tx.container.findMany.mockResolvedValue([]);
+  h.tx.group.deleteMany.mockResolvedValue({ count: 0 });
   h.storageDel.mockResolvedValue(undefined);
 }
 
