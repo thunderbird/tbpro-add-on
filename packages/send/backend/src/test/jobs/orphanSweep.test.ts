@@ -15,7 +15,8 @@ const h = vi.hoisted(() => {
     del: vi.fn(async (_key: string) => true),
   };
   const deleteOrphans = vi.fn();
-  return { tx, prisma, storage, deleteOrphans };
+  const sweepAbandonedShares = vi.fn();
+  return { tx, prisma, storage, deleteOrphans, sweepAbandonedShares };
 });
 
 vi.mock('@prisma/client', async (importOriginal) => ({
@@ -26,6 +27,10 @@ vi.mock('@prisma/client', async (importOriginal) => ({
 }));
 vi.mock('../../storage', () => ({ default: h.storage }));
 vi.mock('../../models', () => ({ deleteOrphans: h.deleteOrphans }));
+vi.mock('../../jobs/abandonedShareSweep', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  sweepAbandonedShares: h.sweepAbandonedShares,
+}));
 
 import {
   deleteBucketOrphans,
@@ -66,6 +71,15 @@ beforeEach(() => {
     found: 0,
     deleted: 0,
     errors: 0,
+    capped: false,
+  });
+  h.sweepAbandonedShares.mockResolvedValue({
+    scanned: 0,
+    reaped: 0,
+    graced: 0,
+    waiting: 0,
+    errors: 0,
+    dryRun: true,
     capped: false,
   });
 });
@@ -132,15 +146,25 @@ describe('runSweepIfLeader', () => {
 
     expect(await runSweepIfLeader()).toBe('skipped');
     expect(h.deleteOrphans).not.toHaveBeenCalled();
+    expect(h.sweepAbandonedShares).not.toHaveBeenCalled();
     expect(h.storage.listObjects).not.toHaveBeenCalled();
   });
 
-  it('runs both passes under the lock and sums them', async () => {
+  it('runs all passes under the lock and sums them', async () => {
     h.tx.$queryRaw.mockResolvedValue([{ locked: true }]);
     h.deleteOrphans.mockResolvedValue({
       found: 2,
       deleted: 2,
       errors: 0,
+      capped: false,
+    });
+    h.sweepAbandonedShares.mockResolvedValue({
+      scanned: 3,
+      reaped: 1,
+      graced: 2,
+      waiting: 0,
+      errors: 0,
+      dryRun: false,
       capped: false,
     });
     bucket([obj(id(1))]);
@@ -151,11 +175,16 @@ describe('runSweepIfLeader', () => {
       deleted: 3,
       errors: 0,
       capped: false,
+      abandonedShares: { scanned: 3, reaped: 1, graced: 2 },
     });
     const [sql] = h.tx.$queryRaw.mock.calls[0];
     expect(sql.join('')).toContain('pg_try_advisory_xact_lock(');
     expect(h.deleteOrphans).toHaveBeenCalledWith(
       expect.objectContaining({ deadline: expect.any(Number) }),
+      h.tx
+    );
+    expect(h.sweepAbandonedShares).toHaveBeenCalledWith(
+      expect.objectContaining({ graceEnd: expect.any(Date) }),
       h.tx
     );
   });

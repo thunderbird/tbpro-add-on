@@ -1,7 +1,12 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { deleteOrphans } from '../models';
 import storage from '../storage';
+import { envNumber } from '../utils/envNumber';
 import { STORAGE_DELETE_CONCURRENCY, mapLimit } from '../utils/mapLimit';
+import {
+  abandonedShareSweepOptionsFromEnv,
+  sweepAbandonedShares,
+} from './abandonedShareSweep';
 
 const prisma = new PrismaClient();
 
@@ -16,7 +21,7 @@ export type SweepOptions = {
   deadline: number;
 };
 
-type Db = Pick<Prisma.TransactionClient, 'upload'>;
+type Db = Pick<Prisma.TransactionClient, 'upload' | 'container'>;
 type BucketResult = {
   found: number;
   deleted: number;
@@ -90,15 +95,6 @@ const MAX_TIMER_MS = 2 ** 31 - 1;
 const SWEEP_DEADLINE_MS = 1.5 * HOUR_MS;
 const SWEEP_TIMEOUT_MS = 2 * HOUR_MS;
 
-function envNumber(name: string, fallback: number): number {
-  const raw = process.env[name]?.trim();
-  if (!raw) return fallback;
-  const value = Number(raw);
-  if (Number.isFinite(value) && value >= 0) return value;
-  console.warn(`[orphanSweep] ignoring ${name}=${raw}, using ${fallback}`);
-  return fallback;
-}
-
 export function sweepOptionsFromEnv(now = Date.now()): SweepOptions {
   const minAgeHours = envNumber('ORPHAN_MIN_AGE_HOURS', 24);
   return {
@@ -108,12 +104,20 @@ export function sweepOptionsFromEnv(now = Date.now()): SweepOptions {
   };
 }
 
-/** Row pass, then bucket pass with what is left of the delete budget. */
+/**
+ * Abandoned-share pass, then row pass, then bucket pass with what is left of
+ * the delete budget. The share pass goes first so the uploads it frees are
+ * reaped as row orphans in the same run.
+ */
 export async function runSweep(
   options = sweepOptionsFromEnv(),
   db: Db = prisma
 ) {
   const started = Date.now();
+  const shares = await sweepAbandonedShares(
+    abandonedShareSweepOptionsFromEnv(),
+    db
+  );
   const rows = await deleteOrphans(options, db);
   const budget = options.maxDeletes - rows.deleted - rows.errors;
   const bucket = await deleteBucketOrphans(
@@ -127,6 +131,7 @@ export async function runSweep(
     errors: rows.errors + bucket.errors,
     durationMs: Date.now() - started,
     capped: rows.capped || bucket.capped,
+    abandonedShares: shares,
   };
   console.log(`[orphanSweep] sweep ${JSON.stringify(summary)}`);
   return summary;
@@ -135,7 +140,7 @@ export async function runSweep(
 /**
  * Runs the sweep on whichever instance takes the transaction-scoped advisory
  * lock; the others skip. The lock is released when the transaction ends, so a
- * crashed instance never holds it and it is safe behind pgbouncer. Both passes
+ * crashed instance never holds it and it is safe behind pgbouncer. All passes
  * read through `tx`, so a sweep stops if the lock's connection is lost.
  */
 export function runSweepIfLeader() {
