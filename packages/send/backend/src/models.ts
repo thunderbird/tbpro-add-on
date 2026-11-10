@@ -196,6 +196,19 @@ export async function deleteItem(
         },
         select: { id: true, uploadId: true },
       });
+      const uploadIds = [...new Set(siblings.map(({ uploadId }) => uploadId))];
+
+      // Serialise deletes that touch the same upload. Two items of one upload
+      // deleted at the same moment would each still see the other's
+      // uncommitted row, and both would skip the share-link and upload
+      // cleanup. The second delete now waits here until the first commits;
+      // the fixed order keeps deletes of several uploads from deadlocking.
+      if (uploadIds.length > 0) {
+        await tx.$queryRaw`SELECT id FROM "Upload" WHERE id IN (${Prisma.join(
+          uploadIds.map((uploadId) => Prisma.sql`${uploadId}::uuid`)
+        )}) ORDER BY id FOR UPDATE`;
+      }
+
       await tx.item.deleteMany({
         where: { id: { in: siblings.map(({ id }) => id) } },
       });
@@ -203,24 +216,17 @@ export async function deleteItem(
       // Deleting an upload's last regular-folder item also revokes its share
       // links; `shouldDeleteUpload === false` keeps the content and its shares.
       if (shouldDeleteUpload) {
-        await burnAbandonedShareLinks(
-          tx,
-          siblings.map(({ uploadId }) => uploadId),
-          ownerId
-        );
+        await burnAbandonedShareLinks(tx, uploadIds, ownerId);
       }
 
       // An upload is removed only once no item references it any more;
       // other items (e.g. share-only copies) may still point at it.
       const orphaned = await tx.upload.findMany({
-        where: {
-          id: { in: siblings.map(({ uploadId }) => uploadId) },
-          items: { none: {} },
-        },
+        where: { id: { in: uploadIds }, items: { none: {} } },
         select: { id: true },
       });
-      const uploadIds = orphaned.map(({ id }) => id);
-      await tx.upload.deleteMany({ where: { id: { in: uploadIds } } });
+      const orphanedIds = orphaned.map(({ id }) => id);
+      await tx.upload.deleteMany({ where: { id: { in: orphanedIds } } });
 
       // touch the container's `updatedAt` date
       await tx.container.update({
@@ -228,7 +234,7 @@ export async function deleteItem(
         data: { updatedAt: new Date() },
       });
 
-      return { wrappedKey: item.wrappedKey, uploadIds };
+      return { wrappedKey: item.wrappedKey, uploadIds: orphanedIds };
     })
     .catch((error) => {
       if (error instanceof BaseError) {

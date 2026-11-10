@@ -99,6 +99,24 @@ describe('deleteItem share-link revocation', () => {
     ).toBe(0);
   });
 
+  it('revokes the link when two folders delete the same upload at once', async () => {
+    // Two regular folders hold the upload; both items are deleted at the same
+    // moment. Without row locks each delete still sees the other's item and
+    // both skip the cleanup, leaving the share copy, link and upload behind.
+    const { folder, upload, item, copy, link } = await sharedFile();
+    const otherFolder = await createContainer(false);
+    const other = await createItemIn(otherFolder.id, upload.id, 'wk-other');
+
+    await Promise.all([
+      deleteItem(item.id, folder.id, fx.user.id, true),
+      deleteItem(other.id, otherFolder.id, fx.user.id, true),
+    ]);
+
+    expect(await exists.item(copy.id)).toBe(false);
+    expect(await exists.accessLink(link.id)).toBe(false);
+    expect(await exists.upload(upload.id)).toBe(false);
+  });
+
   it('keeps the link when the content is kept', async () => {
     const { folder, item, copy, upload, link } = await sharedFile();
 
