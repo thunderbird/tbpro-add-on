@@ -198,9 +198,43 @@ describe('abandonedShareSweepOptionsFromEnv', () => {
     expect(abandonedShareSweepOptionsFromEnv().dryRun).toBe(true);
   });
 
-  it('acts only when ABANDONED_SHARE_SWEEP_DRY_RUN=false', () => {
+  it('acts only when ABANDONED_SHARE_SWEEP_DRY_RUN=false and a cutoff is set', () => {
     vi.stubEnv('ABANDONED_SHARE_SWEEP_DRY_RUN', ' FALSE ');
+    vi.stubEnv('ABANDONED_SHARE_CREATED_BEFORE', '2026-11-12T00:00:00Z');
     expect(abandonedShareSweepOptionsFromEnv().dryRun).toBe(false);
+  });
+
+  it('stays dry without ABANDONED_SHARE_CREATED_BEFORE, even when told to act', () => {
+    vi.stubEnv('ABANDONED_SHARE_SWEEP_DRY_RUN', 'false');
+    vi.stubEnv('ABANDONED_SHARE_CREATED_BEFORE', '');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(abandonedShareSweepOptionsFromEnv().dryRun).toBe(true);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('ABANDONED_SHARE_CREATED_BEFORE')
+    );
+    warn.mockRestore();
+  });
+
+  it('treats an unparseable cutoff as unset', () => {
+    vi.stubEnv('ABANDONED_SHARE_SWEEP_DRY_RUN', 'false');
+    vi.stubEnv('ABANDONED_SHARE_CREATED_BEFORE', 'yesterday');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(abandonedShareSweepOptionsFromEnv().dryRun).toBe(true);
+    warn.mockRestore();
+  });
+
+  it('never touches containers created after the cutoff', () => {
+    const now = Date.UTC(2026, 10, 20);
+    vi.stubEnv('ABANDONED_SHARE_CREATED_BEFORE', '2026-11-12T00:00:00Z');
+    const { olderThan } = abandonedShareSweepOptionsFromEnv(now);
+    expect(olderThan.toISOString()).toBe('2026-11-12T00:00:00.000Z');
+  });
+
+  it('keeps the age guard when the cutoff is later than it', () => {
+    const now = Date.UTC(2026, 10, 12, 12);
+    vi.stubEnv('ABANDONED_SHARE_CREATED_BEFORE', '2026-11-13T00:00:00Z');
+    const { olderThan } = abandonedShareSweepOptionsFromEnv(now);
+    expect(olderThan.getTime()).toBe(now - 24 * 60 * 60 * 1000);
   });
 
   it('defaults to a 180-day grace period', () => {
