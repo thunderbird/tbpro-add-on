@@ -19,32 +19,37 @@ const ACCENTS = Object.fromEntries(
   ])
 );
 
+/** Index of the `}` that closes the placeable opened at `start`. */
+function placeableEnd(line, start) {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < line.length; i++) {
+    const c = line[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === '{') depth++;
+    else if (c === '}' && --depth === 0) return i;
+  }
+  return line.length - 1;
+}
+
 /** Splits a pattern line into text runs and `{ … }` placeables. */
 function segments(line) {
   const out = [];
-  let text = '';
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] !== '{') {
-      text += line[i];
-      continue;
-    }
-    out.push({ text });
-    text = '';
-    let depth = 0;
-    let inString = false;
-    let start = i;
-    for (; i < line.length; i++) {
-      const c = line[i];
-      if (inString) {
-        if (c === '\\') i++;
-        else if (c === '"') inString = false;
-      } else if (c === '"') inString = true;
-      else if (c === '{') depth++;
-      else if (c === '}' && --depth === 0) break;
-    }
-    out.push({ placeable: line.slice(start, i + 1) });
+  let pos = 0;
+  let open = line.indexOf('{');
+  while (open !== -1) {
+    const close = placeableEnd(line, open);
+    out.push({ text: line.slice(pos, open) });
+    out.push({ placeable: line.slice(open, close + 1) });
+    pos = close + 1;
+    open = line.indexOf('{', pos);
   }
-  out.push({ text });
+  out.push({ text: line.slice(pos) });
   return out;
 }
 
@@ -65,27 +70,59 @@ export function pseudoText(line, continuation = false) {
   return `${continuation ? '{"["}' : '['}${body}${pad}]`;
 }
 
+const ENTRY_ID = /^-?[a-zA-Z][\w-]*$/;
+
+/** `"  x"` → `["  ", "x"]`. */
+function splitLead(text) {
+  const rest = text.trimStart();
+  return [text.slice(0, text.length - rest.length), rest];
+}
+
+/** An `id = value` line, or null. */
+function parseEntry(line) {
+  const eq = line.indexOf('=');
+  if (eq < 1) return null;
+  const id = line.slice(0, eq).trimEnd();
+  if (!ENTRY_ID.test(id)) return null;
+  const [gap, value] = splitLead(line.slice(eq + 1));
+  return { id, head: line.slice(0, eq + 1) + gap, value };
+}
+
+/** Length of a leading `.attr =`, `[key]` or `*[key]`; 0 if there is none. */
+function keyLength(text) {
+  if (text.startsWith('.')) return text.indexOf('=') + 1;
+  if (text.startsWith('[') || text.startsWith('*[')) {
+    return text.indexOf(']') + 1;
+  }
+  return 0;
+}
+
+/** An indented line of a message: continuation, variant or attribute. */
+function pseudoIndented(line) {
+  const [indent, text] = splitLead(line);
+  if (text === '}' || text.includes('->')) return line;
+  const keyLen = keyLength(text);
+  if (!keyLen) return indent + pseudoText(text, true);
+  const [gap, value] = splitLead(text.slice(keyLen));
+  if (!value) return line;
+  return indent + text.slice(0, keyLen) + gap + pseudoText(value);
+}
+
 /** Pseudo-localizes a whole .ftl source, line by line. */
 export function pseudoLocalize(source) {
   let inMessage = false;
   return source
     .split('\n')
     .map((line) => {
-      const entry = line.match(/^(-?[a-zA-Z][\w-]*)(\s*=\s*)(.*)$/);
-      if (entry) {
-        const [, id, eq, value] = entry;
-        inMessage = !id.startsWith('-'); // terms are brand names: never touched
-        return inMessage && value ? id + eq + pseudoText(value) : line;
+      if (/^\s/.test(line)) {
+        return inMessage && line.trim() ? pseudoIndented(line) : line;
       }
-      if (!inMessage || !/^\s+\S/.test(line) || line.includes('->')) {
-        if (!/^\s/.test(line)) inMessage = false;
-        return line;
-      }
-      if (line.trim() === '}') return line;
-      const keyed = line.match(/^(\s*(?:\.[\w-]+\s*=|\*?\[[^\]]+\])\s*)(.*)$/);
-      if (keyed) return keyed[2] ? keyed[1] + pseudoText(keyed[2]) : line;
-      const [, indent, text] = line.match(/^(\s+)(.*)$/);
-      return indent + pseudoText(text, true);
+      const entry = parseEntry(line);
+      // Terms are brand names and are never touched.
+      inMessage = entry !== null && !entry.id.startsWith('-');
+      return inMessage && entry.value
+        ? entry.head + pseudoText(entry.value)
+        : line;
     })
     .join('\n');
 }

@@ -30,7 +30,7 @@ const { FluentBundle, FluentResource } = createRequire(
 
 /** `en-US` → `en`, `pt-BR` → `pt_BR`. */
 export function folderFor(locale) {
-  return locale === DEFAULT_LOCALE ? 'en' : locale.replace(/-/g, '_');
+  return locale === DEFAULT_LOCALE ? 'en' : locale.replaceAll('-', '_');
 }
 
 /** `addon-menu-sign-in-to` → `menuSignInTo`. */
@@ -57,7 +57,7 @@ export function buildMessages(locale, sources) {
     }
   }
   const messages = {};
-  for (const id of ids.sort()) {
+  for (const id of ids.sort((a, b) => a.localeCompare(b))) {
     const message = bundle.getMessage(id);
     if (!message?.value) continue;
     const errors = [];
