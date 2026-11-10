@@ -50,5 +50,8 @@ packages/**/pnpm-lock.yaml
 # This helps the cache to build faster, we'll disable it until we can test it properly on CI
 .nx/workspace-data
 
+# Generated from packages/send/frontend/src/l10n/locales/*/addon.ftl
+packages/addon/public/_locales/
+
 # Test results
 **/test-results/**
