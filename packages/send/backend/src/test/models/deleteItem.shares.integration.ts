@@ -100,17 +100,26 @@ describe('deleteItem share-link revocation', () => {
   });
 
   it('revokes the link when two folders delete the same upload at once', async () => {
-    // Two regular folders hold the upload; both items are deleted at the same
-    // moment. Without row locks each delete still sees the other's item and
-    // both skip the cleanup, leaving the share copy, link and upload behind.
+    // Two regular folders hold the upload; both items are deleted at once.
+    // Holding both folder rows parks each delete at its closing `updatedAt`
+    // touch, after its cleanup check, so the two transactions overlap. Without
+    // the upload row lock each check still sees the other's item and both skip
+    // the cleanup, leaving the share copy, link and upload behind.
     const { folder, upload, item, copy, link } = await sharedFile();
     const otherFolder = await createContainer(false);
     const other = await createItemIn(otherFolder.id, upload.id, 'wk-other');
 
-    await Promise.all([
-      deleteItem(item.id, folder.id, fx.user.id, true),
-      deleteItem(other.id, otherFolder.id, fx.user.id, true),
-    ]);
+    let deletes: Promise<unknown>;
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Container" WHERE id IN (${folder.id}::uuid, ${otherFolder.id}::uuid) FOR UPDATE`;
+      deletes = Promise.all([
+        deleteItem(item.id, folder.id, fx.user.id, true),
+        deleteItem(other.id, otherFolder.id, fx.user.id, true),
+      ]);
+      // give both deletes time to run their checks and block
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+    await deletes!;
 
     expect(await exists.item(copy.id)).toBe(false);
     expect(await exists.accessLink(link.id)).toBe(false);
