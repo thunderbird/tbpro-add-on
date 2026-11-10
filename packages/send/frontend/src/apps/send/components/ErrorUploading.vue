@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import { useStatusStore } from '../stores/status-store';
 
 const { progress } = useStatusStore();
+const { t } = useL10n();
 </script>
 
 <template>
@@ -10,10 +12,7 @@ const { progress } = useStatusStore();
     role="status"
   >
     <p>
-      {{
-        progress.error ||
-        `There was an error uploading your file, please try again or raise an issue`
-      }}
+      {{ progress.error || t('send-upload-error-generic') }}
     </p>
   </div>
 </template>
