@@ -54,7 +54,7 @@ describe('gen-locales', () => {
     expect(messages.thunderbirdPro.message).toBe('Thundermail');
   });
 
-  it('keeps the ten messages the hand-written en file had', () => {
+  it('keeps the nine messages the hand-written en file still uses', () => {
     expect(Object.keys(buildMessages('en-US', readLocale('en-US')))).toEqual(
       expect.arrayContaining([
         'extensionDescription',
@@ -65,7 +65,6 @@ describe('gen-locales', () => {
         'menuSignedInTooltip',
         'menuManageDashboard',
         'menuManageSend',
-        'menuCopyAppointmentLink',
         'menuOpenAppointment',
       ])
     );

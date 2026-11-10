@@ -592,6 +592,19 @@ describe('overlapping sign-in and sign-out', () => {
 });
 
 describe('menu labels', () => {
+  it('give the signed-in submenu a back label for the root to own', async () => {
+    setupBrowserMock(undefined);
+    const { menuLoggedIn } = await loadMenu();
+
+    await menuLoggedIn({ username: USERNAME });
+
+    // The root's update owns the submenu header; TBProMenu falls back to this
+    // label only when Thunderbird has no back button label to reuse.
+    expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
+      backLabel: 'Back',
+    });
+  });
+
   it('come from the Fluent bundles in the negotiated locale', async () => {
     setupBrowserMock(undefined);
     const { menuLoggedIn, menuLogout } = await loadMenu();
@@ -608,6 +621,7 @@ describe('menu labels', () => {
     await menuLoggedIn({ username: USERNAME });
     expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
       tooltip: 'Bei Thundermail angemeldet',
+      backLabel: 'Zurück',
     });
     expect(lastCallProps(browser.TBProMenu.create)).toMatchObject({
       title: 'Abmelden',

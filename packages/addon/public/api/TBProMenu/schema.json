@@ -17,7 +17,8 @@
               "title": { "type": "string", "optional": true },
               "secondaryTitle": { "type": "string", "optional": true },
               "parentId": { "type": "string", "optional": true },
-              "tooltip": { "type": "string", "optional": true }
+              "tooltip": { "type": "string", "optional": true },
+              "backLabel": { "type": "string", "optional": true }
             }
           }
         ]
@@ -37,7 +38,8 @@
               "title": { "type": "string", "optional": true },
               "secondaryTitle": { "type": "string", "optional": true },
               "parentId": { "type": "string", "optional": true },
-              "tooltip": { "type": "string", "optional": true }
+              "tooltip": { "type": "string", "optional": true },
+              "backLabel": { "type": "string", "optional": true }
             }
           }
         ]

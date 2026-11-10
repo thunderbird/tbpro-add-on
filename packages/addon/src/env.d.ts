@@ -127,6 +127,7 @@ declare namespace browser {
      * @param options.secondaryTitle - Optional secondary text (e.g., for keyboard shortcuts)
      * @param options.parentId - ID of parent menu item (for creating submenus)
      * @param options.tooltip - Tooltip text displayed on hover
+     * @param options.backLabel - Back button label of this item's submenu, used when Thunderbird has none to reuse
      * @returns Promise that resolves when the menu item is created
      */
     function create(
@@ -136,6 +137,7 @@ declare namespace browser {
         secondaryTitle?: string;
         parentId?: string;
         tooltip?: string;
+        backLabel?: string;
       }
     ): Promise<void>;
 
@@ -146,6 +148,7 @@ declare namespace browser {
      * @param options.title - New primary display text
      * @param options.secondaryTitle - New secondary text
      * @param options.tooltip - New tooltip text
+     * @param options.backLabel - Back button label for a submenu built after this update
      * @returns Promise that resolves when the menu item is updated
      */
     function update(
@@ -154,6 +157,7 @@ declare namespace browser {
         title?: string;
         secondaryTitle?: string;
         tooltip?: string;
+        backLabel?: string;
       }
     ): Promise<void>;
 

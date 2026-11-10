@@ -25,7 +25,15 @@ addon-menu-signed-in-tooltip = Signed in to { -thundermail-brand }
 addon-menu-manage-dashboard = Account Dashboard
 # Menu entry that opens the Send file manager in a tab.
 addon-menu-manage-send = Manage Send Files
-# Menu entry that copies the user's Appointment booking link.
-addon-menu-copy-appointment-link = Copy Appointment Link
 # Menu entry that opens Appointment in a tab.
 addon-menu-open-appointment = Open Appointment
+# Label of the back button in the signed-in submenu, used only when Thunderbird
+# provides no back label of its own.
+addon-menu-back = Back
+
+## Page titles
+
+# Window title of the upload popup.
+addon-popup-title = Upload with { -send-brand }
+# Tab title of the add-on management page.
+addon-management-title = TB Pro Addon

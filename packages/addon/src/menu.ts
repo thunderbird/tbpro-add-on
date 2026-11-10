@@ -118,11 +118,13 @@ export async function menuLoggedIn({ username }: Args) {
 }
 
 async function buildSignedInMenu(username: string) {
-  // Update root menu to display username instead of sign-in prompt
+  // Update root menu to display username instead of sign-in prompt. The root
+  // owns the submenu the create() calls below build, back button included.
   await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
     title: '',
     secondaryTitle: username,
     tooltip: t('addon-menu-signed-in-tooltip'),
+    backLabel: t('addon-menu-back'),
   });
 
   // Start from an empty submenu. The items below belong to whoever is signed in,
