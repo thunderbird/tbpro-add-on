@@ -101,10 +101,11 @@ describe('deleteItem share-link revocation', () => {
 
   it('revokes the link when two folders delete the same upload at once', async () => {
     // Two regular folders hold the upload; both items are deleted at once.
-    // Holding both folder rows parks each delete at its closing `updatedAt`
-    // touch, after its cleanup check, so the two transactions overlap. Without
-    // the upload row lock each check still sees the other's item and both skip
-    // the cleanup, leaving the share copy, link and upload behind.
+    // Holding both folder rows parks a delete at its closing `updatedAt` touch,
+    // after its cleanup check. Without the upload row lock both deletes park
+    // there, each check having seen the other's item, and both skip the
+    // cleanup, leaving the share copy, link and upload behind. With it the
+    // second delete waits on the upload row and checks after the first commits.
     const { folder, upload, item, copy, link } = await sharedFile();
     const otherFolder = await createContainer(false);
     const other = await createItemIn(otherFolder.id, upload.id, 'wk-other');
