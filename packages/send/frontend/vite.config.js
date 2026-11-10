@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import { getHeadersForEnvironment } from './csp.config.js';
+import { pseudoLocalePlugin } from './scripts/gen-pseudo-locale.mjs';
 import {
   packageJson,
   sharedViteConfig,
@@ -27,6 +28,8 @@ export default defineConfig(({ mode }) => {
     plugins: [
       removeEmptySourcemapsPlugin(),
       vue(),
+      // Dev only: keeps en-XA in step with en-US edits while `pnpm dev` runs.
+      pseudoLocalePlugin(),
       sentryVitePlugin({
         org: 'thunderbird',
         project: 'send-suite-frontend',
