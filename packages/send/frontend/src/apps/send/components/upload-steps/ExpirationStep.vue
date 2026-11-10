@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import { computed } from 'vue';
 import FileUploadTemplate from '../FileUploadTemplate.vue';
 
@@ -21,6 +22,7 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+const { t } = useL10n();
 
 const isCustomSelected = computed(() => {
   return props.selectedExpiration === 'custom';
@@ -56,19 +58,21 @@ function handleSetExpiredForTesting() {
     :step="{
       stepNumber: 2,
       totalSteps: 2,
-      title: 'Select File Expiration',
+      title: t('send-upload-expiration-title'),
     }"
     :show-close-button="true"
     :show-back-button="true"
     :show-primary-button="true"
-    primary-button-text="Create Link"
-    back-button-text="Back"
+    :primary-button-text="t('send-upload-button-create-link')"
+    :back-button-text="t('send-upload-button-back')"
     @close="handleClose"
     @back="handleBack"
     @primary="handleCreateLink"
   >
     <!-- Description -->
-    <p class="description">Choose when the download link expires</p>
+    <p class="description">
+      {{ t('send-upload-expiration-description') }}
+    </p>
 
     <!-- Radio Options -->
     <div class="radio-group">
@@ -82,7 +86,7 @@ function handleSetExpiredForTesting() {
           class="radio-input"
           @change="updateSelectedExpiration('never')"
         />
-        <span class="radio-label">Never expire</span>
+        <span class="radio-label">{{ t('send-upload-expiration-never') }}</span>
       </label>
 
       <!-- Expire in 24 hours -->
@@ -95,7 +99,9 @@ function handleSetExpiredForTesting() {
           class="radio-input"
           @change="updateSelectedExpiration('24hours')"
         />
-        <span class="radio-label">Expire in 24 hours</span>
+        <span class="radio-label">{{
+          t('send-upload-expiration-hours', { count: 24 })
+        }}</span>
       </label>
 
       <!-- Expire in 14 days (default) -->
@@ -108,7 +114,9 @@ function handleSetExpiredForTesting() {
           class="radio-input"
           @change="updateSelectedExpiration('14days')"
         />
-        <span class="radio-label">Expire in 14 days (default)</span>
+        <span class="radio-label">{{
+          t('send-upload-expiration-days-default', { count: 14 })
+        }}</span>
       </label>
 
       <!-- Expire in 30 days -->
@@ -121,7 +129,9 @@ function handleSetExpiredForTesting() {
           class="radio-input"
           @change="updateSelectedExpiration('30days')"
         />
-        <span class="radio-label">Expire in 30 days</span>
+        <span class="radio-label">{{
+          t('send-upload-expiration-days', { count: 30 })
+        }}</span>
       </label>
 
       <!-- Select date and time -->
@@ -134,7 +144,9 @@ function handleSetExpiredForTesting() {
           class="radio-input"
           @change="updateSelectedExpiration('custom')"
         />
-        <span class="radio-label">Select date and time</span>
+        <span class="radio-label">{{
+          t('send-upload-expiration-custom')
+        }}</span>
       </label>
     </div>
 
@@ -142,7 +154,7 @@ function handleSetExpiredForTesting() {
     <div v-if="isCustomSelected" class="custom-datetime">
       <div class="field-group">
         <label for="select-datetime" class="field-label">
-          Select date and time
+          {{ t('send-upload-expiration-custom-field') }}
         </label>
         <input
           id="select-datetime"

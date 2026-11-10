@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { useL10n } from '@send-frontend/l10n';
 import init from '@send-frontend/lib/init';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
@@ -56,6 +57,7 @@ const { api } = useApiStore();
 const { initializeClientMetrics } = useMetricsStore();
 const { progress } = useStatusStore();
 const { isThunderbirdHost } = useConfigStore();
+const { t } = useL10n();
 
 type Step = 'password' | 'expiration' | 'uploading' | 'success' | 'error';
 
@@ -215,7 +217,7 @@ async function handleCreateLink() {
     }
 
     if (!uploadedItems || uploadedItems.length === 0) {
-      throw new Error('Could not upload file');
+      throw new Error(t('send-upload-error-not-uploaded'));
     }
 
     // Organize files for sharing
@@ -234,7 +236,7 @@ async function handleCreateLink() {
     );
 
     if (!url) {
-      throw new Error('Did not get URL back from sharing');
+      throw new Error(t('send-upload-error-no-share-url'));
     }
 
     shareUrl.value = url;
@@ -254,7 +256,7 @@ async function handleCreateLink() {
     }
   } catch (error) {
     console.error('Upload/Share failed:', error);
-    uploadError.value = error.message || 'Upload failed. Please try again.';
+    uploadError.value = error.message || t('send-upload-error-retry');
 
     // In extension mode, send abort message
     if (isExtension) {

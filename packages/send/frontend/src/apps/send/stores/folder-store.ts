@@ -16,6 +16,7 @@ import {
   ItemResponse,
 } from '@send-frontend/apps/send/stores/folder-store.types';
 import { ProgressTracker } from '@send-frontend/apps/send/stores/status-store';
+import { t } from '@send-frontend/l10n';
 import { ApiCallFailure, ApiConnection } from '@send-frontend/lib/api';
 import { NamedBlob } from '@send-frontend/lib/filesync';
 import { backupKeys } from '@send-frontend/lib/keychain';
@@ -413,7 +414,7 @@ const useFolderStore = defineStore('folderManager', () => {
     if (uploadExceedsLimit) {
       progress.error = CLIENT_MESSAGES.STORAGE_LIMIT_EXCEEDED;
       alert(
-        `Error uploading ${fileBlob.name}; ${CLIENT_MESSAGES.STORAGE_LIMIT_EXCEEDED}`
+        t('send-upload-error-storage-limit-alert', { fileName: fileBlob.name })
       );
       throw new Error('Uploading this file would exceed your storage limit.');
     }

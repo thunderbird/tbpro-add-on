@@ -5,10 +5,11 @@ import ImageIcon from '@send-frontend/apps/common/ImageIcon.vue';
 import RemoveIcon from '@send-frontend/apps/common/RemoveIcon.vue';
 import ErrorUploading from '@send-frontend/apps/send/components/ErrorUploading.vue';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { useL10n } from '@send-frontend/l10n';
 import { MAX_FILE_SIZE } from '@send-frontend/lib/const';
-import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
 import { NamedBlob } from '@send-frontend/lib/filesync';
 import { canUploadQuery } from '@send-frontend/lib/queries';
+import { formatBytes } from '@send-frontend/lib/utils';
 import { useStatusStore } from '@send-frontend/stores';
 import useApiStore from '@send-frontend/stores/api-store';
 import { useQuery } from '@tanstack/vue-query';
@@ -21,6 +22,7 @@ const folderStore = useFolderStore();
 const { api } = useApiStore();
 const dropZoneRef = ref();
 const { progress } = useStatusStore();
+const { t } = useL10n();
 
 const filesMetadata = ref<Array<{
   name: string;
@@ -93,7 +95,9 @@ function onDrop(files: File[] | null) {
   });
 
   if (oversizedFiles.length > 0) {
-    progress.error = ERROR_MESSAGES.SIZE_EXCEEDED;
+    progress.error = t('send-upload-error-size-exceeded', {
+      max: formatBytes(MAX_FILE_SIZE),
+    });
     isError.value = true;
     return; // Don't process any files if some are oversized
   }
@@ -114,8 +118,11 @@ function onDrop(files: File[] | null) {
     });
   } catch (error) {
     console.error('Error in onDrop processing:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    progress.error = `Error processing files: ${message}`;
+    const message =
+      error instanceof Error
+        ? error.message
+        : t('send-upload-error-unknown-detail');
+    progress.error = t('send-upload-error-processing', { message });
     isError.value = true;
   }
 }
@@ -191,7 +198,11 @@ async function doUpload() {
         // Let the folder store and upload process handle the detailed progress tracking
         progress.setFileName(blob.name);
         progress.setText(
-          `Processing ${blob.name}... (${fileBlobs.value.length - index}/${fileBlobs.value.length})`
+          t('send-upload-processing-file', {
+            fileName: blob.name,
+            current: fileBlobs.value.length - index,
+            total: fileBlobs.value.length,
+          })
         );
 
         const uploadResult = await folderStore.uploadItem(
@@ -222,8 +233,13 @@ async function doUpload() {
         console.error(`Upload error for file ${index + 1}:`, error);
         progress.setProcessStage('error');
         const uploadError =
-          error instanceof Error ? error.message : 'Unknown error';
-        progress.error = `Upload failed for ${blob.name}: ${uploadError}`;
+          error instanceof Error
+            ? error.message
+            : t('send-upload-error-unknown-detail');
+        progress.error = t('send-upload-error-file-failed', {
+          fileName: blob.name,
+          message: uploadError,
+        });
 
         const failedFile = {
           ...fileMetadata,
@@ -245,7 +261,7 @@ async function doUpload() {
         filesMetadata.value = null;
         fileBlobs.value = [];
         progress.setText(
-          `Successfully uploaded ${results.length} file${results.length === 1 ? '' : 's'}`
+          t('send-upload-success-count', { count: results.length })
         );
 
         // Reset progress after a brief delay
@@ -255,7 +271,10 @@ async function doUpload() {
       } else {
         progress.setProcessStage('error');
         progress.setText(
-          `Uploaded ${results.length} file${results.length === 1 ? '' : 's'}, ${failedFiles.value.length} failed`
+          t('send-upload-partial-failure', {
+            count: results.length,
+            failed: failedFiles.value.length,
+          })
         );
       }
     }
@@ -280,7 +299,7 @@ async function doUpload() {
       v-if="isUploading"
       role="status"
       aria-live="polite"
-      aria-label="Files are being uploaded"
+      :aria-label="t('send-upload-in-progress-label')"
     >
       <ProgressBar />
     </div>
@@ -294,14 +313,14 @@ async function doUpload() {
         data-testid="drop-zone"
         role="button"
         tabindex="0"
-        aria-label="Drop files here or click to select files for upload"
+        :aria-label="t('send-upload-dropzone-label')"
         aria-describedby="drop-zone-instructions"
         @click="openFilePicker"
       >
         <slot></slot>
         <!-- Call out instructions for screen readers -->
         <div id="drop-zone-instructions" class="sr-only">
-          Drop files here or tap to upload
+          {{ t('send-upload-dropzone-instructions') }}
         </div>
       </div>
 
@@ -324,9 +343,9 @@ async function doUpload() {
         <!-- Pending files section -->
         <div v-if="filesMetadata && filesMetadata.length > 0">
           <h3 id="selected-files-heading" class="text-lg font-semibold mb-2">
-            Selected Files ({{ filesMetadata.length }} file{{
-              filesMetadata.length === 1 ? '' : 's'
-            }}):
+            {{
+              t('send-upload-selected-files', { count: filesMetadata.length })
+            }}
           </h3>
           <div
             class="space-y-2 max-h-60 overflow-y-auto"
@@ -339,7 +358,14 @@ async function doUpload() {
               :key="`pending-${index}`"
               class="flex items-center justify-between p-3 bg-gray-100 rounded-lg border w-full"
               role="listitem"
-              :aria-label="`File ${index + 1} of ${filesMetadata.length}: ${file.name}, ${prettyBytes(file.size)}`"
+              :aria-label="
+                t('send-upload-file-item-label', {
+                  position: index + 1,
+                  total: filesMetadata.length,
+                  fileName: file.name,
+                  size: prettyBytes(file.size),
+                })
+              "
             >
               <div class="flex items-center space-x-3 flex-1 min-w-0">
                 <div class="flex-shrink-0">
@@ -364,7 +390,9 @@ async function doUpload() {
                 v-if="!isUploading"
                 class="flex-shrink-0 p-2 ml-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
                 type="button"
-                :aria-label="`Remove ${file.name} from upload list`"
+                :aria-label="
+                  t('send-upload-remove-file-label', { fileName: file.name })
+                "
                 @click="removeFile(index, false)"
               >
                 <RemoveIcon />
@@ -379,9 +407,9 @@ async function doUpload() {
             id="completed-files-heading"
             class="text-lg font-semibold mb-2 text-green-700"
           >
-            Completed Uploads ({{ completedFiles.length }} file{{
-              completedFiles.length === 1 ? '' : 's'
-            }}):
+            {{
+              t('send-upload-completed-files', { count: completedFiles.length })
+            }}
           </h3>
           <div
             class="space-y-2 max-h-60 overflow-y-auto"
@@ -394,7 +422,12 @@ async function doUpload() {
               :key="`completed-${index}`"
               class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200 w-full"
               role="listitem"
-              :aria-label="`Completed upload: ${file.name}, ${prettyBytes(file.size)}`"
+              :aria-label="
+                t('send-upload-completed-item-label', {
+                  fileName: file.name,
+                  size: prettyBytes(file.size),
+                })
+              "
             >
               <div class="flex items-center space-x-3 flex-1 min-w-0">
                 <div class="flex-shrink-0">
@@ -412,7 +445,9 @@ async function doUpload() {
                   <p class="text-sm text-gray-500 truncate">
                     {{ prettyBytes(file.size) }}
                     <span v-if="file.type" class="ml-2">• {{ file.type }}</span>
-                    <span class="ml-2 text-green-600">• Uploaded</span>
+                    <span class="ml-2 text-green-600"
+                      >• {{ t('send-upload-status-uploaded') }}</span
+                    >
                   </p>
                 </div>
                 <!-- Success icon -->
@@ -430,9 +465,7 @@ async function doUpload() {
             id="failed-files-heading"
             class="text-lg font-semibold mb-2 text-red-700"
           >
-            Failed Uploads ({{ failedFiles.length }} file{{
-              failedFiles.length === 1 ? '' : 's'
-            }}):
+            {{ t('send-upload-failed-files', { count: failedFiles.length }) }}
           </h3>
           <div
             class="space-y-2 max-h-60 overflow-y-auto"
@@ -445,7 +478,12 @@ async function doUpload() {
               :key="`failed-${index}`"
               class="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200 w-full"
               role="listitem"
-              :aria-label="`Failed upload: ${file.name}, ${prettyBytes(file.size)}`"
+              :aria-label="
+                t('send-upload-failed-item-label', {
+                  fileName: file.name,
+                  size: prettyBytes(file.size),
+                })
+              "
             >
               <div class="flex items-center space-x-3 flex-1 min-w-0">
                 <div class="flex-shrink-0">
@@ -462,7 +500,9 @@ async function doUpload() {
                   <p class="text-sm text-gray-500 truncate">
                     {{ prettyBytes(file.size) }}
                     <span v-if="file.type" class="ml-2">• {{ file.type }}</span>
-                    <span class="ml-2 text-red-600">• Failed</span>
+                    <span class="ml-2 text-red-600"
+                      >• {{ t('send-upload-status-failed') }}</span
+                    >
                   </p>
                   <p class="text-xs text-red-600 truncate" :title="file.error">
                     {{ file.error }}
@@ -484,15 +524,15 @@ async function doUpload() {
         data-testid="upload-button"
         type="submit"
         class="inline-flex items-center justify-center rounded-lg px-4 py-3 transition duration-500 ease-in-out text-white bg-blue-500 hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 mt-4"
-        :aria-label="`Upload ${filesMetadata.length} selected file${filesMetadata.length === 1 ? '' : 's'}`"
+        :aria-label="
+          t('send-upload-button-label', { count: filesMetadata.length })
+        "
         :disabled="isUploading"
         @click="doUpload"
       >
-        <span class="font-bold"
-          >Upload {{ filesMetadata.length }} File{{
-            filesMetadata.length === 1 ? '' : 's'
-          }}</span
-        >
+        <span class="font-bold">{{
+          t('send-upload-button', { count: filesMetadata.length })
+        }}</span>
       </button>
     </div>
   </div>

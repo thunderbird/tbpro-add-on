@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import FileUploadTemplate from '../FileUploadTemplate.vue';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Emits {
 
 defineProps<Props>();
 const emit = defineEmits<Emits>();
+const { t } = useL10n();
 
 function handleClose() {
   emit('close');
@@ -27,11 +29,11 @@ function handleRetry() {
     :step="{
       stepNumber: 2,
       totalSteps: 2,
-      title: 'Select File Expiration',
+      title: t('send-upload-expiration-title'),
     }"
     :show-close-button="true"
     :show-primary-button="true"
-    primary-button-text="Try again"
+    :primary-button-text="t('send-upload-button-try-again')"
     :error-message="uploadError"
     @close="handleClose"
     @primary="handleRetry"
@@ -54,12 +56,10 @@ function handleRetry() {
         </svg>
       </div>
 
-      <h3 class="error-title">Upload failed</h3>
+      <h3 class="error-title">{{ t('send-upload-failed-title') }}</h3>
 
       <p class="error-description">
-        We encountered an error while uploading your file. This could be due to
-        network issues or file size limitations. Please check your connection
-        and try again.
+        {{ t('send-upload-failed-description') }}
       </p>
     </div>
   </FileUploadTemplate>
