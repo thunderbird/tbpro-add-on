@@ -91,6 +91,7 @@ describe('sweepAbandonedShares', () => {
 
   it('reaps under the orphan sweep lock and frees the upload in the same run', async () => {
     vi.stubEnv('ABANDONED_SHARE_SWEEP_DRY_RUN', 'false');
+    vi.stubEnv('ABANDONED_SHARE_CREATED_BEFORE', new Date().toISOString());
     const { shareContainer, upload } = await abandonedShare(PAST);
 
     await runSweepIfLeader();
