@@ -15,6 +15,8 @@ const h = vi.hoisted(() => {
     upload: { findMany: vi.fn(), deleteMany: vi.fn() },
     container: { update: vi.fn(), findMany: vi.fn() },
     group: { deleteMany: vi.fn() },
+    // row lock on the uploads being deleted (#1400)
+    $queryRaw: vi.fn().mockResolvedValue([]),
   };
   const prisma = {
     $transaction: vi.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
