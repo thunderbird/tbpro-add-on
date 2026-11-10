@@ -3,6 +3,7 @@ import {
   Container,
   ContainerType,
   ItemType,
+  Prisma,
   PrismaClient,
   User,
   UserTier,
@@ -99,12 +100,13 @@ export function shareFixtures(prisma: PrismaClient, at: () => Date) {
 
   async function createLinkFor(
     containerId: string,
-    expiryDate: Date | null = null
+    expiryDate: Date | null = null,
+    client: Prisma.TransactionClient | PrismaClient = prisma
   ): Promise<AccessLink> {
-    const share = await prisma.share.create({
+    const share = await client.share.create({
       data: { containerId, senderId: user.id },
     });
-    return prisma.accessLink.create({
+    return client.accessLink.create({
       data: {
         id: uuidv4(),
         shareId: share.id,

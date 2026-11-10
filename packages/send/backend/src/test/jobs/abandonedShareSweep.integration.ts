@@ -134,6 +134,31 @@ describe('sweepAbandonedShares', () => {
     expect(await expiryOf(link.id)).toEqual(first);
   });
 
+  it('keeps a container that gained a working link after the batch was read', async () => {
+    const { shareContainer } = await abandonedShare(PAST);
+    // Hold the row lock the reap takes, as a concurrent POST /sharing would
+    // while it inserts its Share/AccessLink, and create a link under it. The
+    // sweep's batch read sees only the expired link; its reap then waits for
+    // this transaction and must find the new link once it commits.
+    let run: ReturnType<typeof sweepAbandonedShares>;
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Container" WHERE id = ${shareContainer.id}::uuid FOR UPDATE`;
+      run = sweepAbandonedShares(options());
+      // give the sweep time to read its batch and block on the lock
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await createLinkFor(shareContainer.id, FUTURE, tx);
+    });
+    const result = await run!;
+
+    expect(result).toMatchObject({ scanned: 1, reaped: 0, waiting: 1 });
+    expect(await exists.container(shareContainer.id)).toBe(true);
+    expect(
+      await prisma.accessLink.count({
+        where: { share: { containerId: shareContainer.id } },
+      })
+    ).toBe(2);
+  }, 15_000);
+
   it('leaves a share alone while its upload still has a regular item', async () => {
     const folder = await createContainer(false);
     const shareContainer = await createContainer(true);
