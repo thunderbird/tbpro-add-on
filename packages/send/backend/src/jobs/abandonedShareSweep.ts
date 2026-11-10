@@ -105,6 +105,38 @@ const COUNTER: Record<ShareAction, 'reaped' | 'graced' | 'waiting'> = {
   wait: 'waiting',
 };
 
+/**
+ * Deletes the container's Group only if nobody gave it a resolving link since
+ * the batch was read. The container row is locked first: a concurrent
+ * `POST /sharing` inserts rows that reference it, which waits on that lock,
+ * so the re-read below sees every link that exists at commit time.
+ */
+async function reapIfStillAbandoned(
+  containerId: string,
+  now: Date,
+  options: AbandonedShareSweepOptions
+): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Container" WHERE id = ${containerId}::uuid FOR UPDATE`;
+    const current = await tx.container.findFirst({
+      where: { id: containerId, ...abandonedShareWhere(options.olderThan) },
+      select: {
+        groupId: true,
+        shares: {
+          select: { accessLinks: { select: { id: true, expiryDate: true } } },
+        },
+      },
+    });
+    if (!current) return false;
+    const links = current.shares.flatMap(({ accessLinks }) => accessLinks);
+    if (decideAction(links, now, options.graceEnd).action !== 'reap') {
+      return false;
+    }
+    await tx.group.delete({ where: { id: current.groupId } });
+    return true;
+  });
+}
+
 /** Applies the decision for one abandoned container. */
 async function processContainer(
   container: Batch[number],
@@ -116,7 +148,8 @@ async function processContainer(
   if (action === 'wait') return action;
 
   if (!options.dryRun && action === 'reap') {
-    await prisma.group.delete({ where: { id: container.groupId } });
+    const reaped = await reapIfStillAbandoned(container.id, now, options);
+    if (!reaped) return 'wait';
   }
   if (!options.dryRun && action === 'sunset') {
     await prisma.accessLink.updateMany({

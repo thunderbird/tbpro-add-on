@@ -6,11 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => {
   const db = {
-    container: { findMany: vi.fn() },
+    container: { findMany: vi.fn(), findFirst: vi.fn() },
     accessLink: { updateMany: vi.fn() },
     group: { delete: vi.fn() },
+    $queryRaw: vi.fn().mockResolvedValue([]),
   };
-  const prisma = { ...db };
+  // The reap runs inside a transaction; the mock hands the same delegates
+  // back so the unit tests keep asserting on `group.delete`.
+  const prisma = {
+    ...db,
+    $transaction: vi.fn((fn: (tx: typeof db) => unknown) => fn(db)),
+  };
   return { db, prisma };
 });
 
@@ -55,7 +61,14 @@ function container(id: string, links: Link[], groupId = 1) {
   };
 }
 
+const seen = new Map<string, ReturnType<typeof container>>();
+function seenContainer(id: string) {
+  return seen.get(id) ?? null;
+}
+
 function batches(...pages: ReturnType<typeof container>[][]) {
+  seen.clear();
+  pages.flat().forEach((row) => seen.set(row.id, row));
   pages.forEach((page) => h.db.container.findMany.mockResolvedValueOnce(page));
   h.db.container.findMany.mockResolvedValue([]);
 }
@@ -68,6 +81,11 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   h.db.container.findMany.mockResolvedValue([]);
   h.db.group.delete.mockResolvedValue({});
+  // The re-read under lock finds the container as the batch saw it: still
+  // abandoned, with the links the batch row carried.
+  h.db.container.findFirst.mockImplementation(
+    async ({ where }: { where: { id: string } }) => seenContainer(where.id)
+  );
   h.db.accessLink.updateMany.mockResolvedValue({ count: 1 });
 });
 
@@ -120,6 +138,21 @@ describe('sweepAbandonedShares', () => {
 
     expect(h.db.group.delete).not.toHaveBeenCalled();
     expect(result).toMatchObject({ reaped: 0, capped: true });
+  });
+
+  it('does not reap a container that gained a resolving link since the batch read', async () => {
+    batches([container('c1', [{ id: 'l1', expiryDate: PAST }])]);
+    h.db.container.findFirst.mockResolvedValueOnce(
+      container('c1', [
+        { id: 'l1', expiryDate: PAST },
+        { id: 'l2', expiryDate: FAR },
+      ])
+    );
+
+    const result = await sweepAbandonedShares(options, db);
+
+    expect(h.db.group.delete).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ scanned: 1, reaped: 0, waiting: 1 });
   });
 
   it('pages with a keyset so reaped rows cannot break the cursor', async () => {
