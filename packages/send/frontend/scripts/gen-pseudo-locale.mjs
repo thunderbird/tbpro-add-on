@@ -44,8 +44,10 @@ function segments(line) {
   let open = line.indexOf('{');
   while (open !== -1) {
     const close = placeableEnd(line, open);
-    out.push({ text: line.slice(pos, open) });
-    out.push({ placeable: line.slice(open, close + 1) });
+    out.push(
+      { text: line.slice(pos, open) },
+      { placeable: line.slice(open, close + 1) }
+    );
     pos = close + 1;
     open = line.indexOf('{', pos);
   }
@@ -142,6 +144,20 @@ export function main() {
     );
   }
   return files.length;
+}
+
+/** Vite dev-server plugin: regenerates en-XA whenever an en-US .ftl changes. */
+export function pseudoLocalePlugin() {
+  const source = path.join(LOCALES_DIR, 'en-US') + path.sep;
+  return {
+    name: 'l10n-pseudo-locale',
+    apply: 'serve',
+    configureServer(server) {
+      server.watcher.on('all', (_event, file) => {
+        if (file.startsWith(source) && file.endsWith('.ftl')) main();
+      });
+    },
+  };
 }
 
 /** Vitest globalSetup entry: the l10n tests load the generated files. */
