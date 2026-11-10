@@ -1,3 +1,5 @@
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { captureMessage } = vi.hoisted(() => ({ captureMessage: vi.fn() }));
@@ -159,6 +161,15 @@ describe('t / setLocale', () => {
     const second = loadBundle('xx');
     expect(second).not.toBe(first);
     await expect(second).rejects.toThrow('no resource');
+  });
+
+  it('switches the dayjs locale with the negotiated locale', async () => {
+    dayjs.extend(relativeTime);
+    await setLocale(['de']);
+    expect(dayjs.locale()).toBe('de');
+    expect(dayjs().to(dayjs().add(2, 'day'))).toBe('in 2 Tagen');
+    await setLocale(['en-US']);
+    expect(dayjs.locale()).toBe('en');
   });
 
   it('ignores an unknown locale and keeps English', async () => {
