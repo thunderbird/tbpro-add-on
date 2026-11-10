@@ -52,6 +52,8 @@ packages/**/pnpm-lock.yaml
 
 # Generated from packages/send/frontend/src/l10n/locales/*/addon.ftl
 packages/addon/public/_locales/
+# Pseudo-locale generated from en-US by the frontend's `pnpm dev` and tests
+packages/send/frontend/src/l10n/locales/en-XA/
 
 # Test results
 **/test-results/**
