@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import DocumentIcon from '@send-frontend/apps/common/DocumentIcon.vue';
 import ImageIcon from '@send-frontend/apps/common/ImageIcon.vue';
+import { useL10n } from '@send-frontend/l10n';
 import prettyBytes from 'pretty-bytes';
 import { computed, onUnmounted } from 'vue';
 import { useStatusStore, type ProcessStage } from '../stores/status-store';
 
 const { progress } = useStatusStore();
+const { t } = useL10n();
 
 onUnmounted(() => {
   progress.initialize();
@@ -20,51 +22,55 @@ const stageInfo = computed(() => {
     { text: string; color: string; bgColor: string }
   > = {
     idle: {
-      text: 'Starting...',
+      text: t('send-progress-stage-idle'),
       color: 'text-gray-600',
       bgColor: 'bg-gray-100',
     },
     hashing: {
-      text: 'Hashing...',
+      text: t('send-progress-stage-hashing'),
       color: 'text-gray-600',
       bgColor: 'bg-gray-100',
     },
     preparing: {
-      text: 'Preparing...',
+      text: t('send-progress-stage-preparing'),
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     encrypting: {
-      text: 'Encrypting...',
+      text: t('send-progress-stage-encrypting'),
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
     },
     uploading: {
-      text: 'Uploading...',
+      text: t('send-progress-stage-uploading'),
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     downloading: {
-      text: 'Downloading...',
+      text: t('send-progress-stage-downloading'),
       color: 'text-green-600',
       bgColor: 'bg-green-100',
     },
     decrypting: {
-      text: 'Decrypting...',
+      text: t('send-progress-stage-decrypting'),
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
     },
     processing: {
-      text: 'Processing...',
+      text: t('send-progress-stage-processing'),
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-100',
     },
     completed: {
-      text: 'Completed',
+      text: t('send-progress-stage-completed'),
       color: 'text-green-600',
       bgColor: 'bg-green-100',
     },
-    error: { text: 'Error', color: 'text-red-600', bgColor: 'bg-red-100' },
+    error: {
+      text: t('send-progress-stage-error'),
+      color: 'text-red-600',
+      bgColor: 'bg-red-100',
+    },
   };
 
   return stageMap[stage] || stageMap.idle;
@@ -93,7 +99,13 @@ const progressDisplay = computed(() => {
     class="w-full"
     role="status"
     aria-live="polite"
-    :aria-label="`Processing ${progress.fileName}: ${stageInfo.text}, ${progress.percentage}% complete`"
+    :aria-label="
+      t('send-progress-status-label', {
+        fileName: progress.fileName,
+        stage: stageInfo.text,
+        percent: progress.percentage,
+      })
+    "
   >
     <!-- File Info Section -->
     <div
@@ -110,7 +122,7 @@ const progressDisplay = computed(() => {
             class="text-sm font-medium text-gray-900 truncate"
             :title="progress.fileName"
           >
-            {{ progress.fileName || 'Processing file...' }}
+            {{ progress.fileName || t('send-progress-file-pending') }}
           </p>
           <div class="flex flex-col text-sm text-gray-500">
             <span v-if="progressDisplay" class="truncate">
