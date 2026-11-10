@@ -292,6 +292,7 @@ async function openUnifiedPopup() {
 }
 
 const THUNDERMAIL_HOST = `mail.${!isProd ? 'stage-' : ''}thundermail.com`;
+// Brand term persisted as the account name in the user's profile: never localize it (#1089).
 const THUNDERMAIL_DISPLAY_NAME = 'Thundermail';
 
 // Handle all messages from popup.
