@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sweepAbandonedShares } from '../../jobs/abandonedShareSweep';
 import { runSweepIfLeader } from '../../jobs/orphanSweep';
@@ -26,8 +26,14 @@ const LATER_GRACE_END = new Date('2027-07-01T00:00:00Z');
 
 // every fixture row is old enough to pass the sweep's age guard
 const fx = shareFixtures(prisma, () => OLD);
-const { createContainer, createUpload, createItemIn, createLinkFor, exists } =
-  fx;
+const {
+  createContainer,
+  createUpload,
+  createItemIn,
+  createLinkFor,
+  addLinkTo,
+  exists,
+} = fx;
 
 function options(
   overrides: Partial<Parameters<typeof sweepAbandonedShares>[0]> = {}
@@ -134,30 +140,49 @@ describe('sweepAbandonedShares', () => {
     expect(await expiryOf(link.id)).toEqual(first);
   });
 
-  it('keeps a container that gained a working link after the batch was read', async () => {
-    const { shareContainer } = await abandonedShare(PAST);
-    // Hold the row lock the reap takes, as a concurrent POST /sharing would
-    // while it inserts its Share/AccessLink, and create a link under it. The
-    // sweep's batch read sees only the expired link; its reap then waits for
-    // this transaction and must find the new link once it commits.
-    let run: ReturnType<typeof sweepAbandonedShares>;
-    await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "Container" WHERE id = ${shareContainer.id}::uuid FOR UPDATE`;
-      run = sweepAbandonedShares(options());
-      // give the sweep time to read its batch and block on the lock
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      await createLinkFor(shareContainer.id, FUTURE, tx);
-    });
-    const result = await run!;
+  // POST /sharing adds a Share with its first link, or reuses the sender's
+  // Share and adds only the link. Each case holds the row lock that insert
+  // takes (the container's, or the Share's via its foreign key), creates the
+  // link under it, and lets the sweep's batch read see only the expired link;
+  // the reap then waits for this transaction and must find the new link.
+  it.each([
+    {
+      path: 'a new Share',
+      addLink: async (
+        tx: Prisma.TransactionClient,
+        { shareContainer }: Awaited<ReturnType<typeof abandonedShare>>
+      ) => {
+        await tx.$queryRaw`SELECT id FROM "Container" WHERE id = ${shareContainer.id}::uuid FOR UPDATE`;
+        return createLinkFor(shareContainer.id, FUTURE, tx);
+      },
+    },
+    {
+      path: 'the existing Share',
+      addLink: (
+        tx: Prisma.TransactionClient,
+        { link }: Awaited<ReturnType<typeof abandonedShare>>
+      ) => addLinkTo(link.shareId, FUTURE, tx),
+    },
+  ])(
+    'keeps a container that gained a working link on $path after the batch was read',
+    async ({ addLink }) => {
+      const share = await abandonedShare(PAST);
+      let run: ReturnType<typeof sweepAbandonedShares>;
+      let added: { id: string };
+      await prisma.$transaction(async (tx) => {
+        added = await addLink(tx, share);
+        run = sweepAbandonedShares(options());
+        // give the sweep time to read its batch and block on the lock
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      });
+      const result = await run!;
 
-    expect(result).toMatchObject({ scanned: 1, reaped: 0, waiting: 1 });
-    expect(await exists.container(shareContainer.id)).toBe(true);
-    expect(
-      await prisma.accessLink.count({
-        where: { share: { containerId: shareContainer.id } },
-      })
-    ).toBe(2);
-  }, 15_000);
+      expect(result).toMatchObject({ scanned: 1, reaped: 0, waiting: 1 });
+      expect(await exists.container(share.shareContainer.id)).toBe(true);
+      expect(await exists.accessLink(added!.id)).toBe(true);
+    },
+    15_000
+  );
 
   it('leaves a share alone while its upload still has a regular item', async () => {
     const folder = await createContainer(false);

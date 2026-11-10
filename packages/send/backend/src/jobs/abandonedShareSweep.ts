@@ -115,8 +115,10 @@ const COUNTER: Record<ShareAction, 'reaped' | 'graced' | 'waiting'> = {
 
 /**
  * Deletes the container's Group only if nobody gave it a resolving link since
- * the batch was read. The container row is locked first: a concurrent
- * `POST /sharing` inserts rows that reference it, which waits on that lock,
+ * the batch was read. `POST /sharing` either inserts a Share (referencing the
+ * container) or reuses the sender's Share and inserts only an AccessLink
+ * (referencing that Share). Locking the container row and then its Share rows
+ * makes both inserts wait, or makes the reap wait for one already in flight,
  * so the re-read below sees every link that exists at commit time.
  */
 async function reapIfStillAbandoned(
@@ -126,6 +128,7 @@ async function reapIfStillAbandoned(
 ): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Container" WHERE id = ${containerId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM "Share" WHERE "containerId" = ${containerId}::uuid ORDER BY id FOR UPDATE`;
     const current = await tx.container.findFirst({
       where: { id: containerId, ...abandonedShareWhere(options.olderThan) },
       select: {
