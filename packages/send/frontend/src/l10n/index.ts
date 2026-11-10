@@ -1,5 +1,6 @@
 import type { FluentBundle, FluentVariable } from '@fluent/bundle';
 import * as Sentry from '@sentry/vue';
+import dayjs from 'dayjs';
 import { computed, shallowReadonly, shallowRef } from 'vue';
 import { defaultBundle, loadBundle } from './bundles';
 import { DEFAULT_LOCALE, negotiate, requestedLocales } from './negotiate';
@@ -65,7 +66,8 @@ export function t(id: string, args?: L10nArgs): string {
 
 /**
  * Negotiates against what the user asked for, loads the needed bundles, and
- * applies `lang`/`dir` to the document. Safe to call again on locale change.
+ * applies `lang`/`dir` to the document and the dayjs locale. Safe to call
+ * again on locale change.
  */
 export async function setLocale(
   requested: readonly string[] = requestedLocales('browser')
@@ -76,6 +78,7 @@ export async function setLocale(
   );
   chain.value = bundles.filter((b): b is FluentBundle => b !== null);
   const active = locale.value;
+  await applyDayjsLocale(active);
   if (typeof document !== 'undefined') {
     document.documentElement.lang = active;
     document.documentElement.dir = RTL.has(active.split('-')[0])
@@ -86,6 +89,23 @@ export async function setLocale(
 }
 
 const RTL = new Set(['ar', 'fa', 'he', 'ur']);
+
+// Explicit loaders rather than a template-literal import: Vite cannot split a
+// variable bare-module import. The UMD files register on the same dayjs
+// instance the app imports. Locales without an entry keep dayjs on English.
+const DAYJS_LOCALES: Record<string, () => Promise<unknown>> = {
+  de: () => import('dayjs/locale/de.js'),
+};
+
+async function applyDayjsLocale(code: string) {
+  const load = DAYJS_LOCALES[code];
+  try {
+    if (load) await load();
+    dayjs.locale(load ? code : 'en');
+  } catch {
+    dayjs.locale('en');
+  }
+}
 
 /** Component entry point; `t` is reactive to locale changes via `chain`. */
 export function useL10n() {

@@ -340,9 +340,6 @@ export function createFakeThunderbirdHost(): FakeHost {
       webRequest: {
         onBeforeSendHeaders: { addListener: vi.fn() },
       },
-      i18n: {
-        getMessage: vi.fn((key: string) => key),
-      },
       management: {
         uninstallSelf: vi.fn(async () => {}),
       },

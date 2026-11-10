@@ -16,6 +16,8 @@ export default defineConfig({
     include: ['**/*.test.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup/webcrypto.js'],
+    // Writes the gitignored en-XA pseudo-locale the l10n tests load.
+    globalSetup: ['./scripts/gen-pseudo-locale.mjs'],
     globals: true,
     mockReset: false,
     // Node >= 25 exposes an experimental global localStorage/sessionStorage that

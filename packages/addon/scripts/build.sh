@@ -69,6 +69,14 @@ rm -rf dist
 
 mkdir -p dist/assets
 
+### _locales/<locale>/messages.json is generated from the Fluent addon.ftl
+### files into public/ (gitignored), so it lands in dist/ with the copy below.
+echo "=============== _locales ======================================="
+if ! node scripts/gen-locales.mjs; then
+    echo "ERROR: _locales generation failed" >&2
+    exit 1
+fi
+
 ### this should get copied automatically when compiling a page
 cp -R public/* dist/
 
