@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { IconEye, IconEyeClosed } from '@tabler/icons-vue';
+import { useL10n } from '@send-frontend/l10n';
 import { computed, ref } from 'vue';
 import FileUploadTemplate from '../FileUploadTemplate.vue';
 
@@ -19,6 +20,7 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+const { t } = useL10n();
 
 const passwordFieldType = ref<'password' | 'text'>('password');
 
@@ -61,19 +63,18 @@ function updatePassword(value: string) {
     :step="{
       stepNumber: 1,
       totalSteps: 2,
-      title: 'Create File Password',
+      title: t('send-upload-password-title'),
     }"
     :show-close-button="true"
     :show-primary-button="true"
-    primary-button-text="Next"
+    :primary-button-text="t('send-upload-button-next')"
     :primary-button-disabled="!canProceed"
     @close="handleClose"
     @primary="handleNext"
   >
     <!-- Description -->
     <p class="description">
-      A file password provides an extra layer of security in case your email is
-      accessed by an unintended recipient.
+      {{ t('send-upload-password-description') }}
     </p>
 
     <!-- Checkbox to enable password protection -->
@@ -88,7 +89,7 @@ function updatePassword(value: string) {
         "
       />
       <label for="password-checkbox" class="checkbox-label">
-        Protect this file with a password (recommended)
+        {{ t('send-upload-password-protect') }}
       </label>
     </div>
 
@@ -97,7 +98,8 @@ function updatePassword(value: string) {
       <!-- Password Input -->
       <div class="field-group">
         <label for="file-password" class="field-label">
-          File Password <span class="required">*</span>
+          {{ t('send-upload-password-label') }}
+          <span class="required">*</span>
         </label>
         <div class="password-input-wrapper">
           <input
@@ -105,14 +107,18 @@ function updatePassword(value: string) {
             :value="password"
             :type="passwordFieldType"
             class="input-field"
-            placeholder="Enter password"
+            :placeholder="t('send-upload-password-placeholder')"
             autocomplete="new-password"
             @input="updatePassword(($event.target as HTMLInputElement).value)"
           />
           <button
             type="button"
             class="password-toggle"
-            :aria-label="isPasswordVisible ? 'Hide password' : 'Show password'"
+            :aria-label="
+              t('send-upload-password-visibility', {
+                state: isPasswordVisible ? 'shown' : 'hidden',
+              })
+            "
             @click="togglePasswordVisibility"
           >
             <IconEye v-if="!isPasswordVisible" :size="20" />
@@ -120,8 +126,7 @@ function updatePassword(value: string) {
           </button>
         </div>
         <p class="field-help">
-          Share this password with your recipient using a separate communication
-          channel.
+          {{ t('send-upload-password-help') }}
         </p>
       </div>
 
