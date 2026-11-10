@@ -30,3 +30,10 @@ addon-menu-open-appointment = Open Appointment
 # Label of the back button in the signed-in submenu, used only when Thunderbird
 # provides no back label of its own.
 addon-menu-back = Back
+
+## Page titles
+
+# Window title of the upload popup.
+addon-popup-title = Upload with { -send-brand }
+# Tab title of the add-on management page.
+addon-management-title = TB Pro Addon
