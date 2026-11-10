@@ -149,7 +149,7 @@ async function buildSignedInMenu(username: string) {
 
   // Add logout option at the bottom of the menu
   await browser.TBProMenu.create(MENU_ACTIONS.LOGOUT, {
-    title: browser.i18n.getMessage('menuSignout'),
+    title: browser.i18n.getMessage('menuSignOut'),
     parentId: MENU_ACTIONS.ROOT,
   });
 
