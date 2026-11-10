@@ -11,3 +11,4 @@ addon-menu-signed-in-tooltip = Bei { -thundermail-brand } angemeldet
 addon-menu-manage-dashboard = Konto-Dashboard
 addon-menu-manage-send = Send-Dateien verwalten
 addon-menu-open-appointment = Appointment öffnen
+addon-menu-back = Zurück
