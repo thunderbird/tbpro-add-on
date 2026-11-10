@@ -25,7 +25,5 @@ addon-menu-signed-in-tooltip = Signed in to { -thundermail-brand }
 addon-menu-manage-dashboard = Account Dashboard
 # Menu entry that opens the Send file manager in a tab.
 addon-menu-manage-send = Manage Send Files
-# Menu entry that copies the user's Appointment booking link.
-addon-menu-copy-appointment-link = Copy Appointment Link
 # Menu entry that opens Appointment in a tab.
 addon-menu-open-appointment = Open Appointment
