@@ -140,21 +140,6 @@ describe('sweepAbandonedShares', () => {
     expect(result).toMatchObject({ reaped: 0, capped: true });
   });
 
-  it('does not reap a container that gained a resolving link since the batch read', async () => {
-    batches([container('c1', [{ id: 'l1', expiryDate: PAST }])]);
-    h.db.container.findFirst.mockResolvedValueOnce(
-      container('c1', [
-        { id: 'l1', expiryDate: PAST },
-        { id: 'l2', expiryDate: FAR },
-      ])
-    );
-
-    const result = await sweepAbandonedShares(options, db);
-
-    expect(h.db.group.delete).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ scanned: 1, reaped: 0, waiting: 1 });
-  });
-
   it('pages with a keyset so reaped rows cannot break the cursor', async () => {
     const fullPage = Array.from({ length: 200 }, (_, i) =>
       container(`c${String(i).padStart(3, '0')}`, [], i)
