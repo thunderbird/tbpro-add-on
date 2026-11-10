@@ -1,10 +1,14 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
+
+const { t } = useL10n();
+</script>
 <template>
   <div
     class="flex flex-col gap-2 items-center justify-center p-4 rounded-lg transition duration-500 ease-in-out text-white bg-blue-400 hover:bg-blue-300"
     role="status"
   >
-    <p>Uploading...</p>
+    <p>{{ t('send-upload-uploading') }}</p>
     <div>
       <svg
         class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
@@ -28,6 +32,6 @@
       </svg>
     </div>
 
-    <span class="sr-only">Uploading...</span>
+    <span class="sr-only">{{ t('send-upload-uploading') }}</span>
   </div>
 </template>
