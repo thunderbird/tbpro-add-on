@@ -113,6 +113,55 @@ function ownedItemInContainer(
   return { id, containerId, upload: { ownerId } };
 }
 
+// A file's share links live on a share-only container holding a copy item of
+// the same upload. Once no regular folder holds an item for an upload, the
+// owner's copies of it are deleted and each share-only container left empty is
+// burned through its Group (cascades to Container, Items, Shares, AccessLinks,
+// Memberships), so its links stop resolving (#1393). A share that still holds
+// other files keeps its link.
+async function burnAbandonedShareLinks(
+  tx: Prisma.TransactionClient,
+  uploadIds: string[],
+  ownerId: string
+) {
+  const abandoned = await tx.upload.findMany({
+    where: {
+      id: { in: uploadIds },
+      items: { none: { container: { shareOnly: false } } },
+    },
+    select: { id: true },
+  });
+  if (abandoned.length === 0) {
+    return;
+  }
+
+  const copies = await tx.item.findMany({
+    where: {
+      uploadId: { in: abandoned.map(({ id }) => id) },
+      container: { shareOnly: true, ownerId },
+    },
+    select: { id: true, containerId: true },
+  });
+  if (copies.length === 0) {
+    return;
+  }
+
+  await tx.item.deleteMany({
+    where: { id: { in: copies.map(({ id }) => id) } },
+  });
+
+  const emptied = await tx.container.findMany({
+    where: {
+      id: { in: [...new Set(copies.map(({ containerId }) => containerId))] },
+      items: { none: {} },
+    },
+    select: { groupId: true },
+  });
+  await tx.group.deleteMany({
+    where: { id: { in: emptied.map(({ groupId }) => groupId) } },
+  });
+}
+
 export async function isUploadOwnedBy(uploadId: string, ownerId: string) {
   const upload = await prisma.upload.findFirst({
     where: { id: uploadId, ownerId },
@@ -147,21 +196,37 @@ export async function deleteItem(
         },
         select: { id: true, uploadId: true },
       });
+      const uploadIds = [...new Set(siblings.map(({ uploadId }) => uploadId))];
+
+      // Serialise deletes that touch the same upload. Two items of one upload
+      // deleted at the same moment would each still see the other's
+      // uncommitted row, and both would skip the share-link and upload
+      // cleanup. The second delete now waits here until the first commits;
+      // the fixed order keeps deletes of several uploads from deadlocking.
+      if (uploadIds.length > 0) {
+        await tx.$queryRaw`SELECT id FROM "Upload" WHERE id IN (${Prisma.join(
+          uploadIds.map((uploadId) => Prisma.sql`${uploadId}::uuid`)
+        )}) ORDER BY id FOR UPDATE`;
+      }
+
       await tx.item.deleteMany({
         where: { id: { in: siblings.map(({ id }) => id) } },
       });
 
+      // Deleting an upload's last regular-folder item also revokes its share
+      // links; `shouldDeleteUpload === false` keeps the content and its shares.
+      if (shouldDeleteUpload) {
+        await burnAbandonedShareLinks(tx, uploadIds, ownerId);
+      }
+
       // An upload is removed only once no item references it any more;
       // other items (e.g. share-only copies) may still point at it.
       const orphaned = await tx.upload.findMany({
-        where: {
-          id: { in: siblings.map(({ uploadId }) => uploadId) },
-          items: { none: {} },
-        },
+        where: { id: { in: uploadIds }, items: { none: {} } },
         select: { id: true },
       });
-      const uploadIds = orphaned.map(({ id }) => id);
-      await tx.upload.deleteMany({ where: { id: { in: uploadIds } } });
+      const orphanedIds = orphaned.map(({ id }) => id);
+      await tx.upload.deleteMany({ where: { id: { in: orphanedIds } } });
 
       // touch the container's `updatedAt` date
       await tx.container.update({
@@ -169,7 +234,7 @@ export async function deleteItem(
         data: { updatedAt: new Date() },
       });
 
-      return { wrappedKey: item.wrappedKey, uploadIds };
+      return { wrappedKey: item.wrappedKey, uploadIds: orphanedIds };
     })
     .catch((error) => {
       if (error instanceof BaseError) {
