@@ -93,6 +93,7 @@ test.describe("Pseudo-locale", { tag: [PLAYWRIGHT_TAG_DEV_DESKTOP] }, () => {
 
     // Your Files, with the user menu open for the migrated "Sign out".
     await page.getByTestId("navlink-manage-files").click();
+    await page.getByTestId("new-folder-button").click();
     await expect(firstFolderRow).toBeVisible();
     const avatar = page.locator(".user-menu .avatar");
     await avatar.click();
