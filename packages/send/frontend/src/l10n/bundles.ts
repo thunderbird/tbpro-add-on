@@ -6,11 +6,20 @@ import { DEFAULT_LOCALE } from './negotiate';
 // Every locale except the default is loaded on demand; the default is part of
 // the main bundle so the fallback can never be missing.
 // send.ftl holds the shared Send UI, addon.ftl the add-on shell (menu,
-// manifest); both go into one bundle per locale.
-const lazySources = import.meta.glob<string>('./locales/*/*.ftl', {
-  query: '?raw',
-  import: 'default',
-});
+// manifest); both go into one bundle per locale. The generated en-XA
+// pseudo-locale is globbed separately so production bundles never carry it.
+const lazySources: Record<string, () => Promise<string>> = {
+  ...import.meta.glob<string>(['./locales/*/*.ftl', '!./locales/en-XA/*'], {
+    query: '?raw',
+    import: 'default',
+  }),
+  ...(import.meta.env.DEV || import.meta.env.VITE_TESTING
+    ? import.meta.glob<string>('./locales/en-XA/*.ftl', {
+        query: '?raw',
+        import: 'default',
+      })
+    : {}),
+};
 
 const cache = new Map<string, Promise<FluentBundle>>();
 

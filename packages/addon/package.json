@@ -17,7 +17,7 @@
     "build:watch": "nodemon -e vue,ts,js,json,ftl --ignore 'public/_locales/' --watch './{src,public}/**/*' --exec 'pnpm build'",
     "ci:validate": "pnpm lint:all && pnpm prettier:all && pnpm run test",
     "deploy-xpi": "bun run ./scripts/deploy_xpi.ts",
-    "dev": "node scripts/gen-locales.mjs && vite --host",
+    "dev": "node scripts/gen-locales.mjs && node ../send/frontend/scripts/gen-pseudo-locale.mjs && vite --host",
     "dev:builtin": "nodemon -e vue,ts,js,json,ftl --ignore 'dist*/' --ignore 'public/_locales/' --ignore manifest.json --watch './{src,public}/**/*' --watch '../send/frontend/src/**/*' --exec 'pnpm sync:builtin'",
     "dev:builtin:local": "nodemon -e vue,ts,js,json,ftl --ignore 'dist*/' --ignore 'public/_locales/' --ignore manifest.json --watch './{src,public}/**/*' --watch '../send/frontend/src/**/*' --exec 'pnpm sync:builtin:local'",
     "dupes": "jscpd src public/api --fail-on-empty",

@@ -2,9 +2,16 @@ import { negotiateLanguages } from '@fluent/langneg';
 
 export const DEFAULT_LOCALE = 'en-US';
 
-/** Locales with a `.ftl` file under `./locales`. Keep sorted. */
-export const AVAILABLE_LOCALES = ['de', 'en-US'] as const;
-export type Locale = (typeof AVAILABLE_LOCALES)[number];
+/** Generated from en-US; dev servers (incl. the e2e stack) and tests only. */
+export const PSEUDO_LOCALE = 'en-XA';
+const PSEUDO_ENABLED = Boolean(
+  import.meta.env.DEV || import.meta.env.VITE_TESTING
+);
+
+/** Locales with `.ftl` files under `./locales`. Keep sorted. */
+export const AVAILABLE_LOCALES: readonly string[] = PSEUDO_ENABLED
+  ? ['de', 'en-US', PSEUDO_LOCALE]
+  : ['de', 'en-US'];
 
 /**
  * Thunderbird reports `ja-JP-mac` for its macOS Japanese build; Fluent and
@@ -22,7 +29,12 @@ export function negotiate(
   requested: readonly string[],
   available: readonly string[] = AVAILABLE_LOCALES
 ): string[] {
-  const chain = negotiateLanguages(requested.map(normalize), [...available], {
+  // The pseudo-locale only ever matches when asked for by name; otherwise an
+  // `en` request would pull it into the fallback chain.
+  const offered = requested.includes(PSEUDO_LOCALE)
+    ? available
+    : available.filter((code) => code !== PSEUDO_LOCALE);
+  const chain = negotiateLanguages(requested.map(normalize), [...offered], {
     defaultLocale: DEFAULT_LOCALE,
   });
   return chain.includes(DEFAULT_LOCALE) ? chain : [...chain, DEFAULT_LOCALE];
@@ -34,6 +46,8 @@ export function negotiate(
  * pages and can disagree, so the caller picks explicitly.
  */
 export function requestedLocales(source: 'thunderbird' | 'browser'): string[] {
+  const forced = queryOverride();
+  if (forced) return [forced];
   if (source === 'thunderbird') {
     const ui = (
       globalThis as { browser?: { i18n?: { getUILanguage?: () => string } } }
@@ -44,4 +58,20 @@ export function requestedLocales(source: 'thunderbird' | 'browser'): string[] {
     return [...navigator.languages];
   }
   return [DEFAULT_LOCALE];
+}
+
+/**
+ * `?locale=en-XA` on the page URL, honoured in dev and test builds only. Kept
+ * for the tab's session so redirects and reloads that drop the query keep it.
+ */
+function queryOverride(): string | null {
+  if (!PSEUDO_ENABLED || typeof location === 'undefined') return null;
+  const key = 'l10n-locale-override';
+  const fromQuery = new URLSearchParams(location.search).get('locale');
+  try {
+    if (fromQuery) sessionStorage.setItem(key, fromQuery);
+    return fromQuery ?? sessionStorage.getItem(key);
+  } catch {
+    return fromQuery;
+  }
 }
