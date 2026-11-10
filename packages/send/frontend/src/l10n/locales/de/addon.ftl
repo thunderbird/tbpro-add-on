@@ -10,5 +10,4 @@ addon-menu-sign-out = Abmelden
 addon-menu-signed-in-tooltip = Bei { -thundermail-brand } angemeldet
 addon-menu-manage-dashboard = Konto-Dashboard
 addon-menu-manage-send = Send-Dateien verwalten
-addon-menu-copy-appointment-link = Appointment-Link kopieren
 addon-menu-open-appointment = Appointment öffnen
