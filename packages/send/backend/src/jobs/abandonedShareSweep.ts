@@ -11,7 +11,15 @@ const prisma = new PrismaClient();
 // Locked links count as resolving.
 
 export type AbandonedShareSweepOptions = {
-  /** Only containers created before this are touched (null counts as old). */
+  /**
+   * Only containers created before this are touched (null counts as old).
+   * The earlier of the age guard and ABANDONED_SHARE_CREATED_BEFORE: the
+   * sweep exists for shares left behind before deletion revoked them (#1400),
+   * and a share whose upload has no regular item can also be one the owner
+   * kept on purpose (delete with shouldDeleteContent=false). Those cannot be
+   * told apart in the database, so a live run touches nothing created after
+   * the fix was deployed.
+   */
   olderThan: Date;
   /** Sunset written to links that still resolve; now plus the grace period. */
   graceEnd: Date;
@@ -239,19 +247,44 @@ const DAY_MS = 24 * HOUR_MS;
 // times out.
 const SWEEP_DEADLINE_MS = 1.5 * HOUR_MS;
 
+/** Parsed ABANDONED_SHARE_CREATED_BEFORE, or null when unset or invalid. */
+function createdBeforeFromEnv(): Date | null {
+  const raw = process.env.ABANDONED_SHARE_CREATED_BEFORE?.trim();
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    console.warn(
+      `[abandonedShareSweep] ABANDONED_SHARE_CREATED_BEFORE is not a date: ${raw}`
+    );
+    return null;
+  }
+  return parsed;
+}
+
 export function abandonedShareSweepOptionsFromEnv(
   now = Date.now()
 ): AbandonedShareSweepOptions {
   const minAgeHours = envNumber('ABANDONED_SHARE_MIN_AGE_HOURS', 24);
   const graceDays = envNumber('ABANDONED_SHARE_GRACE_DAYS', 180);
+  const createdBefore = createdBeforeFromEnv();
+  const ageGuard = now - minAgeHours * HOUR_MS;
+  // Dry run unless explicitly set to false: a deploy without the variable
+  // changes nothing. A live run also needs the creation cutoff (see
+  // AbandonedShareSweepOptions.olderThan); without it the run stays dry.
+  let dryRun =
+    process.env.ABANDONED_SHARE_SWEEP_DRY_RUN?.trim().toLowerCase() !== 'false';
+  if (!dryRun && !createdBefore) {
+    console.warn(
+      '[abandonedShareSweep] live run needs ABANDONED_SHARE_CREATED_BEFORE (deploy time of the deletion fix); running dry'
+    );
+    dryRun = true;
+  }
   return {
-    olderThan: new Date(now - minAgeHours * HOUR_MS),
+    olderThan: new Date(
+      createdBefore ? Math.min(ageGuard, createdBefore.getTime()) : ageGuard
+    ),
     graceEnd: new Date(now + graceDays * DAY_MS),
-    // Dry run unless explicitly set to false: a deploy without the variable
-    // changes nothing.
-    dryRun:
-      process.env.ABANDONED_SHARE_SWEEP_DRY_RUN?.trim().toLowerCase() !==
-      'false',
+    dryRun,
     maxActions: Math.floor(
       envNumber('ABANDONED_SHARE_SWEEP_MAX_ACTIONS', 1000)
     ),
