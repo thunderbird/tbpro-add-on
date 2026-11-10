@@ -205,7 +205,8 @@
           window,
           extension,
           parentText,
-          'appMenu-tbpro-submenu-' + parentId
+          'appMenu-tbpro-submenu-' + parentId,
+          gMenuItems[parentId]?.backLabel
         );
         parentToolbarItem.setAttribute(
           'oncommand',
@@ -282,10 +283,11 @@
    * @param {Extension} extension - The extension object to create this element for.
    * @param {string} text - The username of the current user to display in the menu header
    * @param {string} id - Id to use for the submenu.
+   * @param {string} [fallbackBackLabel] - The parent's localized backLabel.
    *
    * @returns {HTMLElement} - The submenu element
    */
-  function _addSubMenu(window, extension, text, id) {
+  function _addSubMenu(window, extension, text, id, fallbackBackLabel) {
     const { document } = window;
 
     const createElement = _createElement.bind(null, window, extension);
@@ -305,10 +307,14 @@
       classes: ['panel-header', 'tbpro-panel-header'],
     });
 
+    // Prefer Thunderbird's own back label: it matches the host UI's wording
+    // and language. The add-on's localized label covers windows without one.
     const backLabel =
       document
         .querySelector('.subviewbutton-back[aria-label]')
-        ?.getAttribute('aria-label') || 'Back';
+        ?.getAttribute('aria-label') ||
+      fallbackBackLabel ||
+      'Back';
 
     const backButton = createElement({
       type: 'toolbarbutton',
