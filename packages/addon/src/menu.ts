@@ -2,6 +2,7 @@ import { BASE_URL } from '@send-frontend/apps/common/constants';
 import { getEnvName } from '@send-frontend/lib/clientConfig';
 import { STORAGE_KEY_AUTH } from '@send-frontend/lib/const';
 import { APPOINTMENT_URL } from '@send-frontend/apps/common/constants';
+import { t } from '@send-frontend/l10n';
 import { shouldAutoOpenLoginOnInstall } from './installGate';
 
 // Determine environment-specific URLs
@@ -121,7 +122,7 @@ async function buildSignedInMenu(username: string) {
   await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
     title: '',
     secondaryTitle: username,
-    tooltip: browser.i18n.getMessage('menuSignedInTooltip'),
+    tooltip: t('addon-menu-signed-in-tooltip'),
   });
 
   // Start from an empty submenu. The items below belong to whoever is signed in,
@@ -132,24 +133,24 @@ async function buildSignedInMenu(username: string) {
 
   // Add submenu item to access Thunderbird Pro account dashboard
   await browser.TBProMenu.create(MENU_ACTIONS.MANAGE_DASHBOARD, {
-    title: browser.i18n.getMessage('menuManageDashboard'),
+    title: t('addon-menu-manage-dashboard'),
     parentId: MENU_ACTIONS.ROOT,
   });
 
   // Add submenu item to access Thunderbird Send
   await browser.TBProMenu.create(MENU_ACTIONS.MANAGE_SEND, {
-    title: browser.i18n.getMessage('menuManageSend'),
+    title: t('addon-menu-manage-send'),
     parentId: MENU_ACTIONS.ROOT,
   });
 
   await browser.TBProMenu.create(MENU_ACTIONS.OPEN_APPOINTMENT, {
-    title: browser.i18n.getMessage('menuOpenAppointment'),
+    title: t('addon-menu-open-appointment'),
     parentId: MENU_ACTIONS.ROOT,
   });
 
   // Add logout option at the bottom of the menu
   await browser.TBProMenu.create(MENU_ACTIONS.LOGOUT, {
-    title: browser.i18n.getMessage('menuSignOut'),
+    title: t('addon-menu-sign-out'),
     parentId: MENU_ACTIONS.ROOT,
   });
 
@@ -173,8 +174,8 @@ export async function menuLogout() {
 
     // Reset menu to display sign-in prompt, then clear the submenu items.
     await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
-      title: browser.i18n.getMessage('menuSignInTo'),
-      secondaryTitle: browser.i18n.getMessage('thunderbirdPro'),
+      title: t('addon-menu-sign-in-to'),
+      secondaryTitle: t('addon-thunderbird-pro'),
       tooltip: '',
     });
     await browser.TBProMenu.clear(MENU_ACTIONS.ROOT);
@@ -430,6 +431,8 @@ export function startLoginStateChecks() {
 /**
  * Initializes the TBPro menu system and sets up click event handlers.
  * Creates the root menu item and registers listeners for all menu actions.
+ * Labels come from the l10n chain background's main() negotiated before this
+ * runs; a Thunderbird UI language change shows up after the next restart.
  */
 export function init() {
   // Register onInstalled handler to open the login page on first install — but
@@ -472,8 +475,8 @@ export function init() {
 
   // Create the root menu item with initial logged-out state
   browser.TBProMenu.create(MENU_ACTIONS.ROOT, {
-    title: browser.i18n.getMessage('menuSignInTo'),
-    secondaryTitle: browser.i18n.getMessage('thunderbirdPro'),
+    title: t('addon-menu-sign-in-to'),
+    secondaryTitle: t('addon-thunderbird-pro'),
     tooltip: '',
   });
 
