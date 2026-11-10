@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import FileUploadTemplate from '../FileUploadTemplate.vue';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Emits {
 
 defineProps<Props>();
 const emit = defineEmits<Emits>();
+const { t } = useL10n();
 
 function handleClose() {
   emit('close');
@@ -27,11 +29,11 @@ function handleCopyToClipboard() {
     :step="{
       stepNumber: 2,
       totalSteps: 2,
-      title: 'Link Created Successfully',
+      title: t('send-upload-success-title'),
     }"
     :show-close-button="true"
     :show-primary-button="true"
-    primary-button-text="Close"
+    :primary-button-text="t('send-upload-button-close')"
     @close="handleClose"
     @primary="handleClose"
   >
@@ -52,11 +54,10 @@ function handleCopyToClipboard() {
         </svg>
       </div>
 
-      <h3 class="success-title">Your file has been uploaded!</h3>
+      <h3 class="success-title">{{ t('send-upload-success-heading') }}</h3>
 
       <p class="success-description">
-        Share this link with your recipient. They will need the password to
-        access the file.
+        {{ t('send-upload-success-description') }}
       </p>
 
       <div class="url-container">
@@ -66,7 +67,9 @@ function handleCopyToClipboard() {
           class="url-input"
           @focus="($event.target as HTMLInputElement).select()"
         />
-        <button class="copy-button" @click="handleCopyToClipboard">Copy</button>
+        <button class="copy-button" @click="handleCopyToClipboard">
+          {{ t('send-upload-button-copy') }}
+        </button>
       </div>
     </div>
   </FileUploadTemplate>
