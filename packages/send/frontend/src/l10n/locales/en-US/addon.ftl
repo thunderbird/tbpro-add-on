@@ -27,3 +27,6 @@ addon-menu-manage-dashboard = Account Dashboard
 addon-menu-manage-send = Manage Send Files
 # Menu entry that opens Appointment in a tab.
 addon-menu-open-appointment = Open Appointment
+# Label of the back button in the signed-in submenu, used only when Thunderbird
+# provides no back label of its own.
+addon-menu-back = Back
