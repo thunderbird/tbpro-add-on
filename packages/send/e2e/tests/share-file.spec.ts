@@ -57,9 +57,9 @@ test('share file: create share link, incorrect password, download, and revoke', 
     await recipientTab.goto(shareUrl);
     const recipient = new ShareFilePage(recipientTab);
     await recipient.expectPasswordFormVisible();
-    await recipient.submitPassword(`incorrect-${password}`);
+    await recipient.submitPassword(`incorrect-${password}`, isMobile);
     await recipient.expectAccessDenied('This password is incorrect');
-    await recipient.submitPassword(password);
+    await recipient.submitPassword(password, isMobile);
     await recipient.expectFileInformationVisible(fixture.fileName);
     await recipient.downloadAndExpectDownload(fixture, isBrowserStackAndroid);
 
@@ -73,7 +73,7 @@ test('share file: create share link, incorrect password, download, and revoke', 
     await revokedTab.goto(shareUrl);
     const revokedRecipient = new ShareFilePage(revokedTab);
     await revokedRecipient.expectPasswordFormVisible();
-    await revokedRecipient.submitPassword(password);
+    await revokedRecipient.submitPassword(password, isMobile);
     await revokedRecipient.expectAccessDenied('Access Link is no longer valid');
   } finally {
     // Do not delete the file until revocation has been checked: deletion itself
