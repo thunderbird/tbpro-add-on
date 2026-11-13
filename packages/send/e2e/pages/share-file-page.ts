@@ -21,9 +21,9 @@ export class ShareFilePage {
     await expect(this.page.getByTestId('submit-button')).toBeVisible();
   }
 
-  async submitPassword(password: string) {
+  async submitPassword(password: string, isMobile = false) {
     await this.page.getByTestId('password-input').fill(password);
-    await this.page.getByTestId('submit-button').click();
+    await this.page.getByTestId('submit-button').click( { force: isMobile });
   }
 
   async expectAccessDenied(message: string) {
