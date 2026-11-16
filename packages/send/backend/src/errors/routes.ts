@@ -1,3 +1,4 @@
+import { STATUS_CODES } from 'node:http';
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import { BaseError } from './models';
 
@@ -210,6 +211,8 @@ export function wrapAsyncHandler(fn: RequestHandler) {
   } as RequestHandler;
 }
 
+type HttpError = Error & { status?: number; statusCode?: number };
+
 // Global error handler middleware.
 // Uses the status code and message set by `addErrorHandling` (or a matching
 // override); see the fallback below for errors without them.
@@ -229,11 +232,12 @@ export function errorHandler(
     err instanceof BaseError
       ? req[REQ_VAR_OVERRIDES]?.[err.message]
       : undefined;
-  // Without route information, keep a client error's own status (body
-  // parser, http-errors) and never echo a server error's message.
-  const errStatus = (err as { status?: number }).status;
+  // Without route information, keep an http-error's own status (body parser,
+  // http-errors) and answer with its reason phrase, never `err.message`: the
+  // body parser's message quotes the request body.
+  const errStatus = (err as HttpError).status ?? (err as HttpError).statusCode;
   const fallbackStatus =
-    errStatus !== undefined && errStatus >= 400 && errStatus < 500
+    typeof errStatus === 'number' && errStatus >= 400 && errStatus < 600
       ? errStatus
       : 500;
   const status =
@@ -241,7 +245,8 @@ export function errorHandler(
   const message =
     override?.message ??
     req[REQ_VAR_USER_MESSAGE] ??
-    (status < 500 ? err.message : 'Internal Server Error');
+    STATUS_CODES[status] ??
+    'Internal Server Error';
 
   res.status(status).json({
     status: 'error',
@@ -249,14 +254,11 @@ export function errorHandler(
     message: message,
   });
 
-  // The log keeps the original error message; the response may not.
-  if (status >= 500) {
-    console.error(
-      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${err.message} `
-    );
-  } else {
-    console.warn(
-      `${status} - ${req.method} ${req.originalUrl} - ${req.ip} - ${message} `
-    );
-  }
+  // The log keeps the original error message; the response may not. Line
+  // breaks are stripped from the URL so a crafted request cannot forge lines.
+  const url = req.originalUrl.replace(/[\r\n]/g, '');
+  const log = status >= 500 ? console.error : console.warn;
+  log(
+    `${status} - ${req.method} ${url} - ${req.ip} - ${status >= 500 ? err.message : message} `
+  );
 }
