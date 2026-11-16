@@ -88,9 +88,9 @@ describe('upload components in German', () => {
       percentage: 40,
     });
     const wrapper = mount(ProgressBarV2);
-    expect(wrapper.text()).toContain('Encrypting...');
+    expect(wrapper.text()).toContain('Encrypting…');
     expect(wrapper.attributes('aria-label')).toBe(
-      'Processing a.txt: Encrypting..., 40% complete'
+      'Processing a.txt: Encrypting…, 40% complete'
     );
     await setLocale(['de']);
     await nextTick();
@@ -102,7 +102,7 @@ describe('upload components in German', () => {
 
   it('UploadingProgress', async () => {
     const wrapper = mount(UploadingProgress);
-    expect(wrapper.find('p').text()).toBe('Uploading...');
+    expect(wrapper.find('p').text()).toBe('Uploading…');
     await setLocale(['de']);
     await nextTick();
     expect(wrapper.find('p').text()).toBe('Wird hochgeladen…');
