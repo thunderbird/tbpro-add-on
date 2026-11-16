@@ -23,6 +23,7 @@ import {
 } from '../models/users';
 
 import { getDataFromAuthenticatedRequest } from '@send-backend/auth/client';
+import { publicKeyJwkSchema } from '@send-backend/utils/publicKeyJwk';
 import { requireAdminPermisions, requireJWT } from '../middleware';
 
 const router: Router = Router();
@@ -121,30 +122,31 @@ router.get(
  *             type: object
  *             properties:
  *               publicKey:
- *                 type: string
+ *                 description: RSA public key JWK, as an object or a JSON string
+ *                 oneOf:
+ *                   - type: object
+ *                   - type: string
  *     responses:
  *       200:
  *         description: Public key updated successfully
  *       400:
- *         description: Profile update failed
+ *         description: publicKey is not an RSA public key JWK
  */
 router.post(
   '/publickey',
   requireJWT,
   addErrorHandling(USER_ERRORS.PROFILE_NOT_UPDATED),
   wrapAsyncHandler(async (req, res) => {
-    const {
-      publicKey,
-    }: {
-      publicKey: string;
-    } = req.body;
+    const parsed = publicKeyJwkSchema.safeParse(req.body?.publicKey);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: 'publicKey must be an RSA public key JWK.',
+      });
+    }
 
     const { id } = getDataFromAuthenticatedRequest(req);
 
-    const update = await updateUserPublicKey(
-      id,
-      JSON.stringify(publicKey).trim()
-    );
+    const update = await updateUserPublicKey(id, parsed.data);
     res.status(200).json({
       update,
     });
