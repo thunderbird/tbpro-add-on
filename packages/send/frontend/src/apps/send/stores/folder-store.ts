@@ -402,10 +402,8 @@ const useFolderStore = defineStore('folderManager', () => {
       await populateFromBackend();
     }
     if (!user.id) {
-      progress.error = 'You are not fully signed in. Please sign in again.';
-      throw new Error(
-        'Cannot upload: user session is missing a user id (ownerId would be empty).'
-      );
+      progress.error = t('send-upload-error-not-signed-in');
+      throw new Error(t('send-upload-error-no-user-id'));
     }
 
     const canUpload = await checkBlobSize(fileBlob);
@@ -416,12 +414,12 @@ const useFolderStore = defineStore('folderManager', () => {
       alert(
         t('send-upload-error-storage-limit-alert', { fileName: fileBlob.name })
       );
-      throw new Error('Uploading this file would exceed your storage limit.');
+      throw new Error(t('send-upload-error-storage-limit-short'));
     }
 
     if (!canUpload) {
       progress.error = CLIENT_MESSAGES.FILE_TOO_BIG;
-      throw new Error('Too big');
+      throw new Error(t('send-upload-error-too-big'));
     }
 
     const formattedBlob = await formatBlob(fileBlob);
@@ -438,7 +436,9 @@ const useFolderStore = defineStore('folderManager', () => {
       );
 
       if (!newItems || newItems.length === 0) {
-        throw new Error(`Upload failed for ${formattedBlob.name}`);
+        throw new Error(
+          t('send-upload-error-failed-for', { fileName: formattedBlob.name })
+        );
       }
 
       if (rootFolder.value) {
@@ -448,10 +448,13 @@ const useFolderStore = defineStore('folderManager', () => {
       return newItems;
     } catch (error) {
       console.error('Upload failed in uploadItem:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message =
+        error instanceof Error
+          ? error.message
+          : t('send-upload-error-unknown-detail');
       progress.error = message;
       progress.setProcessStage('error');
-      throw new Error(`Upload failed: ${message}`);
+      throw new Error(t('send-upload-error-failed-detail', { message }));
     }
   }
 
@@ -523,7 +526,7 @@ const useFolderStore = defineStore('folderManager', () => {
 
     const wrappingKey = await keychain.get(containerId);
     if (!wrappingKey) {
-      throw new Error('Wrapping key not found');
+      throw new Error(t('send-download-error-no-key'));
     }
 
     const contentKey: CryptoKey = await keychain.container.unwrapContentKey(
@@ -554,7 +557,7 @@ const useFolderStore = defineStore('folderManager', () => {
 
     const validMetadata = pieceMetadata.filter((meta) => meta !== null);
     if (validMetadata.length === 0) {
-      throw new Error('No valid pieces found');
+      throw new Error(t('send-download-error-no-pieces'));
     }
 
     // Sort pieces by part number
@@ -566,7 +569,7 @@ const useFolderStore = defineStore('folderManager', () => {
     // Set up progress tracking for multipart downloads - don't call initialize() as it resets fileName
     progressTracker.setUploadSize(totalSize);
     progressTracker.setProcessStage('downloading');
-    progressTracker.setText('Downloading file');
+    progressTracker.setText(t('send-download-progress-downloading'));
 
     // Create a multipart progress tracker that manages overall progress across all parts
     const multipartTracker = createMultipartDownloadProgressTracker(
@@ -748,9 +751,9 @@ const useFolderStore = defineStore('folderManager', () => {
             // Show overall progress message without part numbers for downloads
             if (isMultipart) {
               if (message.includes('Downloading')) {
-                mainTracker.setText('Downloading file');
+                mainTracker.setText(t('send-download-progress-downloading'));
               } else if (message.includes('Decrypting')) {
-                mainTracker.setText('Decrypting file');
+                mainTracker.setText(t('send-download-progress-decrypting'));
               } else {
                 mainTracker.setText(message);
               }
