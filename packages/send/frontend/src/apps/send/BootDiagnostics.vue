@@ -24,6 +24,7 @@ import {
   type BootStepId,
   type BootStepOutcome,
 } from '@send-frontend/lib/bootDiagnostics';
+import { useL10n } from '@send-frontend/l10n';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
 import { computed, onMounted, reactive, ref } from 'vue';
 
@@ -40,6 +41,8 @@ const props = defineProps<{
    */
   preload?: () => void;
 }>();
+
+const { t } = useL10n();
 
 type StepId = BootStepId | 'app';
 type StepStatus = 'pending' | 'running' | BootStepOutcome;
@@ -192,7 +195,7 @@ onMounted(runDiagnostics);
         <p>{{ failure.body }}</p>
         <div class="actions">
           <button type="button" data-testid="boot-retry" @click="retry">
-            Retry
+            {{ t('send-boot-button-retry') }}
           </button>
           <button
             v-if="canContinue"

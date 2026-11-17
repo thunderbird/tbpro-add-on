@@ -28,3 +28,26 @@ describe('CLIENT_MESSAGES upload keys', () => {
     expect(CLIENT_MESSAGES.STORAGE_LIMIT_EXCEEDED).toMatch(/^Mit dieser Datei/);
   });
 });
+
+describe('CLIENT_MESSAGES sign-in and startup keys', () => {
+  beforeEach(() => resetL10n());
+
+  it('keep the English titles and follow the locale on every read', async () => {
+    expect(CLIENT_MESSAGES.COOKIES_BLOCKED_TITLE).toBe(
+      'Thunderbird is blocking cookies for Send'
+    );
+    expect(CLIENT_MESSAGES.STORAGE_BLOCKED_TITLE).toBe(
+      'Thunderbird is blocking storage for Send'
+    );
+    expect(CLIENT_MESSAGES.APP_LOAD_FAILED_TITLE).toBe('Send could not start');
+    expect(CLIENT_MESSAGES.APP_LOAD_FAILED_BODY).toContain('Choose “Retry”');
+    await setLocale(['de']);
+    expect(CLIENT_MESSAGES.COOKIES_BLOCKED_TITLE).toBe(
+      'Thunderbird blockiert Cookies für Send'
+    );
+    expect(CLIENT_MESSAGES.SHOULD_LOG_IN).toMatch(/^Sie müssen sich/);
+    expect(CLIENT_MESSAGES.APP_LOAD_FAILED_BODY).toContain(
+      'Wählen Sie „Erneut versuchen“'
+    );
+  });
+});
