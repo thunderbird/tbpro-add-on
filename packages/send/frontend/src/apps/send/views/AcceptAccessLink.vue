@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { useL10n } from '@send-frontend/l10n';
 import { onMounted, ref } from 'vue';
 
 import { getCanRetry } from '@send-frontend/lib/validations';
@@ -8,6 +9,7 @@ import BtnComponent from '../elements/BtnComponent.vue';
 import DownloadTemplate from './DownloadTemplate.vue';
 
 const emit = defineEmits(['acceptAccessLinkComplete']);
+const { t } = useL10n();
 
 const password = ref('');
 const error = ref('');
@@ -19,15 +21,9 @@ const route = useRoute();
 
 const sharingStore = useSharingStore();
 
-const INCORRECT_MESSAGE = 'This password is incorrect';
-const LOCKED_MESSAGE =
-  'This link has been locked after too many incorrect attempts.';
-
 function attemptsText(attemptsRemaining?: number) {
   if (!attemptsRemaining) return '';
-  return attemptsRemaining === 1
-    ? '1 attempt remaining.'
-    : `${attemptsRemaining} attempts remaining.`;
+  return t('send-access-attempts-remaining', { count: attemptsRemaining });
 }
 
 async function accept() {
@@ -39,7 +35,7 @@ async function accept() {
   const canRetry = await getCanRetry(linkId);
 
   if (!isValid || !canRetry) {
-    error.value = 'Access Link is no longer valid';
+    error.value = t('send-access-error-invalid');
     isLocked.value = true;
     return;
   }
@@ -51,19 +47,19 @@ async function accept() {
         emit('acceptAccessLinkComplete');
         break;
       case 'locked':
-        error.value = LOCKED_MESSAGE;
+        error.value = t('send-access-error-locked');
         isLocked.value = true;
         break;
       case 'incorrect':
-        error.value = INCORRECT_MESSAGE;
+        error.value = t('send-access-error-incorrect');
         attemptsHint.value = attemptsText(result.attemptsRemaining);
         break;
       default:
-        error.value = INCORRECT_MESSAGE;
+        error.value = t('send-access-error-incorrect');
     }
   } catch (e) {
     console.error(e);
-    error.value = 'An error occurred while processing your request';
+    error.value = t('send-access-error-generic');
   }
 }
 
@@ -81,11 +77,11 @@ onMounted(() => {
 
 <template>
   <DownloadTemplate>
-    <h3>This file is password protected</h3>
+    <h3>{{ t('send-access-title') }}</h3>
     <form class="flex gap-2 flex-col" @submit.prevent="accept">
       <label class="">
         <div class="flex gap-1">
-          <p class="passwordText">Password</p>
+          <p class="passwordText">{{ t('send-access-password-label') }}</p>
           <span class="critical">*</span>
         </div>
 
@@ -99,7 +95,7 @@ onMounted(() => {
           :disabled="isLocked"
         />
       </label>
-      <p class="prompt">Enter the password provided by the sender</p>
+      <p class="prompt">{{ t('send-access-password-prompt') }}</p>
 
       <div
         v-if="error"
@@ -121,7 +117,7 @@ onMounted(() => {
           class="btn-primary"
           type="submit"
           :disabled="isLocked"
-          >Continue</BtnComponent
+          >{{ t('send-access-button-continue') }}</BtnComponent
         >
       </div>
     </form>
