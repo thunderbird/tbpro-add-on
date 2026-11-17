@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { useL10n } from '@send-frontend/l10n';
 import { computed, ref, watch } from 'vue';
 
 import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
@@ -27,6 +28,7 @@ import { useModal, useModalSlot } from 'vue-final-modal';
 import { trpc } from '@send-frontend/lib/trpc';
 import { useMutation } from '@tanstack/vue-query';
 
+const { t } = useL10n();
 const folderStore = useFolderStore();
 const sharingStore = useSharingStore();
 
@@ -44,7 +46,9 @@ async function onDeleteConfirm() {
 const { open: openDeleteModal, close: closeDeleteModal } = useModal({
   component: DeleteModal,
   attrs: {
-    title: 'Delete File?',
+    get title() {
+      return t('send-files-delete-file-title');
+    },
   },
   slots: {
     default: useModalSlot({
@@ -141,8 +145,7 @@ Note about shareOnly containers.
 
 <template>
   <section v-if="!canDisplay">
-    This file has been reported for abuse. Please contact support if you believe
-    this is a mistake.
+    {{ t('send-files-reported') }}
   </section>
 
   <div
@@ -154,7 +157,7 @@ Note about shareOnly containers.
       <button
         class="self-end -mt-1 -mr-1 p-1 text-gray-500 hover:text-gray-800"
         data-testid="close-file-info"
-        aria-label="Close file info"
+        :aria-label="t('send-files-close-file-info')"
         @click="closePanel"
       >
         <IconX class="w-5 h-5" />
@@ -179,7 +182,7 @@ Note about shareOnly containers.
     </header>
     <section class="form-section">
       <label class="form-label">
-        <span class="label-text">Link Expires</span>
+        <span class="label-text">{{ t('send-share-expiration-label') }}</span>
         <select
           :value="selectedExpiration"
           @change="
@@ -187,11 +190,21 @@ Note about shareOnly containers.
               .value as ExpirationOption
           "
         >
-          <option value="never">Never expire</option>
-          <option value="24hours">Expire in 24 hours</option>
-          <option value="14days">Expire in 14 days (default)</option>
-          <option value="30days">Expire in 30 days</option>
-          <option value="custom">Custom date and time</option>
+          <option value="never">
+            {{ t('send-upload-expiration-never') }}
+          </option>
+          <option value="24hours">
+            {{ t('send-upload-expiration-hours', { count: 24 }) }}
+          </option>
+          <option value="14days">
+            {{ t('send-upload-expiration-days-default', { count: 14 }) }}
+          </option>
+          <option value="30days">
+            {{ t('send-upload-expiration-days', { count: 30 }) }}
+          </option>
+          <option value="custom">
+            {{ t('send-share-expiration-custom') }}
+          </option>
         </select>
         <input
           v-if="selectedExpiration === 'custom'"
@@ -200,7 +213,7 @@ Note about shareOnly containers.
         />
       </label>
       <label class="form-label password-field">
-        <span class="label-text">Password</span>
+        <span class="label-text">{{ t('send-share-password-label') }}</span>
         <input
           v-model="password"
           data-testid="password-input"
@@ -221,10 +234,10 @@ Note about shareOnly containers.
       @click="shareIndividualFile"
     >
       <div v-if="isLoading">
-        <p>Creating...</p>
+        <p>{{ t('send-share-creating') }}</p>
       </div>
       <div v-else class="flex justify-center items-center gap-2">
-        <span>Create Share Link</span>
+        <span>{{ t('send-share-button-create-file-link') }}</span>
         <IconLink class="icon" />
       </div>
     </Btn>
@@ -245,21 +258,27 @@ Note about shareOnly containers.
         v-if="folderStore.selectedFile.createdAt"
         class="flex flex-col gap-1"
       >
-        <span class="text-xs font-semibold text-gray-600">Created</span>
+        <span class="text-xs font-semibold text-gray-600">{{
+          t('send-files-created')
+        }}</span>
         <div class="text-xs">{{ folderStore.selectedFile.createdAt }}</div>
       </label>
       <label
         v-if="folderStore.selectedFile.updatedAt"
         class="flex flex-col gap-1"
       >
-        <span class="text-xs font-semibold text-gray-600">Modified</span>
+        <span class="text-xs font-semibold text-gray-600">{{
+          t('send-files-modified')
+        }}</span>
         <div class="text-xs">{{ folderStore.selectedFile.updatedAt }}</div>
       </label>
       <label
         v-if="folderStore.selectedFile.upload.expired"
         class="flex flex-col gap-1"
       >
-        <span class="text-xs font-semibold text-red-600">Expired</span>
+        <span class="text-xs font-semibold text-red-600">{{
+          t('send-files-expired')
+        }}</span>
       </label>
       <div class="flex justify-end gap-2">
         <Btn v-if="!folderStore.selectedFile.upload.expired"
