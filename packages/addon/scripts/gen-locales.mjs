@@ -33,7 +33,7 @@ export function folderFor(locale) {
   return locale === DEFAULT_LOCALE ? 'en' : locale.replaceAll('-', '_');
 }
 
-/** `addon-menu-sign-in-to` → `menuSignInTo`. */
+/** `addon-menu-sign-in` → `menuSignIn`. */
 export function keyFor(id) {
   return id
     .slice(PREFIX.length)
