@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const { captureMessage } = vi.hoisted(() => ({ captureMessage: vi.fn() }));
 vi.mock('@sentry/vue', () => ({ captureMessage }));
 
-import { resetBundleCache } from './bundles';
+import { loadBundle, resetBundleCache } from './bundles';
 import {
   AVAILABLE_LOCALES,
   DEFAULT_LOCALE,
@@ -94,6 +94,38 @@ describe('t / setLocale', () => {
     warn.mockRestore();
   });
 
+  it('does not call English a fallback when English is the first choice', async () => {
+    await setLocale(['en-US', 'de']);
+    expect(fallbackChain.value.length).toBeGreaterThan(1);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(t('send-copy-link')).toBe('Copy link');
+    const reports = import.meta.env.DEV
+      ? warn.mock.calls.filter(([m]) => String(m).includes('fell back'))
+      : captureMessage.mock.calls;
+    expect(reports).toHaveLength(0);
+    warn.mockRestore();
+  });
+
+  it('renders the text and reports when a message is called without its variable', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const text = t('send-upload-progress');
+    // Fluent renders the missing variable by name instead of failing; the
+    // user never sees the raw id, and the developer gets one report.
+    expect(text).not.toBe('send-upload-progress');
+    expect(text).toContain('Uploading');
+    const reports = import.meta.env.DEV
+      ? warn.mock.calls.filter(([m]) => String(m).includes('format error'))
+      : captureMessage.mock.calls;
+    expect(reports).toHaveLength(1);
+    t('send-upload-progress');
+    expect(
+      import.meta.env.DEV
+        ? warn.mock.calls.filter(([m]) => String(m).includes('format error'))
+        : captureMessage.mock.calls
+    ).toHaveLength(1);
+    warn.mockRestore();
+  });
+
   it('keeps the bundles as the original objects', async () => {
     await setLocale(['de']);
     const { defaultBundle } = await import('./bundles');
@@ -119,6 +151,14 @@ describe('t / setLocale', () => {
     expect(document.documentElement.dir).toBe('ltr');
     await setLocale(['en-US']);
     expect(document.documentElement.lang).toBe('en-US');
+  });
+
+  it('forgets a failed bundle load so the next call can retry', async () => {
+    const first = loadBundle('xx');
+    await expect(first).rejects.toThrow('no resource');
+    const second = loadBundle('xx');
+    expect(second).not.toBe(first);
+    await expect(second).rejects.toThrow('no resource');
   });
 
   it('ignores an unknown locale and keeps English', async () => {

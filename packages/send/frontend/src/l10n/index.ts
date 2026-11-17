@@ -13,9 +13,10 @@ export {
 
 export type L10nArgs = Record<string, FluentVariable>;
 
-// Bundles in fallback order; the last one is always en-US. Shallow so the
-// bundles stay the original objects (a deep ref would proxy them and break
-// identity checks and FluentBundle internals).
+// Bundles in the user's preference order as negotiated; en-US is always
+// present but may sit anywhere in the list. Shallow so the bundles stay the
+// original objects (a deep ref would proxy them and break identity checks
+// and FluentBundle internals).
 const chain = shallowRef<FluentBundle[]>([defaultBundle]);
 const reported = new Set<string>();
 
@@ -25,13 +26,15 @@ export const locale = computed(
 );
 export const fallbackChain = shallowReadonly(chain);
 
-function report(id: string, detail: string) {
-  if (reported.has(id)) return;
-  reported.add(id);
+/** Reports each distinct problem once per session. */
+export function report(detail: string, id: string) {
+  const key = `${detail}: ${id}`;
+  if (reported.has(key)) return;
+  reported.add(key);
   if (import.meta.env.DEV) {
-    console.warn(`[l10n] ${detail}: ${id}`);
+    console.warn(`[l10n] ${key}`);
   } else {
-    Sentry.captureMessage(`l10n: ${detail}: ${id}`, { level: 'warning' });
+    Sentry.captureMessage(`l10n: ${key}`, { level: 'warning' });
   }
 }
 
@@ -40,26 +43,38 @@ function formatFrom(bundle: FluentBundle, id: string, args?: L10nArgs) {
   if (!message?.value) return null;
   const errors: Error[] = [];
   const text = bundle.formatPattern(message.value, args, errors);
-  // A format error or an empty pattern is treated as missing so the next
-  // bundle gets a turn; an empty string may never render.
-  if (errors.length || text.trim() === '') return null;
-  return text;
+  // An empty pattern is treated as missing so the next bundle gets a turn; an
+  // empty string may never render.
+  if (text.trim() === '') return null;
+  return { text, errors };
 }
 
 /**
- * Formats a message through the fallback chain, ending at en-US. Usable from
- * anywhere (stores, background scripts), not only components.
+ * Formats a message through the user's locales in preference order; en-US is
+ * always in the list, so a message present in English always renders. Usable
+ * from anywhere (stores, background scripts), not only components.
  */
 export function t(id: string, args?: L10nArgs): string {
-  for (const bundle of chain.value) {
-    const text = formatFrom(bundle, id, args);
-    if (text !== null) {
-      if (bundle !== defaultBundle || chain.value.length === 1) return text;
-      report(id, `fell back to ${DEFAULT_LOCALE}`);
-      return text;
+  const bundles = chain.value;
+  for (let i = 0; i < bundles.length; i++) {
+    const found = formatFrom(bundles[i], id, args);
+    if (!found) continue;
+    const from = bundles[i].locales[0];
+    if (found.errors.length) {
+      // Fluent still produces text (a missing variable renders as its name),
+      // which beats showing the raw id. The cause is a caller bug — a missing
+      // argument or a broken translation — so surface it rather than trying
+      // the next bundle, where the same call would fail the same way.
+      report(
+        `format error in ${from}: ${found.errors.map((e) => e.message).join('; ')}`,
+        id
+      );
     }
+    // Only a match outside the user's first choice is a fallback.
+    if (i > 0) report(`fell back to ${from} from ${bundles[0].locales[0]}`, id);
+    return found.text;
   }
-  report(id, 'missing in every bundle');
+  report('missing in every bundle', id);
   return id;
 }
 
@@ -72,7 +87,12 @@ export async function setLocale(
 ): Promise<string> {
   const locales = negotiate(requested);
   const bundles = await Promise.all(
-    locales.map((code) => loadBundle(code).catch(() => null))
+    locales.map((code) =>
+      loadBundle(code).catch((error: unknown) => {
+        report(`failed to load locale: ${String(error)}`, code);
+        return null;
+      })
+    )
   );
   chain.value = bundles.filter((b): b is FluentBundle => b !== null);
   const active = locale.value;

@@ -27,9 +27,16 @@ export function loadBundle(locale: string): Promise<FluentBundle> {
   let pending = cache.get(locale);
   if (!pending) {
     const loader = lazySources[`./locales/${locale}/send.ftl`];
-    pending = loader
-      ? loader().then((source) => makeBundle(locale, source))
-      : Promise.reject(new Error(`[l10n] no resource for locale ${locale}`));
+    pending = (
+      loader
+        ? loader().then((source) => makeBundle(locale, source))
+        : Promise.reject(new Error(`[l10n] no resource for locale ${locale}`))
+    ).catch((error: unknown) => {
+      // A failed load (chunk error, offline) must not be cached, or the
+      // locale would stay unavailable until reload; the next call retries.
+      cache.delete(locale);
+      throw error;
+    });
     cache.set(locale, pending);
   }
   return pending;
