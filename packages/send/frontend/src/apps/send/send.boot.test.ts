@@ -120,4 +120,23 @@ describe('send.js two-stage boot', () => {
     query('boot-continue')?.click();
     await vi.waitFor(() => expect(startApp).toHaveBeenCalledTimes(1));
   });
+
+  it('shows the startup help in the browser language', async () => {
+    stubBackend(false);
+    const languages = vi
+      .spyOn(navigator, 'languages', 'get')
+      .mockReturnValue(['de']);
+    try {
+      await loadEntry();
+      await vi.waitFor(() =>
+        expect(query('boot-failure')?.textContent).toContain(
+          'Thunderbird blockiert Cookies für Send'
+        )
+      );
+      expect(query('boot-retry')?.textContent?.trim()).toBe('Erneut versuchen');
+    } finally {
+      languages.mockRestore();
+      document.documentElement.lang = '';
+    }
+  });
 });
