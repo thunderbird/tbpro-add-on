@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
+import { useL10n } from '@send-frontend/l10n';
 import { useClipboard } from '@vueuse/core';
 import { onMounted, ref, watch } from 'vue';
 
@@ -11,6 +12,7 @@ password it lives only in the URL fragment), so this is the only place the
 full shareable URL is ever displayed. Once the owner navigates away it cannot
 be recovered; the links list below only shows metadata.
 */
+const { t } = useL10n();
 const props = defineProps<{
   url: string;
   hasPassword: boolean;
@@ -30,7 +32,7 @@ watch(() => props.url, focusUrl);
 
 <template>
   <section class="new-link" data-testid="new-access-link">
-    <span class="label-text">Your new link</span>
+    <span class="label-text">{{ t('send-share-new-link-label') }}</span>
     <div class="flex gap-2 items-center">
       <input
         ref="urlInput"
@@ -39,7 +41,7 @@ watch(() => props.url, focusUrl);
         :value="url"
         class="flex-1 min-w-0"
         data-testid="new-access-link-url"
-        aria-label="New share link"
+        :aria-label="t('send-share-new-link-field')"
         @focus="($event.target as HTMLInputElement).select()"
       />
       <Btn
@@ -48,12 +50,11 @@ watch(() => props.url, focusUrl);
         data-testid="copy-new-access-link"
         @click="copy(url)"
       >
-        {{ copied ? 'Copied!' : 'Copy' }}
+        {{ t('send-share-copy-button', { state: copied ? 'copied' : 'idle' }) }}
       </Btn>
     </div>
     <p v-if="!hasPassword" class="notice" data-testid="new-access-link-notice">
-      This link is only viewable to you now and cannot be retrieved if lost. You
-      can generate more links at any time.
+      {{ t('send-share-new-link-notice') }}
     </p>
   </section>
 </template>
