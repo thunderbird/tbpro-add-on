@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { useL10n } from '@send-frontend/l10n';
 import { onMounted, ref, watch } from 'vue';
 
 const emit = defineEmits(['renameComplete']);
+const { t } = useL10n();
 
 const folderStore = useFolderStore();
 
@@ -50,7 +52,9 @@ onMounted(() => {
           @keydown.esc="resetForm"
         />
         <div class="flex flex-row justify-end">
-          <Btn @click="updateFolderName">Rename</Btn>
+          <Btn @click="updateFolderName">{{
+            t('send-files-button-rename')
+          }}</Btn>
         </div>
       </label>
     </form>

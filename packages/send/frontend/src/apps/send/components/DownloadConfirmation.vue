@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ErrorGeneric from '@send-frontend/apps/common/errors/ErrorGeneric.vue';
+import { useL10n } from '@send-frontend/l10n';
 import { ref } from 'vue';
 import ProgressBar from './ProgressBar.vue';
 import {
@@ -12,6 +13,7 @@ const { closefn, confirm } = defineProps<{
   confirm: () => Promise<boolean | void>;
 }>();
 
+const { t } = useL10n();
 const isDownloading = ref(false);
 const isError = ref<string>();
 
@@ -39,22 +41,16 @@ const onConfirm = async () => {
     </div>
 
     <div v-else class="confirmation-content">
-      <h2 class="title">Before you download</h2>
+      <h2 class="title">{{ t('send-download-confirm-title') }}</h2>
 
       <div class="disclaimer">
-        <p>You're about to download a file through Thunderbird Send.</p>
-        <p>
-          Files sent with Send are end-to-end encrypted and aren't scanned for
-          viruses or malware.
-        </p>
+        <p>{{ t('send-download-confirm-intro') }}</p>
+        <p>{{ t('send-download-confirm-not-scanned') }}</p>
         <ul>
-          <li>Only download files you trust.</li>
-          <li>Use your own security software to protect your device.</li>
+          <li>{{ t('send-download-confirm-trust') }}</li>
+          <li>{{ t('send-download-confirm-security') }}</li>
         </ul>
-        <p>
-          MZLA Technologies is not responsible for any issues resulting from
-          this download.
-        </p>
+        <p>{{ t('send-download-confirm-liability') }}</p>
       </div>
 
       <button
@@ -74,13 +70,15 @@ const onConfirm = async () => {
           <polyline points="7 10 12 15 17 10"></polyline>
           <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
-        Download
+        {{ t('send-download-button') }}
       </button>
 
       <div class="footer-links">
-        <a :href="SUPPORT_URL" class="link">Support</a>
+        <a :href="SUPPORT_URL" class="link">{{ t('send-download-support') }}</a>
         <span class="separator">•</span>
-        <a :href="PRIVACY_POLICY_URL" class="link">Privacy Policy</a>
+        <a :href="PRIVACY_POLICY_URL" class="link">{{
+          t('send-download-privacy-policy')
+        }}</a>
       </div>
     </div>
   </div>

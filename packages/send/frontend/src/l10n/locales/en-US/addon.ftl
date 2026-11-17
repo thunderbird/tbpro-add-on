@@ -1,8 +1,8 @@
 # Thundermail add-on shell — English (United States) source strings.
 # Menu entries plus the manifest strings (add-on name, description, cloud file
 # provider name). packages/addon/scripts/gen-locales.mjs turns every addon-*
-# message into _locales/<locale>/messages.json (addon-menu-sign-in-to →
-# menuSignInTo); those messages may use terms but no variables or selectors.
+# message into _locales/<locale>/messages.json (addon-menu-sign-in →
+# menuSignIn); those messages may use terms but no variables or selectors.
 
 ## Manifest
 
@@ -15,8 +15,8 @@ addon-thunderbird-send = { -send-brand }
 
 ## App menu
 
-# Label of the menu entry that signs the user in; the product name follows it.
-addon-menu-sign-in-to = Sign in to
+# Label of the menu entry that signs the user in.
+addon-menu-sign-in = Sign in to { -thundermail-brand }
 # Menu entry that signs the user out.
 addon-menu-sign-out = Sign out
 # Tooltip of the menu entry while the user is signed in.

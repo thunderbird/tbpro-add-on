@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import { BaseButton } from '@thunderbirdops/services-ui';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
@@ -6,6 +7,7 @@ import { useBackupAndRestore } from '../composables/useBackupAndRestore';
 import { useNavigation } from '../composables/useNavigation';
 import KeysTemplate from './KeysTemplate.vue';
 
+const { t } = useL10n();
 const router = useRouter();
 const { backupData } = useBackupAndRestore();
 const { filesLink } = useNavigation();
@@ -23,16 +25,16 @@ function handleNavigateToManageFiles() {
 
 <template>
   <KeysTemplate
-    ><h2 class="title">Manage Files</h2>
+    ><h2 class="title">{{ t('send-dashboard-manage-files-title') }}</h2>
     <p class="description">
-      Open or manage your encrypted file storage in one secure place.
+      {{ t('send-dashboard-manage-files-description') }}
     </p>
     <BaseButton
       :disabled="!canNavigateToManageFiles"
       class="recover-button"
       @click="handleNavigateToManageFiles"
     >
-      Access Your Files
+      {{ t('send-dashboard-manage-files-button') }}
     </BaseButton>
   </KeysTemplate>
 </template>

@@ -9,6 +9,7 @@ import useFolderStore, {
 import { useStatusStore } from '@send-frontend/apps/send/stores/status-store';
 import { useFolderQuery } from '@send-frontend/lib/queries/folderQueries';
 import '@thunderbirdops/services-ui/style.css';
+import { useL10n } from '@send-frontend/l10n';
 
 import LoadingComponent from '@send-frontend/apps/common/LoadingComponent.vue';
 import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
@@ -33,6 +34,7 @@ import { ItemResponse } from '../stores/folder-store.types';
 import DeleteConfirmation from './DeleteConfirmation.vue';
 import DownloadConfirmation from './DownloadConfirmation.vue';
 
+const { t } = useL10n();
 const folderStore = useFolderStore();
 const statusStore = useStatusStore();
 const { isRouterLoading } = storeToRefs(statusStore);
@@ -110,7 +112,9 @@ const { open, close: closefn } = useModal({
 const { open: openDeleteModal, close: closeDeleteModal } = useModal({
   component: DeleteModal,
   attrs: {
-    title: 'Delete Item?',
+    get title() {
+      return t('send-files-delete-item-title');
+    },
   },
   slots: {
     default: useModalSlot({
@@ -257,7 +261,7 @@ function handleFolderClick(uuid: string) {
 
 <template>
   <div class="w-full flex flex-col gap-3">
-    <h2 class="title">Your Files</h2>
+    <h2 class="title">{{ t('send-files-title') }}</h2>
     <span
       v-if="folderStore.rootFolder?.items.length"
       data-testid="file-count"
@@ -276,12 +280,16 @@ function handleFolderClick(uuid: string) {
       <LoadingComponent />
     </div>
     <div v-else-if="folderQuery.isError.value" class="p-4 text-red-600">
-      Error loading folder: {{ folderQuery.error.value?.message }}
+      {{
+        t('send-files-error-loading', {
+          message: folderQuery.error.value?.message ?? '',
+        })
+      }}
       <button
         class="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 rounded"
         @click="folderQuery.refetch()"
       >
-        Retry
+        {{ t('send-files-button-retry') }}
       </button>
     </div>
     <div v-else>
@@ -292,8 +300,12 @@ function handleFolderClick(uuid: string) {
         <div class="rounded-full border-2 border-gray-500 p-3">
           <SendIconBlack class="w-8 h-8 text-gray-500" />
         </div>
-        <p class="font-semibold text-gray-700 mt-1">No files</p>
-        <p class="text-sm text-gray-500">Uploaded files will appear here.</p>
+        <p class="font-semibold text-gray-700 mt-1">
+          {{ t('send-files-empty-title') }}
+        </p>
+        <p class="text-sm text-gray-500">
+          {{ t('send-files-empty-description') }}
+        </p>
       </div>
       <table
         v-else
@@ -302,7 +314,9 @@ function handleFolderClick(uuid: string) {
         <thead>
           <tr>
             <th class="border-r border-b border-gray-300"></th>
-            <th class="border-r border-b border-gray-300">Name</th>
+            <th class="border-r border-b border-gray-300">
+              {{ t('send-files-column-name') }}
+            </th>
             <th v-if="!isMobile" class="border-b border-gray-300"></th>
           </tr>
         </thead>
@@ -336,7 +350,11 @@ function handleFolderClick(uuid: string) {
                 {{ folder.name }}</router-link
               >
               <div class="text-sm">
-                Last modified {{ dayjs().to(dayjs(folder.updatedAt)) }}
+                {{
+                  t('send-files-last-modified', {
+                    time: dayjs().to(dayjs(folder.updatedAt)),
+                  })
+                }}
               </div>
             </FolderTableRowCell>
             <FolderTableRowCell
@@ -391,7 +409,11 @@ function handleFolderClick(uuid: string) {
               <FolderTableRowCell>
                 <div class="max-md:break-all">{{ item.name }}</div>
                 <div class="text-sm">
-                  Last modified {{ dayjs().to(dayjs(item.updatedAt)) }}
+                  {{
+                    t('send-files-last-modified', {
+                      time: dayjs().to(dayjs(item.updatedAt)),
+                    })
+                  }}
                 </div>
                 <ExpiryBadge
                   v-if="item.upload.daysToExpiry !== undefined"

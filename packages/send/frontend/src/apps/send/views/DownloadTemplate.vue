@@ -1,8 +1,12 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
+
+const { t } = useL10n();
+</script>
 
 <template>
   <main class="flex flex-col gap-2">
-    <h1>Your file is ready to download securely</h1>
+    <h1>{{ t('send-download-ready-title') }}</h1>
     <slot></slot>
   </main>
 </template>

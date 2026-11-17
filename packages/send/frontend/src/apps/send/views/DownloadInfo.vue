@@ -1,16 +1,20 @@
 <script setup>
+import { useL10n } from '@send-frontend/l10n';
 import prettyBytes from 'pretty-bytes';
 import { computed, ref } from 'vue';
 import ReportContent from '../components/ReportContent.vue';
 
+const { t } = useL10n();
+
+// The fallback names are applied in fileData so they follow the locale.
 const props = defineProps({
   sender: {
     type: String,
-    default: 'Unknown sender',
+    default: undefined,
   },
   filename: {
     type: String,
-    default: 'Unknown file',
+    default: undefined,
   },
   filesize: {
     type: Number, // size in bytes
@@ -46,11 +50,17 @@ const props = defineProps({
 });
 
 const fileData = computed(() => ({
-  sender: props.sender,
-  filename: props.filename,
+  sender:
+    props.sender === undefined
+      ? t('send-download-unknown-sender')
+      : props.sender,
+  filename:
+    props.filename === undefined
+      ? t('send-download-unknown-file')
+      : props.filename,
   filesize: prettyBytes(props.filesize),
   linkExpiration: formatExpiration(props.daysToExpiry, props.createdAt),
-  hash: props.hash || 'Not available',
+  hash: props.hash || t('send-download-not-available'),
 }));
 
 function formatExpiration(daysToExpiry, createdAt) {
@@ -75,7 +85,7 @@ function formatExpiration(daysToExpiry, createdAt) {
     });
   }
 
-  return 'Not available';
+  return t('send-download-not-available');
 }
 
 const showChecksum = ref(false);
@@ -97,22 +107,22 @@ const copyToClipboard = async () => {
 <template>
   <div class="file-info-container">
     <div class="file-info-card">
-      <h2 class="section-title">FILE INFORMATION</h2>
+      <h2 class="section-title">{{ t('send-download-file-information') }}</h2>
 
       <div class="info-row">
-        <span class="info-label">Sender</span>
+        <span class="info-label">{{ t('send-download-sender') }}</span>
         <a :href="`mailto:${fileData.sender}`" class="info-value link">
           {{ fileData.sender }}
         </a>
       </div>
 
       <div class="info-row">
-        <span class="info-label">Filename</span>
+        <span class="info-label">{{ t('send-download-filename') }}</span>
         <span class="info-value">{{ fileData.filename }}</span>
       </div>
 
       <div class="info-row">
-        <span class="info-label">Filesize</span>
+        <span class="info-label">{{ t('send-download-filesize') }}</span>
         <span class="info-value">{{ fileData.filesize }}</span>
       </div>
       <!-- 
@@ -127,7 +137,7 @@ const copyToClipboard = async () => {
           :aria-expanded="showChecksum"
           @click="showChecksum = !showChecksum"
         >
-          View checksum
+          {{ t('send-download-view-checksum') }}
           <svg
             class="chevron"
             :class="{ rotated: showChecksum }"
@@ -149,12 +159,18 @@ const copyToClipboard = async () => {
         <transition name="slide">
           <div v-if="showChecksum" class="checksum-content">
             <div class="checksum-row">
-              <span class="checksum-label">Hash (SHA256)</span>
+              <span class="checksum-label">{{
+                t('send-download-checksum-label')
+              }}</span>
               <div class="checksum-value-container">
                 <code class="checksum-value">{{ fileData.hash }}</code>
                 <button
                   class="copy-button"
-                  :title="copied ? 'Copied!' : 'Copy to clipboard'"
+                  :title="
+                    t('send-download-copy-checksum', {
+                      state: copied ? 'copied' : 'idle',
+                    })
+                  "
                   @click="copyToClipboard"
                 >
                   <svg
@@ -213,7 +229,7 @@ const copyToClipboard = async () => {
           <polyline points="7 10 12 15 17 10"></polyline>
           <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
-        Download
+        {{ t('send-download-button') }}
       </button>
       <ReportContent :upload-id="id" :container-id="containerId" />
     </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { useL10n } from '@send-frontend/l10n';
 
 import Btn from '@send-frontend/apps/send/elements/BtnComponent.vue';
 import { useConfigStore, useStatusStore } from '@send-frontend/stores';
@@ -9,6 +10,7 @@ import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
+const { t } = useL10n();
 const folderStore = useFolderStore();
 const statusStore = useStatusStore();
 const { isRouterLoading } = storeToRefs(statusStore);
@@ -48,7 +50,7 @@ const shouldShowButton = computed(() => {
   <div v-if="shouldShowButton">
     <Btn primary data-testid="new-folder-button" @click="mutateAsync">
       <IconPlus class="w-5 h-5 stroke-2" />
-      New Folder
+      {{ t('send-files-button-new-folder') }}
     </Btn>
   </div>
 </template>
