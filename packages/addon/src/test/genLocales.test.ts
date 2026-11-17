@@ -22,7 +22,7 @@ const manifest = fs.readFileSync(
 
 describe('gen-locales', () => {
   it('turns Fluent ids into messages.json keys', () => {
-    expect(keyFor('addon-menu-sign-in-to')).toBe('menuSignInTo');
+    expect(keyFor('addon-menu-sign-in')).toBe('menuSignIn');
     expect(keyFor('addon-thunderbird-pro')).toBe('thunderbirdPro');
   });
 
@@ -60,7 +60,7 @@ describe('gen-locales', () => {
         'extensionDescription',
         'thunderbirdPro',
         'thunderbirdSend',
-        'menuSignInTo',
+        'menuSignIn',
         'menuSignOut',
         'menuSignedInTooltip',
         'menuManageDashboard',

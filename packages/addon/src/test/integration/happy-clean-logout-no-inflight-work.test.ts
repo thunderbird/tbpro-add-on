@@ -46,7 +46,10 @@ describe('Happy path: clean logout with no in-flight work', () => {
     expect(ctx.browser.TBProMenu.clear).toHaveBeenCalledWith('root');
     expect(ctx.browser.TBProMenu.update).toHaveBeenCalledWith(
       'root',
-      expect.objectContaining({ secondaryTitle: 'Thundermail' })
+      expect.objectContaining({
+        title: 'Sign in to Thundermail',
+        secondaryTitle: '',
+      })
     );
 
     // The logout page was opened, after the tab cleanup (matching the
