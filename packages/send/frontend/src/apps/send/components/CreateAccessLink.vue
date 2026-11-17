@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import NewAccessLink from '@send-frontend/apps/send/components/NewAccessLink.vue';
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { useL10n } from '@send-frontend/l10n';
 import { ExpirationOption, getExpirationDate } from '@send-frontend/lib/utils';
 import { ref, watch } from 'vue';
 
@@ -10,6 +11,7 @@ import { useClipboard, useDebounceFn } from '@vueuse/core';
 import { useMutation } from '@tanstack/vue-query';
 import { trpc } from '@send-frontend/lib/trpc';
 
+const { t } = useL10n();
 const sharingStore = useSharingStore();
 
 const props = defineProps<{
@@ -42,8 +44,7 @@ const { mutate } = useMutation({
     // Display-only failure: the link itself works, it just stays listed as
     // password-protected until the flag is corrected.
     console.error('Could not mark access link as passwordless', error);
-    errorMessage.value =
-      'The link was created, but its password status could not be updated.';
+    errorMessage.value = t('send-share-error-passwordless-flag');
   },
 });
 
@@ -58,7 +59,7 @@ async function newAccessLink() {
 
     if (!url) {
       emit('createAccessLinkError');
-      errorMessage.value = 'Failed to create access link. Please try again.';
+      errorMessage.value = t('send-share-error-create');
       isLoading.value = false;
       return;
     }
@@ -81,7 +82,7 @@ async function newAccessLink() {
   } catch (error) {
     emit('createAccessLinkError');
     errorMessage.value =
-      error instanceof Error ? error.message : 'An unexpected error occurred.';
+      error instanceof Error ? error.message : t('send-share-error-unexpected');
     isLoading.value = false;
   }
 }
@@ -101,7 +102,7 @@ watch(
 <template>
   <section class="form-section">
     <label class="form-label">
-      <span class="label-text">Link Expires</span>
+      <span class="label-text">{{ t('send-share-expiration-label') }}</span>
       <select
         :value="selectedExpiration"
         @change="
@@ -109,11 +110,19 @@ watch(
             .value as ExpirationOption
         "
       >
-        <option value="never">Never expire</option>
-        <option value="24hours">Expire in 24 hours</option>
-        <option value="14days">Expire in 14 days (default)</option>
-        <option value="30days">Expire in 30 days</option>
-        <option value="custom">Custom date and time</option>
+        <option value="never">{{ t('send-upload-expiration-never') }}</option>
+        <option value="24hours">
+          {{ t('send-upload-expiration-hours', { count: 24 }) }}
+        </option>
+        <option value="14days">
+          {{ t('send-upload-expiration-days-default', { count: 14 }) }}
+        </option>
+        <option value="30days">
+          {{ t('send-upload-expiration-days', { count: 30 }) }}
+        </option>
+        <option value="custom">
+          {{ t('send-share-expiration-custom') }}
+        </option>
       </select>
       <input
         v-if="selectedExpiration === 'custom'"
@@ -122,7 +131,7 @@ watch(
       />
     </label>
     <label class="form-label password-field">
-      <span class="label-text">Password</span>
+      <span class="label-text">{{ t('send-share-password-label') }}</span>
       <input
         v-model="password"
         data-testid="password-input"
@@ -150,10 +159,10 @@ watch(
     @click="newAccessLink"
   >
     <div v-if="isLoading">
-      <p>Creating...</p>
+      <p>{{ t('send-share-creating') }}</p>
     </div>
     <div v-else class="flex justify-center items-center gap-2">
-      <span>Create Access Link</span>
+      <span>{{ t('send-share-button-create-folder-link') }}</span>
       <IconLink class="icon" />
     </div>
   </Btn>
