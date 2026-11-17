@@ -41,6 +41,7 @@ import init from '@send-frontend/lib/init';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 
 import { initSharedPinia } from '@send-frontend/lib/shared-pinia';
+import { requestedLocales, setLocale } from '@send-frontend/l10n';
 import { useConfigStore } from '@send-frontend/stores/index.js';
 import {
   closeLoginTab,
@@ -904,6 +905,11 @@ function initTelemetryListener() {
   // Not awaited: Sentry must never delay startup (#1278).
   void gateSentryOnTelemetry();
   await checkAndUninstallIfDeprecated();
+  // The menu is labelled once, so the locale has to be settled first; a
+  // failure leaves the en-US bundle in place.
+  await setLocale(requestedLocales('thunderbird')).catch((error) => {
+    console.warn('Could not load the UI language, using en-US:', error);
+  });
   initMenu();
   // These three only register listeners and don't depend on the login state.
   // They go before the getLoginState() read below because that read can spend

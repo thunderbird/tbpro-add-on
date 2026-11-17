@@ -84,7 +84,6 @@ function setupBrowserMock(
       create: vi.fn().mockResolvedValue(undefined),
       clear: vi.fn().mockResolvedValue(undefined),
     },
-    i18n: { getMessage: vi.fn((key: string) => key) },
   });
 }
 
@@ -543,7 +542,7 @@ describe('overlapping sign-in and sign-out', () => {
     // The sign-out came last, so the menu must be left showing the sign-in
     // prompt -- not that prompt sitting above a populated signed-in submenu.
     expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
-      secondaryTitle: 'thunderbirdPro',
+      secondaryTitle: 'Thundermail',
     });
     expect(lastCallOrder(browser.TBProMenu.clear)).toBeGreaterThan(
       lastCallOrder(browser.TBProMenu.create)
@@ -589,5 +588,29 @@ describe('overlapping sign-in and sign-out', () => {
     expect(browser.TBProMenu.create).toHaveBeenCalledTimes(
       SIGNED_IN_MENU_ITEMS * 2
     );
+  });
+});
+
+describe('menu labels', () => {
+  it('come from the Fluent bundles in the negotiated locale', async () => {
+    setupBrowserMock(undefined);
+    const { menuLoggedIn, menuLogout } = await loadMenu();
+    // Same module instance menu.ts got after loadMenu()'s resetModules().
+    const { setLocale } = await import('@send-frontend/l10n');
+
+    await menuLogout();
+    expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
+      title: 'Sign in to',
+      secondaryTitle: 'Thundermail',
+    });
+
+    await setLocale(['de']);
+    await menuLoggedIn({ username: USERNAME });
+    expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
+      tooltip: 'Bei Thundermail angemeldet',
+    });
+    expect(lastCallProps(browser.TBProMenu.create)).toMatchObject({
+      title: 'Abmelden',
+    });
   });
 });

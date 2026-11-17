@@ -4,14 +4,6 @@
 -send-brand = Thunderbird Send
 -thundermail-brand = Thundermail
 
-send-menu-sign-in-to = Anmelden bei
-send-brand-thunderbird-pro = Thunderbird Pro
-send-menu-sign-out = Abmelden
-send-menu-signed-in-tooltip = Angemeldet als { $email }
-send-menu-manage-dashboard = Thunderbird Pro verwalten
-send-menu-manage-send = Send-Dateien verwalten
-send-menu-open-appointment = Appointment öffnen
-
 send-popup-title = Mit { -send-brand } teilen
 send-upload-progress =
     { $count ->
