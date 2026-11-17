@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { useL10n } from '@send-frontend/l10n';
 import { ref } from 'vue';
 
 import DeleteModal from '@send-frontend/apps/common/modals/DeleteModal.vue';
@@ -15,6 +16,7 @@ import { IconTrash, IconX } from '@tabler/icons-vue';
 import { storeToRefs } from 'pinia';
 import { useModal, useModalSlot } from 'vue-final-modal';
 
+const { t } = useL10n();
 const folderStore = useFolderStore();
 const statusStore = useStatusStore();
 const { isRouterLoading } = storeToRefs(statusStore);
@@ -33,7 +35,9 @@ async function onDeleteConfirm() {
 const { open: openDeleteModal, close: closeDeleteModal } = useModal({
   component: DeleteModal,
   attrs: {
-    title: 'Delete Folder?',
+    get title() {
+      return t('send-files-delete-folder-title');
+    },
   },
   slots: {
     default: useModalSlot({
@@ -72,7 +76,7 @@ const showForm = ref(false);
         <button
           class="self-end -mt-1 -mr-1 p-1 text-gray-500 hover:text-gray-800"
           data-testid="close-folder-info"
-          aria-label="Close folder info"
+          :aria-label="t('send-files-close-folder-info')"
           @click="closePanel"
         >
           <IconX class="w-5 h-5" />
@@ -110,14 +114,18 @@ const showForm = ref(false);
           v-if="folderStore.selectedFolder.createdAt"
           class="flex flex-col gap-1"
         >
-          <span class="text-xs font-semibold text-gray-600">Created</span>
+          <span class="text-xs font-semibold text-gray-600">{{
+            t('send-files-created')
+          }}</span>
           <div class="text-xs">{{ folderStore.selectedFolder.createdAt }}</div>
         </label>
         <label
           v-if="folderStore.selectedFolder.updatedAt"
           class="flex flex-col gap-1"
         >
-          <span class="text-xs font-semibold text-gray-600">Modified</span>
+          <span class="text-xs font-semibold text-gray-600">{{
+            t('send-files-modified')
+          }}</span>
           <div class="text-xs">{{ folderStore.selectedFolder.updatedAt }}</div>
         </label>
         <div class="flex justify-end gap-2">
