@@ -2,8 +2,8 @@
 // stretched, bracketed) and looks for English that never went through Fluent,
 // plus horizontal overflow from the longer strings.
 //
-// Only "Log out" and "Sign out" are migrated today, so only they fail the test;
-// the rest of the denylist is logged as an `untranslated` annotation. Move
+// Only the words in MIGRATED fail the test; the rest of the denylist is
+// logged as an `untranslated` annotation. Move
 // words into MIGRATED as #1088 migrates them, until the whole list is enforced.
 //
 // Lives in tests/dev because ?locale= is honoured only by dev-server builds,
@@ -39,7 +39,7 @@ const ENGLISH_DENYLIST = [
   "Send",
   "Thank you",
 ];
-const MIGRATED = ["Log out", "Sign out"];
+const MIGRATED = ["Log out", "Sign out", "Upload", "Folder", "Create", "Link", "Password"];
 
 async function expectLocalized(page: Page, label: string) {
   const text = await page.locator("body").innerText();
