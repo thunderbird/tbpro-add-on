@@ -258,3 +258,187 @@ send-boot-storage-blocked-title = { -thunderbird-brand } blockiert den Speicher 
 send-boot-storage-blocked-body = Send bewahrt Ihren Anmeldestatus und Ihre Verschlüsselungsschlüssel im Browserspeicher auf, und Ihr Browser verweigert den Zugriff darauf. Das passiert, wenn alle Cookies blockiert werden. Öffnen Sie Einstellungen → Datenschutz & Sicherheit → Web-Inhalte, aktivieren Sie „Cookies von Websites akzeptieren“ und wählen Sie dann „{ send-boot-button-retry }“.
 send-boot-app-load-failed-title = Send konnte nicht gestartet werden
 send-boot-app-load-failed-body = Die Anwendung konnte nicht geladen werden. Wählen Sie „{ send-boot-button-retry }“, um die Seite neu zu laden. Wenn das immer wieder passiert, geben Sie uns bitte Bescheid.
+
+## Navigation und App-Rahmen (#1088, Teil 3)
+
+send-nav-dashboard = Übersicht
+send-nav-manage-files = Dateien verwalten
+send-nav-settings = Einstellungen
+send-nav-login = Anmelden
+send-nav-status = Status
+send-nav-support = Brauchen Sie Hilfe? Zum Support
+send-nav-ideas = Ideen?
+send-nav-breadcrumb-label = Ordnerpfad
+send-nav-breadcrumb-item = Zum Ordner { $folderName }
+send-menu-account = Konto
+send-menu-manage-subscription = Abonnement verwalten
+send-menu-support = Support
+
+## An- und Abmeldung, Einrichtungshinweis im Verfassen-Fenster
+
+send-logout-title = Sie sind abgemeldet
+send-logout-closing =
+    { $count ->
+        [one] Diese Seite wird in { $count } Sekunde geschlossen…
+       *[other] Diese Seite wird in { $count } Sekunden geschlossen…
+    }
+send-logout-redirecting =
+    { $count ->
+        [one] Sie werden in { $count } Sekunde zur Startseite weitergeleitet…
+       *[other] Sie werden in { $count } Sekunden zur Startseite weitergeleitet…
+    }
+send-auth-complete-title = Anmeldung abgeschlossen
+send-auth-complete-body = Sie können dieses Fenster jetzt schließen und zu { -thunderbird-brand } zurückkehren.
+send-locked-title = Dieser Ordner ist gesperrt
+send-popup-login-title = Bitte melden Sie sich an, um fortzufahren
+send-popup-login-body = Zum Anmelden wurde ein neues Fenster für Sie geöffnet.
+send-popup-setup-title = Send fertig einrichten
+send-popup-setup-body = Schließen Sie bitte die Einrichtung oder Wiederherstellung Ihrer Passphrase ab, um mit dem Hochladen fortzufahren.
+send-popup-setup-button = Einrichtung fortsetzen
+
+## Willkommensseite
+
+send-welcome-signed-in = Anmeldung abgeschlossen.
+send-welcome-title = Willkommen bei { -thundermail-brand }!
+send-welcome-mail-title = Konto hinzugefügt
+send-welcome-mail-body = Ihr { -thundermail-brand }-Konto wurde automatisch zu { -thunderbird-brand } Desktop hinzugefügt.
+send-welcome-send-title = Einrichtung abschließen
+send-welcome-send-body = Legen Sie als Nächstes Ihr Verschlüsselungspasswort fest. Danach können Sie verschlüsselte Dateien senden oder sie über das Kontomenü von { -thundermail-brand } verwalten.
+send-welcome-send-button = Verschlüsselungspasswort festlegen
+
+## Einstellungen und Kontoübersicht
+
+send-settings-title = Einstellungen
+send-settings-delete-failed = Beim Löschen Ihrer Daten ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.
+send-dashboard-welcome = Willkommen,
+send-storage-title = Send-Speicher
+send-storage-used = { $used } von { $limit }
+send-support-title = Brauchen Sie Hilfe?
+send-support-account = Hilfe zu Ihrem Konto →
+send-support-desktop = Fehlerbehebung für die Desktop-App →
+send-support-encryption = Mehr über Verschlüsselung erfahren →
+send-support-export = Ihre Daten exportieren →
+send-security-title = Sicherheit & Datenschutz
+send-security-description = Laden Sie eine Sicherung Ihres aktiven Verschlüsselungsschlüssels herunter oder setzen Sie Ihr Konto zurück, wenn Ihr Schlüssel gesperrt oder nicht mehr zugänglich ist.
+send-security-key-button = Verschlüsselungsschlüssel
+send-security-recover-button = Zugang wiederherstellen
+send-security-locked = Der Zugriff auf Ihre Dateien ist gesperrt. Stellen Sie Ihren Verschlüsselungsschlüssel wieder her oder setzen Sie ihn zurück, um auf den Dateispeicher zuzugreifen.
+send-security-learn-more = Mehr erfahren
+send-dashboard-desktop-description = Um Send in { -thunderbird-brand } Desktop zu nutzen, installieren Sie die App und melden Sie sich über das { -thunderbird-brand }-Menü an.
+send-dashboard-desktop-button = Herunterladen
+send-dashboard-desktop-image = { -thunderbird-brand }-Desktop-App
+
+## Send-Daten löschen
+
+send-delete-data-title = Send-Daten löschen
+send-delete-data-summary = Alle verschlüsselten Dateien in Ihrem { -thundermail-brand }-Send-Speicher dauerhaft löschen.
+send-delete-data-link = Send-Daten löschen
+send-delete-data-warning = Dadurch werden alle verschlüsselten Dateien in Ihrem { -thundermail-brand }-Send-Speicher dauerhaft gelöscht.
+send-delete-data-subscription = Ihr { -thundermail-brand }-Abonnement ist davon nicht betroffen.
+send-delete-data-export = Exportieren Sie vorher alle Dateien, die Sie behalten möchten.
+send-delete-data-understand = Mir ist bewusst, dass meine verschlüsselten Dateien dauerhaft gelöscht werden.
+send-delete-data-key-label = Geben Sie zur Bestätigung Ihren Verschlüsselungsschlüssel ein
+send-delete-data-key-placeholder = Ihre Passphrase hier eingeben
+send-delete-data-key-visibility =
+    { $state ->
+        [shown] Verschlüsselungsschlüssel verbergen
+       *[hidden] Verschlüsselungsschlüssel anzeigen
+    }
+send-delete-data-button = Send-Daten löschen
+send-delete-data-cancel = Abbrechen
+send-delete-data-mismatch = Der Verschlüsselungsschlüssel stimmt nicht überein. Bitte versuchen Sie es erneut.
+send-delete-data-invalid = Ungültiges Format des Verschlüsselungsschlüssels
+send-delete-data-done-title = Ihre Send-Daten wurden gelöscht
+send-delete-data-done-body = Alle verschlüsselten Dateien in Ihrem { -thundermail-brand }-Send-Speicher wurden dauerhaft gelöscht. Sie können jetzt neu beginnen.
+send-delete-data-done-mail = Ihre { -thundermail-brand }-Daten sind davon nicht betroffen.
+send-delete-data-done-button = Zurück zur Übersicht
+
+## Verwaltung: Benutzerdaten löschen
+
+send-admin-title = Benutzerdaten löschen
+send-admin-loading = Benutzer werden geladen…
+send-admin-load-failed = Die Benutzer konnten nicht geladen werden.
+send-admin-deleted = Die Benutzerdaten von { $email } wurden gelöscht.
+send-admin-back = Zurück zur Benutzerliste
+send-admin-final-warning = Dadurch werden alle Daten von { $email } dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.
+send-admin-are-you-sure = Sind Sie sicher?
+send-admin-delete-failed = Löschen fehlgeschlagen. Bitte versuchen Sie es erneut.
+send-admin-delete-button =
+    { $state ->
+        [deleting] Wird gelöscht…
+       *[idle] Ja, alles löschen
+    }
+send-admin-cancel = Abbrechen
+send-admin-first-warning = Sie sind dabei, alle Daten von { $email } zu löschen.
+send-admin-continue = Weiter
+send-admin-hint = Wählen Sie einen Benutzer aus, um seine Daten zu löschen.
+send-admin-no-users = Keine Benutzer gefunden.
+
+## Verschlüsselungsschlüssel
+
+send-keys-backup-title = Verschlüsselung fertig einrichten
+send-keys-backup-e2e = { -send-brand } verwendet Ende-zu-Ende-Verschlüsselung.
+send-keys-backup-intro = Um die Einrichtung abzuschließen, erstellen Sie einen Wiederherstellungsschlüssel. Mit diesem Schlüssel greifen Sie auf Ihre verschlüsselten Dateien zu, wenn Sie sich auf einem neuen Gerät anmelden, { -thunderbird-brand } neu installieren oder abgemeldet werden.
+send-keys-backup-finalized = Ihr Schlüssel wird festgelegt, sobald Sie auf { $button } klicken.
+send-keys-backup-button = Herunterladen und fortfahren
+send-keys-backup-save = Bewahren Sie eine Kopie an einem sicheren Ort auf. Er wird { $emphasis }
+send-keys-backup-never-stored = nie auf unseren Servern gespeichert und kann bei Verlust nicht wiederhergestellt werden.
+send-keys-field-label = Verschlüsselungsschlüssel
+send-keys-field-visibility =
+    { $state ->
+        [shown] Verbergen
+       *[hidden] Anzeigen
+    }
+send-keys-field-regenerate = Neu erzeugen
+send-keys-field-copy = Kopieren
+send-keys-restore-title = Zugang mit Ihrem Verschlüsselungsschlüssel wiederherstellen
+send-keys-restore-description = Geben Sie Ihren Verschlüsselungsschlüssel ein, um sich auszuweisen. Danach können Sie auf verschlüsselte Dateien zugreifen und neue Dateien hochladen.
+send-keys-restore-label = Verschlüsselungsschlüssel eingeben
+send-keys-restore-placeholder = Wort - Wort - Wort - Wort - Wort - Wort
+send-keys-restore-continue = Weiter
+send-keys-restore-cancel = Abbrechen
+send-keys-restore-reset = Zugang zurücksetzen
+send-keys-restore-invalid = Ungültiges Passphrase-Format
+send-keys-error-word-count = 6 Wörter erwartet, { $count } erhalten
+send-keys-manage-title = Verschlüsselungsschlüssel verwalten
+send-keys-manage-description = Mit diesem Schlüssel stellen Sie Ihr Profil wieder her, wenn Sie sich auf einem neuen Gerät anmelden. Ihre Dateien werden immer lokal verschlüsselt, und der Schlüssel wird nie auf unseren Servern gespeichert. Speichern oder laden Sie ihn herunter und bewahren Sie ihn an einem sicheren Ort auf.
+send-keys-manage-visibility =
+    { $state ->
+        [shown] Schlüssel verbergen
+       *[hidden] Schlüssel anzeigen
+    }
+send-keys-manage-copy = In die Zwischenablage kopieren
+send-keys-manage-download = Schlüssel herunterladen
+send-keys-reset-title = Verschlüsselungsschlüssel zurücksetzen
+send-keys-reset-description = Wenn Sie Ihren Verschlüsselungsschlüssel zurücksetzen, werden alle Dateien dauerhaft entfernt und Ihr verschlüsselter Speicher wird geleert. Dies kann nicht rückgängig gemacht werden.
+send-keys-reset-button = Verschlüsselungsschlüssel zurücksetzen
+send-keys-reset-new-key = Dies ist Ihr neuer Verschlüsselungsschlüssel. Bewahren Sie eine Kopie an einem sicheren Ort auf: Er wird nie auf unseren Servern gespeichert und kann bei Verlust nicht wiederhergestellt werden.
+send-keys-reset-stays-active = Ihr aktueller Schlüssel bleibt aktiv, bis Sie auf { $button } klicken. Danach sind Dateien, die mit Ihrem bisherigen Schlüssel verschlüsselt wurden, nicht mehr zugänglich.
+send-keys-reset-new-key-label = Neuer Verschlüsselungsschlüssel
+send-keys-reset-understand = Mir ist bewusst, dass ich den Zugriff auf meine alten Dateien verliere.
+send-keys-reset-cancel = Abbrechen
+send-keys-reset-confirm = Schlüssel herunterladen und zurücksetzen
+send-keys-changed-title = Warnung
+send-keys-changed-body = Ihre Schlüssel sind nicht korrekt. Das kann passieren, wenn Sie Ihre Passphrase auf einem anderen Gerät zurückgesetzt haben. Klicken Sie unten, um die veralteten Schlüssel auf diesem Gerät zu entfernen. Danach werden Sie nach Ihrer neuen Passphrase gefragt, um den Zugang wiederherzustellen.
+send-keys-changed-button = Neue Passphrase eingeben
+
+## Bestätigungen
+
+send-confirm-delete-question =
+    { $type ->
+        [folder] Möchten Sie den Ordner „{ $name }“ wirklich löschen?
+       *[file] Möchten Sie die Datei „{ $name }“ wirklich löschen?
+    }
+send-confirm-delete-contents = Dabei werden auch alle darin enthaltenen Dateien und Ordner gelöscht.
+send-confirm-delete-irreversible = Dies kann nicht rückgängig gemacht werden.
+send-confirm-delete-button =
+    { $state ->
+        [deleting] Wird gelöscht…
+       *[idle] Ja, löschen
+    }
+send-confirm-delete-cancel = Abbrechen
+send-report-thanks = Vielen Dank für Ihre Meldung!
+send-report-question = Sind diese Inhalte schädlich?
+send-report-link = Melden
+send-report-confirm = Bitte bestätigen Sie Ihre Meldung { $link }
+send-report-confirm-link = hier
