@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import KeysTemplate from './KeysTemplate.vue';
 import ProButton from '@send-frontend/apps/common/ProButton.vue';
 import { parsePassphrase } from '@send-frontend/lib/passphraseUtils';
+import { useL10n } from '@send-frontend/l10n';
 
 type Props = {
   restoreFromBackup: () => void;
@@ -13,6 +14,7 @@ type Props = {
 
 const { restoreFromBackup, setPassphrase, message } = defineProps<Props>();
 
+const { t } = useL10n();
 const encryptionKey = ref('');
 const validationError = ref('');
 const emit = defineEmits<{
@@ -38,7 +40,7 @@ const onContinue = async () => {
     emit('continue');
   } catch (error) {
     validationError.value =
-      error instanceof Error ? error.message : 'Invalid passphrase format';
+      error instanceof Error ? error.message : t('send-keys-restore-invalid');
   }
 };
 </script>
@@ -47,25 +49,22 @@ const onContinue = async () => {
   <KeysTemplate>
     <div class="">
       <div class="" style="margin-bottom: 32px">
-        <h2 class="title">Recover Access with Your Encryption Key</h2>
+        <h2 class="title">{{ t('send-keys-restore-title') }}</h2>
 
         <div class="description">
-          <p>
-            Enter your encryption key to verify your identity to access
-            encrypted files and be able to upload new files.
-          </p>
+          <p>{{ t('send-keys-restore-description') }}</p>
         </div>
 
         <div class="input-group">
           <label class="input-label">
-            Enter Encryption Key code <span class="required">*</span>
+            {{ t('send-keys-restore-label') }} <span class="required">*</span>
           </label>
           <div class="input-container">
             <input
               v-model="encryptionKey"
               type="text"
               class="passphrase-input"
-              placeholder="text - text - text - text - text - text"
+              :placeholder="t('send-keys-restore-placeholder')"
               data-testid="restore-key-input"
             />
           </div>
@@ -78,7 +77,7 @@ const onContinue = async () => {
             :disabled="!encryptionKey.trim()"
             @click="onContinue"
           >
-            Continue
+            {{ t('send-keys-restore-continue') }}
           </ProButton>
           <ProButton
             :type="'secondary'"
@@ -86,7 +85,7 @@ const onContinue = async () => {
             data-testid="cancel-restore-button"
             @click="onCancel"
           >
-            Cancel
+            {{ t('send-keys-restore-cancel') }}
           </ProButton>
         </div>
       </div>
@@ -111,7 +110,7 @@ const onContinue = async () => {
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
-        Reset Access
+        {{ t('send-keys-restore-reset') }}
       </button>
     </div>
   </KeysTemplate>
