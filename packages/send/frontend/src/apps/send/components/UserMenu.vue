@@ -5,6 +5,7 @@ import { OIDC_USER, SIGN_OUT } from '@send-frontend/lib/const';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useStatusStore, useUserStore } from '@send-frontend/stores';
 import { useIsExtension } from '@send-frontend/composables/useIsExtension';
+import { useL10n } from '@send-frontend/l10n';
 import {
   ACCOUNTS_URL,
   CONTACT_FORM_URL,
@@ -32,6 +33,7 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 };
 
+const { t } = useL10n();
 const handleLogout = async () => {
   // If running inside Thunderbird, notify the background script about the logout via token bridge
   try {
@@ -114,7 +116,7 @@ onBeforeUnmount(() => {
       </a>
 
       <a :href="CONTACT_FORM_URL">Support</a>
-      <button @click.prevent="handleLogout">Sign out</button>
+      <button @click.prevent="handleLogout">{{ t('send-sign-out') }}</button>
     </div>
   </button>
 </template>
