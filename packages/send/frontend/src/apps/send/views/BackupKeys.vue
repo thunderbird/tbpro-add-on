@@ -26,7 +26,7 @@ type Props = {
   canRegenerate?: boolean;
 };
 
-const { t } = useL10n();
+const { t, tAround } = useL10n();
 const {
   makeBackup,
   words,
@@ -78,30 +78,27 @@ onMounted(async () => {
   <KeysTemplate class="modal-overlay" :is-overlay="true">
     <div class="">
       <div class="">
-        <h1 class="title">Complete your encryption setup</h1>
+        <h1 class="title">{{ t('send-keys-backup-title') }}</h1>
 
         <div class="description">
           <p class="font-semibold">
-            Thunderbird Send uses end-to-end encryption.
+            {{ t('send-keys-backup-e2e') }}
           </p>
 
           <p class="mt-2">
-            To finish setting up, you'll need to create a recovery key. This key
-            lets you access your encrypted files if you sign in on a new device,
-            reinstall Thunderbird, or get logged out.
+            {{ t('send-keys-backup-intro') }}
           </p>
 
           <p class="mt-2">
-            Your key is finalized when you click
-            <strong>Download and Continue</strong>.
+            {{ tAround('send-keys-backup-finalized', 'button')[0]
+            }}<strong>{{ t('send-keys-backup-button') }}</strong
+            >{{ tAround('send-keys-backup-finalized', 'button')[1] }}
           </p>
 
           <p class="mt-2">
-            Save a copy in a safe place. It's
-            <strong
-              >never stored on our servers and cannot be recovered if
-              lost.</strong
-            >
+            {{ tAround('send-keys-backup-save', 'emphasis')[0]
+            }}<strong>{{ t('send-keys-backup-never-stored') }}</strong
+            >{{ tAround('send-keys-backup-save', 'emphasis')[1] }}
           </p>
         </div>
 
@@ -128,7 +125,7 @@ onMounted(async () => {
           @click="handleDownloadAndContinue"
         >
           <DownloadIcon class="button-icon" />
-          Download and Continue
+          {{ t('send-keys-backup-button') }}
         </button>
         <RenderOnEnvironment
           :environment-type="['WEB APP OUTSIDE THUNDERBIRD']"
