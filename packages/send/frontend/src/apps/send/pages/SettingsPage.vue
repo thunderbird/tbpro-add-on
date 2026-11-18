@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import { forceCloseWindow } from '@send-frontend/lib/login';
 import { computed, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -10,6 +11,7 @@ import ResetKeyModal from '../views/ResetKeyModal.vue';
 import RestoreKeys from '../views/RestoreKeys.vue';
 import SecurityAndPrivacy from '../views/SecurityAndPrivacy.vue';
 import SupportBox from '../views/SupportBox.vue';
+const { t } = useL10n();
 const route = useRoute();
 const router = useRouter();
 
@@ -68,7 +70,7 @@ const closeDeleteCard = () => {
 </script>
 <template>
   <div class="container">
-    <h1 class="title top">Settings</h1>
+    <h1 class="title top">{{ t('send-settings-title') }}</h1>
     <div class="row" :class="{ single: showDeleteCard }">
       <!-- Backup and Restore Section -->
       <section>
@@ -82,11 +84,7 @@ const closeDeleteCard = () => {
         <DeleteSendDataCard
           v-else-if="showDeleteCard"
           :stored-passphrase="storedPassphrase"
-          :server-error="
-            deleteFailed
-              ? 'Something went wrong deleting your data. Please try again.'
-              : ''
-          "
+          :server-error="deleteFailed ? t('send-settings-delete-failed') : ''"
           @confirm="deleteFiles"
           @cancel="closeDeleteCard"
         />

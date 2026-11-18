@@ -1,9 +1,11 @@
 <script lang="ts" setup>
+import { useL10n } from '@send-frontend/l10n';
 import { useApiStore } from '@send-frontend/stores';
 import { onMounted, ref } from 'vue';
 
 type AdminUser = { id: string; email: string };
 
+const { t, tAround } = useL10n();
 const { api } = useApiStore();
 
 const users = ref<AdminUser[]>([]);
@@ -21,7 +23,7 @@ onMounted(async () => {
     const result = await api.call<AdminUser[]>('users/all-users');
     users.value = result ?? [];
   } catch {
-    loadError.value = 'Failed to load users.';
+    loadError.value = t('send-admin-load-failed');
   } finally {
     isLoading.value = false;
   }
@@ -48,7 +50,7 @@ async function handleDelete() {
     deleted.value = true;
     users.value = users.value.filter((u) => u.id !== selectedUser.value!.id);
   } catch {
-    deleteError.value = 'Delete failed. Please try again.';
+    deleteError.value = t('send-admin-delete-failed');
   } finally {
     isDeleting.value = false;
   }
@@ -63,21 +65,24 @@ function resetAfterDelete() {
 
 <template>
   <main class="container">
-    <h1 class="title">Delete User Data</h1>
+    <h1 class="title">{{ t('send-admin-title') }}</h1>
 
-    <div v-if="isLoading" class="status-text">Loading users…</div>
+    <div v-if="isLoading" class="status-text">
+      {{ t('send-admin-loading') }}
+    </div>
 
     <div v-else-if="loadError" class="error-text">{{ loadError }}</div>
 
     <!-- Success confirmation -->
     <div v-else-if="deleted" class="confirm-box">
       <p class="success-text">
-        User data for <strong>{{ selectedUser?.email }}</strong> was
-        successfully deleted.
+        {{ tAround('send-admin-deleted', 'email')[0]
+        }}<strong>{{ selectedUser?.email }}</strong
+        >{{ tAround('send-admin-deleted', 'email')[1] }}
       </p>
       <div class="actions">
         <button class="btn-cancel" @click="resetAfterDelete">
-          Back to user list
+          {{ t('send-admin-back') }}
         </button>
       </div>
     </div>
@@ -85,22 +90,26 @@ function resetAfterDelete() {
     <!-- Confirmation step -->
     <div v-else-if="selectedUser && confirmed" class="confirm-box">
       <p class="warning">
-        This will permanently delete all data for
-        <strong>{{ selectedUser.email }}</strong
-        >. This cannot be undone.
+        {{ tAround('send-admin-final-warning', 'email')[0]
+        }}<strong>{{ selectedUser.email }}</strong
+        >{{ tAround('send-admin-final-warning', 'email')[1] }}
       </p>
-      <p class="confirm-text">Are you sure?</p>
+      <p class="confirm-text">{{ t('send-admin-are-you-sure') }}</p>
       <p v-if="deleteError" class="error-text">{{ deleteError }}</p>
       <div class="actions">
         <button class="btn-danger" :disabled="isDeleting" @click="handleDelete">
-          {{ isDeleting ? 'Deleting…' : 'Yes, delete everything' }}
+          {{
+            t('send-admin-delete-button', {
+              state: isDeleting ? 'deleting' : 'idle',
+            })
+          }}
         </button>
         <button
           class="btn-cancel"
           :disabled="isDeleting"
           @click="confirmed = false"
         >
-          Cancel
+          {{ t('send-admin-cancel') }}
         </button>
       </div>
     </div>
@@ -108,19 +117,23 @@ function resetAfterDelete() {
     <!-- Selected user — first confirmation prompt -->
     <div v-else-if="selectedUser" class="confirm-box">
       <p class="warning">
-        You are about to delete all data for
-        <strong>{{ selectedUser.email }}</strong
-        >.
+        {{ tAround('send-admin-first-warning', 'email')[0]
+        }}<strong>{{ selectedUser.email }}</strong
+        >{{ tAround('send-admin-first-warning', 'email')[1] }}
       </p>
       <div class="actions">
-        <button class="btn-danger" @click="confirmed = true">Continue</button>
-        <button class="btn-cancel" @click="cancelSelection">Cancel</button>
+        <button class="btn-danger" @click="confirmed = true">
+          {{ t('send-admin-continue') }}
+        </button>
+        <button class="btn-cancel" @click="cancelSelection">
+          {{ t('send-admin-cancel') }}
+        </button>
       </div>
     </div>
 
     <!-- User list -->
     <div v-else>
-      <p class="hint">Select a user to delete their data.</p>
+      <p class="hint">{{ t('send-admin-hint') }}</p>
       <ul class="user-list">
         <li
           v-for="user in users"
@@ -132,7 +145,9 @@ function resetAfterDelete() {
           <span class="user-id">{{ user.id }}</span>
         </li>
       </ul>
-      <p v-if="users.length === 0" class="status-text">No users found.</p>
+      <p v-if="users.length === 0" class="status-text">
+        {{ t('send-admin-no-users') }}
+      </p>
     </div>
   </main>
 </template>
