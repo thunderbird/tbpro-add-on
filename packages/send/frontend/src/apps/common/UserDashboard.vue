@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useAuthStore } from '@send-frontend/stores';
 import useUserStore from '@send-frontend/stores/user-store';
@@ -16,6 +17,7 @@ import RenderOnEnvironment from './RenderOnEnvironment.vue';
 
 type OIDCUser = typeof getOIDCUser extends () => Promise<infer U> ? U : never;
 
+const { t } = useL10n();
 const { logOutAuth } = useAuth();
 const { getOIDCUser } = useAuthStore();
 const { user } = useUserStore();
@@ -41,7 +43,7 @@ const {
   <section class="content-layout">
     <div class="row">
       <div class="left-column">
-        <div class="welcome light">Welcome,</div>
+        <div class="welcome light">{{ t('send-dashboard-welcome') }}</div>
         <div class="name">{{ user.name }}</div>
         <h2 class="email">{{ user.thundermailEmail }}</h2>
       </div>

@@ -1,3 +1,4 @@
+import { t } from '@send-frontend/l10n';
 import { downloadTxt } from './filesync';
 
 export const downloadPassPhrase = async (
@@ -22,7 +23,7 @@ export const parsePassphrase = (passphrase: string) => {
 
   // Ensure we have exactly 6 words
   if (words.length !== 6) {
-    throw new Error(`Expected 6 words, got ${words.length}`);
+    throw new Error(t('send-keys-error-word-count', { count: words.length }));
   }
 
   // Join with hyphens

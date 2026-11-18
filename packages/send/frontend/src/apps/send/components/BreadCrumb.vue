@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
+import { useL10n } from '@send-frontend/l10n';
 import { ref, watchEffect } from 'vue';
+const { t } = useL10n();
 const folderStore = useFolderStore();
 
 const path = ref([]);
@@ -16,7 +18,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <nav aria-label="Breadcrumb navigation">
+  <nav :aria-label="t('send-nav-breadcrumb-label')">
     <ol class="breadcrumb-list">
       <template v-if="folderStore.rootFolder">
         <li
@@ -31,7 +33,9 @@ watchEffect(() => {
 
           <router-link
             :aria-current="index === path.length - 1 ? 'page' : undefined"
-            :aria-label="`Go to ${folder.name} folder`"
+            :aria-label="
+              t('send-nav-breadcrumb-item', { folderName: folder.name })
+            "
             class="breadcrumb-button"
             :data-testid="index !== 0 ? 'breadcrumb-item' : 'home-button'"
             :to="`/send/folder/${folder.id}`"

@@ -51,7 +51,7 @@ describe('ResetKeyModal.vue', () => {
     );
     expect(wrapper.text()).toContain('New Encryption Key');
     expect(wrapper.text()).toContain(
-      "I understand I'll lose access to my old files."
+      'I understand I’ll lose access to my old files.'
     );
     expect(
       (

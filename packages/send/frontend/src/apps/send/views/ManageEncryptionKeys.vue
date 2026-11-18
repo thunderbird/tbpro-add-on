@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import ProButton from '@send-frontend/apps/common/ProButton.vue';
+import { useL10n } from '@send-frontend/l10n';
 import { useRouter } from 'vue-router';
 import KeysTemplate from './KeysTemplate.vue';
 
+const { t } = useL10n();
 const router = useRouter();
 </script>
 
@@ -10,14 +12,11 @@ const router = useRouter();
   <KeysTemplate>
     <div>
       <div class="" style="margin-bottom: 32px">
-        <h1 class="title">Security & Privacy</h1>
+        <h1 class="title">{{ t('send-security-title') }}</h1>
 
         <div class="description">
-          <h3 class="title-secondary">Manage Encryption Key</h3>
-          <p>
-            Download a backup of your active encryption key, or reset your
-            account if your key becomes locked or inaccessible.
-          </p>
+          <h3 class="title-secondary">{{ t('send-keys-manage-title') }}</h3>
+          <p>{{ t('send-security-description') }}</p>
         </div>
 
         <ProButton
@@ -25,20 +24,17 @@ const router = useRouter();
           type="secondary"
           @click="() => router.push('/send/security-and-privacy')"
         >
-          Encryption Key
+          {{ t('send-security-key-button') }}
         </ProButton>
       </div>
       <span class="divider"></span>
       <div class="spacing">
-        <div class="title-secondary">Delete Send Data</div>
-        <p>
-          Permanently delete all encrypted files in your Thundermail Send
-          storage.
-        </p>
+        <div class="title-secondary">{{ t('send-delete-data-title') }}</div>
+        <p>{{ t('send-delete-data-summary') }}</p>
         <div class="delete-link light">
-          <router-link to="/send/security-and-privacy?delete=true"
-            >Delete Send data</router-link
-          >
+          <router-link to="/send/security-and-privacy?delete=true">{{
+            t('send-delete-data-link')
+          }}</router-link>
         </div>
       </div>
     </div>

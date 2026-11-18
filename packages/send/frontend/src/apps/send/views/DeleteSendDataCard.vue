@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
 import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
+import { useL10n } from '@send-frontend/l10n';
 import { DangerButton } from '@thunderbirdops/services-ui';
 import { parsePassphrase } from '@send-frontend/lib/passphraseUtils';
 import { computed, ref } from 'vue';
@@ -13,6 +14,8 @@ type Props = {
 };
 
 const { storedPassphrase, serverError = '' } = defineProps<Props>();
+
+const { t } = useL10n();
 
 const emit = defineEmits<{
   cancel: [];
@@ -28,6 +31,12 @@ const canDelete = computed(() => {
   return understood.value && password.value.trim().length > 0;
 });
 
+const keyVisibilityLabel = computed(() =>
+  t('send-delete-data-key-visibility', {
+    state: isPasswordVisible.value ? 'shown' : 'hidden',
+  })
+);
+
 const togglePasswordVisibility = () => {
   isPasswordVisible.value = !isPasswordVisible.value;
 };
@@ -41,13 +50,12 @@ const confirmDeletion = () => {
     const parsedInput = parsePassphrase(password.value);
     const parsedStored = parsePassphrase(storedPassphrase);
     if (parsedInput !== parsedStored) {
-      validationError.value =
-        'Encryption Key does not match. Please try again.';
+      validationError.value = t('send-delete-data-mismatch');
       return;
     }
   } catch (error) {
     validationError.value =
-      error instanceof Error ? error.message : 'Invalid Encryption Key format';
+      error instanceof Error ? error.message : t('send-delete-data-invalid');
     return;
   }
 
@@ -59,19 +67,18 @@ const confirmDeletion = () => {
 <template>
   <KeysTemplate>
     <div class="delete-card">
-      <h1 class="title">Delete Send Data</h1>
+      <h1 class="title">{{ t('send-delete-data-title') }}</h1>
 
       <p class="description strong">
-        This will permanently delete all encrypted files in your Thundermail
-        Send storage.
+        {{ t('send-delete-data-warning') }}
       </p>
 
       <p class="description">
-        Your Thundermail subscription will not be affected.
+        {{ t('send-delete-data-subscription') }}
       </p>
 
       <p class="description">
-        Be sure to export any files you want to keep before continuing.
+        {{ t('send-delete-data-export') }}
       </p>
 
       <div class="checkbox-container">
@@ -83,13 +90,13 @@ const confirmDeletion = () => {
           class="checkbox"
         />
         <label for="delete-understand-checkbox" class="checkbox-label">
-          I understand my encrypted files will be permanently deleted.
+          {{ t('send-delete-data-understand') }}
           <span class="required">*</span>
         </label>
       </div>
 
       <label class="password-label" for="delete-password">
-        Enter your Encryption Key to confirm <span class="required">*</span>
+        {{ t('send-delete-data-key-label') }} <span class="required">*</span>
       </label>
 
       <div class="actions">
@@ -99,17 +106,13 @@ const confirmDeletion = () => {
             v-model="password"
             data-testid="delete-password"
             :type="isPasswordVisible ? 'text' : 'password'"
-            placeholder="Your passphrase goes here"
+            :placeholder="t('send-delete-data-key-placeholder')"
             class="password-input light"
           />
           <button
             class="icon-button"
-            :title="
-              isPasswordVisible ? 'Hide Encryption Key' : 'Show Encryption Key'
-            "
-            :aria-label="
-              isPasswordVisible ? 'Hide Encryption Key' : 'Show Encryption Key'
-            "
+            :title="keyVisibilityLabel"
+            :aria-label="keyVisibilityLabel"
             @click="togglePasswordVisibility"
           >
             <EyeIcon v-if="isPasswordVisible" />
@@ -122,7 +125,7 @@ const confirmDeletion = () => {
           :disabled="!canDelete"
           @click="confirmDeletion"
         >
-          Delete Send Data
+          {{ t('send-delete-data-button') }}
         </DangerButton>
       </div>
 
@@ -130,7 +133,9 @@ const confirmDeletion = () => {
         {{ validationError || serverError }}
       </div>
 
-      <button class="cancel-link light" @click="emit('cancel')">Cancel</button>
+      <button class="cancel-link light" @click="emit('cancel')">
+        {{ t('send-delete-data-cancel') }}
+      </button>
     </div>
   </KeysTemplate>
 </template>

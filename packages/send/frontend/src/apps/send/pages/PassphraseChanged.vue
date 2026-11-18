@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import { Storage } from '@send-frontend/lib/storage';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
 import { PrimaryButton } from '@thunderbirdops/services-ui';
@@ -6,6 +7,7 @@ import { useRouter } from 'vue-router';
 import KeysTemplate from '../views/KeysTemplate.vue';
 import SupportBox from '../views/SupportBox.vue';
 
+const { t } = useL10n();
 const router = useRouter();
 const { keychain } = useKeychainStore();
 
@@ -39,18 +41,17 @@ const clearKeysAndRestore = async () => {
     <div class="row">
       <div>
         <KeysTemplate>
-          <h2 class="section-title text-red-700">Warning</h2>
+          <h2 class="section-title text-red-700">
+            {{ t('send-keys-changed-title') }}
+          </h2>
           <p class="description">
-            Your keys are incorrect. This may happen if you reset your
-            passphrase on a different device. Click below to clear the outdated
-            keys on this device; you'll then be asked for your new passphrase to
-            restore access.
+            {{ t('send-keys-changed-body') }}
           </p>
           <PrimaryButton
             data-testid="passphrase-changed-submit"
             @click.prevent="clearKeysAndRestore"
           >
-            Enter new passphrase
+            {{ t('send-keys-changed-button') }}
           </PrimaryButton>
         </KeysTemplate>
       </div>
