@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ANALYTICS_EVENTS } from '@send-frontend/lib/analytics/events';
+import { useL10n } from '@send-frontend/l10n';
 import useApiStore from '@send-frontend/stores/api-store';
 import useMetricsStore from '@send-frontend/stores/metrics';
 import { ref } from 'vue';
@@ -10,6 +11,7 @@ type ReportProps = {
   containerId: FolderResponse['id'];
 };
 
+const { t, tAround } = useL10n();
 const { api } = useApiStore();
 const { metrics } = useMetricsStore();
 
@@ -52,29 +54,28 @@ defineProps<ReportProps>();
 <template>
   <div class="report-section">
     <div v-if="hasReported" class="report-message">
-      <p>Thank you for your report!</p>
+      <p>{{ t('send-report-thanks') }}</p>
     </div>
     <div v-else>
       <div v-if="!hasClicked" class="report-content">
         <p class="report-text">
-          Is this content harmful?
+          {{ t('send-report-question') }}
           <a
             class="link"
             @click.prevent="handleClickReport({ uploadId, containerId })"
           >
-            Report it</a
+            {{ t('send-report-link') }}</a
           ><span class="transparent">transparent text</span>
         </p>
       </div>
       <div v-else class="report-content">
         <p class="report-text">
-          Please confirm your report
-          <a
+          {{ tAround('send-report-confirm', 'link')[0]
+          }}<a
             class="link"
             @click.prevent="reportContent({ uploadId, containerId })"
-          >
-            here</a
-          >
+            >{{ t('send-report-confirm-link') }}</a
+          >{{ tAround('send-report-confirm', 'link')[1] }}
           <!--This is a temporary pre-MVP way for us to test suspicious files  -->
           <span
             class="link transparent"
