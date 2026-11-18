@@ -464,3 +464,315 @@ send-boot-storage-blocked-body = Send keeps your sign-in state and encryption ke
 send-boot-app-load-failed-title = Send could not start
 # Text below that title; refers to the Retry button.
 send-boot-app-load-failed-body = The application failed to load. Choose “{ send-boot-button-retry }” to reload the page. If this keeps happening, please let us know.
+
+## Navigation and app shell (#1088 batch 3): header, footer, user menu.
+
+# Header and footer link to the account overview page.
+send-nav-dashboard = Dashboard
+# Header and footer link to the files list.
+send-nav-manage-files = Manage Files
+# Header icon link (screen-reader label) and footer link to the settings page.
+send-nav-settings = Settings
+# Footer link to the sign-in page, shown while signed out.
+send-nav-login = Login
+# Footer link to the service status page.
+send-nav-status = Status
+# Footer link to the support contact form.
+send-nav-support = Need help? Visit Support
+# Footer link to the page where users suggest features.
+send-nav-ideas = Ideas?
+# Screen-reader label of the folder breadcrumb trail.
+send-nav-breadcrumb-label = Breadcrumb navigation
+# Screen-reader label of one breadcrumb entry. { $folderName } is the folder’s name.
+send-nav-breadcrumb-item = Go to { $folderName } folder
+# User menu entry that opens the account website.
+send-menu-account = Account
+# User menu entry that opens the subscription billing portal.
+send-menu-manage-subscription = Manage subscription
+# User menu entry that opens the support contact form.
+send-menu-support = Support
+
+## Sign-in and sign-out pages, compose popup setup prompt.
+
+# Shown after signing out.
+send-logout-title = You’re logged out
+# Shown after signing out in the add-on window. { $count } is the seconds left.
+send-logout-closing =
+    { $count ->
+        [one] This page will close in { $count } second…
+       *[other] This page will close in { $count } seconds…
+    }
+# Shown after signing out on the web. { $count } is the seconds left.
+send-logout-redirecting =
+    { $count ->
+        [one] You will be redirected to the homepage in { $count } second…
+       *[other] You will be redirected to the homepage in { $count } seconds…
+    }
+# Title of the tab that opens after signing in from the add-on.
+send-auth-complete-title = Authentication Complete
+# Text below that title.
+send-auth-complete-body = You can now close this window and return to { -thunderbird-brand }.
+# Shown when a share link was locked after too many wrong passwords.
+send-locked-title = This folder is locked
+# Compose popup while signed out: title.
+send-popup-login-title = Please log in to continue
+# Compose popup while signed out: text below the title.
+send-popup-login-body = A new window has been opened for you to log in.
+# Compose popup when the encryption key is not set up yet: title.
+send-popup-setup-title = Finish setting up Send
+# Text below that title.
+send-popup-setup-body = To continue your upload, please complete your passphrase setup/recovery.
+# Button that opens the key setup window again.
+send-popup-setup-button = Continue Setup
+
+## Welcome page (first sign-in from the add-on).
+
+# Banner at the top of the welcome page.
+send-welcome-signed-in = Sign-in complete.
+# Heading of the welcome page.
+send-welcome-title = Welcome to { -thundermail-brand }!
+# Title of the mail card.
+send-welcome-mail-title = Account added
+# Text of the mail card.
+send-welcome-mail-body = Your { -thundermail-brand } account has been automatically added to { -thunderbird-brand } Desktop.
+# Title of the Send card.
+send-welcome-send-title = Finish setup
+# Text of the Send card.
+send-welcome-send-body = Next, set your encryption password. Then you’re ready to send encrypted files or manage them from your { -thundermail-brand } account menu.
+# Button that opens the encryption key setup.
+send-welcome-send-button = Set encryption password
+
+## Settings page and account overview.
+
+# Heading of the settings page.
+send-settings-title = Settings
+# Shown on the settings page when deleting the Send data failed on the server.
+send-settings-delete-failed = Something went wrong deleting your data. Please try again.
+# Greeting above the user’s name on the account overview; the name follows on its own line.
+send-dashboard-welcome = Welcome,
+# Heading of the storage usage bar.
+send-storage-title = Send Storage
+# Storage used. { $used } and { $limit } are formatted sizes, e.g. “2 GB of 20 GB”.
+send-storage-used = { $used } of { $limit }
+# Heading of the support links card.
+send-support-title = Need Support?
+# Support link.
+send-support-account = Need help with your account? →
+# Support link.
+send-support-desktop = Troubleshooting for desktop →
+# Support link.
+send-support-encryption = Learn more about encryption →
+# Support link.
+send-support-export = Export your data →
+# Heading of the encryption key card on the account overview.
+send-security-title = Security & Privacy
+# Description in the encryption key card.
+send-security-description = Download a backup of your active encryption key, or reset your account if your key becomes locked or inaccessible.
+# Button that opens the encryption key settings.
+send-security-key-button = Encryption Key
+# Button that opens the key recovery form when files are locked.
+send-security-recover-button = Recover Access
+# Warning on the account overview when the encryption key is missing on this device.
+send-security-locked = Files access is locked. Restore or reset your encryption key to access file storage.
+# Link next to that warning to the support site.
+send-security-learn-more = Learn more
+# Card on the account overview for users who don’t have the desktop app yet.
+send-dashboard-desktop-description = To use Send in { -thunderbird-brand } Desktop, install it and sign in from the { -thunderbird-brand } menu.
+# Button that opens the desktop app download page.
+send-dashboard-desktop-button = Download
+# Alternative text of the desktop app screenshot.
+send-dashboard-desktop-image = { -thunderbird-brand } desktop app
+
+## Delete Send data (settings page).
+
+# Heading of the section and of the confirmation card.
+send-delete-data-title = Delete Send Data
+# Short description in the account overview section.
+send-delete-data-summary = Permanently delete all encrypted files in your { -thundermail-brand } Send storage.
+# Link that opens the confirmation card.
+send-delete-data-link = Delete Send data
+# Main warning on the confirmation card.
+send-delete-data-warning = This will permanently delete all encrypted files in your { -thundermail-brand } Send storage.
+# Reassurance on the confirmation card.
+send-delete-data-subscription = Your { -thundermail-brand } subscription will not be affected.
+# Advice on the confirmation card.
+send-delete-data-export = Be sure to export any files you want to keep before continuing.
+# Required checkbox (an asterisk follows it).
+send-delete-data-understand = I understand my encrypted files will be permanently deleted.
+# Label of the key field (an asterisk follows it).
+send-delete-data-key-label = Enter your Encryption Key to confirm
+# Placeholder of the key field.
+send-delete-data-key-placeholder = Your passphrase goes here
+# Tooltip and screen-reader label of the eye button; $state is "shown" while the key is visible.
+send-delete-data-key-visibility =
+    { $state ->
+        [shown] Hide Encryption Key
+       *[hidden] Show Encryption Key
+    }
+# Button that deletes the data.
+send-delete-data-button = Delete Send Data
+# Link that closes the confirmation card.
+send-delete-data-cancel = Cancel
+# Error when the typed key differs from the stored one.
+send-delete-data-mismatch = Encryption Key does not match. Please try again.
+# Error when the typed key cannot be read at all.
+send-delete-data-invalid = Invalid Encryption Key format
+# Heading after the data was deleted.
+send-delete-data-done-title = Your Send data has been deleted
+# Text after the data was deleted.
+send-delete-data-done-body = All encrypted files in your { -thundermail-brand } Send storage have been permanently deleted. You can start fresh now.
+# Reassurance after the data was deleted.
+send-delete-data-done-mail = Your { -thundermail-brand } data was not affected.
+# Button that reloads the account overview.
+send-delete-data-done-button = Return to dashboard
+
+## Admin page: delete a user’s data (staff only).
+
+# Heading.
+send-admin-title = Delete User Data
+# Shown while the user list loads.
+send-admin-loading = Loading users…
+# Shown when the user list could not be loaded.
+send-admin-load-failed = Failed to load users.
+# Success. { $email } is the user’s email address (shown in bold).
+send-admin-deleted = User data for { $email } was successfully deleted.
+# Button that returns to the list.
+send-admin-back = Back to user list
+# Second confirmation. { $email } is shown in bold.
+send-admin-final-warning = This will permanently delete all data for { $email }. This cannot be undone.
+# Question below the second confirmation.
+send-admin-are-you-sure = Are you sure?
+# Error when the deletion failed.
+send-admin-delete-failed = Delete failed. Please try again.
+# Final delete button; $state is "deleting" while the request runs.
+send-admin-delete-button =
+    { $state ->
+        [deleting] Deleting…
+       *[idle] Yes, delete everything
+    }
+# Button that steps back.
+send-admin-cancel = Cancel
+# First confirmation. { $email } is shown in bold.
+send-admin-first-warning = You are about to delete all data for { $email }.
+# Button that moves to the second confirmation.
+send-admin-continue = Continue
+# Instructions above the user list.
+send-admin-hint = Select a user to delete their data.
+# Shown when there are no users.
+send-admin-no-users = No users found.
+
+## Encryption keys: first backup, recovery, management, reset.
+
+# Heading of the first-time key backup overlay.
+send-keys-backup-title = Complete your encryption setup
+# First line of the overlay.
+send-keys-backup-e2e = { -send-brand } uses end-to-end encryption.
+# Explanation on the overlay.
+send-keys-backup-intro = To finish setting up, you’ll need to create a recovery key. This key lets you access your encrypted files if you sign in on a new device, reinstall { -thunderbird-brand }, or get logged out.
+# { $button } is the bold name of the button below (send-keys-backup-button).
+send-keys-backup-finalized = Your key is finalized when you click { $button }.
+# Button that downloads the key and finishes setup.
+send-keys-backup-button = Download and Continue
+# { $emphasis } is the bold rest of the sentence (send-keys-backup-never-stored); “It” is the key.
+send-keys-backup-save = Save a copy in a safe place. It’s { $emphasis }
+# Bold end of the sentence above.
+send-keys-backup-never-stored = never stored on our servers and cannot be recovered if lost.
+# Default label of the key field (an asterisk follows it).
+send-keys-field-label = Encryption Key
+# Tooltip of the eye button; $state is "shown" while the key is visible.
+send-keys-field-visibility =
+    { $state ->
+        [shown] Hide
+       *[hidden] Show
+    }
+# Tooltip of the button that makes a new key.
+send-keys-field-regenerate = Regenerate
+# Tooltip of the button that copies the key.
+send-keys-field-copy = Copy
+# Heading of the key recovery form.
+send-keys-restore-title = Recover Access with Your Encryption Key
+# Explanation on the key recovery form.
+send-keys-restore-description = Enter your encryption key to verify your identity to access encrypted files and be able to upload new files.
+# Label of the key field (an asterisk follows it).
+send-keys-restore-label = Enter Encryption Key code
+# Placeholder showing the key format: six words joined by dashes.
+send-keys-restore-placeholder = text - text - text - text - text - text
+# Button that recovers access with the typed key.
+send-keys-restore-continue = Continue
+# Button that leaves the recovery form.
+send-keys-restore-cancel = Cancel
+# Button that starts over with a new key when the old one is lost.
+send-keys-restore-reset = Reset Access
+# Error when the typed key cannot be read at all.
+send-keys-restore-invalid = Invalid passphrase format
+# Error when the typed key does not have six words. { $count } is how many words were typed.
+send-keys-error-word-count = Expected 6 words, got { $count }
+# Heading of the key management section (settings page and account overview).
+send-keys-manage-title = Manage Encryption Key
+# Explanation in the key management section.
+send-keys-manage-description = This key restores your profile when you sign in on a new device. Your files are always encrypted locally, and the key is never stored on our servers. Save or download it to a secure place for future use.
+# Tooltip and screen-reader label of the eye button; $state is "shown" while the key is visible.
+send-keys-manage-visibility =
+    { $state ->
+        [shown] Hide key
+       *[hidden] Show key
+    }
+# Tooltip of the button that copies the key.
+send-keys-manage-copy = Copy to clipboard
+# Tooltip of the button that downloads the key.
+send-keys-manage-download = Download key
+# Heading of the key reset section and of the reset dialog.
+send-keys-reset-title = Reset Encryption Key
+# Warning in the key reset section.
+send-keys-reset-description = Resetting your encryption key permanently removes all files and clears your encrypted storage. This action cannot be undone.
+# Button that opens the reset dialog.
+send-keys-reset-button = Reset encryption key
+# Reset dialog: about the new key shown below.
+send-keys-reset-new-key = This is your new encryption key. Save a copy in a safe place: it’s never stored on our servers and cannot be recovered if lost.
+# Reset dialog. { $button } is the bold name of the confirm button (send-keys-reset-confirm).
+send-keys-reset-stays-active = Your current key stays active until you click { $button }. After that, files encrypted with your previous key will no longer be accessible.
+# Reset dialog: label of the new key field.
+send-keys-reset-new-key-label = New Encryption Key
+# Reset dialog: required checkbox.
+send-keys-reset-understand = I understand I’ll lose access to my old files.
+# Reset dialog: closes it and keeps the current key.
+send-keys-reset-cancel = Cancel
+# Reset dialog: downloads the new key and replaces the old one.
+send-keys-reset-confirm = Download key and reset
+# Heading when the keys on this device no longer match the account.
+send-keys-changed-title = Warning
+# Explanation below that heading.
+send-keys-changed-body = Your keys are incorrect. This may happen if you reset your passphrase on a different device. Click below to clear the outdated keys on this device; you’ll then be asked for your new passphrase to restore access.
+# Button that clears the old keys and opens the recovery form.
+send-keys-changed-button = Enter new passphrase
+
+## Confirmations: delete a file or folder, report content.
+
+# Delete dialog. $type is "folder" or "file"; { $name } is its name (shown in bold).
+send-confirm-delete-question =
+    { $type ->
+        [folder] Are you sure you want to delete the folder “{ $name }”?
+       *[file] Are you sure you want to delete the file “{ $name }”?
+    }
+# Delete dialog, folders only.
+send-confirm-delete-contents = This will also delete all files and folders contained within it.
+# Delete dialog.
+send-confirm-delete-irreversible = This action cannot be undone.
+# Delete dialog button; $state is "deleting" while the request runs.
+send-confirm-delete-button =
+    { $state ->
+        [deleting] Deleting…
+       *[idle] Yes, Delete
+    }
+# Delete dialog button that closes it.
+send-confirm-delete-cancel = Cancel
+# Shown after the user reported a shared file.
+send-report-thanks = Thank you for your report!
+# Question below a shared file’s details; the link follows.
+send-report-question = Is this content harmful?
+# Link that starts a report.
+send-report-link = Report it
+# { $link } is a link labelled with send-report-confirm-link.
+send-report-confirm = Please confirm your report { $link }
+# Link text that sends the report.
+send-report-confirm-link = here
