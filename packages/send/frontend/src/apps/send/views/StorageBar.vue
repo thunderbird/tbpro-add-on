@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import LoadingComponent from '@send-frontend/apps/common/LoadingComponent.vue';
+import { useL10n } from '@send-frontend/l10n';
 import { trpc } from '@send-frontend/lib/trpc';
 import { useQuery } from '@tanstack/vue-query';
 import prettyBytes from 'pretty-bytes';
 import { computed } from 'vue';
 import ProgressBarDashboard from '../components/ProgressBarDashboard.vue';
 
+const { t } = useL10n();
 const {
   data: size,
   error,
@@ -21,7 +23,7 @@ const activeText = computed(() => {
   const activeText = prettyBytes(size.value.active);
   const limitText = prettyBytes(size.value.limit);
 
-  return `${activeText} of ${limitText}`;
+  return t('send-storage-used', { used: activeText, limit: limitText });
 });
 
 const percentageUsed = computed(() => {
@@ -40,7 +42,7 @@ const isLoading = computed(() => {
 
   <div v-if="!isLoading">
     <div class="row">
-      <h3 class="send-storage">Send Storage</h3>
+      <h3 class="send-storage">{{ t('send-storage-title') }}</h3>
       <p class="storage-remaining">{{ activeText }}</p>
     </div>
 

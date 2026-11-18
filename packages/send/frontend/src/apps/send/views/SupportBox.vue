@@ -1,11 +1,14 @@
 <script lang="ts" setup>
 import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
+import { useL10n } from '@send-frontend/l10n';
+
+const { t } = useL10n();
 </script>
 
 <template>
   <div class="border-thing">
     <div class="support-card">
-      <h3 class="support-heading">Need Support?</h3>
+      <h3 class="support-heading">{{ t('send-support-title') }}</h3>
       <nav class="support-links">
         <a
           :href="SUPPORT_URL"
@@ -13,7 +16,7 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
           target="_blank"
           rel="noopener noreferrer"
         >
-          Need help with your account? →
+          {{ t('send-support-account') }}
         </a>
         <a
           :href="SUPPORT_URL"
@@ -21,7 +24,7 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
           target="_blank"
           rel="noopener noreferrer"
         >
-          Troubleshooting for desktop →
+          {{ t('send-support-desktop') }}
         </a>
         <a
           :href="SUPPORT_URL"
@@ -29,7 +32,7 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn more about encryption →
+          {{ t('send-support-encryption') }}
         </a>
         <a
           :href="SUPPORT_URL"
@@ -37,7 +40,7 @@ import { SUPPORT_URL } from '@send-frontend/apps/common/constants';
           target="_blank"
           rel="noopener noreferrer"
         >
-          Export your data →
+          {{ t('send-support-export') }}
         </a>
       </nav>
     </div>
