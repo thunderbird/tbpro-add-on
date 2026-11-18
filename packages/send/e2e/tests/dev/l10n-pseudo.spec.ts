@@ -5,6 +5,7 @@
 // Only the words in MIGRATED fail the test; the rest of the denylist is
 // logged as an `untranslated` annotation. Move
 // words into MIGRATED as #1088 migrates them, until the whole list is enforced.
+// "Send" stays logged only: brand terms are never pseudo-localized.
 //
 // Lives in tests/dev because ?locale= is honoured only by dev-server builds,
 // which is what the e2e stack runs. Registers its own account so it shares no
@@ -39,7 +40,22 @@ const ENGLISH_DENYLIST = [
   "Send",
   "Thank you",
 ];
-const MIGRATED = ["Log out", "Sign out", "Upload", "Folder", "Create", "Link", "Password"];
+const MIGRATED = [
+  "Log out",
+  "Sign out",
+  "Upload",
+  "Folder",
+  "Create",
+  "Link",
+  "Password",
+  "Download",
+  "Continue",
+  "Copy",
+  "Files",
+  "Settings",
+  "Delete",
+  "Save",
+];
 
 async function expectLocalized(page: Page, label: string) {
   const text = await page.locator("body").innerText();
