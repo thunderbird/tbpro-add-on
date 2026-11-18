@@ -7,9 +7,11 @@ import {
   STATUS_PAGE_URL,
   IDEAS_PAGE_URL,
 } from '@send-frontend/apps/common/constants';
+import { useL10n } from '@send-frontend/l10n';
 import { useAuth } from '@send-frontend/lib/auth';
 import { useNavigation } from '../composables/useNavigation';
 
+const { t } = useL10n();
 const { isLoggedIn } = useAuth();
 const { navLinkPaths } = useNavigation();
 </script>
@@ -34,7 +36,7 @@ const { navLinkPaths } = useNavigation();
 
           <ul v-else>
             <li>
-              <router-link to="/login">Login</router-link>
+              <router-link to="/login">{{ t('send-nav-login') }}</router-link>
             </li>
           </ul>
         </div>
@@ -46,7 +48,7 @@ const { navLinkPaths } = useNavigation();
               target="_blank"
               rel="noopener noreferrer"
             >
-              Status
+              {{ t('send-nav-status') }}
             </a>
           </li>
           <li>
@@ -55,12 +57,12 @@ const { navLinkPaths } = useNavigation();
               target="_blank"
               rel="noopener noreferrer"
             >
-              Need help? Visit Support
+              {{ t('send-nav-support') }}
             </a>
           </li>
           <li>
             <a :href="IDEAS_PAGE_URL" target="_blank" rel="noopener noreferrer">
-              Ideas?
+              {{ t('send-nav-ideas') }}
             </a>
           </li>
         </ul>
