@@ -103,7 +103,7 @@ onBeforeUnmount(() => {
     <user-avatar :username="username" class="avatar" @click="toggleMenu" />
 
     <div v-if="showMenu" class="dropdown">
-      <a :href="ACCOUNTS_URL">Account</a>
+      <a :href="ACCOUNTS_URL">{{ t('send-menu-account') }}</a>
 
       <!-- Accounts redirects to a freshly created Paddle customer portal session -->
       <a
@@ -112,10 +112,10 @@ onBeforeUnmount(() => {
         rel="noopener"
         @click="showMenu = false"
       >
-        Manage subscription
+        {{ t('send-menu-manage-subscription') }}
       </a>
 
-      <a :href="CONTACT_FORM_URL">Support</a>
+      <a :href="CONTACT_FORM_URL">{{ t('send-menu-support') }}</a>
       <button @click.prevent="handleLogout">{{ t('send-sign-out') }}</button>
     </div>
   </button>

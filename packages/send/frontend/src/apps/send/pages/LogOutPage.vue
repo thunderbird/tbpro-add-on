@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useSendConfig } from '@send-frontend/composables/useSendConfig';
+import { useL10n } from '@send-frontend/l10n';
 import { useConfigStore } from '@send-frontend/stores';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+const { t } = useL10n();
 const countdown = ref(5);
 const router = useRouter();
 const { isExtension } = useConfigStore();
@@ -31,12 +33,12 @@ onMounted(async () => {
 </script>
 <template>
   <main class="container">
-    <p>You're logged out</p>
+    <p>{{ t('send-logout-title') }}</p>
     <p v-if="isExtension" class="countdown">
-      This page will close in {{ countdown }} seconds...
+      {{ t('send-logout-closing', { count: countdown }) }}
     </p>
     <p v-else data-testid="redirecting-p">
-      You will be redirected to the homepage in {{ countdown }} seconds...
+      {{ t('send-logout-redirecting', { count: countdown }) }}
     </p>
   </main>
 </template>

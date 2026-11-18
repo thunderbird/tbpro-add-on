@@ -3,9 +3,12 @@ import CheckCircleIcon from '@send-frontend/apps/common/CheckCircleIcon.vue';
 import SendIconTBPro from '@send-frontend/apps/common/SendIconTBPro.vue';
 import ThundermailIcon from '@send-frontend/apps/common/ThundermailIcon.vue';
 import { OPEN_MANAGEMENT_PAGE } from '@send-frontend/lib/const';
+import { useL10n } from '@send-frontend/l10n';
 import { trpc } from '@send-frontend/lib/trpc';
 import { onMounted } from 'vue';
 import SupportBox from '../views/SupportBox.vue';
+
+const { t } = useL10n();
 
 async function setFTUEComplete() {
   await trpc.markFTUEComplete.mutate();
@@ -30,11 +33,11 @@ async function handleSetEncryptionPassword() {
     <!-- Success Banner -->
     <div class="success-banner">
       <CheckCircleIcon class="check-icon" />
-      <span>Sign-in complete.</span>
+      <span>{{ t('send-welcome-signed-in') }}</span>
     </div>
 
     <!-- Main Heading -->
-    <h1 class="welcome-heading">Welcome to Thundermail!</h1>
+    <h1 class="welcome-heading">{{ t('send-welcome-title') }}</h1>
 
     <!-- Content Layout -->
     <div class="content-layout">
@@ -47,12 +50,9 @@ async function handleSetEncryptionPassword() {
           <div class="card-content">
             <div class="card-header">
               <span class="card-label">THUNDERMAIL</span>
-              <h2 class="card-title">Account added</h2>
+              <h2 class="card-title">{{ t('send-welcome-mail-title') }}</h2>
             </div>
-            <p class="card-text">
-              Your Thundermail account has been automatically added to
-              Thunderbird Desktop.
-            </p>
+            <p class="card-text">{{ t('send-welcome-mail-body') }}</p>
           </div>
         </div>
 
@@ -62,18 +62,15 @@ async function handleSetEncryptionPassword() {
           <div class="card-content">
             <div class="card-header">
               <span class="card-label">SEND</span>
-              <h2 class="card-title">Finish setup</h2>
+              <h2 class="card-title">{{ t('send-welcome-send-title') }}</h2>
             </div>
-            <p class="card-text">
-              Next, set your encryption password. Then you’re ready to send
-              encrypted files or manage them from your Thundermail account menu.
-            </p>
+            <p class="card-text">{{ t('send-welcome-send-body') }}</p>
 
             <button
               class="primary-button"
               @click.prevent="handleSetEncryptionPassword"
             >
-              Set encryption password
+              {{ t('send-welcome-send-button') }}
             </button>
           </div>
         </div>

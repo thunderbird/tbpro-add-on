@@ -14,6 +14,7 @@ import ProButton from '@send-frontend/apps/common/ProButton.vue';
 import WithLoader from '@send-frontend/apps/common/WithLoader.vue';
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import PromptPopupLogin from '@send-frontend/apps/send/views/PromptLogin.vue';
+import { useL10n } from '@send-frontend/l10n';
 import { useAuth } from '@send-frontend/lib/auth';
 import {
   ALL_UPLOADS_ABORTED,
@@ -37,6 +38,7 @@ interface FileItem {
   data: File;
 }
 
+const { t } = useL10n();
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
 const { api } = useApiStore();
@@ -201,13 +203,10 @@ const initialize = async () => {
     <PromptPopupLogin v-if="!isLoggedIn" />
     <div v-else>
       <div v-if="!isConfigured" class="finish-setup">
-        <h1>Finish setting up Send</h1>
-        <p>
-          To continue your upload, please complete your passphrase
-          setup/recovery.
-        </p>
+        <h1>{{ t('send-popup-setup-title') }}</h1>
+        <p>{{ t('send-popup-setup-body') }}</p>
         <ProButton v-if="!isSecurityPopupOpen" @click="openSecurityPopup">
-          Continue Setup
+          {{ t('send-popup-setup-button') }}
         </ProButton>
       </div>
       <div v-else>
