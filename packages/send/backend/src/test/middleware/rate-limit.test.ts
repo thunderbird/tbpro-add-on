@@ -181,4 +181,78 @@ describe('rate-limit middleware', () => {
     await request(replicaB).get('/test').expect(429);
     await request(replicaA).get('/test').expect(429);
   });
+
+  describe('unauthenticated key derivation', () => {
+    const REFRESH = 'refresh_token=Bearer%20refresh.jwt.value';
+
+    it('ignores padding cookies: the same refresh cookie shares one bucket', async () => {
+      const createRateLimiter = await loadLimiterFactory();
+      const app = appWithLimiter(createRateLimiter('auth'));
+
+      for (let i = 0; i < 3; i++) {
+        await request(app)
+          .get('/test')
+          .set('Cookie', `pad${i}=${i}; ${REFRESH}; other=${Math.random()}`)
+          .expect(200);
+      }
+      await request(app)
+        .get('/test')
+        .set('Cookie', `${REFRESH}; pad=fresh`)
+        .expect(429);
+      expect(counts.size).toBe(1);
+    });
+
+    it('keys on the refresh cookie, so different refresh tokens get separate buckets', async () => {
+      const createRateLimiter = await loadLimiterFactory();
+      const app = appWithLimiter(createRateLimiter('auth'));
+
+      for (let i = 0; i < 3; i++) {
+        await request(app).get('/test').set('Cookie', REFRESH).expect(200);
+      }
+      await request(app).get('/test').set('Cookie', REFRESH).expect(429);
+      await request(app)
+        .get('/test')
+        .set('Cookie', 'refresh_token=Bearer%20another.jwt.value')
+        .expect(200);
+
+      const [key] = [...counts.keys()];
+      // Hashed, never stored in the clear.
+      expect(key).toMatch(/^anon:.+:[0-9a-f]{16}$/);
+      expect(key).not.toContain('refresh.jwt.value');
+    });
+
+    it('falls back to IP alone when there is no refresh cookie, whatever else is sent', async () => {
+      const createRateLimiter = await loadLimiterFactory();
+      const app = appWithLimiter(createRateLimiter('auth'));
+
+      await request(app).get('/test').expect(200);
+      await request(app).get('/test').set('Cookie', 'pad=1').expect(200);
+      await request(app).get('/test').set('Cookie', 'pad=2; x=y').expect(200);
+      await request(app).get('/test').set('Cookie', 'pad=3').expect(429);
+
+      const keys = [...counts.keys()];
+      expect(keys).toHaveLength(1);
+      expect(keys[0]).toMatch(/^anon:/);
+      expect(keys[0]).not.toMatch(/:[0-9a-f]{16}$/);
+    });
+
+    it('keys on authenticatedUser (as set by requireJWT) ahead of cookies', async () => {
+      const createRateLimiter = await loadLimiterFactory();
+      const app = express();
+      app.use((req, _res, next) => {
+        (
+          req as express.Request & { authenticatedUser?: { id: string } }
+        ).authenticatedUser = { id: 'jwt-user-1' };
+        next();
+      });
+      app.get('/test', createRateLimiter('read'), (_req, res) => {
+        res.status(200).json({ ok: true });
+      });
+
+      await request(app).get('/test').set('Cookie', 'pad=1').expect(200);
+      await request(app).get('/test').set('Cookie', REFRESH).expect(200);
+
+      expect([...counts.entries()]).toEqual([['user:jwt-user-1', 2]]);
+    });
+  });
 });
