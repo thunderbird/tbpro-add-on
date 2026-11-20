@@ -48,6 +48,7 @@ const { isError: uploadingError, uploadAndShare } = useUploadAndShare();
 
 const files = ref<FileItem[] | null>(null);
 const message = ref('');
+let isListeningForFiles = false;
 
 async function handleUploadAndShare(
   files: FileItem[],
@@ -149,25 +150,33 @@ const initialize = async () => {
   try {
     await restoreKeysUsingLocalStorage(keychain, api);
     await init(userStore, keychain, folderStore);
-    console.log(`adding listener in Popup for runtime messages`);
 
-    browser.runtime.onMessage.addListener(async (message) => {
-      if (message.type === FILE_LIST) {
-        files.value = message.files;
-      } else if (message.type === SIGN_OUT) {
-        // Session ended -- clear any pending uploads and let the
-        // logged-out UI render via the isLoggedIn watcher. The popup
-        // may also be closed by background.ts in the same SIGN_OUT
-        // handling, but doing this here is defensive in case the popup
-        // survives (e.g. a web-tab sign-out that didn't close us).
-        // See https://github.com/thunderbird/tbpro-add-on/issues/1019.
-        files.value = [];
-      }
-    });
+    // initialize() re-runs on every refetch of the configuration query
+    // (window focus, mount). background.ts empties its queue once it has
+    // answered POPUP_READY, so asking again would get back an empty
+    // FILE_LIST that wipes the files this window is about to upload.
+    if (!isListeningForFiles) {
+      console.log(`adding listener in Popup for runtime messages`);
 
-    browser.runtime.sendMessage({
-      type: POPUP_READY,
-    });
+      browser.runtime.onMessage.addListener(async (message) => {
+        if (message.type === FILE_LIST) {
+          files.value = message.files;
+        } else if (message.type === SIGN_OUT) {
+          // Session ended -- clear any pending uploads and let the
+          // logged-out UI render via the isLoggedIn watcher. The popup
+          // may also be closed by background.ts in the same SIGN_OUT
+          // handling, but doing this here is defensive in case the popup
+          // survives (e.g. a web-tab sign-out that didn't close us).
+          // See https://github.com/thunderbird/tbpro-add-on/issues/1019.
+          files.value = [];
+        }
+      });
+      isListeningForFiles = true;
+
+      browser.runtime.sendMessage({
+        type: POPUP_READY,
+      });
+    }
   } catch {
     console.log(
       `Cannot access browser.runtime, probably not running as an extension`
