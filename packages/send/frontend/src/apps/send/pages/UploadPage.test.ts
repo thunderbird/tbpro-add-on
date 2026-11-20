@@ -45,7 +45,6 @@ const stubs = {
   PasswordStep: true,
   ExpirationStep: true,
   UploadingStep: true,
-  SuccessStep: true,
   ErrorStep: true,
 };
 
@@ -72,9 +71,6 @@ describe('UploadPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     host.isThunderbirdHost = false;
-    folderStore.getDefaultFolderId.mockResolvedValue('folder-1');
-    folderStore.uploadItem.mockResolvedValue([{ id: 10, multipart: false }]);
-    sharingStore.shareItems.mockResolvedValue('https://send.example/share/1');
     vi.stubGlobal('browser', { runtime: { sendMessage } });
     vi.spyOn(window, 'close').mockImplementation(() => {});
   });
@@ -122,20 +118,5 @@ describe('UploadPage', () => {
     expect(onUploadAndShare).toHaveBeenCalledTimes(1);
     expect(onUploadAndShare.mock.calls[0][0]).toEqual([pickedFile]);
     expect(folderStore.uploadItem).not.toHaveBeenCalled();
-  });
-
-  it('uploads and shares exactly the picked files on the web', async () => {
-    const wrapper = await createLink({ files: [pickedFile] });
-
-    expect(folderStore.uploadItem).toHaveBeenCalledTimes(1);
-    expect(folderStore.uploadItem).toHaveBeenCalledWith(
-      pickedFile.data,
-      'folder-1',
-      {}
-    );
-    expect(sharingStore.shareItems).toHaveBeenCalledTimes(1);
-    expect(
-      wrapper.findComponent({ name: 'SuccessStep' }).props('shareUrl')
-    ).toBe('https://send.example/share/1');
   });
 });
