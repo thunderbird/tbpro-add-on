@@ -83,18 +83,8 @@ interface FileUploadStatus {
 }
 const fileUploadStatuses = ref<FileUploadStatus[]>([]);
 
-// Dummy file for testing
-const dummyFile = ref<File | null>(null);
-
 // Check if running in extension or web
 const isExtension = isThunderbirdHost;
-
-function createDummyFile(): File {
-  const dummyContent =
-    'This is a test file created for demonstration purposes.\n'.repeat(100);
-  const blob = new Blob([dummyContent], { type: 'text/plain' });
-  return new File([blob], 'test-document.txt', { type: 'text/plain' });
-}
 
 function handleNext() {
   currentStep.value = 'expiration';
@@ -137,26 +127,21 @@ async function handleCreateLink() {
   uploadError.value = '';
 
   try {
-    // Use provided files or create dummy file if none exist
-    const filesToUpload =
-      props.files && props.files.length > 0 ? props.files : null;
+    const filesToUpload = props.files ?? [];
 
-    // Initialize file upload statuses
-    if (filesToUpload) {
-      fileUploadStatuses.value = filesToUpload.map((file) => ({
-        name: file.name,
-        status: 'pending' as const,
-      }));
-    } else if (!dummyFile.value) {
-      // Create dummy file first so we know the name
-      dummyFile.value = createDummyFile();
-      fileUploadStatuses.value = [
-        { name: 'test-document.txt', status: 'pending' as const },
-      ];
+    // Only ever upload what the user picked. The file list can be empty here
+    // (e.g. cleared by a sign-out); fail instead of uploading something else.
+    if (filesToUpload.length === 0) {
+      throw new Error('No files to upload. Please attach your files again.');
     }
 
+    fileUploadStatuses.value = filesToUpload.map((file) => ({
+      name: file.name,
+      status: 'pending' as const,
+    }));
+
     // In extension mode with custom upload handler, use that instead
-    if (isExtension && props.onUploadAndShare && filesToUpload) {
+    if (isExtension && props.onUploadAndShare) {
       const finalPassword = isPasswordProtected.value ? password.value : '';
       const expirationDate = getExpirationDate(
         selectedExpiration.value,
@@ -181,36 +166,20 @@ async function handleCreateLink() {
     }
 
     const rootFolderId = await folderStore.getDefaultFolderId();
-    let uploadedItems = [];
+    const uploadedItems = [];
 
-    if (filesToUpload) {
-      // Upload all files from props
-      for (let i = 0; i < filesToUpload.length; i++) {
-        const fileItem = filesToUpload[i];
-        fileUploadStatuses.value[i].status = 'uploading';
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const fileItem = filesToUpload[i];
+      fileUploadStatuses.value[i].status = 'uploading';
 
-        const items = await folderStore.uploadItem(
-          fileItem.data,
-          rootFolderId,
-          api
-        );
-        if (items && items.length > 0) {
-          uploadedItems.push(...items);
-          fileUploadStatuses.value[i].status = 'completed';
-        }
-      }
-    } else {
-      // Create and upload dummy file only if no files provided
-      dummyFile.value ??= createDummyFile();
-      fileUploadStatuses.value[0].status = 'uploading';
       const items = await folderStore.uploadItem(
-        dummyFile.value,
+        fileItem.data,
         rootFolderId,
         api
       );
       if (items && items.length > 0) {
         uploadedItems.push(...items);
-        fileUploadStatuses.value[0].status = 'completed';
+        fileUploadStatuses.value[i].status = 'completed';
       }
     }
 
