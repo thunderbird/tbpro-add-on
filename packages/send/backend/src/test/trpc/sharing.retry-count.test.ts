@@ -82,5 +82,23 @@ describe('trpc sharing router: legacy retry-count procedures', () => {
     await expect(
       anonymousCaller.getPasswordRetryCount({ linkId: 'missing' })
     ).resolves.toEqual({ id: 'missing', retryCount: 0 });
+    // A missing link is expected (deleted links, removed shares), so it must
+    // not reach console.error, which Sentry reports as an error.
+    expect(consoleCapture.output()).not.toContain(
+      'Error getting password retry count'
+    );
+  });
+
+  it('still answers 0 and logs when the lookup fails', async () => {
+    sharingModel.getAccessLinkRetryCount.mockRejectedValue(
+      new Error('database unavailable')
+    );
+
+    await expect(
+      anonymousCaller.getPasswordRetryCount({ linkId: 'link-1' })
+    ).resolves.toEqual({ id: 'link-1', retryCount: 0 });
+    expect(consoleCapture.output()).toContain(
+      'Error getting password retry count'
+    );
   });
 });
