@@ -2,8 +2,7 @@
  * A1 — Logout in a web tab now aborts an upload already in flight in the
  * popup. See README.md for shared harness context.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #A1 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A1.
+ * Tracked in #1019.
  *
  * Fix (background.ts): the SIGN_OUT handler now (1) rejects every entry in
  * uploadPromiseMap via rejectAllInQueue(), (2) closes the popup window if

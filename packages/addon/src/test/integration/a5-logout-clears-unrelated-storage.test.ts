@@ -1,8 +1,7 @@
 /**
  * A5 — `menuLogout()` must fully wipe the add-on's storage on logout.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #A5,
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A5, and #1054.
+ * Tracked in #1023 and #1054.
  *
  * Product requirement: a genuine logout (from the menu OR the web app inside
  * Thunderbird) returns the add-on to a clean, logged-out state -- the auth

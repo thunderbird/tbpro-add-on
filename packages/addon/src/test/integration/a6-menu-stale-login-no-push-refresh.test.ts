@@ -4,8 +4,7 @@
  * the page, and `UserMenu.vue` listens for those messages and re-checks its
  * auth state.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #A6 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A6.
+ * Tracked in #1024.
  *
  * `public/token-bridge.js` is a raw (non-ESM) content script loaded directly
  * by the manifest -- it cannot be `import`-ed and driven through a runtime

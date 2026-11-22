@@ -3,8 +3,7 @@
  * the share link is still created server-side with zero notification to the
  * user.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #B5 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §B5.
+ * Tracked in #1017.
  *
  * Mechanism under test (background.ts):
  *   - `uploadInfoQueue`, `uploadPromiseMap`, `popupWindowId` are plain

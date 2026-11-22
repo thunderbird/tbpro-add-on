@@ -4,8 +4,7 @@
  * background.ts now drops a write when STORAGE_KEY_AUTH already holds a
  * session, preserving the first login instead of silently clobbering it.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #A7 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A7.
+ * Tracked in #1025.
  *
  * Mechanism that used to be under test (before the fix):
  *   - background.ts's initAccountHubListener() fires on
