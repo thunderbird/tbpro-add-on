@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import FileUploadTemplate from '../FileUploadTemplate.vue';
 import ProgressBar from '../ProgressBar.vue';
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 defineProps<Props>();
+const { t } = useL10n();
 </script>
 
 <template>
@@ -19,7 +21,7 @@ defineProps<Props>();
     :step="{
       stepNumber: 2,
       totalSteps: 2,
-      title: 'Select File Expiration',
+      title: t('send-upload-expiration-title'),
     }"
     :show-close-button="false"
   >

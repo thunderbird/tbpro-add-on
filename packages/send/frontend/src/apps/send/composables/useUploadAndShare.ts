@@ -4,6 +4,7 @@ import {
   ALL_UPLOADS_ABORTED,
   ALL_UPLOADS_COMPLETE,
 } from '@send-frontend/lib/const';
+import { t } from '@send-frontend/l10n';
 import { organizeFiles } from '@send-frontend/lib/folderView';
 import useApiStore from '@send-frontend/stores/api-store';
 import useKeychainStore from '@send-frontend/stores/keychain-store';
@@ -46,9 +47,7 @@ export function useUploadAndShare() {
     // anyway, but only after the file bytes had already been uploaded.
     if (keychain.locked) {
       isError.value = true;
-      throw new Error(
-        'Cannot upload: encryption keys are locked. Please re-enter your passphrase.'
-      );
+      throw new Error(t('send-upload-error-keychain-locked'));
     }
     isUploading.value = true;
     isError.value = false;
@@ -72,7 +71,9 @@ export function useUploadAndShare() {
         );
 
         if (!itemObjArray || itemObjArray?.length === 0) {
-          throw new Error(`Could not upload file ${file.name}`);
+          throw new Error(
+            t('send-upload-error-file-not-uploaded', { fileName: file.name })
+          );
         }
 
         console.log(`[uploadAndShare] Successfully uploaded ${file.name}`);
@@ -118,7 +119,7 @@ export function useUploadAndShare() {
         expiration
       );
       if (!url) {
-        throw new Error(`Did not get URL back from sharingStore`);
+        throw new Error(t('send-upload-error-no-share-url-store'));
       }
       console.log(`I got a sharing url and it is`);
       console.log(url);

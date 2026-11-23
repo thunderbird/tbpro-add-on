@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import { computed } from 'vue';
 
 export interface ModalStep {
@@ -27,13 +28,18 @@ const emit = defineEmits<{
   (e: 'secondary'): void;
 }>();
 
+const { t } = useL10n();
+
 const showStepIndicator = computed(() => {
   return props.step && props.step.totalSteps > 1;
 });
 
 const stepText = computed(() => {
   if (!props.step) return '';
-  return `STEP ${props.step.stepNumber} OF ${props.step.totalSteps}`;
+  return t('send-upload-step-indicator', {
+    current: props.step.stepNumber,
+    total: props.step.totalSteps,
+  });
 });
 </script>
 
@@ -72,7 +78,7 @@ const stepText = computed(() => {
         data-test="back-button"
         @click="emit('back')"
       >
-        {{ secondaryButtonText || 'Back' }}
+        {{ secondaryButtonText || t('send-upload-button-back') }}
       </button>
 
       <button
@@ -81,7 +87,7 @@ const stepText = computed(() => {
         data-test="secondary-button"
         @click="emit('secondary')"
       >
-        {{ secondaryButtonText || 'Cancel' }}
+        {{ secondaryButtonText || t('send-upload-button-cancel') }}
       </button>
 
       <button
@@ -92,7 +98,7 @@ const stepText = computed(() => {
         @click="emit('primary')"
       >
         <span v-if="isLoading" class="loading-spinner"></span>
-        <span>{{ primaryButtonText || 'Next' }}</span>
+        <span>{{ primaryButtonText || t('send-upload-button-next') }}</span>
       </button>
     </div>
   </div>
