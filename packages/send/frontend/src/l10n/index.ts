@@ -89,7 +89,8 @@ export async function setLocale(
   const bundles = await Promise.all(
     locales.map((code) =>
       loadBundle(code).catch((error: unknown) => {
-        report(`failed to load locale: ${String(error)}`, code);
+        const reason = error instanceof Error ? String(error) : 'unknown error';
+        report(`failed to load locale: ${reason}`, code);
         return null;
       })
     )
