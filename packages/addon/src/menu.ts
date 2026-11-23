@@ -175,9 +175,11 @@ export async function menuLogout() {
     menuUsername = null;
 
     // Reset menu to display sign-in prompt, then clear the submenu items.
+    // One message holds the whole prompt (word order differs by locale), so
+    // the bold secondary title is emptied rather than left on the username.
     await browser.TBProMenu.update(MENU_ACTIONS.ROOT, {
-      title: t('addon-menu-sign-in-to'),
-      secondaryTitle: t('addon-thunderbird-pro'),
+      title: t('addon-menu-sign-in'),
+      secondaryTitle: '',
       tooltip: '',
     });
     await browser.TBProMenu.clear(MENU_ACTIONS.ROOT);
@@ -477,8 +479,8 @@ export function init() {
 
   // Create the root menu item with initial logged-out state
   browser.TBProMenu.create(MENU_ACTIONS.ROOT, {
-    title: t('addon-menu-sign-in-to'),
-    secondaryTitle: t('addon-thunderbird-pro'),
+    title: t('addon-menu-sign-in'),
+    secondaryTitle: '',
     tooltip: '',
   });
 

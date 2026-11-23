@@ -20,11 +20,13 @@
  * older backend never sees a false warning.
  */
 import { probeCookiesEnabled } from '@send-frontend/lib/cookieProbe';
+import { useL10n } from '@send-frontend/l10n';
 import { CLIENT_MESSAGES } from '@send-frontend/lib/messages';
 import useApiStore from '@send-frontend/stores/api-store';
 import { useQuery } from '@tanstack/vue-query';
 import { computed } from 'vue';
 
+const { t } = useL10n();
 const { api } = useApiStore();
 
 const { data, refetch } = useQuery({
@@ -47,7 +49,7 @@ const isBlocked = computed(() => data?.value === 'blocked');
         data-testid="cookies-blocked-banner-retry"
         @click="refetch()"
       >
-        Retry
+        {{ t('send-boot-button-retry') }}
       </button>
     </div>
   </header>

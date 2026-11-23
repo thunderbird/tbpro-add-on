@@ -5,7 +5,7 @@ addon-thunderbird-pro = { -thundermail-brand }
 addon-extension-description = { -thundermail-brand } bietet Ihnen eine E-Mail-Adresse, Terminplanung und die Möglichkeit, große Dateien mit Ende-zu-Ende-Verschlüsselung zu versenden.
 addon-thunderbird-send = { -send-brand }
 
-addon-menu-sign-in-to = Anmelden bei
+addon-menu-sign-in = Bei { -thundermail-brand } anmelden
 addon-menu-sign-out = Abmelden
 addon-menu-signed-in-tooltip = Bei { -thundermail-brand } angemeldet
 addon-menu-manage-dashboard = Konto-Dashboard

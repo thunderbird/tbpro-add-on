@@ -1,4 +1,5 @@
 import { assertConfigured } from '@send-frontend/config';
+import { setLocale } from '@send-frontend/l10n';
 import { createApp } from 'vue';
 import BootDiagnostics from './BootDiagnostics.vue';
 
@@ -50,4 +51,7 @@ const boot = createApp(BootDiagnostics, {
     bootRoot.remove();
   },
 });
+// The panel's copy is Fluent, so load the user's locale for it too; it
+// renders in English until the bundle arrives. setLocale never needs storage.
+setLocale().catch(() => {});
 boot.mount(bootRoot);

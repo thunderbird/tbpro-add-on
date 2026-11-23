@@ -1,6 +1,8 @@
+import { resetL10n, setLocale } from '@send-frontend/l10n';
 import { getByTestId } from '@send-frontend/lib/testUtils';
 import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 import CookiesBlockedBanner from './CookiesBlockedBanner.vue';
 
 const { probeResult, refetchMock } = vi.hoisted(() => {
@@ -36,6 +38,7 @@ describe('CookiesBlockedBanner.vue', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    resetL10n();
   });
 
   it('shows the banner when the probe answers blocked', () => {
@@ -90,5 +93,24 @@ describe('CookiesBlockedBanner.vue', () => {
       .trigger('click');
 
     expect(refetchMock).toHaveBeenCalled();
+  });
+
+  it('renders in German, and the body names the Retry button it shows', async () => {
+    const wrapper = mount(CookiesBlockedBanner);
+    const retry = () =>
+      wrapper.find(getByTestId('cookies-blocked-banner-retry')).text();
+    expect(retry()).toBe('Retry');
+
+    await setLocale(['de']);
+    await nextTick();
+
+    expect(wrapper.find('.title').text()).toBe(
+      'Thunderbird blockiert Cookies für Send'
+    );
+    expect(retry()).toBe('Erneut versuchen');
+    expect(
+      wrapper.find(getByTestId('cookies-blocked-banner-body')).text()
+    ).toContain('„Erneut versuchen“');
+    wrapper.unmount();
   });
 });

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import RenderOnEnvironment from '@send-frontend/apps/common/RenderOnEnvironment.vue';
 import DragAndDropUpload from '@send-frontend/apps/send/components/DragAndDropUpload.vue';
+import { useL10n } from '@send-frontend/l10n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
+const { t } = useL10n();
 const { currentRoute } = useRouter();
 
 const showUploadZone = computed(() => {
@@ -22,26 +24,29 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
   <aside
     class="folder-navigation"
     role="complementary"
-    aria-label="File management sidebar"
+    :aria-label="t('send-files-sidebar-label')"
   >
     <!-- actions -->
     <header class="actions-header">
-      <h2 class="sr-only">File Management Actions</h2>
+      <h2 class="sr-only">{{ t('send-files-actions-heading') }}</h2>
     </header>
     <!-- upload zone -->
     <RenderOnEnvironment :environment-type="['WEB APP OUTSIDE THUNDERBIRD']">
       <section class="upload-section" aria-labelledby="upload-heading">
-        <h3 id="upload-heading" class="sr-only">Upload Files</h3>
+        <h3 id="upload-heading" class="sr-only">
+          {{ t('send-files-upload-heading') }}
+        </h3>
         <DragAndDropUpload v-if="showUploadZone">
           <div
             class="upload-zone"
             role="button"
             tabindex="0"
-            aria-label="Drag and drop files here to upload, or click to select files"
+            :aria-label="t('send-files-upload-zone-label')"
             @keydown="handleUploadKeydown"
           >
-            Drop files here<br />
-            or tap to upload
+            <span class="upload-zone-text">{{
+              t('send-files-upload-zone-text')
+            }}</span>
           </div>
         </DragAndDropUpload>
       </section>
@@ -68,6 +73,11 @@ const handleUploadKeydown = (event: KeyboardEvent) => {
 .upload-section {
   flex: 1;
   padding-inline: 0.625rem;
+}
+
+/* The message holds its own line break. */
+.upload-zone-text {
+  white-space: pre-line;
 }
 
 .upload-zone {

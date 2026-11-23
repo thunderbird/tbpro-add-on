@@ -542,7 +542,8 @@ describe('overlapping sign-in and sign-out', () => {
     // The sign-out came last, so the menu must be left showing the sign-in
     // prompt -- not that prompt sitting above a populated signed-in submenu.
     expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
-      secondaryTitle: 'Thundermail',
+      title: 'Sign in to Thundermail',
+      secondaryTitle: '',
     });
     expect(lastCallOrder(browser.TBProMenu.clear)).toBeGreaterThan(
       lastCallOrder(browser.TBProMenu.create)
@@ -613,11 +614,15 @@ describe('menu labels', () => {
 
     await menuLogout();
     expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
-      title: 'Sign in to',
-      secondaryTitle: 'Thundermail',
+      title: 'Sign in to Thundermail',
+      secondaryTitle: '',
     });
 
     await setLocale(['de']);
+    await menuLogout();
+    expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
+      title: 'Bei Thundermail anmelden',
+    });
     await menuLoggedIn({ username: USERNAME });
     expect(lastCallProps(browser.TBProMenu.update)).toMatchObject({
       tooltip: 'Bei Thundermail angemeldet',

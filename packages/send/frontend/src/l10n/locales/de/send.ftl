@@ -3,6 +3,7 @@
 
 -send-brand = Thunderbird Send
 -thundermail-brand = Thundermail
+-thunderbird-brand = Thunderbird
 
 send-popup-title = Mit { -send-brand } teilen
 send-upload-progress =
@@ -137,3 +138,121 @@ send-upload-button-close = Schließen
 send-upload-success-heading = Ihre Datei wurde hochgeladen!
 send-upload-success-description = Teilen Sie diesen Link mit Ihrem Empfänger. Für den Zugriff auf die Datei wird das Passwort benötigt.
 send-upload-button-copy = Kopieren
+
+## Dateiliste und Ordner (#1088, Teil 2)
+
+send-files-title = Ihre Dateien
+send-files-error-loading = Fehler beim Laden des Ordners: { $message }
+send-files-button-retry = Erneut versuchen
+send-files-empty-title = Keine Dateien
+send-files-empty-description = Hochgeladene Dateien werden hier angezeigt.
+send-files-column-name = Name
+send-files-last-modified = Zuletzt geändert { $time }
+send-files-delete-item-title = Element löschen?
+send-files-delete-folder-title = Ordner löschen?
+send-files-delete-file-title = Datei löschen?
+send-files-button-new-folder = Neuer Ordner
+send-files-button-rename = Umbenennen
+send-files-sidebar-label = Seitenleiste der Dateiverwaltung
+send-files-actions-heading = Aktionen der Dateiverwaltung
+send-files-upload-heading = Dateien hochladen
+send-files-upload-zone-label = Dateien zum Hochladen hierher ziehen und ablegen oder klicken, um Dateien auszuwählen
+send-files-upload-zone-text =
+    Dateien hier ablegen
+    oder tippen, um sie hochzuladen
+
+send-files-close-folder-info = Ordnerdetails schließen
+send-files-close-file-info = Dateidetails schließen
+send-files-created = Erstellt
+send-files-modified = Geändert
+send-files-expired = Abgelaufen
+send-files-reported = Diese Datei wurde wegen Missbrauchs gemeldet. Bitte wenden Sie sich an den Support, wenn Sie glauben, dass es sich um einen Irrtum handelt.
+
+send-share-expiration-label = Ablauf des Links
+send-share-expiration-custom = Eigenes Datum und eigene Uhrzeit
+send-share-password-label = Passwort
+send-share-creating = Wird erstellt…
+send-share-button-create-file-link = Freigabelink erstellen
+send-share-button-create-folder-link = Zugriffslink erstellen
+send-share-error-passwordless-flag = Der Link wurde erstellt, aber sein Passwortstatus konnte nicht aktualisiert werden.
+send-share-error-create = Der Zugriffslink konnte nicht erstellt werden. Bitte versuchen Sie es erneut.
+send-share-error-unexpected = Ein unerwarteter Fehler ist aufgetreten.
+send-share-new-link-label = Ihr neuer Link
+send-share-new-link-field = Neuer Freigabelink
+send-share-copy-button =
+    { $state ->
+        [copied] Kopiert!
+       *[idle] Kopieren
+    }
+send-share-new-link-notice = Dieser Link ist nur jetzt für Sie sichtbar und kann nicht wiederhergestellt werden, wenn er verloren geht. Sie können jederzeit weitere Links erstellen.
+send-share-existing-links = Vorhandene Links
+send-share-link-field = Freigabelink
+send-share-passwordless-tooltip = Links ohne Passwort können nur beim Erstellen angezeigt werden. Sie können diesen Link löschen, um den Zugriff zu widerrufen, und jederzeit einen neuen erstellen.
+send-share-link-copied = Kopiert!
+send-share-delete-link = Link löschen
+send-share-status-password = Passwort
+send-share-status-locked = Gesperrt
+
+send-download-ready-title = Ihre Datei kann sicher heruntergeladen werden
+send-access-title = Diese Datei ist passwortgeschützt
+send-access-password-label = Passwort
+send-access-password-prompt = Geben Sie das Passwort ein, das Sie vom Absender erhalten haben
+send-access-button-continue = Weiter
+send-access-error-incorrect = Dieses Passwort ist falsch
+send-access-attempts-remaining =
+    { $count ->
+        [one] Noch { $count } Versuch.
+       *[other] Noch { $count } Versuche.
+    }
+send-access-error-locked = Dieser Link wurde nach zu vielen falschen Versuchen gesperrt.
+send-access-error-invalid = Der Zugriffslink ist nicht mehr gültig
+send-access-error-generic = Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten
+send-download-file-information = DATEIINFORMATIONEN
+send-download-sender = Absender
+send-download-unknown-sender = Unbekannter Absender
+send-download-filename = Dateiname
+send-download-unknown-file = Unbekannte Datei
+send-download-filesize = Dateigröße
+send-download-not-available = Nicht verfügbar
+send-download-view-checksum = Prüfsumme anzeigen
+send-download-checksum-label = Hash (SHA256)
+send-download-copy-checksum =
+    { $state ->
+        [copied] Kopiert!
+       *[idle] In die Zwischenablage kopieren
+    }
+send-download-button = Herunterladen
+send-download-confirm-title = Bevor Sie herunterladen
+send-download-confirm-intro = Sie laden gleich eine Datei über { -send-brand } herunter.
+send-download-confirm-not-scanned = Mit Send versendete Dateien sind Ende-zu-Ende-verschlüsselt und werden nicht auf Viren oder Schadsoftware geprüft.
+send-download-confirm-trust = Laden Sie nur Dateien herunter, denen Sie vertrauen.
+send-download-confirm-security = Schützen Sie Ihr Gerät mit Ihrer eigenen Sicherheitssoftware.
+send-download-confirm-liability = MZLA Technologies ist nicht für Probleme verantwortlich, die sich aus diesem Download ergeben.
+send-download-support = Hilfe
+send-download-privacy-policy = Datenschutzerklärung
+
+send-dashboard-manage-files-title = Dateien verwalten
+send-dashboard-manage-files-description = Öffnen und verwalten Sie Ihren verschlüsselten Dateispeicher an einem sicheren Ort.
+send-dashboard-manage-files-button = Auf Ihre Dateien zugreifen
+send-dashboard-addon-description = Verschlüsselter Speicher: Verwalten Sie Ihre Dateien und Einstellungen im Send-Dashboard.
+send-dashboard-addon-button = Dashboard öffnen
+
+send-upload-error-not-signed-in = Sie sind nicht vollständig angemeldet. Bitte melden Sie sich erneut an.
+send-upload-error-no-user-id = Hochladen nicht möglich: In der Sitzung fehlt eine Benutzer-ID (ownerId wäre leer).
+send-upload-error-storage-limit-short = Mit dieser Datei würden Sie Ihr Speicherlimit überschreiten.
+send-upload-error-too-big = Zu groß
+send-upload-error-failed-for = Hochladen von { $fileName } fehlgeschlagen
+send-upload-error-failed-detail = Hochladen fehlgeschlagen: { $message }
+send-download-progress-downloading = Datei wird heruntergeladen
+send-download-progress-decrypting = Datei wird entschlüsselt
+send-download-error-no-key = Schlüssel zum Entschlüsseln nicht gefunden
+send-download-error-no-pieces = Keine gültigen Dateiteile gefunden
+
+send-login-required = Sie müssen sich mit Ihrem Mozilla-Konto anmelden. Stellen Sie sicher, dass Sie auf der Zulassungsliste für den Alpha-Zugang stehen.
+send-boot-button-retry = Erneut versuchen
+send-boot-cookies-blocked-title = { -thunderbird-brand } blockiert Cookies für Send
+send-boot-cookies-blocked-body = Send speichert ein Cookie, damit Sie angemeldet bleiben, und Ihr Browser lehnt es derzeit ab. Öffnen Sie Einstellungen → Datenschutz & Sicherheit → Web-Inhalte und aktivieren Sie „Cookies von Websites akzeptieren“. Falls das bereits aktiviert ist, stellen Sie zusätzlich „Cookies von Drittanbietern akzeptieren“ auf „Von besuchten“. Wählen Sie dann „{ send-boot-button-retry }“.
+send-boot-storage-blocked-title = { -thunderbird-brand } blockiert den Speicher für Send
+send-boot-storage-blocked-body = Send bewahrt Ihren Anmeldestatus und Ihre Verschlüsselungsschlüssel im Browserspeicher auf, und Ihr Browser verweigert den Zugriff darauf. Das passiert, wenn alle Cookies blockiert werden. Öffnen Sie Einstellungen → Datenschutz & Sicherheit → Web-Inhalte, aktivieren Sie „Cookies von Websites akzeptieren“ und wählen Sie dann „{ send-boot-button-retry }“.
+send-boot-app-load-failed-title = Send konnte nicht gestartet werden
+send-boot-app-load-failed-body = Die Anwendung konnte nicht geladen werden. Wählen Sie „{ send-boot-button-retry }“, um die Seite neu zu laden. Wenn das immer wieder passiert, geben Sie uns bitte Bescheid.

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import useSharingStore from '@send-frontend/apps/send/stores/sharing-store';
+import { useL10n } from '@send-frontend/l10n';
 import config from '@send-frontend/config';
 import { trpc } from '@send-frontend/lib/trpc';
 import { getDaysUntilDate } from '@send-frontend/lib/utils';
@@ -13,6 +14,7 @@ type Props = {
   folderId: string;
 };
 
+const { t } = useL10n();
 const sharingStore = useSharingStore();
 const props = defineProps<Props>();
 const linkToDelete = ref<string | null>(null);
@@ -70,7 +72,9 @@ at any time.
     class="flex flex-col gap-1"
     data-testid="existing-links-header"
   >
-    <span class="text-xs font-semibold text-gray-600">Existing Links</span>
+    <span class="text-xs font-semibold text-gray-600">{{
+      t('send-share-existing-links')
+    }}</span>
   </div>
   <section
     v-for="(link, index) in sharingStore.links"
@@ -86,7 +90,7 @@ at any time.
         class="flex-1 min-w-0 font-mono text-xs text-gray-700 cursor-pointer"
         :value="shareUrlFor(link.id)"
         :data-testid="`link-${index}`"
-        aria-label="Share link"
+        :aria-label="t('send-share-link-field')"
         @click="
           ($event.target as HTMLInputElement).select();
           copyShareUrl(link.id);
@@ -94,9 +98,7 @@ at any time.
       />
       <span
         v-else
-        v-tooltip="
-          'Links without a password can only be viewed upon creation. You can delete this link to revoke access and create a new one anytime.'
-        "
+        v-tooltip="t('send-share-passwordless-tooltip')"
         class="flex-1 min-w-0 truncate font-mono text-xs text-gray-700"
         :title="link.id"
         :data-testid="`link-${index}`"
@@ -107,10 +109,10 @@ at any time.
         v-if="copied && lastCopiedLinkId === link.id"
         class="text-xs text-gray-500"
       >
-        Copied!
+        {{ t('send-share-link-copied') }}
       </span>
       <button
-        v-tooltip="'Delete link'"
+        v-tooltip="t('send-share-delete-link')"
         class="text-red-500 hover:text-red-700 px-2"
         :data-testid="`delete-link-button-${index}`"
         @click="handleDeleteLink(link.id)"
@@ -134,11 +136,11 @@ at any time.
         data-testid="link-with-password"
       >
         <div>🔐</div>
-        <div>Password</div>
+        <div>{{ t('send-share-status-password') }}</div>
       </div>
       <div v-if="link.locked" class="flex text-xs justify-center self-center">
         <div>⛔️</div>
-        <div>Locked</div>
+        <div>{{ t('send-share-status-locked') }}</div>
       </div>
     </div>
   </section>
