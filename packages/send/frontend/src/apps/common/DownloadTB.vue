@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useL10n } from '@send-frontend/l10n';
 import DownloadIconBlue from './DownloadIconBlue.vue';
 import ProButton from './ProButton.vue';
+
+const { t } = useL10n();
 
 const handleDownloadTB = () => {
   window.open(
@@ -12,20 +15,17 @@ const handleDownloadTB = () => {
 </script>
 <template>
   <div class="bg card-shadow">
-    <p class="text">
-      To use Send in Thunderbird Desktop, install it and sign in from the
-      Thunderbird menu.
-    </p>
+    <p class="text">{{ t('send-dashboard-desktop-description') }}</p>
     <div class="buttonwrapper">
       <ProButton class="button" type="secondary" @click="handleDownloadTB">
         <DownloadIconBlue />
-        Download</ProButton
+        {{ t('send-dashboard-desktop-button') }}</ProButton
       >
     </div>
     <img
       class="tbdashboard"
       src="./thundermail-dashboard.png"
-      alt="Thunderbird desktop app"
+      :alt="t('send-dashboard-desktop-image')"
     />
   </div>
 </template>

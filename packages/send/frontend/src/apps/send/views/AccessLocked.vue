@@ -4,19 +4,18 @@ import {
   NoticeBarTypes,
   PrimaryButton,
 } from '@thunderbirdops/services-ui';
+import { useL10n } from '@send-frontend/l10n';
 
 defineProps<{
   onRecover: () => void;
 }>();
+const { t } = useL10n();
 </script>
 
 <template>
   <div>
     <NoticeBar class="access-locked" :type="NoticeBarTypes.Warning">
-      <p class="message">
-        Files access is locked. Restore or reset your encryption key to access
-        file storage.
-      </p>
+      <p class="message">{{ t('send-security-locked') }}</p>
       <div class="actions">
         <a
           href="https://support.tb.pro"
@@ -24,14 +23,14 @@ defineProps<{
           rel="noopener noreferrer"
           class="learn-more"
         >
-          Learn more
+          {{ t('send-security-learn-more') }}
         </a>
         <PrimaryButton
           class="recover-access"
           data-testid="recover-access-button"
           @click="onRecover"
         >
-          Recover Access
+          {{ t('send-security-recover-button') }}
         </PrimaryButton>
       </div>
     </NoticeBar>

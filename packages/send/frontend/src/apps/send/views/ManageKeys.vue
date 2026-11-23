@@ -4,6 +4,7 @@ import DownloadIcon from '@send-frontend/apps/common/DownloadIcon.vue';
 import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
 import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
 import { downloadPassPhrase } from '@send-frontend/lib/passphraseUtils';
+import { useL10n } from '@send-frontend/l10n';
 import { useKeychainStore, useUserStore } from '@send-frontend/stores';
 import { DangerButton } from '@thunderbirdops/services-ui';
 import { useClipboard } from '@vueuse/core';
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   confirm: [];
 }>();
 
+const { t } = useL10n();
 const { keychain } = useKeychainStore();
 const {
   user: { email },
@@ -34,6 +36,12 @@ const copyToClipboard = () => {
   }
 };
 
+const keyVisibilityLabel = computed(() =>
+  t('send-keys-manage-visibility', {
+    state: isPassphraseVisible.value ? 'shown' : 'hidden',
+  })
+);
+
 const togglePassphraseVisibility = () => {
   isPassphraseVisible.value = !isPassphraseVisible.value;
 };
@@ -43,17 +51,15 @@ const togglePassphraseVisibility = () => {
   <div class="keys-container">
     <KeysTemplate>
       <div class="key-section">
-        <h2 class="title">Manage Encryption Key</h2>
+        <h2 class="title">{{ t('send-keys-manage-title') }}</h2>
 
         <p class="section-description">
-          This key restores your profile when you sign in on a new device. Your
-          files are always encrypted locally, and the key is never stored on our
-          servers. Save or download it to a secure place for future use.
+          {{ t('send-keys-manage-description') }}
         </p>
 
         <div class="key-field">
           <label class="key-label">
-            Encryption Key <span class="required">*</span>
+            {{ t('send-keys-field-label') }} <span class="required">*</span>
           </label>
           <div class="key-input-container">
             <input
@@ -64,8 +70,8 @@ const togglePassphraseVisibility = () => {
             />
             <button
               class="icon-button"
-              :title="isPassphraseVisible ? 'Hide key' : 'Show key'"
-              :aria-label="isPassphraseVisible ? 'Hide key' : 'Show key'"
+              :title="keyVisibilityLabel"
+              :aria-label="keyVisibilityLabel"
               @click="togglePassphraseVisibility"
             >
               <EyeIcon v-if="isPassphraseVisible" />
@@ -73,14 +79,14 @@ const togglePassphraseVisibility = () => {
             </button>
             <button
               class="icon-button"
-              title="Copy to clipboard"
+              :title="t('send-keys-manage-copy')"
               @click="copyToClipboard"
             >
               <CopyIcon />
             </button>
             <button
               class="icon-button"
-              title="Download key"
+              :title="t('send-keys-manage-download')"
               @click="
                 () => downloadPassPhrase(passphraseFromLocalStorage, email)
               "
@@ -94,11 +100,10 @@ const togglePassphraseVisibility = () => {
 
     <KeysTemplate>
       <div class="key-section reset-section">
-        <h2 class="title">Reset Encryption Key</h2>
+        <h2 class="title">{{ t('send-keys-reset-title') }}</h2>
 
         <p class="section-description">
-          Resetting your encryption key permanently removes all files and clears
-          your encrypted storage. This action cannot be undone.
+          {{ t('send-keys-reset-description') }}
         </p>
 
         <DangerButton
@@ -106,7 +111,7 @@ const togglePassphraseVisibility = () => {
           class="reset-button"
           @click="emit('confirm')"
         >
-          Reset encryption key
+          {{ t('send-keys-reset-button') }}
         </DangerButton>
       </div>
     </KeysTemplate>

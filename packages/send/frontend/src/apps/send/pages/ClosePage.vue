@@ -1,7 +1,10 @@
 <script lang="ts" setup>
 import { SIGN_IN_COMPLETE } from '@send-frontend/lib/const';
+import { useL10n } from '@send-frontend/l10n';
 import { forceCloseWindow } from '@send-frontend/lib/login';
 import { onMounted } from 'vue';
+
+const { t } = useL10n();
 
 // Removed as we re-evaluate the system add-on FTUE
 // Tracked on https://github.com/thunderbird/tbpro-add-on/issues/915
@@ -52,8 +55,8 @@ onMounted(async () => {
 
 <template>
   <div class="close-page-container">
-    <h2>Authentication Complete</h2>
-    <p>You can now close this window and return to Thunderbird.</p>
+    <h2>{{ t('send-auth-complete-title') }}</h2>
+    <p>{{ t('send-auth-complete-body') }}</p>
   </div>
 </template>
 

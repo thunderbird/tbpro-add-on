@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DangerButton, ModalDialog } from '@thunderbirdops/services-ui';
+import { useL10n } from '@send-frontend/l10n';
 import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import PassphraseField from './PassphraseField.vue';
 
@@ -16,6 +17,8 @@ const {
   errorMessage = '',
   saving = false,
 } = defineProps<Props>();
+
+const { t, tAround } = useL10n();
 
 const emit = defineEmits<{
   cancel: [];
@@ -64,19 +67,16 @@ const confirm = () => {
   >
     <template #header>
       <!-- ModalDialog styles the header and labels itself with aria-labelledby="title" -->
-      <span id="title">Reset Encryption Key</span>
+      <span id="title">{{ t('send-keys-reset-title') }}</span>
     </template>
 
     <div ref="body" class="reset-key-body" tabindex="-1" @keydown.esc="cancel">
       <div class="description">
-        <p>
-          This is your new encryption key. Save a copy in a safe place: it's
-          never stored on our servers and cannot be recovered if lost.
-        </p>
+        <p>{{ t('send-keys-reset-new-key') }}</p>
         <p class="mt-2">
-          Your current key stays active until you click
-          <strong>Download key and reset</strong>. After that, files encrypted
-          with your previous key will no longer be accessible.
+          {{ tAround('send-keys-reset-stays-active', 'button')[0]
+          }}<strong>{{ t('send-keys-reset-confirm') }}</strong
+          >{{ tAround('send-keys-reset-stays-active', 'button')[1] }}
         </p>
       </div>
 
@@ -84,7 +84,7 @@ const confirm = () => {
         :words="words"
         :regenerate-passphrase="regeneratePassphrase"
         :can-regenerate="canRegenerate"
-        label="New Encryption Key"
+        :label="t('send-keys-reset-new-key-label')"
         input-test-id="reset-key-passphrase"
       />
 
@@ -106,7 +106,7 @@ const confirm = () => {
           class="checkbox"
         />
         <label for="understand-checkbox" class="checkbox-label">
-          I understand I'll lose access to my old files.
+          {{ t('send-keys-reset-understand') }}
         </label>
       </div>
     </div>
@@ -119,14 +119,14 @@ const confirm = () => {
           :disabled="saving"
           @click="cancel"
         >
-          Cancel
+          {{ t('send-keys-reset-cancel') }}
         </button>
         <DangerButton
           :disabled="!understood || saving"
           data-testid="danger-button"
           @click="confirm"
         >
-          Download key and reset
+          {{ t('send-keys-reset-confirm') }}
         </DangerButton>
       </div>
     </template>

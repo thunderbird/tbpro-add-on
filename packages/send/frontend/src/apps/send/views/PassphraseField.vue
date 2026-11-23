@@ -3,6 +3,7 @@ import CopyIcon from '@send-frontend/apps/common/CopyIcon.vue';
 import EyeIcon from '@send-frontend/apps/common/EyeIcon.vue';
 import EyeOffIcon from '@send-frontend/apps/common/EyeOffIcon.vue';
 import RefreshIcon from '@send-frontend/apps/common/RefreshIcon.vue';
+import { useL10n } from '@send-frontend/l10n';
 import { computed, ref, useId } from 'vue';
 
 type Props = {
@@ -13,11 +14,9 @@ type Props = {
   inputTestId: string;
 };
 
-const {
-  words = [],
-  canRegenerate = true,
-  label = 'Encryption Key',
-} = defineProps<Props>();
+const { words = [], canRegenerate = true, label } = defineProps<Props>();
+
+const { t } = useL10n();
 
 const inputId = useId();
 
@@ -41,7 +40,7 @@ const copyToClipboard = async () => {
 <template>
   <div class="input-group">
     <label class="input-label" :for="inputId">
-      {{ label }} <span class="required">*</span>
+      {{ label ?? t('send-keys-field-label') }} <span class="required">*</span>
     </label>
     <div class="input-container">
       <input
@@ -58,7 +57,11 @@ const copyToClipboard = async () => {
         <button
           type="button"
           class="icon-button"
-          :title="isVisible ? 'Hide' : 'Show'"
+          :title="
+            t('send-keys-field-visibility', {
+              state: isVisible ? 'shown' : 'hidden',
+            })
+          "
           @click="toggleVisibility"
         >
           <EyeIcon v-if="isVisible" />
@@ -67,7 +70,7 @@ const copyToClipboard = async () => {
         <button
           type="button"
           class="icon-button"
-          title="Regenerate"
+          :title="t('send-keys-field-regenerate')"
           :disabled="!canRegenerate"
           @click="regeneratePassphrase"
         >
@@ -76,7 +79,7 @@ const copyToClipboard = async () => {
         <button
           type="button"
           class="icon-button"
-          title="Copy"
+          :title="t('send-keys-field-copy')"
           @click="copyToClipboard"
         >
           <CopyIcon />

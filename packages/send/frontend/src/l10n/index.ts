@@ -128,9 +128,25 @@ async function applyDayjsLocale(code: string) {
   }
 }
 
+const MARK = '\uE000';
+
+/**
+ * Formats `id` with the placeable `name` replaced by a marker and returns the
+ * text before and after it, so a template can render that part as markup
+ * (`<strong>`, a link) while translators keep the whole sentence.
+ */
+export function tAround(
+  id: string,
+  name: string,
+  args?: L10nArgs
+): [string, string] {
+  const [before, after = ''] = t(id, { ...args, [name]: MARK }).split(MARK);
+  return [before, after];
+}
+
 /** Component entry point; `t` is reactive to locale changes via `chain`. */
 export function useL10n() {
-  return { t, locale, setLocale };
+  return { t, tAround, locale, setLocale };
 }
 
 /** Test seam. */

@@ -16,6 +16,7 @@ import {
   resetL10n,
   setLocale,
   t,
+  tAround,
 } from './index';
 import { requestedLocales } from './negotiate';
 
@@ -183,5 +184,52 @@ describe('t / setLocale', () => {
   it('ignores an unknown locale and keeps English', async () => {
     expect(await setLocale(['xx-YY'])).toBe(DEFAULT_LOCALE);
     expect(t('send-copy-link')).toBe('Copy link');
+  });
+});
+
+describe('tAround', () => {
+  beforeEach(() => {
+    resetL10n();
+    resetBundleCache();
+  });
+
+  it('splits the sentence around the placeable', () => {
+    expect(tAround('send-keys-backup-finalized', 'button')).toEqual([
+      'Your key is finalized when you click ',
+      '.',
+    ]);
+  });
+
+  it('returns an empty tail when the placeable ends the sentence', () => {
+    expect(tAround('send-report-confirm', 'link')).toEqual([
+      'Please confirm your report ',
+      '',
+    ]);
+  });
+
+  it('passes the other arguments through', () => {
+    expect(
+      tAround('send-confirm-delete-question', 'name', { type: 'folder' })
+    ).toEqual(['Are you sure you want to delete the folder “', '”?']);
+  });
+
+  it("follows the translation's word order", async () => {
+    await setLocale(['de']);
+    expect(tAround('send-keys-backup-finalized', 'button')).toEqual([
+      'Ihr Schlüssel wird festgelegt, sobald Sie auf ',
+      ' klicken.',
+    ]);
+  });
+
+  it('keeps the whole text when a translation drops the placeable', async () => {
+    await setLocale(['de']);
+    // Test-only fixture: a translation that omits { $button }.
+    fallbackChain.value[0].addResource(
+      new FluentResource('send-test-around = Ohne Platzhalter')
+    );
+    expect(tAround('send-test-around', 'button')).toEqual([
+      'Ohne Platzhalter',
+      '',
+    ]);
   });
 });

@@ -84,7 +84,7 @@ function isNavLinkActive(navPath: string, currentPath: string): boolean {
             <router-link
               v-for="navLink in primaryNavLinks"
               :key="navLink.path"
-              :data-testid="`navlink-${navLink.label.toLowerCase().replace(/\s+/g, '-')}`"
+              :data-testid="`navlink-${navLink.id}`"
               :to="navLink.path"
               :class="{
                 active: isNavLinkActive(navLink.path, currentRoute.path),
