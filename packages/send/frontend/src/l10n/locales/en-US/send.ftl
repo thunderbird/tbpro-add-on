@@ -519,6 +519,7 @@ send-popup-login-title = Please log in to continue
 # Compose popup while signed out: text below the title.
 send-popup-login-body = A new window has been opened for you to log in.
 # Compose popup when the encryption key is not set up yet: title.
+# "Send" is the product name; do not translate it.
 send-popup-setup-title = Finish setting up Send
 # Text below that title.
 send-popup-setup-body = To continue your upload, please complete your passphrase setup/recovery.
@@ -551,6 +552,7 @@ send-settings-delete-failed = Something went wrong deleting your data. Please tr
 # Greeting above the user’s name on the account overview; the name follows on its own line.
 send-dashboard-welcome = Welcome,
 # Heading of the storage usage bar.
+# "Send" is the product name; do not translate it.
 send-storage-title = Send Storage
 # Storage used. { $used } and { $limit } are formatted sizes, e.g. “2 GB of 20 GB”.
 send-storage-used = { $used } of { $limit }
@@ -577,6 +579,7 @@ send-security-locked = Files access is locked. Restore or reset your encryption 
 # Link next to that warning to the support site.
 send-security-learn-more = Learn more
 # Card on the account overview for users who don’t have the desktop app yet.
+# "Send" is the product name; do not translate it.
 send-dashboard-desktop-description = To use Send in { -thunderbird-brand } Desktop, install it and sign in from the { -thunderbird-brand } menu.
 # Button that opens the desktop app download page.
 send-dashboard-desktop-button = Download
@@ -586,12 +589,16 @@ send-dashboard-desktop-image = { -thunderbird-brand } desktop app
 ## Delete Send data (settings page).
 
 # Heading of the section and of the confirmation card.
+# "Send" is the product name; do not translate it.
 send-delete-data-title = Delete Send Data
 # Short description in the account overview section.
+# "Send" is the product name; do not translate it.
 send-delete-data-summary = Permanently delete all encrypted files in your { -thundermail-brand } Send storage.
 # Link that opens the confirmation card.
+# "Send" is the product name; do not translate it.
 send-delete-data-link = Delete Send data
 # Main warning on the confirmation card.
+# "Send" is the product name; do not translate it.
 send-delete-data-warning = This will permanently delete all encrypted files in your { -thundermail-brand } Send storage.
 # Reassurance on the confirmation card.
 send-delete-data-subscription = Your { -thundermail-brand } subscription will not be affected.
@@ -610,6 +617,7 @@ send-delete-data-key-visibility =
        *[hidden] Show Encryption Key
     }
 # Button that deletes the data.
+# "Send" is the product name; do not translate it.
 send-delete-data-button = Delete Send Data
 # Link that closes the confirmation card.
 send-delete-data-cancel = Cancel
@@ -618,8 +626,10 @@ send-delete-data-mismatch = Encryption Key does not match. Please try again.
 # Error when the typed key cannot be read at all.
 send-delete-data-invalid = Invalid Encryption Key format
 # Heading after the data was deleted.
+# "Send" is the product name; do not translate it.
 send-delete-data-done-title = Your Send data has been deleted
 # Text after the data was deleted.
+# "Send" is the product name; do not translate it.
 send-delete-data-done-body = All encrypted files in your { -thundermail-brand } Send storage have been permanently deleted. You can start fresh now.
 # Reassurance after the data was deleted.
 send-delete-data-done-mail = Your { -thundermail-brand } data was not affected.
