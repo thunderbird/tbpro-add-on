@@ -127,6 +127,38 @@ describe('deleteItem share-link revocation', () => {
     expect(await exists.upload(upload.id)).toBe(false);
   });
 
+  it('revokes the link when two files of one share are deleted at once', async () => {
+    // Holding the folder row parks both deletes. Without the container lock
+    // they park at their closing `updatedAt` touch, after empty checks that
+    // each saw the other's copy, and both skip the burn. With it they park at
+    // the lock, and the second checks the share after the first commits.
+    const folder = await createContainer(false);
+    const shareContainer = await createContainer(true);
+    const uploadA = await createUpload();
+    const uploadB = await createUpload();
+    const itemA = await createItemIn(folder.id, uploadA.id, 'wk-a');
+    const itemB = await createItemIn(folder.id, uploadB.id, 'wk-b');
+    await createItemIn(shareContainer.id, uploadA.id, 'wk-a-copy');
+    await createItemIn(shareContainer.id, uploadB.id, 'wk-b-copy');
+    const link = await createLinkFor(shareContainer.id);
+
+    let deletes: Promise<unknown>;
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Container" WHERE id = ${folder.id}::uuid FOR UPDATE`;
+      deletes = Promise.all([
+        deleteItem(itemA.id, folder.id, fx.user.id, true),
+        deleteItem(itemB.id, folder.id, fx.user.id, true),
+      ]);
+      // give both deletes time to run their checks and block
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+    await deletes!;
+
+    expect(await exists.accessLink(link.id)).toBe(false);
+    expect(await exists.container(shareContainer.id)).toBe(false);
+    expect(await exists.group(shareContainer.groupId)).toBe(false);
+  });
+
   it('keeps the link when the content is kept', async () => {
     const { folder, item, copy, upload, link } = await sharedFile();
 

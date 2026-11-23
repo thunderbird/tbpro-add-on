@@ -122,7 +122,8 @@ function ownedItemInContainer(
 async function burnAbandonedShareLinks(
   tx: Prisma.TransactionClient,
   uploadIds: string[],
-  ownerId: string
+  ownerId: string,
+  containerId: string
 ) {
   const abandoned = await tx.upload.findMany({
     where: {
@@ -145,16 +146,24 @@ async function burnAbandonedShareLinks(
   if (copies.length === 0) {
     return;
   }
+  const shareIds = [...new Set(copies.map((copy) => copy.containerId))];
+
+  // Serialise deletes that empty the same share container: each would still
+  // see the other's uncommitted copy, and both would skip burning it. Every
+  // container this delete writes (incl. its own) is locked here, after the
+  // upload locks and in id order. NO KEY UPDATE does not block an item insert's
+  // FK check, which would otherwise deadlock against the upload lock.
+  const lockIds = [...new Set([containerId, ...shareIds])];
+  await tx.$queryRaw`SELECT id FROM "Container" WHERE id IN (${Prisma.join(
+    lockIds.map((id) => Prisma.sql`${id}::uuid`)
+  )}) ORDER BY id FOR NO KEY UPDATE`;
 
   await tx.item.deleteMany({
     where: { id: { in: copies.map(({ id }) => id) } },
   });
 
   const emptied = await tx.container.findMany({
-    where: {
-      id: { in: [...new Set(copies.map(({ containerId }) => containerId))] },
-      items: { none: {} },
-    },
+    where: { id: { in: shareIds }, items: { none: {} } },
     select: { groupId: true },
   });
   await tx.group.deleteMany({
@@ -216,7 +225,7 @@ export async function deleteItem(
       // Deleting an upload's last regular-folder item also revokes its share
       // links; `shouldDeleteUpload === false` keeps the content and its shares.
       if (shouldDeleteUpload) {
-        await burnAbandonedShareLinks(tx, uploadIds, ownerId);
+        await burnAbandonedShareLinks(tx, uploadIds, ownerId, containerId);
       }
 
       // An upload is removed only once no item references it any more;
