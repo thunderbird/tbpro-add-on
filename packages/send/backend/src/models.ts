@@ -113,6 +113,94 @@ function ownedItemInContainer(
   return { id, containerId, upload: { ownerId } };
 }
 
+// Burns the owner's share-only copies of uploads no regular folder holds.
+async function burnAbandonedShareLinks(
+  tx: Prisma.TransactionClient,
+  uploadIds: string[],
+  ownerId: string,
+  containerId: string
+) {
+  const abandoned = await tx.upload.findMany({
+    where: {
+      id: { in: uploadIds },
+      items: { none: { container: { shareOnly: false } } },
+    },
+    select: { id: true },
+  });
+  if (abandoned.length === 0) {
+    return;
+  }
+
+  const copies = await tx.item.findMany({
+    where: {
+      uploadId: { in: abandoned.map(({ id }) => id) },
+      container: { shareOnly: true, ownerId },
+    },
+    select: { id: true, containerId: true },
+  });
+  if (copies.length === 0) {
+    return;
+  }
+  const shareIds = [...new Set(copies.map((copy) => copy.containerId))];
+
+  // After the upload locks, in id order; NO KEY UPDATE lets item inserts through.
+  const lockIds = [...new Set([containerId, ...shareIds])];
+  await tx.$queryRaw`SELECT id FROM "Container" WHERE id IN (${Prisma.join(
+    lockIds.map((id) => Prisma.sql`${id}::uuid`)
+  )}) ORDER BY id FOR NO KEY UPDATE`;
+
+  await tx.item.deleteMany({
+    where: { id: { in: copies.map(({ id }) => id) } },
+  });
+
+  // A share without a link may still be filling (links come after items).
+  const emptied = await tx.container.findMany({
+    where: { id: { in: shareIds }, items: { none: {} }, shares: { some: {} } },
+    select: { groupId: true },
+  });
+  await tx.group.deleteMany({
+    where: { id: { in: emptied.map(({ groupId }) => groupId) } },
+  });
+}
+
+// Serialise deletes of one upload; id order avoids deadlocks.
+async function lockUploads(tx: Prisma.TransactionClient, uploadIds: string[]) {
+  if (uploadIds.length > 0) {
+    await tx.$queryRaw`SELECT id FROM "Upload" WHERE id IN (${Prisma.join(
+      uploadIds.map((uploadId) => Prisma.sql`${uploadId}::uuid`)
+    )}) ORDER BY id FOR UPDATE`;
+  }
+}
+
+// Deletes the uploads no item references any more and returns their ids.
+async function deleteUnreferencedUploads(
+  tx: Prisma.TransactionClient,
+  uploadIds: string[]
+) {
+  const orphaned = await tx.upload.findMany({
+    where: { id: { in: uploadIds }, items: { none: {} } },
+    select: { id: true },
+  });
+  const orphanedIds = orphaned.map(({ id }) => id);
+  await tx.upload.deleteMany({ where: { id: { in: orphanedIds } } });
+  return orphanedIds;
+}
+
+// For a folder whose items are already deleted: burns the owner's share-only
+// copies of its uploads, then deletes the uploads nothing references. Returns
+// the deleted upload ids; their stored bytes are the caller's to delete.
+export function releaseFolderUploads(
+  uploadIds: string[],
+  ownerId: string,
+  containerId: string
+) {
+  return prisma.$transaction(async (tx) => {
+    await lockUploads(tx, uploadIds);
+    await burnAbandonedShareLinks(tx, uploadIds, ownerId, containerId);
+    return deleteUnreferencedUploads(tx, uploadIds);
+  });
+}
+
 export async function isUploadOwnedBy(uploadId: string, ownerId: string) {
   const upload = await prisma.upload.findFirst({
     where: { id: uploadId, ownerId },
@@ -147,29 +235,28 @@ export async function deleteItem(
         },
         select: { id: true, uploadId: true },
       });
+      const uploadIds = [...new Set(siblings.map(({ uploadId }) => uploadId))];
+
+      await lockUploads(tx, uploadIds);
+
       await tx.item.deleteMany({
         where: { id: { in: siblings.map(({ id }) => id) } },
       });
 
-      // An upload is removed only once no item references it any more;
-      // other items (e.g. share-only copies) may still point at it.
-      const orphaned = await tx.upload.findMany({
-        where: {
-          id: { in: siblings.map(({ uploadId }) => uploadId) },
-          items: { none: {} },
-        },
-        select: { id: true },
-      });
-      const uploadIds = orphaned.map(({ id }) => id);
-      await tx.upload.deleteMany({ where: { id: { in: uploadIds } } });
+      if (shouldDeleteUpload) {
+        await burnAbandonedShareLinks(tx, uploadIds, ownerId, containerId);
+      }
 
-      // touch the container's `updatedAt` date
-      await tx.container.update({
+      const orphanedIds = await deleteUnreferencedUploads(tx, uploadIds);
+
+      // touch the container's `updatedAt` date; the burn above may have
+      // removed the container itself
+      await tx.container.updateMany({
         where: { id: containerId },
         data: { updatedAt: new Date() },
       });
 
-      return { wrappedKey: item.wrappedKey, uploadIds };
+      return { wrappedKey: item.wrappedKey, uploadIds: orphanedIds };
     })
     .catch((error) => {
       if (error instanceof BaseError) {
