@@ -2,8 +2,7 @@
  * B4 — New file attached while popup already open is silently dropped, not
  * merged into the existing upload session.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #B4 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §B4.
+ * Tracked in #1029.
  *
  * This is the mirror case of B1 from a different trigger path: rather than
  * two bursts racing to be the FIRST batch, here the popup has already fully

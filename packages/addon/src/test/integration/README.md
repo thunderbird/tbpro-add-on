@@ -1,14 +1,16 @@
 # Add-on Integration Tests (Tier 1: Fake-Host Harness)
 
-This directory implements **Tier 1** of
-`packages/send/e2e/ADDON-INTEGRATION-TEST-ENV-PLAN-2026-07-22.md`: a fast,
+This directory is **Tier 1** of the add-on's integration testing: a fast,
 deterministic, CI-friendly harness that loads the **real** production
 modules (`background.ts`, `menu.ts`, `token-bridge.js`, `init.ts`,
 `UserMenu.vue`, `PopupView.vue`) against a fake multi-context Thunderbird
-host, and drives the exact race windows described in
-`packages/send/e2e/ADDON-BUG-REPORTS-2026-07-22.md` deterministically. It has
-since grown a set of happy-path and startup specs that use the same harness
-to pin down the behaviour that *should* keep working.
+host, and deterministically drives the exact race windows described in the
+add-on's cross-context sync bug issues. It also has happy-path and startup
+specs that use the same harness to pin down the behaviour that *should* keep
+working.
+
+Test-coverage work is tracked in #1034. Tier 2 (a pass against real
+Thunderbird Daily) is #1084 and Tier 3 (a full source build) is #1085.
 
 ## Running
 
@@ -47,13 +49,14 @@ meaningful.
 context's registered `onMessage` listeners, exactly like real WebExtension
 messaging. `browser.windows.create()` returns a deliberately controllable,
 unresolved Promise (see `resolveNextWindowCreate()`) so tests can force exact
-check-then-act interleavings (e.g. B3) that are effectively impossible to
-reproduce reliably against a real window manager.
+check-then-act interleavings (e.g. two upload popups opening at once, #1028)
+that are effectively impossible to reproduce reliably against a real window
+manager.
 
 ## What this harness deliberately does NOT do
 
-Per the integration-environment plan's key finding: the hamburger/TBPro menu
-(`menu.ts` + `public/api/TBProMenu/implementation.js`) is built with
+The hamburger/TBPro menu (`menu.ts` +
+`public/api/TBProMenu/implementation.js`) is built with
 `ChromeUtils.importESModule` + `ExtensionCommon.ExtensionAPI` — privileged
 Thunderbird-internal APIs that only exist inside a real running Thunderbird
 process. This harness stubs `browser.TBProMenu`, `browser.CloudFileAccounts`,
@@ -62,24 +65,32 @@ process. This harness stubs `browser.TBProMenu`, `browser.CloudFileAccounts`,
 assert that the right calls happened with the right arguments at the right
 time, which is what the confirmed sync-race findings actually depend on.
 
-Anything requiring real platform timing/window-manager behavior (B3's
-magnitude-of-likelihood question, B5's background-page-recycle trigger
-condition, C1's window auto-close-on-disable behavior) is explicitly a
-**Tier 2/3** concern — see the environment plan doc — and is called out with
-a "Needs live test" comment in the relevant spec here.
+Anything requiring real platform timing/window-manager behavior (how likely
+two popups really are to race in #1028, whether Thunderbird actually recycles
+the background page mid-upload in #1017, whether disabling the add-on closes
+its windows in #1018) is explicitly a **Tier 2/3** concern — see #1084 and
+#1085 — and is called out with a "Needs live test" comment in the relevant
+spec here.
 
-## Regression-test contract
+The harness also doesn't yet mock `oidc-client-ts`/`UserManager` or wire a
+real `Keychain` into multiple contexts, so races inside token refresh and
+passphrase restore aren't covered here. Remaining coverage work is tracked in
+#1034.
 
-Every spec in this directory is named after and directly traces to a finding
-ID in `ADDON-BUG-REPORTS-2026-07-22.md` (e.g. `b1-*.test.ts` → finding B1).
-Each spec:
+## Bug-reproduction specs
 
-1. Imports the **real** production module(s) under test (not
+Some specs reproduce a specific bug. Each one:
+
+1. Links the GitHub issue it reproduces in its doc comment.
+2. Imports the **real** production module(s) under test (not
    reimplementations).
-2. Drives the exact interleaving/race described in the finding.
-3. Asserts either the **current (buggy) behavior**, with a `CONFIRMED BUG:`
-   prefix in the test name, or — once the finding has been addressed — the
+3. Drives the exact interleaving/race described in the issue.
+4. Asserts either the **current (buggy) behavior**, with a `CONFIRMED BUG:`
+   prefix in the test name, or — once the bug has been fixed — the
    **fixed behavior**, with a `FIXED:` prefix.
+
+To see which reproduced bugs are still open, search this directory for
+`CONFIRMED BUG:`.
 
 **A `CONFIRMED BUG:` spec is expected to FAIL once the underlying bug is
 fixed.** That is the point — a failing spec here is the CI signal that a fix
@@ -93,52 +104,3 @@ landed. When that happens:
   addresses the client-side structural gap; live-test-only sub-questions
   (server-side outcomes, platform timing) still need Tier 2/3 verification
   even after a client-side fix lands.
-
-## Coverage status
-
-| ID | Spec file | Priority | State |
-|----|-----------|----------|-------|
-| A1 | `a1-logout-does-not-abort-popup-upload.test.ts` | Medium | `FIXED:` — SIGN_OUT rejects in-flight uploads and reaches the popup |
-| A2 | `a2-origin-mismatch-logout-not-delivered.test.ts` | Medium | Resolved — asserts the bridge is injected on every shipped Send origin and nowhere else |
-| A5 | `a5-logout-clears-unrelated-storage.test.ts` | Medium | Documents the current full wipe on logout |
-| A6 | `a6-menu-stale-login-no-push-refresh.test.ts` | Medium | `FIXED:` — the bridge forwards session changes to the page |
-| A7 | `a7-accounthub-login-races-web-login.test.ts` | Medium | `FIXED:` — first OIDC_USER write wins |
-| B1 | `b1-rapid-attach-before-popup-ready.test.ts` | Medium | `CONFIRMED BUG:` |
-| B2 | `b2-popup-close-mid-upload.test.ts` | Medium | `CONFIRMED BUG:` |
-| B3 | `b3-popup-check-then-act-race.test.ts` | Medium | `CONFIRMED BUG:` |
-| B4 | `b4-attach-while-popup-open.test.ts` | Medium | `CONFIRMED BUG:` |
-| B5 | `b5-background-restart-loses-bookkeeping.test.ts` | **High** | `CONFIRMED BUG:` |
-| C1 | `c1-disable-mid-upload-orphans-popup.test.ts` | **High** | `CONFIRMED BUG:` |
-| C2 | `c2-reenable-trusts-stale-auth.test.ts` | Medium | `CONFIRMED BUG:` |
-| D3 | `d3-init-single-flight-per-context-only.test.ts` | Medium | `FIXED:` — the init lock no longer deadlocks across contexts |
-
-The state column is read off the test names; when you flip a spec from
-`CONFIRMED BUG:` to `FIXED:`, update it here too.
-
-**Happy-path and startup specs** (not tied to a finding ID) use the same
-harness to lock in behaviour that must keep working:
-
-- `happy-full-upload-golden-path.test.ts`, `happy-sequential-multi-file-reuse.test.ts`
-  — attach → popup → upload → link, once and across popup sessions
-- `happy-login-sync-across-contexts.test.ts`, `happy-clean-logout-no-inflight-work.test.ts`
-  — login/logout propagate across background, popup and web contexts
-- `happy-init-no-conflict.test.ts` — `init()` with an intact default folder
-- `startup-missing-accounthub.test.ts`, `startup-storage-unreadable.test.ts`
-  — the background survives a missing experiment API / unreadable storage
-- `startup-sentry-gate.test.ts` — Sentry in the background page follows the
-  Thunderbird telemetry pref (see `packages/send/docs/TelemetryOptOut.md`)
-
-**Not yet covered** (deferred — see reasoning below):
-
-- **A3** (forced-logout races concurrent multipart parts) and **A4**
-  (cross-context refresh-token race) — both live in `auth-store.ts`'s OIDC
-  client internals (`signinSilent()`, `MAX_CONCURRENT_PARTS` fan-out),
-  which need deeper mocking of `oidc-client-ts`/`UserManager` than this
-  harness currently provides. Left for a follow-up harness extension.
-- **D2** (bridged-passphrase one-shot consume race) — needs the real
-  `Keychain`/`bridgePassphrase.ts` wired into two contexts sharing storage;
-  doable with this harness's shared-storage primitive, just not yet written.
-
-Extend this harness's mocks (particularly around `oidc-client-ts` and
-`Keychain`) to close the remaining three before considering Tier 1 complete
-per the original environment plan's effort estimate.

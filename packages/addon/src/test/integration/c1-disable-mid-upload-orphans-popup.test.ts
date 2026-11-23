@@ -2,8 +2,7 @@
  * C1 [HIGH] — Add-on disabled mid-upload orphans the popup window and any
  * in-flight `uploadPromiseMap` entries with no cleanup.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #C1 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §C1.
+ * Tracked in #1018.
  *
  * Mechanism under test: this is fundamentally an ABSENCE-of-code finding —
  * there is no `browser.runtime.onSuspend`, `browser.management.onDisabled`,

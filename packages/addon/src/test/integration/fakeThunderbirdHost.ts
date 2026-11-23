@@ -24,8 +24,8 @@
  * This harness deliberately does NOT implement `browser.TBProMenu`,
  * `browser.CloudFileAccounts`, `browser.MailAccounts`, or `browser.AccountHub`
  * with real behavior — those are privileged chrome UI/experiment APIs that
- * only exist inside a real Thunderbird process (see
- * ADDON-INTEGRATION-TEST-ENV-PLAN-2026-07-22.md, Tier 2/3). Here they are
+ * only exist inside a real Thunderbird process (real-Thunderbird
+ * coverage is tracked in #1084 and #1085). Here they are
  * spies: we only assert that the right calls happened with the right args at
  * the right time, which is what the sync-race findings actually depend on.
  */

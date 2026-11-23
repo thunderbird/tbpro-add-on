@@ -3,8 +3,7 @@
  * record; the AbortController created in background.ts is never wired to
  * the popup's actual network upload.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #B2 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §B2.
+ * Tracked in #1027.
  *
  * This spec verifies the CLIENT-SIDE half of the finding, which is fully
  * code-confirmable without a live server: the `AbortController` background
@@ -20,8 +19,8 @@
  *
  * The SERVER-SIDE half (does the backend actually persist the item after
  * the client window is destroyed) is explicitly a "needs live test" item
- * and is NOT claimed as covered by this spec -- see the bug report and the
- * Tier 2/3 sections of ADDON-INTEGRATION-TEST-ENV-PLAN-2026-07-22.md.
+ * and is NOT claimed as covered by this spec -- see #1027 and the
+ * real-Thunderbird test pass tracked in #1084.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {

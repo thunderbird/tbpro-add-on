@@ -2,8 +2,7 @@
  * B1 — Two rapid, separate `onFileUpload` bursts can silently lose files to a
  * popup that already drained the queue.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #B1 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §B1. See README.md for the
+ * Tracked in #1026. See README.md for the
  * regression-test contract these specs follow.
  *
  * Mechanism (background.ts): onFileUpload pushes to `uploadInfoQueue` and

@@ -2,8 +2,7 @@
  * C2 — Add-on re-enable trusts stale `STORAGE_KEY_AUTH` without
  * re-validating against the backend.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #C2 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §C2.
+ * Tracked in #1030.
  *
  * Mechanism under test:
  *   - Re-enabling the add-on re-runs background.ts's top-level `main()` IIFE

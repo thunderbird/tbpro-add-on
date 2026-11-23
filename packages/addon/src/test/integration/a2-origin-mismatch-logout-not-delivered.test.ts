@@ -3,8 +3,7 @@
  * the add-on menu/background via token-bridge.js for any host where the
  * add-on could plausibly run.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #A2 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §A2.
+ * Tracked in #1020.
  *
  * Fix: `manifest.json` content_scripts.matches now also covers
  * `https://localhost/*` (HTTPS local dev/test, not just the bare

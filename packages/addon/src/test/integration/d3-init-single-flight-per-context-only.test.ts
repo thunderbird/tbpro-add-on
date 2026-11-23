@@ -3,8 +3,7 @@
  * default-folder race can reintroduce issue #930 (duplicate default
  * folders).
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #D3 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §D3.
+ * Tracked in #1032.
  *
  * Mechanism under test (send-frontend/src/lib/init.ts):
  *   let inFlight: Promise<INIT_ERRORS> | null = null;

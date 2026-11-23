@@ -1,8 +1,7 @@
 /**
  * B3 — Check-then-act race in `openUnifiedPopup()`'s `popupWindowId` guard.
  *
- * See ADDON-BUG-REPORTS-2026-07-22.md #B3 and
- * ADDON-SYNC-VERIFIED-FINDINGS-2026-07-21.md §B3.
+ * Tracked in #1028.
  *
  * Mechanism under test (background.ts, openUnifiedPopup()):
  *   if (uploadInfoQueue.length === 0 || popupWindowId) return;
