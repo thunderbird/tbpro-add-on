@@ -64,3 +64,5 @@ overrides:
   # basic-ftp: get-uri (via browserstack-node-sdk>pac-proxy-agent, e2e) still
   #   declares ^5; the fix is in the 6.x line.
   basic-ftp@<=6.2.0: ^6.2.1
+  glob@>=9.0.0 <=14.0.1: ^14.0.2
+  minimatch@>=7.0.0 <11.0.1: ^11.0.1
