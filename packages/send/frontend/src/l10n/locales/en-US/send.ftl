@@ -389,7 +389,8 @@ send-download-button = Download
 send-download-confirm-title = Before you download
 # First paragraph of that dialog.
 send-download-confirm-intro = You’re about to download a file through { -send-brand }.
-# Second paragraph. "Send" is the short product name.
+# Second paragraph.
+# "Send" is the product name; do not translate it.
 send-download-confirm-not-scanned = Files sent with Send are end-to-end encrypted and aren’t scanned for viruses or malware.
 # First advice in the list.
 send-download-confirm-trust = Only download files you trust.
@@ -411,6 +412,7 @@ send-dashboard-manage-files-description = Open or manage your encrypted file sto
 # Button of that card.
 send-dashboard-manage-files-button = Access Your Files
 # Text of the Send card on the add-on management page.
+# "Send" is the product name; do not translate it.
 send-dashboard-addon-description = Encrypted Storage: Manage your files and settings in the Send dashboard.
 # Button that opens the Send dashboard in a tab.
 send-dashboard-addon-button = Open Dashboard
@@ -445,15 +447,20 @@ send-login-required = You need to log into your mozilla account. Make sure you�
 # Button that runs the check again; the texts below refer to it by name.
 send-boot-button-retry = Retry
 # Title when the cookie that keeps the user signed in is blocked.
+# "Send" is the product name; do not translate it.
 send-boot-cookies-blocked-title = { -thunderbird-brand } is blocking cookies for Send
 # How to allow the cookie. The quoted names are settings; use their names in
 # the localized application. The last quote is the Retry button.
+# "Send" is the product name; do not translate it.
 send-boot-cookies-blocked-body = Send stores a cookie to keep you signed in, and your browser is currently refusing it. Open Settings → Privacy & Security → Web Content and turn on “Accept cookies from sites”. If that is already on, also set “Accept third-party cookies” to “From visited”. Then choose “{ send-boot-button-retry }”.
 # Title when browser storage is blocked, so the app cannot load.
+# "Send" is the product name; do not translate it.
 send-boot-storage-blocked-title = { -thunderbird-brand } is blocking storage for Send
 # How to allow storage; same settings and Retry button as above.
+# "Send" is the product name; do not translate it.
 send-boot-storage-blocked-body = Send keeps your sign-in state and encryption keys in browser storage, and your browser is refusing access to it. This happens when all cookies are blocked. Open Settings → Privacy & Security → Web Content and turn on “Accept cookies from sites”, then choose “{ send-boot-button-retry }”.
 # Title when the app failed to load.
+# "Send" is the product name; do not translate it.
 send-boot-app-load-failed-title = Send could not start
 # Text below that title; refers to the Retry button.
 send-boot-app-load-failed-body = The application failed to load. Choose “{ send-boot-button-retry }” to reload the page. If this keeps happening, please let us know.
