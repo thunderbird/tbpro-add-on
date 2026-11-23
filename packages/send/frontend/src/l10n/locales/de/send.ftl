@@ -24,5 +24,3 @@ send-copy-link = Link kopieren
 send-link-copied = Link kopiert
 # Intentionally left untranslated so the fallback drill has a real gap:
 # send-error-unknown
-# Intentionally empty: must fall back to English, never render blank.
-send-test-empty-pattern = { "" }

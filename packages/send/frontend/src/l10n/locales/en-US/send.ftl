@@ -44,5 +44,3 @@ send-copy-link = Copy link
 send-link-copied = Link copied
 # Generic error shown when the server reports a failure we have no copy for.
 send-error-unknown = Something went wrong. Please try again.
-# Used only by tests: an intentionally empty pattern must fall back to English.
-send-test-empty-pattern = Test empty pattern

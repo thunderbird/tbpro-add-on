@@ -1,3 +1,4 @@
+import { FluentResource } from '@fluent/bundle';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { captureMessage } = vi.hoisted(() => ({ captureMessage: vi.fn() }));
@@ -134,6 +135,13 @@ describe('t / setLocale', () => {
 
   it('treats an empty pattern as missing and never renders blank', async () => {
     await setLocale(['de']);
+    // Test-only fixture, kept out of the shipped .ftl files so translators
+    // never see it: empty in German, present in English.
+    const [de, enUS] = fallbackChain.value;
+    de.addResource(new FluentResource('send-test-empty-pattern = { "" }'));
+    enUS.addResource(
+      new FluentResource('send-test-empty-pattern = Test empty pattern')
+    );
     expect(t('send-test-empty-pattern')).toBe('Test empty pattern');
   });
 
