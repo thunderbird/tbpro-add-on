@@ -10,7 +10,7 @@
  * initialized (POPUP_READY answered) and is idle/mid-upload when a fresh
  * `onFileUpload` fires. `openUnifiedPopup()`'s guard treats "popup already
  * open" as "nothing to do", so the new file is queued but nobody ever tells
- * the open popup about it — and `PopupView.vue`'s `files.value =
+ * the open popup about it — and `usePopupFileList.ts`'s `files.value =
  * message.files` is a plain overwrite even if a second FILE_LIST were ever
  * sent (which this test also demonstrates never happens).
  */

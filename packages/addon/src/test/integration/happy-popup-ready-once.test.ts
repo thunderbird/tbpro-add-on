@@ -19,10 +19,10 @@ import {
 } from './testHelpers';
 
 // background.ts reads the global `browser` when it handles a message, and the
-// harness has only one global at a time. Run each of the context's listeners
-// with its own `browser`, so background's FILE_LIST reply is sent from the
-// background and reaches the popup. This covers the synchronous part of a
-// listener, which is all POPUP_READY needs.
+// harness has only one global at a time. Make each listener the context has
+// registered so far run with that context's `browser`, so background's
+// FILE_LIST reply is sent from the background and reaches the popup. This
+// covers the synchronous part of a listener, which is all POPUP_READY needs.
 function runListenersInOwnContext(ctx: FakeBrowserContext) {
   ctx.onMessageListeners.forEach((listener, i) => {
     ctx.onMessageListeners[i] = (message, sender) => {
