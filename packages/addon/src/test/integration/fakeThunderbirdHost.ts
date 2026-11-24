@@ -229,6 +229,10 @@ export function createFakeThunderbirdHost(): FakeHost {
           addListener: vi.fn((fn: Listener) => {
             onMessageListeners.push(fn);
           }),
+          removeListener: vi.fn((fn: Listener) => {
+            const i = onMessageListeners.indexOf(fn);
+            if (i !== -1) onMessageListeners.splice(i, 1);
+          }),
         },
         onInstalled: {
           addListener: vi.fn(),

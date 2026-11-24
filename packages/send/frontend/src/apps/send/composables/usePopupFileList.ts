@@ -1,5 +1,5 @@
 import { FILE_LIST, POPUP_READY, SIGN_OUT } from '@send-frontend/lib/const';
-import { ref } from 'vue';
+import { getCurrentScope, onScopeDispose, ref } from 'vue';
 
 export interface FileItem {
   id: number;
@@ -12,6 +12,33 @@ export interface FileItem {
 export function usePopupFileList() {
   const files = ref<FileItem[] | null>(null);
   let isListening = false;
+  let isDisposed = false;
+
+  async function onMessage(message) {
+    if (message.type === FILE_LIST) {
+      files.value = message.files;
+    } else if (message.type === SIGN_OUT) {
+      // Session ended -- clear any pending uploads and let PopupView
+      // render its logged-out UI from isLoggedIn. The popup
+      // may also be closed by background.ts in the same SIGN_OUT
+      // handling, but doing this here is defensive in case the popup
+      // survives (e.g. a web-tab sign-out that didn't close us).
+      // See https://github.com/thunderbird/tbpro-add-on/issues/1019.
+      files.value = [];
+    }
+  }
+
+  // Remove the listener with its owner, so a remounted PopupView does not
+  // leave the old one behind. PopupView's initialize() is async, so a request
+  // can still arrive after dispose; ignore it (#1425).
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      isDisposed = true;
+      if (isListening) {
+        browser.runtime.onMessage.removeListener(onMessage);
+      }
+    });
+  }
 
   // Safe to call on every refetch: once the listener is registered, later calls
   // do nothing. background.ts empties its queue once it has answered
@@ -19,24 +46,12 @@ export function usePopupFileList() {
   // the files this window is about to upload. Throws when browser.runtime is
   // unavailable (not running as an extension); a later call then tries again.
   function requestFiles() {
-    if (isListening) {
+    if (isListening || isDisposed) {
       return;
     }
     console.log(`adding listener in Popup for runtime messages`);
 
-    browser.runtime.onMessage.addListener(async (message) => {
-      if (message.type === FILE_LIST) {
-        files.value = message.files;
-      } else if (message.type === SIGN_OUT) {
-        // Session ended -- clear any pending uploads and let PopupView
-        // render its logged-out UI from isLoggedIn. The popup
-        // may also be closed by background.ts in the same SIGN_OUT
-        // handling, but doing this here is defensive in case the popup
-        // survives (e.g. a web-tab sign-out that didn't close us).
-        // See https://github.com/thunderbird/tbpro-add-on/issues/1019.
-        files.value = [];
-      }
-    });
+    browser.runtime.onMessage.addListener(onMessage);
     isListening = true;
 
     browser.runtime.sendMessage({
