@@ -4,7 +4,7 @@ This directory implements **Tier 1** of
 `packages/send/e2e/ADDON-INTEGRATION-TEST-ENV-PLAN-2026-07-22.md`: a fast,
 deterministic, CI-friendly harness that loads the **real** production
 modules (`background.ts`, `menu.ts`, `token-bridge.js`, `init.ts`,
-`UserMenu.vue`, `PopupView.vue`) against a fake multi-context Thunderbird
+`UserMenu.vue`, `usePopupFileList.ts`) against a fake multi-context Thunderbird
 host, and drives the exact race windows described in
 `packages/send/e2e/ADDON-BUG-REPORTS-2026-07-22.md` deterministically. It has
 since grown a set of happy-path and startup specs that use the same harness
