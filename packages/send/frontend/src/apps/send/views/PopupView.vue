@@ -7,6 +7,10 @@ import useKeychainStore from '@send-frontend/stores/keychain-store';
 import useUserStore from '@send-frontend/stores/user-store';
 
 import ErrorUploading from '@send-frontend/apps/send/components/ErrorUploading.vue';
+import {
+  usePopupFileList,
+  type FileItem,
+} from '@send-frontend/apps/send/composables/usePopupFileList';
 import { useUploadAndShare } from '@send-frontend/apps/send/composables/useUploadAndShare';
 import useFolderStore from '@send-frontend/apps/send/stores/folder-store';
 
@@ -15,13 +19,7 @@ import WithLoader from '@send-frontend/apps/common/WithLoader.vue';
 import { BASE_URL } from '@send-frontend/apps/common/constants';
 import PromptPopupLogin from '@send-frontend/apps/send/views/PromptLogin.vue';
 import { useAuth } from '@send-frontend/lib/auth';
-import {
-  ALL_UPLOADS_ABORTED,
-  FILE_LIST,
-  MAX_FILE_SIZE,
-  POPUP_READY,
-  SIGN_OUT,
-} from '@send-frontend/lib/const';
+import { ALL_UPLOADS_ABORTED, MAX_FILE_SIZE } from '@send-frontend/lib/const';
 import { ERROR_MESSAGES } from '@send-frontend/lib/errorMessages';
 import { restoreKeysUsingLocalStorage } from '@send-frontend/lib/keychain';
 import { openPopup } from '@send-frontend/lib/login';
@@ -30,12 +28,6 @@ import useApiStore from '@send-frontend/stores/api-store';
 import { useQuery } from '@tanstack/vue-query';
 import UploadPage from '../pages/UploadPage.vue';
 import { useStatusStore } from '../stores/status-store';
-
-interface FileItem {
-  id: number;
-  name: string;
-  data: File;
-}
 
 const userStore = useUserStore();
 const { keychain } = useKeychainStore();
@@ -46,9 +38,8 @@ const { isLoggedIn, refetchAuth, isLoadingAuth } = useAuth();
 const folderStore = useFolderStore();
 const { isError: uploadingError, uploadAndShare } = useUploadAndShare();
 
-const files = ref<FileItem[] | null>(null);
+const { files, requestFiles } = usePopupFileList();
 const message = ref('');
-let isListeningForFiles = false;
 
 async function handleUploadAndShare(
   files: FileItem[],
@@ -150,33 +141,9 @@ const initialize = async () => {
   try {
     await restoreKeysUsingLocalStorage(keychain, api);
     await init(userStore, keychain, folderStore);
-
     // initialize() re-runs on every refetch of the configuration query
-    // (window focus, mount). background.ts empties its queue once it has
-    // answered POPUP_READY, so asking again would get back an empty
-    // FILE_LIST that wipes the files this window is about to upload.
-    if (!isListeningForFiles) {
-      console.log(`adding listener in Popup for runtime messages`);
-
-      browser.runtime.onMessage.addListener(async (message) => {
-        if (message.type === FILE_LIST) {
-          files.value = message.files;
-        } else if (message.type === SIGN_OUT) {
-          // Session ended -- clear any pending uploads and let the
-          // logged-out UI render via the isLoggedIn watcher. The popup
-          // may also be closed by background.ts in the same SIGN_OUT
-          // handling, but doing this here is defensive in case the popup
-          // survives (e.g. a web-tab sign-out that didn't close us).
-          // See https://github.com/thunderbird/tbpro-add-on/issues/1019.
-          files.value = [];
-        }
-      });
-      isListeningForFiles = true;
-
-      browser.runtime.sendMessage({
-        type: POPUP_READY,
-      });
-    }
+    // (window focus, mount); requestFiles() only asks background.ts once.
+    requestFiles();
   } catch {
     console.log(
       `Cannot access browser.runtime, probably not running as an extension`

@@ -120,6 +120,8 @@ harness to lock in behaviour that must keep working:
 
 - `happy-full-upload-golden-path.test.ts`, `happy-sequential-multi-file-reuse.test.ts`
   — attach → popup → upload → link, once and across popup sessions
+- `happy-popup-ready-once.test.ts` — the popup's `usePopupFileList.ts` asks
+  background for its files once and keeps them when PopupView re-initializes
 - `happy-login-sync-across-contexts.test.ts`, `happy-clean-logout-no-inflight-work.test.ts`
   — login/logout propagate across background, popup and web contexts
 - `happy-init-no-conflict.test.ts` — `init()` with an intact default folder
