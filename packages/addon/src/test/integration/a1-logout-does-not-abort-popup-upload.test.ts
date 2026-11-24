@@ -8,9 +8,9 @@
  * Fix (background.ts): the SIGN_OUT handler now (1) rejects every entry in
  * uploadPromiseMap via rejectAllInQueue(), (2) closes the popup window if
  * one is open, and (3) broadcasts a SIGN_OUT message to other contexts so
- * they can flip their UI state. The popup side (PopupView.vue's
- * onMessage listener) now also handles SIGN_OUT by clearing its pending
- * files list.
+ * they can flip their UI state. The popup side (the onMessage listener
+ * PopupView.vue registers through usePopupFileList.ts) now also handles
+ * SIGN_OUT by clearing its pending files list.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -18,9 +18,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveNextWindowCreate, type FakeHost } from './fakeThunderbirdHost';
 import { ADDON_ROOT, setupHost, stubContext, teardownHost } from './testHelpers';
 
-const POPUP_VIEW_PATH = resolve(
+const POPUP_FILE_LIST_PATH = resolve(
   ADDON_ROOT,
-  'node_modules/send-frontend/src/apps/send/views/PopupView.vue'
+  'node_modules/send-frontend/src/apps/send/composables/usePopupFileList.ts'
 );
 
 describe('A1: SIGN_OUT aborts in-flight uploads and notifies the popup', () => {
@@ -94,10 +94,10 @@ describe('A1: SIGN_OUT aborts in-flight uploads and notifies the popup', () => {
     expect(bg.browser.windows.remove).toHaveBeenCalledTimes(1);
   });
 
-  it('FIXED: PopupView.vue\'s runtime.onMessage listener handles SIGN_OUT', () => {
-    const source = readFileSync(POPUP_VIEW_PATH, 'utf-8');
+  it('FIXED: the popup runtime.onMessage listener handles SIGN_OUT', () => {
+    const source = readFileSync(POPUP_FILE_LIST_PATH, 'utf-8');
 
-    // Isolate the onMessage listener registered in initialize().
+    // Isolate the onMessage listener registered by requestFiles().
     const listenerStart = source.indexOf(
       'browser.runtime.onMessage.addListener(async (message) => {'
     );

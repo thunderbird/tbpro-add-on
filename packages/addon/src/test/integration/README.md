@@ -4,7 +4,7 @@ This directory implements **Tier 1** of
 `packages/send/e2e/ADDON-INTEGRATION-TEST-ENV-PLAN-2026-07-22.md`: a fast,
 deterministic, CI-friendly harness that loads the **real** production
 modules (`background.ts`, `menu.ts`, `token-bridge.js`, `init.ts`,
-`UserMenu.vue`, `PopupView.vue`) against a fake multi-context Thunderbird
+`UserMenu.vue`, `usePopupFileList.ts`) against a fake multi-context Thunderbird
 host, and drives the exact race windows described in
 `packages/send/e2e/ADDON-BUG-REPORTS-2026-07-22.md` deterministically. It has
 since grown a set of happy-path and startup specs that use the same harness
@@ -120,6 +120,9 @@ harness to lock in behaviour that must keep working:
 
 - `happy-full-upload-golden-path.test.ts`, `happy-sequential-multi-file-reuse.test.ts`
   — attach → popup → upload → link, once and across popup sessions
+- `happy-popup-ready-once.test.ts` — the popup's `usePopupFileList.ts` asks
+  background for its files once, so asking again (as PopupView does on every
+  refetch) keeps them
 - `happy-login-sync-across-contexts.test.ts`, `happy-clean-logout-no-inflight-work.test.ts`
   — login/logout propagate across background, popup and web contexts
 - `happy-init-no-conflict.test.ts` — `init()` with an intact default folder
