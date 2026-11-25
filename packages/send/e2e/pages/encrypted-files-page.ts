@@ -34,10 +34,10 @@ export class EncryptedFilesPage {
   constructor(page: Page) {
     this.page = page;
     this.sendHdrLogoLink = this.page.locator('header').getByRole('img', { name: 'Send', exact: true });
-    // The username is the header's direct-child span. Restricting this to a
-    // direct child avoids matching implementation-detail spans inside adjacent
-    // header controls, which causes Playwright strict-mode failures.
-    this.signedInUsername = this.page.locator('#send-page main > header > span');
+    // NewFolder renders a sibling span while the folder route is loading.
+    this.signedInUsername = this.page
+      .locator('#send-page main > header')
+      .getByText(TB_ACCTS_EMAIL, { exact: true });
     this.yourFilesHeading = this.page.getByRole('heading', { name: 'Your Files' });
     this.userAvatar = this.page.getByTestId('avatar-default');
     this.userAvatarMenuBtn = this.page.locator('aside.avatar.regular');
@@ -60,7 +60,7 @@ export class EncryptedFilesPage {
 
   async expectBasicUiVisible() {
     await expect(this.sendHdrLogoLink).toBeVisible();
-    await expect(this.signedInUsername).toHaveText(TB_ACCTS_EMAIL, {
+    await expect(this.signedInUsername).toBeVisible({
       timeout: TIMEOUT_30_SECONDS,
     });
     await expect(this.yourFilesHeading).toBeVisible();
