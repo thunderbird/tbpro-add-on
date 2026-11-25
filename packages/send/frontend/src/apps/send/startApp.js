@@ -1,3 +1,4 @@
+import { setLocale } from '@send-frontend/l10n';
 import { closeSentry, initSentry } from '@send-frontend/lib/sentry';
 import {
   isTelemetryAllowed,
@@ -25,6 +26,8 @@ export async function startApp() {
   if (telemetryAllowed) {
     initSentry(app);
   }
+  // The web app follows the browser's language list.
+  await setLocale();
   app.use(router);
   setupApp(app, telemetryAllowed);
   mountApp(app, '#app');

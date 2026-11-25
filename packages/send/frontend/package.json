@@ -33,6 +33,8 @@
     ]
   },
   "dependencies": {
+    "@fluent/bundle": "^0.19.1",
+    "@fluent/langneg": "^0.7.0",
     "@scure/bip39": "^1.6.0",
     "@sentry/vite-plugin": "^5.2.1",
     "@sentry/vue": "^8.55.2",

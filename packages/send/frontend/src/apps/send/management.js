@@ -1,3 +1,4 @@
+import { requestedLocales, setLocale } from '@send-frontend/l10n';
 import { closeSentry, initSentry } from '@send-frontend/lib/sentry';
 import {
   isTelemetryAllowed,
@@ -18,6 +19,8 @@ const app = createApp(ManagementPage);
   if (telemetryAllowed) {
     initSentry(app);
   }
+  // Add-on surfaces follow Thunderbird's UI language, not the browser's.
+  await setLocale(requestedLocales('thunderbird'));
   app.use(router);
   setupApp(app, telemetryAllowed);
   mountApp(app, '#management-page');
