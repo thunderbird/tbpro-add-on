@@ -8,6 +8,7 @@ import {
   isRateLimitingEnabled,
   isRedisHealthy,
 } from '../redis';
+import { getCookie } from '../utils';
 
 /**
  * Rate limiting for sensitive Send backend endpoints.
@@ -49,19 +50,22 @@ function keyForRequest(req: Request): string {
   }
 
   // Pre-auth routes (e.g. token refresh) have no user identity yet. Key on IP
-  // plus a hash of the refresh-token cookie so a single source is limited
-  // without lumping every user behind a shared NAT into one bucket. The cookie
-  // is hashed, never stored in Redis in the clear.
+  // plus a hash of the refresh-token cookie only -- never the whole Cookie
+  // header, or unrelated padding cookies would mint fresh buckets. No refresh
+  // cookie: IP alone. The cookie is hashed, never stored in Redis in the clear.
   //
-  // ipKeyGenerator normalises the client IP first: without it, IPv6 clients get
-  // a distinct key per /128 address and could sidestep the limit by rotating
-  // within their allocation. It collapses each client to its network prefix.
-  const refreshCookie = req.headers?.cookie ?? '';
+  // ipKeyGenerator collapses IPv6 clients to their network prefix, so rotating
+  // addresses within one allocation cannot sidestep the limit.
+  const ipKey = `anon:${ipKeyGenerator(req.ip ?? '')}`;
+  const refreshCookie = getCookie(req.headers?.cookie, 'refresh_token');
+  if (!refreshCookie) {
+    return ipKey;
+  }
   const cookieHash = createHash('sha256')
     .update(refreshCookie)
     .digest('hex')
     .slice(0, 16);
-  return `anon:${ipKeyGenerator(req.ip ?? '')}:${cookieHash}`;
+  return `${ipKey}:${cookieHash}`;
 }
 
 /**
