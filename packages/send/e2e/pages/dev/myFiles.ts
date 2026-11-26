@@ -284,4 +284,15 @@ export async function delete_file({ page }: PlaywrightProps) {
   await page.getByTestId(submitButtonID).click();
   await page.waitForLoadState("networkidle");
   await expect(page.getByTestId("not_found")).toContainText("This link is no longer active");
+
+  // Deleting the file revoked its own links (#1393).
+  for (const key of ["file-no-password", "file-with-password"] as const) {
+    await page.goto(requireShareLink(key));
+    await page.waitForLoadState("networkidle");
+    if (key === "file-with-password") {
+      await page.getByTestId(passwordInputID).fill(password);
+      await page.getByTestId(submitButtonID).click();
+    }
+    await expect(page.getByTestId("access-link-error")).toContainText("Access Link is no longer valid");
+  }
 }

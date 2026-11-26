@@ -9,6 +9,7 @@ import {
   ACCESSLINK_NOT_DELETED,
   AccessLinkChallengeError,
   ACCESSLINK_NOT_FOUND,
+  BaseError,
   CONTAINER_NOT_DELETED,
   CONTAINER_NOT_FOUND,
   GROUP_NOT_DELETED,
@@ -19,6 +20,7 @@ import {
   UPLOAD_NOT_DELETED,
   USER_NOT_DELETED,
 } from '../errors/models';
+import { releaseFolderUploads } from '../models';
 import storage from '../storage';
 import { fromPrismaV2 } from './prisma-helper';
 const prisma = new PrismaClient();
@@ -429,6 +431,7 @@ export async function burnFolder(
       id: containerId,
     },
     select: {
+      ownerId: true,
       group: {
         select: {
           id: true,
@@ -480,24 +483,22 @@ export async function burnFolder(
   );
 
   if (shouldDeleteUpload) {
-    const deleteFilePromises = (uploadIds as string[]).map((id) =>
-      storage.del(id)
-    );
-    await Promise.all(deleteFilePromises);
-
+    // Share-only copies would otherwise block the upload delete (#1398).
+    const deletedIds = await releaseFolderUploads(
+      [...new Set(uploadIds)],
+      container.ownerId,
+      containerId
+    ).catch((error) => {
+      console.error('Error deleting folder uploads:', error);
+      throw new BaseError(UPLOAD_NOT_DELETED);
+    });
     await Promise.all(
-      uploadIds.map(async (id) => {
-        const deleteUploadQuery = {
-          where: {
-            id,
-          },
-        };
-
-        return fromPrismaV2(
-          prisma.upload.delete,
-          deleteUploadQuery,
-          UPLOAD_NOT_DELETED
-        );
+      deletedIds.map(async (id) => {
+        try {
+          await storage.del(id);
+        } catch (error) {
+          console.error(`Error deleting upload ${id} from storage:`, error);
+        }
       })
     );
   }
