@@ -25,6 +25,8 @@ vi.mock('../../middleware', () => ({
   requireReadPermission: named('requireReadPermission'),
   requireAdminPermission: named('requireAdminPermission'),
   requireSharePermission: named('requireSharePermission'),
+  requireUploadAccess: named('requireUploadAccess'),
+  requireAdminPermisions: named('requireAdminPermisions'),
 }));
 
 vi.mock('../../middleware/rate-limit', () => ({
@@ -45,19 +47,19 @@ vi.mock('@send-backend/auth/client', () => ({
 
 import router from '../../routes/uploads';
 
-const AUTH_GUARDS = new Set(['requireJWT', 'requireAuth']);
+// `requireUploadAccess` accepts a live share link or a signed-in member.
+const AUTH_GUARDS = new Set([
+  'requireJWT',
+  'requireAuth',
+  'requireUploadAccess',
+]);
 const MUTATING = new Set(['post', 'put', 'patch', 'delete']);
 
 // Routes that intentionally mutate without an auth chain guard, each with the
 // reason it is exempt. The companion assertion below requires every exempt
 // route to STILL lack an auth guard, so an exemption dies the moment its route
 // is guarded.
-//
-// `/report` is anonymous by design: a recipient viewing a shared file (no
-// account) must be able to report it. Its handler looks the upload up by id and
-// 404s on an unknown one; there is no per-user state to protect.
 const AUTH_EXEMPT = new Map<string, string>([
-  ['post /report', 'anonymous abuse reporting for shared files'],
   ['post /items', 'read-only fetch by id + wrapped key; no state change'],
 ]);
 
@@ -88,6 +90,21 @@ describe('routes/uploads.ts auth-guard coverage', () => {
     expect(keys).toContain('post /');
     expect(keys).toContain('post /signed');
     expect(keys).toContain('post /cleanup');
+    expect(keys).toContain('post /report');
+  });
+
+  it('pins the report routes: proof of access, rate limit, admin-only verdicts', () => {
+    const guardsOf = (key: string) => routes.find((r) => r.key === key)?.guards;
+    expect(guardsOf('post /report')).toEqual(
+      expect.arrayContaining(['rateLimiter', 'requireUploadAccess'])
+    );
+    expect(guardsOf('post /:uploadId/report/:verdict(confirm|clear)')).toEqual(
+      expect.arrayContaining([
+        'requireJWT',
+        'requireAdminPermisions',
+        'rateLimiter',
+      ])
+    );
   });
 
   it('guards every mutating route that is not explicitly exempt', () => {

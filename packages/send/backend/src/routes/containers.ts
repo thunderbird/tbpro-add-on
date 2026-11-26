@@ -18,6 +18,7 @@ import {
   requireAdminPermission,
   requireJWT,
   requireReadPermission,
+  requireUploadAccess,
   requireWritePermission,
 } from '../middleware';
 import { createRateLimiter } from '../middleware/rate-limit';
@@ -509,7 +510,11 @@ router.post(
  * @openapi
  * /api/containers/{containerId}/report:
  *   post:
- *     summary: Report an upload in a container
+ *     summary: Report an upload in a container for abuse review
+ *     description: >
+ *       Queues the upload for admin review without blocking it. Requires proof
+ *       of access to this container: a live share link (`linkId`) to it, or
+ *       signed-in membership. The upload must be in this container.
  *     tags: [Containers]
  *     security:
  *       - bearerAuth: []
@@ -521,20 +526,27 @@ router.post(
  *             type: object
  *             properties:
  *               uploadId:
- *                 type: integer
+ *                 type: string
+ *                 format: uuid
+ *               linkId:
+ *                 type: string
+ *             required:
+ *               - uploadId
  *     responses:
  *       200:
- *         description: Upload reported successfully
+ *         description: Report received and pending review
  *       400:
- *         description: Failed to report upload
+ *         description: uploadId or containerId is not a uuid
+ *       403:
+ *         description: No proof of access to the upload in this container
  */
-// Report an upload in a container
 router.post(
   '/:containerId/report',
+  createRateLimiter('sensitive'),
+  requireUploadAccess,
   addErrorHandling(CONTAINER_ERRORS.ITEM_NOT_REPORTED),
   wrapAsyncHandler(async (req, res) => {
-    const { uploadId } = req.body;
-    await reportUpload(uploadId);
+    await reportUpload(req.body.uploadId);
     res.status(200).json({ message: 'reported successfully' });
   })
 );
