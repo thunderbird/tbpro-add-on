@@ -12,7 +12,7 @@ async function readPasswordRetryCount(id: string) {
   let retryCount = 0;
   try {
     const res = await getAccessLinkRetryCount(id);
-    retryCount = res.retryCount;
+    retryCount = res?.retryCount ?? 0;
   } catch (error) {
     console.error('Error getting password retry count', error);
   }
