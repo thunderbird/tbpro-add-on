@@ -97,10 +97,8 @@ describe('A1: SIGN_OUT aborts in-flight uploads and notifies the popup', () => {
   it('FIXED: the popup runtime.onMessage listener handles SIGN_OUT', () => {
     const source = readFileSync(POPUP_FILE_LIST_PATH, 'utf-8');
 
-    // Isolate the onMessage listener registered by requestFiles().
-    const listenerStart = source.indexOf(
-      'browser.runtime.onMessage.addListener(async (message) => {'
-    );
+    // Isolate the onMessage listener that requestFiles() registers.
+    const listenerStart = source.indexOf('async function onMessage(message) {');
     expect(listenerStart).toBeGreaterThan(-1);
     // The listener body is short; grab a bounded slice after it for the check
     // rather than trying to balance braces.
